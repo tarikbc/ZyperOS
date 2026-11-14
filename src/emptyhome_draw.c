@@ -55,17 +55,19 @@ void eh_draw(SDL_Renderer *r, const eh_state *s, eh_zyper_fn zyper)
 {
 	TTF_Font *ft = ui_font(UI_F_TITLE), *fs = page_font(PAGE_META);
 
-	/* Zyper at the left of the heading, as the menus have him beside theirs */
-	if (zyper) zyper(r, 123.0f, 160.0f, 124.0f);
-	ui_text(r, ft, T(S_EMPTYHOME_NO_GAMES_YET), 208, ui_cap_y(ft, 146), -1, UI_TEXT);
-	ui_text(r, fs, T(S_EMPTYHOME_ADD_THEM), 208, ui_cap_y(fs, 209), -1,
+	/* Zyper at the left of the heading, and the heading with its smaller
+	 * line under it, where every page has them (src/ds/page.h's frame,
+	 * DS_HEAD_SUB's places; its smaller line in the home's own face) */
+	if (zyper) zyper(r, DS_PAGE_ZYPER_X, DS_PAGE_ZYPER_Y, DS_PAGE_ZYPER_H);
+	ui_text(r, ft, T(S_EMPTYHOME_NO_GAMES_YET), DS_PAGE_HEAD_X, ui_cap_y(ft, DS_PAGE_TITLE_Y), -1, UI_TEXT);
+	ui_text(r, fs, T(S_EMPTYHOME_ADD_THEM), DS_PAGE_HEAD_X, ui_cap_y(fs, DS_PAGE_SUB_Y), -1,
 	        UI_TEXT_SOFT);
 	card(r, s, EH_USB, EH_CARD_X0);
 	card(r, s, EH_WIFI, EH_CARD_X1);
 	ui_text(r, fs, T(S_EMPTYHOME_BIOS), 512, ui_cap_y(fs, EH_BIOS_CY), 0,
 	        UI_TEXT_DIM);
-	page_hint(r, "MENU", T(S_EMPTYHOME_SETTINGS), 64, 704, false, false);
-	if (s->music) page_hint(r, "SELECT", "MP4", 784, 704, false, false);
+	page_hint(r, "MENU", T(S_EMPTYHOME_SETTINGS), 64, DS_PAGE_FOOT_Y, false, false);
+	if (s->music) page_hint(r, "SELECT", "MP4", 784, DS_PAGE_FOOT_Y, false, false);
 }
 
 /* The cheer's times, on DESIGN.md's tokens: in on **move**, the tutorial's
