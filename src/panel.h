@@ -7,6 +7,7 @@
  * what a screen with a panel calls every frame. Each is described in
  * main.c. */
 #include "app.h"
+#include "keyboard.h"
 #include "menu.h"
 #include "platform.h"
 
@@ -220,6 +221,14 @@ bool confirm_panel(app *a, const char *heading, const char *msg,
 void draw_background(app *a);
 /* A move on a page heard: `b`'s step sound */
 void moved_sound(app *a, in_button b);
+/* The runner's messages: rows held for a while, or until a press; one
+ * result's words; and the on-screen keyboard's prompt */
+bool timed_message(app *a, const char *heading, const menu_row *rows,
+                   int n, int fixed_w, unsigned accent);
+bool result_message(app *a, const char *heading, const char *text);
+kb_result keyboard_prompt(app *a, const char *title, char *buf, int cap);
+/* MENU pressed in a screen over the one asking: every screen closing */
+extern bool g_menu_closing;
 
 /* SELECT: Muse, over whatever is on screen */
 bool muse_open(app *a, const menu_style *over, void *ctx);

@@ -26,6 +26,9 @@
 #include "ctl.h"
 #include "ctl_channel.h"
 #include "update_screen.h"
+#include "search_screen.h"
+#include "clock_screen.h"
+#include "bgm_screen.h"
 #include "bt.h"
 #include "btvol.h"
 #include "bt_menu.h"
@@ -2656,7 +2659,7 @@ static unsigned g_wifi_asked_at;   /* when menu_wifi last forked, plat_now_ms */
 /* MENU > Clock: the time in 24 hours, on the shelf's corner and in Date &
  * Time's row; 12-hour, the default, is what the launcher always was. Saved in
  * the device's database as Appearance is, under `clock`, "12h" or "24h". */
-static bool g_clock24;
+bool g_clock24;
 
 static void clock24_load(void)
 {
@@ -2804,17 +2807,7 @@ static void batt_icon_load(void)
  * taken at all: then the clock is --status's or none, since a shot that
  * showed the host's would change from one minute to the next, and shots are
  * compared byte for byte (check-flip). */
-static struct {
-	bool         shot;
-	bool         set;
-	int          minutes;
-	int          h24;          /* -1 for the saved setting */
-	int          eta;          /* minutes left for Time Left, -1 for none */
-	int          calc;         /* the calculating dots, this many filled, -1 for none */
-	bool         full;         /* on the cable and charged */
-	int          icon;         /* BATT_BARS.., -1 for the saved setting */
-	status_marks m;
-} shot_st = { .minutes = -1, .h24 = -1, .eta = -1, .calc = -1, .icon = -1 };
+shot_status shot_st = { .minutes = -1, .h24 = -1, .eta = -1, .calc = -1, .icon = -1 };
 
 /* Where the corner (its clock's text box and its marks), the clock alone, the
  * last panel and the games title's capitals were drawn this frame, for a
@@ -3213,7 +3206,7 @@ static void drop_card(SDL_Texture **t)
  * shows its card until the one of the theme that is on lands from a worker
  * (game_card_wanted), games' and albums' alike, so a turn leaves no hole in
  * a row. Now Playing's cover is made on the frame and goes at once. */
-static void theme_changed(app *a)
+void theme_changed(app *a)
 {
 	g_theme_late = false;              /* told, whoever turned it */
 	drop_card(&g_np.tex);
@@ -3297,7 +3290,7 @@ static void lang_file_keep(void)
 	}
 }
 
-static void boot_theme_changed(void)
+void boot_theme_changed(void)
 {
 	g_boot_theme_at = plat_now_ms() ? plat_now_ms() : 1;
 }
@@ -3365,7 +3358,6 @@ static void tick_boot_theme(void)
 static void xs_tick_behind(app *a);
 
 /* Date & Time's Auto, with its screen: true when it set a new zone */
-static bool tick_auto_zone(void);
 
 bool tick_theme(app *a)
 {
@@ -4533,7 +4525,7 @@ static songpop  g_songpop;
 static zr_rig   g_songpop_zyper;
 static unsigned g_songpop_drawn;       /* when render last drew it */
 static unsigned g_song_seen;           /* bgm_song's seq last looked at */
-static bool     g_song_popup = true;   /* MENU > Menu Music > Song Pop-up */
+bool     g_song_popup = true;   /* MENU > Menu Music > Song Pop-up */
 static bool     g_songpop_mp4;         /* the words up are MP4's, not the menu music's */
 
 /* A new song the shelf first sees this long after it began began under
@@ -7017,7 +7009,7 @@ static wifi_state menu_wifi(char *ssid, int cap)
  * *metered: the way out is the phone's, so its mobile data, likely: nothing
  * large starts by itself over it. Read again at most twice a second, as the
  * menus ask every frame (menu_wifi's cache keeps Wi-Fi's cheap). */
-static bool net_internet(bool *metered)
+bool net_internet(bool *metered)
 {
 	static unsigned at;
 	static bool out, meter;
@@ -7346,9 +7338,6 @@ static int usb_auto_lines(app *a, char lines[4][LB_LINE], menu_row rows[4])
 	return n;
 }
 
-static bool timed_message(app *a, const char *heading, const menu_row *rows,
-                          int n, int fixed_w, unsigned accent);
-
 /* --cheevos-unchecked, for a shot: the Achievements rows as a game never
  * played with a network has them, whatever the card holds */
 static bool g_shot_unchecked;
@@ -7596,7 +7585,7 @@ void wait_panel(app *a, const char *heading, const char *msg)
  * down again only OUTSIDE the menus - the shelf's loop, game_menu, Muse - and
  * never when a menu opens: a screen that opens a second one after the first
  * came back has to see it still up, or that second one would stay open. */
-static bool g_menu_closing;
+bool g_menu_closing;
 /* The in-game menu is up, over a paused game (game_menu): nothing may close
  * it from outside, as a plugged-in computer closes the others */
 static bool g_in_game_menu;
@@ -7934,7 +7923,7 @@ static bool confirm_body(app *a, const char *heading, const char *msg,
 }
 
 bool confirm_panel(app *a, const char *heading, const char *msg,
-                          const char *yes_label)
+                   const char *yes_label)
 {
 	int lv = panel_open();
 	bool yes = confirm_body(a, heading, msg, yes_label, lv);
@@ -8381,8 +8370,8 @@ menu_exit menu_run(app *a, const menu_style *st,
  * Its hold starts after the panel arrives, on the same wall clock. Its
  * close completes here, so a result cannot hand queued keys to its parent.
  * The parent's own arrival remains the parent's to draw. */
-static bool timed_message(app *a, const char *heading, const menu_row *rows,
-                           int n, int fixed_w, unsigned accent)
+bool timed_message(app *a, const char *heading, const menu_row *rows,
+                   int n, int fixed_w, unsigned accent)
 {
 	message_time clock;
 	message_phase phase;
@@ -8472,7 +8461,7 @@ static bool timed_message(app *a, const char *heading, const menu_row *rows,
 	return !g_message_stopped && !g_menu_closing;
 }
 
-static bool result_message(app *a, const char *heading, const char *text)
+bool result_message(app *a, const char *heading, const char *text)
 {
 	menu_row row = { text, NULL, false };
 	int w = menu_std_width(a);
@@ -8565,7 +8554,7 @@ static bool keyboard_idle(void *ctx)
 	return idle_due(((keyboard_transition *)ctx)->a);
 }
 
-static kb_result keyboard_prompt(app *a, const char *title, char *buf, int cap)
+kb_result keyboard_prompt(app *a, const char *title, char *buf, int cap)
 {
 	keyboard_transition tr = { .a = a };
 	kb_result result = kb_prompt(a->r, &a->in, title, buf, cap,
@@ -16400,544 +16389,6 @@ int menu_std_width(app *a)
 	int w       = floor > content ? floor : content;
 
 	return w < most ? w : most;
-}
-
-/* ---------- MENU > Search Games ---------------------------------------- */
-
-/* The query on the on-screen keyboard, then what it finds (src/search.h) as a
- * list - the title, and the system it is on. A on one picks it: the menu
- * closes, and pick_launch puts the shelf on it and starts it, as A there
- * would. B on the list goes back to the keyboard with the query still in it,
- * to change it; B on the keyboard back to the menu. The query is kept for
- * the next search. Every system's shelf but Muse's, whose cards are albums,
- * and Favorites', whose games are on their own systems' shelves too. */
-typedef struct {
-	app       *a;
-	sr_item    hit[SR_SHOWN];
-	int        n, found, pick;
-	char       heading[160], note[160];
-} search_view;
-
-static int search_build(void *ctx, menu_row *rows, int max, const char **heading)
-{
-	search_view *v = ctx;
-	int i, n = 0;
-
-	*heading = v->heading;
-	/* The system by its name when that is short, else by its tag - "GBA",
-	 * "A7800", "PS1": on the Pixel 2, "Game Boy Advance" left a title nine
-	 * letters ("036 The L...") */
-	for (i = 0; i < v->n && n < max - 2; i++) {
-		const system_cfg *sc = &v->a->sys.systems[v->hit[i].shelf];
-
-		rows[n++] = (menu_row){ v->hit[i].title,
-		                        strlen(sc->name) <= 8 || !sc->tag[0] ? sc->name : sc->tag,
-		                        true };
-	}
-	rows[n++] = MENU_RULE;
-	if (v->found > v->n)
-		snprintf(v->note, sizeof v->note, T(S_SEARCH_SOME_OF), v->n, v->found);
-	else
-		snprintf(v->note, sizeof v->note, TN(S_SEARCH_FOUND, v->found), v->found);
-	rows[n++] = MENU_NOTE(v->note);
-	return n;
-}
-
-static menu_result search_key(app *a, void *ctx, in_button key, int sel)
-{
-	search_view *v = ctx;
-
-	(void)a;
-	if (key != IN_ACCEPT || sel < 0 || sel >= v->n) return MENU_STAY;
-	v->pick = sel;
-	return MENU_DONE;
-}
-
-/* True with the game picked in *shelf and *game: the menu is to close */
-static bool search_screen(app *a, int *shelf, int *game)
-{
-	static char query[64];
-	search_view v;
-	sr_item *items;
-	int i, k, n = 0, total = 0;
-	bool picked = false;
-
-	for (i = 0; i < a->sys.count; i++) total += sys_games(&a->view[i])->count;
-	if (total <= 0 || !(items = malloc((size_t)total * sizeof *items))) {
-		uisound_play(DS_SOUND_DENY);
-		return false;
-	}
-	for (i = 0; i < a->sys.count; i++) {
-		const sysview *sv = &a->view[i];
-
-		if (is_muse(&a->sys.systems[i]) || sv->owner) continue;
-		const game_list *gl = sys_games_c(sv);
-
-		/* Every game, in its folders too: the hit is an index of
-		 * sys_games, which pick_launch opens the folder of */
-		for (k = 0; k < gl->count; k++)
-			items[n++] = (sr_item){ gl->items[k].title, gl->items[k].name, i, k };
-	}
-	memset(&v, 0, sizeof v);
-	v.a = a;
-	while (!picked && a->running && !want_quit && !g_menu_closing) {
-		menu_style st = { .fixed_w = menu_std_width(a), .accent = MENU_ZYPEROS };
-		kb_result kr = keyboard_prompt(a, T(S_SEARCH_TITLE), query, (int)sizeof query);
-
-		if (kr == KB_POWER) { power_off(a); break; }
-		if (kr != KB_ACCEPT || !query[0]) break;
-		v.found = sr_search(query, items, n, v.hit, SR_SHOWN);
-		v.n = v.found < SR_SHOWN ? v.found : SR_SHOWN;
-		if (!v.n) {
-			char msg[192];
-
-			uisound_play(DS_SOUND_DENY);
-			snprintf(msg, sizeof msg, T(S_SEARCH_NONE), query);
-			result_message(a, T(S_SEARCH_TITLE), msg);
-			continue;
-		}
-		snprintf(v.heading, sizeof v.heading, T(S_SEARCH_HEADING), query);
-		v.pick = -1;
-		menu_run(a, &st, search_build, search_key, &v);
-		if (v.pick >= 0) {
-			*shelf = v.hit[v.pick].shelf;
-			*game = v.hit[v.pick].game;
-			picked = true;
-		}
-	}
-	free(items);
-	return picked;
-}
-
-/* Date & Time (src/clock.h). Time Zone first, then each row is one part of
- * the clock, changed with left and right and set the moment it changes: the
- * system clock and the hardware clock both, so it holds through a power-off.
- * Time Zone steps through Auto and then CLOCK_ZONES, and is the library
- * database's "timezone", which the Brick's launch.sh reads at boot as well.
- * The rows are clock_rows', so tools/clock-check.c holds their order. */
-typedef struct {
-	clock_bufs b;
-	char zone[80];   /* a city, an id not on the list as it is, or Auto's */
-} clock_ui;
-
-/* ---- Auto (src/autozone.h) ------------------------------------------------
- *
- * On for every card from 1.0.5 (src/db.c's default, and autozone_migrate
- * once at the start for a card from before), off once a zone is picked on
- * the row. Each time the
- * handheld gets internet, Wi-Fi or a phone's tethering (net_internet), the
- * zone of where it is is asked of AUTOZONE_SERVICE on a thread of its own,
- * and set as the row sets one: the library database, TZ for this process and
- * the next game, and the boot screen's words. Nothing that comes back but a
- * zone this system has is set; no answer, or one it cannot read, keeps the
- * zone there is. */
-
-/* Auto on, as the library database says: read once, then kept as the row
- * changes it */
-static int g_zone_auto = -1;
-
-static bool zone_auto_on(void)
-{
-	if (g_zone_auto < 0) g_zone_auto = db_get_int(db_lib(), AUTOZONE_KEY, 0) == 1;
-	return g_zone_auto == 1;
-}
-
-static void zone_auto_set(bool on)
-{
-	g_zone_auto = on;
-	db_set_str(db_lib(), AUTOZONE_KEY, on ? "1" : "0");
-	/* Chosen now, it has found nothing yet: the row says Auto alone until
-	 * its first answer */
-	if (on) db_set_str(db_lib(), AUTOZONE_FOUND_KEY, "");
-	fprintf(stderr, "clock: auto zone %s\n", on ? "on" : "off");
-}
-
-/* The one ask, on its own thread: net_get_hdr_answer waits for curl, up to
- * AUTOZONE_TIMEOUT_S, which no screen's loop may. Read by the main thread
- * once `done` says it is there. */
-static struct {
-	SDL_atomic_t done;
-	char         body[1024];
-	long         len;
-	int          http;
-} g_az;
-
-static int zone_auto_thread(void *arg)
-{
-	(void)arg;
-	g_az.len = net_get_hdr_answer(AUTOZONE_URL, NULL, g_az.body, sizeof g_az.body,
-	                              AUTOZONE_TIMEOUT_S, &g_az.http);
-	SDL_AtomicSet(&g_az.done, 1);
-	return 0;
-}
-
-/* What came back, on the main thread, Auto still on: the zone set when it
- * is one this system has. True when it was one; *changed when it was not the
- * zone in use. */
-static bool zone_auto_take(bool *changed)
-{
-	autozone_answer ans;
-	char zone[64], was[64], off[16] = "";
-	bool read = g_az.len > 0 && autozone_parse(g_az.body, (size_t)g_az.len, &ans);
-
-	*changed = false;
-	db_get_str(db_lib(), "timezone", was, sizeof was, "America/New_York");
-	if (!read || !autozone_pick(&ans, clock_zone_have, zone, sizeof zone)) {
-		if (g_az.len <= 0)
-			fprintf(stderr, "clock: auto zone: no answer from %s (HTTP %d), %s kept\n",
-			        AUTOZONE_SERVICE, g_az.http, was);
-		else
-			fprintf(stderr, "clock: auto zone: no zone in %s's answer, %s kept\n",
-			        AUTOZONE_SERVICE, was);
-		return false;
-	}
-	if (ans.has_offset) {
-		char w[12];
-
-		autozone_offset_words(ans.offset_s, w, sizeof w);
-		snprintf(off, sizeof off, " (UTC%s)", w);
-	}
-	if (strcmp(zone, ans.id))
-		fprintf(stderr, "clock: auto zone: %s has no zone %s here, so its offset's\n",
-		        AUTOZONE_SERVICE, ans.id[0] ? ans.id : "(none)");
-	db_set_str(db_lib(), AUTOZONE_FOUND_KEY, zone);
-	if (!strcmp(zone, was)) {
-		fprintf(stderr, "clock: auto zone %s%s from %s, as it was\n", zone, off, AUTOZONE_SERVICE);
-		return true;
-	}
-	fprintf(stderr, "clock: auto zone %s%s from %s, was %s\n", zone, off, AUTOZONE_SERVICE, was);
-	db_set_str(db_lib(), "timezone", zone);
-	plat_clock_zone(zone);
-	boot_theme_changed();
-	*changed = true;
-	return true;
-}
-
-/* Every two seconds from the screens' loops (tick_theme): an ask started
- * when autozone_due says, and its answer taken when the thread is done. A
- * connection that comes during a game is asked about back on the shelf. */
-static bool tick_auto_zone(void)
-{
-	static unsigned last;
-	static autozone_clock ac;
-	static bool running;
-	unsigned now = plat_now_ms();
-	long long secs = (long long)time(NULL);
-	bool changed = false, on;
-
-	if (shot_st.shot) return false;
-	if (last && now - last < 2000u) return false;
-	last = now ? now : 1;
-	on = zone_auto_on();
-	if (running) {
-		bool ok = false;
-
-		if (!SDL_AtomicGet(&g_az.done)) return false;
-		running = false;
-		/* Auto turned off while it asked: its answer is for nobody */
-		if (on) ok = zone_auto_take(&changed);
-		autozone_result(&ac, ok, now, secs);
-	}
-	if (autozone_due(&ac, on, on && net_internet(NULL), clock_is_set((time_t)secs), now, secs)) {
-		SDL_Thread *th;
-
-		SDL_AtomicSet(&g_az.done, 0);
-		g_az.len = -1;
-		g_az.http = 0;
-		fprintf(stderr, "clock: auto zone: asking %s\n", AUTOZONE_SERVICE);
-		th = SDL_CreateThread(zone_auto_thread, "zyperos-zone", NULL);
-		if (th) {
-			SDL_DetachThread(th);
-			running = true;
-		} else {
-			autozone_result(&ac, false, now, secs);
-		}
-	}
-	return changed;
-}
-
-/* What Auto tells and to whom (the service sees the handheld's public
- * address), said as it is chosen, on up to two balanced lines, as USB
- * Accessories' Automatic says its one risk (usb_auto_lines) */
-static int zone_auto_lines(app *a, char lines[2][LB_LINE], menu_row rows[2])
-{
-	int w = menu_std_width(a), i;
-	int n = ui_balance_lines(ui_font(UI_F_MENU), T(S_DATETIME_AUTO_NOTE), w, 2, lines);
-
-	ui_fit_drawn(T(S_DATETIME_AUTO_NOTE));
-	for (i = 0; i < n; i++) rows[i] = (menu_row){ lines[i], NULL, false };
-	return n;
-}
-
-static void zone_auto_message(app *a)
-{
-	char lines[2][LB_LINE];
-	menu_row rows[2];
-	int n = zone_auto_lines(a, lines, rows);
-
-	timed_message(a, T(S_CLOCK_TIME_ZONE), rows, n, menu_std_width(a), MENU_ZYPEROS);
-}
-
-/* The page's rows for zone `id` with Auto `autoz`, the zone Auto set last
- * `found`, at `t`: clock_build's, and a shot's (--datetime). What Auto tells
- * the service is said as it is chosen (zone_auto_message), not in a note
- * here: the six rows fill the panel, and a note under them is seen only
- * when the list goes round. */
-static int clock_page_rows(clock_ui *c, time_t t, const char *id, bool autoz,
-                           const char *found, bool wifi, menu_row *rows, int max)
-{
-	int n;
-
-	clock_zone_value(id, autoz, found, c->zone, sizeof c->zone);
-	n = clock_rows(t, g_clock24, c->zone, rows, max, &c->b);
-	if (n + 3 <= max) {
-		rows[n++] = MENU_RULE;
-		rows[n++] = MENU_NOTE(keyhints_legend((key_hint[]){ { KEYHINT_LEFT_RIGHT, T(S_KEYHINT_CHANGE) } }, 1));
-		/* Only where it is true: the Brick's ntpd sets the clock again once
-		 * Wi-Fi connects, so a time set here lasts until then */
-		if (wifi) rows[n++] = MENU_NOTE(T(S_DATETIME_WIFI_SETS));
-	}
-	return n;
-}
-
-/* A choice of the zone made (clock_zone_choose's rule): by the row's left
- * and right, or picked in its list */
-static void zone_choose(app *a, int choice)
-{
-	char id[64];
-	clock_zone_change c;
-
-	db_get_str(db_lib(), "timezone", id, sizeof id, "America/New_York");
-	c = clock_zone_choose(id, zone_auto_on(), choice);
-	if (c.auto_on != zone_auto_on()) zone_auto_set(c.auto_on);
-	if (c.zone) {
-		db_set_str(db_lib(), "timezone", c.zone);
-		plat_clock_zone(c.zone);
-		boot_theme_changed();
-	}
-	/* The zone stays as it is until Auto's first answer, which it asks for
-	 * as soon as there is internet (tick_auto_zone); what that tells the
-	 * service is said now */
-	if (c.auto_chosen) zone_auto_message(a);
-}
-
-/* The list A on Time Zone opens (clock_zone_list): every choice, a tick on
- * the one that is on and the cursor on it, as MENU > Language has it. A
- * picks and closes; B closes with nothing changed. */
-typedef struct {
-	char          auto_words[80];
-	int           pick;                         /* the row A picked, -1 */
-	unsigned char sound[CLOCK_ZONE_LIST_MAX];   /* every row plain */
-} zone_list_ui;
-
-/* The list's rows for zone `id`, Auto `autoz` and what it found: the
- * screen's, and a shot's (--datetime) */
-static int zone_list_rows(zone_list_ui *z, const char *id, bool autoz, const char *found,
-                          menu_row *rows, int max)
-{
-	int n = clock_zone_list(id, autoz, found, rows, max, z->auto_words, sizeof z->auto_words);
-	int on = clock_zone_list_on(id, autoz);
-
-	if (on >= 0 && on < n) rows[on].value = MENU_TICK;
-	return n;
-}
-
-static int zone_list_build(void *ctx, menu_row *rows, int max, const char **heading)
-{
-	zone_list_ui *z = ctx;
-	char id[64], found[64];
-
-	*heading = T(S_CLOCK_TIME_ZONE);
-	db_get_str(db_lib(), "timezone", id, sizeof id, "America/New_York");
-	db_get_str(db_lib(), AUTOZONE_FOUND_KEY, found, sizeof found, "");
-	return zone_list_rows(z, id, zone_auto_on(), found, rows,
-	                      max < CLOCK_ZONE_LIST_MAX ? max : CLOCK_ZONE_LIST_MAX);
-}
-
-static menu_result zone_list_key(app *a, void *ctx, in_button key, int sel)
-{
-	zone_list_ui *z = ctx;
-
-	(void)a;
-	if (key != IN_ACCEPT || clock_zone_list_choice(sel) < -1) return MENU_STAY;
-	z->pick = sel;
-	return MENU_DONE;
-}
-
-static void zone_list_screen(app *a)
-{
-	zone_list_ui z;
-	char id[64];
-
-	memset(&z, 0, sizeof z);
-	z.pick = -1;
-	db_get_str(db_lib(), "timezone", id, sizeof id, "America/New_York");
-	menu_run(a, &(menu_style){ .accent = MENU_ZYPEROS, .fixed_w = menu_std_width(a),
-	                           .sound = z.sound,
-	                           .start_sel = clock_zone_list_row(id, zone_auto_on()) },
-	         zone_list_build, zone_list_key, &z);
-	/* Set once the list has gone, so Auto's message comes over the page */
-	if (z.pick >= 0) zone_choose(a, clock_zone_list_choice(z.pick));
-}
-
-static int clock_build(void *ctx, menu_row *rows, int max, const char **heading)
-{
-	clock_ui *c = ctx;
-	char id[64], found[64];
-
-	*heading = T(S_DATETIME_TITLE);
-	db_get_str(db_lib(), "timezone", id, sizeof id, "America/New_York");
-	db_get_str(db_lib(), AUTOZONE_FOUND_KEY, found, sizeof found, "");
-	return clock_page_rows(c, time(NULL), id, zone_auto_on(), found, plat_has_wifi(),
-	                       rows, max);
-}
-
-static menu_result clock_key(app *a, void *ctx, in_button key, int sel)
-{
-	int d = key == IN_RIGHT ? 1 : key == IN_LEFT ? -1 : 0;
-
-	(void)ctx;
-	if (key == IN_ACCEPT && sel == CLOCK_ROW_ZONE) {
-		zone_list_screen(a);
-	} else if (!d) {
-		return MENU_STAY;
-	} else if (clock_row_field(sel) >= 0) {
-		plat_clock_set(clock_step(time(NULL), (clock_field)clock_row_field(sel), d));
-	} else if (sel == CLOCK_ROW_ZONE) {
-		char id[64];
-
-		db_get_str(db_lib(), "timezone", id, sizeof id, "America/New_York");
-		zone_choose(a, clock_zone_step_auto(id, zone_auto_on(), d));
-	}
-	/* Either way the same instant is another hour of the day, and Auto is
-	 * to follow it now and not at its next look a minute on: a player who
-	 * has just set the zone to where they are, to see the shelf in the theme
-	 * of that hour, is looking at the shelf. */
-	if (theme_refresh()) theme_changed(a);
-	return MENU_STAY;
-}
-
-static void clock_screen(app *a)
-{
-	clock_ui c;
-	menu_style st = {
-		/* Fixed, so the panel does not change size as "May" becomes
-		 * "September" under a held key */
-		.fixed_w = menu_std_width(a),
-		.accent  = MENU_ZYPEROS,
-	};
-
-	memset(&c, 0, sizeof c);
-	menu_run(a, &st, clock_build, clock_key, &c);
-}
-
-/* MENU > Menu Music: its rows are src/bgm_menu.c's, its player src/bgm_out.c.
- * Every change is heard as it is made - the music plays behind this screen -
- * and kept in the device database beside UI Sounds. The folder is read here
- * as the screen opens, and the player told to read it again, so tracks
- * copied over Wi-Fi or USB since the launcher started are in the list. */
-/* The two folders menu music plays from (src/bgm.h): Menu Music at the top
- * of the card, and ZyperOS's own */
-static void bgm_dirs(char *dir, char *builtin, size_t n)
-{
-	snprintf(dir, n, "%s/%s", P_CARD, BGM_CARD_DIR);
-	snprintf(builtin, n, "%s/%s", P_ROOT, BGM_BUILTIN_DIR);
-}
-
-/* What plays, for the Menu Music page: as the player reads it */
-static void bgm_scan_now(bgm_list *l)
-{
-	char dir[CFG_STR * 2], builtin[CFG_STR * 2];
-
-	bgm_dirs(dir, builtin, sizeof dir);
-	bgm_scan_all(&(bgm_sources){ dir, builtin, bgm_builtin() }, l);
-}
-
-typedef struct {
-	bgm_bufs b;
-	bgm_list list;
-	char     now[512];
-	char     now_name[BGM_TAG_MAX];   /* ...as the song pop-up names it */
-} bgm_view;
-
-static int bgm_build(void *ctx, menu_row *rows, int max, const char **heading)
-{
-	bgm_view *v = ctx;
-	bgm_ui u;
-
-	bgm_now(v->now, sizeof v->now);
-	/* Playing names the song as the pop-up does, from its tags, when the
-	 * player's news is the file playing */
-	{
-		bgm_song s;
-		char head[BGM_TAG_MAX];
-
-		bgm_song_now(&s);
-		v->now_name[0] = '\0';
-		if (v->now[0] && !strcmp(s.file, v->now))
-			bgm_song_label(&s.tags, s.file, head, sizeof head, v->now_name, sizeof v->now_name);
-	}
-	/* A track set that is not in the list - one of ZyperOS's, with ZyperOS
-	 * Tracks turned off, or one gone from the card - is not what plays: the
-	 * player shuffles instead (src/bgm_out.c, wanted_file), so the row says so */
-	u = (bgm_ui){ bgm_on(), bgm_volume(),
-	              bgm_find(&v->list, bgm_track()) >= 0 ? bgm_track() : "",
-	              v->now, v->list.n, v->list.own, bgm_builtin(), g_song_popup, v->now_name };
-	return bgm_menu_build(&u, rows, max, &v->b, heading);
-}
-
-static menu_result bgm_key(app *a, void *ctx, in_button key, int sel)
-{
-	bgm_view *v = ctx;
-	int d = key == IN_RIGHT ? 1 : key == IN_LEFT ? -1 : 0;
-	/* Which row: ZyperOS Tracks is there only with tracks of the card's own */
-	int row = sel >= 0 && sel < (int)sizeof v->b.id ? v->b.id[sel] : BGM_ROWS;
-	char num[8];
-
-	(void)a;
-	if (row == BGM_ROW_ON && (d || key == IN_ACCEPT)) {
-		bgm_set_on(!bgm_on());
-		db_set_str(db_dev(), "bgm", bgm_on_id(bgm_on()));
-	} else if (row == BGM_ROW_VOLUME && d) {
-		bgm_set_volume(bgm_volume_step(bgm_volume(), d));
-		snprintf(num, sizeof num, "%d", bgm_volume());
-		db_set_str(db_dev(), "bgm.volume", num);
-	} else if (row == BGM_ROW_BUILTIN && (d || key == IN_ACCEPT)) {
-		bgm_set_builtin(!bgm_builtin());
-		db_set_str(db_dev(), "bgm.builtin", bgm_on_id(bgm_builtin()));
-		/* The Track row steps through what plays now */
-		bgm_scan_now(&v->list);
-	} else if (row == BGM_ROW_TRACK && d) {
-		int at = bgm_track_step(bgm_find(&v->list, bgm_track()), v->list.n, d);
-		const char *t = at < 0 ? "" : v->list.names[at];
-
-		bgm_set_track(t);
-		db_set_str(db_dev(), "bgm.track", t);
-	} else if (row == BGM_ROW_POPUP && (d || key == IN_ACCEPT)) {
-		g_song_popup = !g_song_popup;
-		db_set_str(db_dev(), "bgm.popup", bgm_on_id(g_song_popup));
-	} else if (row == BGM_ROW_NOW && key == IN_ACCEPT) {
-		bgm_skip();
-	}
-	return MENU_STAY;
-}
-
-static void bgm_screen(app *a)
-{
-	bgm_view v;
-	menu_style st = {
-		/* Fixed, so the panel does not change size as one track's name
-		 * gives way to a longer one */
-		.fixed_w = menu_std_width(a),
-		.accent  = MENU_ZYPEROS,
-	};
-
-	memset(&v, 0, sizeof v);
-	bgm_scan_now(&v.list);
-	bgm_rescan();
-	st.sound = v.b.sound;
-	menu_run(a, &st, bgm_build, bgm_key, &v);
-	bgm_free(&v.list);
 }
 
 /* ---------- MENU > Storage (DESIGN.md 11.32) --------------------------------

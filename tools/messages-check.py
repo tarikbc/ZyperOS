@@ -9,9 +9,10 @@ import sys
 import tempfile
 
 # src/main.c and the files split from it
-LAUNCHER = ("src/main.c", "src/aout_route.c", "src/bt_screen.c", "src/ctl_channel.c",
-            "src/ctltab_screen.c", "src/place.c", "src/portload.c", "src/powerscreens.c",
-            "src/raqueue.c", "src/shelfbuild.c", "src/stats_screen.c",
+LAUNCHER = ("src/main.c", "src/aout_route.c", "src/bgm_screen.c", "src/bt_screen.c",
+            "src/clock_screen.c", "src/ctl_channel.c", "src/ctltab_screen.c",
+            "src/place.c", "src/portload.c", "src/powerscreens.c", "src/raqueue.c",
+            "src/search_screen.c", "src/shelfbuild.c", "src/stats_screen.c",
             "src/update_screen.c", "src/zyperdraw.c")
 source = "\n".join(Path(p).read_text() for p in LAUNCHER)
 source = re.sub(r'/\*.*?\*/|//[^\n]*', '', source, flags=re.S)

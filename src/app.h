@@ -15,6 +15,7 @@
 #include "library.h"
 #include "muselib.h"
 #include "platform.h"
+#include "status.h"
 #include "sysupdate.h"
 
 #include <SDL.h>
@@ -326,6 +327,30 @@ void up_spawn(const char *cmd);
 const su_view *up_view(bool now);
 extern unsigned g_up_read_at;
 extern bool g_up_shown;
+
+/* For MENU's Search Games, Date & Time and Menu Music (src/search_screen.c,
+ * src/clock_screen.c, src/bgm_screen.c): the theme and the boot screen told
+ * a setting changed, the internet asked about, the clock's 24 hours, and
+ * Menu Music's Song Pop-up */
+void theme_changed(app *a);
+void boot_theme_changed(void);
+bool net_internet(bool *metered);
+extern bool g_clock24;
+extern bool g_song_popup;
+/* --status, for a shot: what the corner shows in place of the device's
+ * clock, radio and battery (main.c's shot_st says how) */
+typedef struct {
+	bool         shot;
+	bool         set;
+	int          minutes;
+	int          h24;          /* -1 for the saved setting */
+	int          eta;          /* minutes left for Time Left, -1 for none */
+	int          calc;         /* the calculating dots, this many filled, -1 for none */
+	bool         full;         /* on the cable and charged */
+	int          icon;         /* BATT_BARS.., -1 for the saved setting */
+	status_marks m;
+} shot_status;
+extern shot_status shot_st;
 
 /* The launcher's own accent, Muse's and Favorites': ui.h and theme.h's */
 #define ZYPEROS_ACCENT ui_rgb(theme()->accent)
