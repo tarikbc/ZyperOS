@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include "shelfbuild.h"
 
+#include "bgm.h"
 #include "db.h"
 #include "esmedia.h"
 #include "favorites.h"
@@ -1342,9 +1343,11 @@ static void rebuild(app *a, saved_lib *pre, bool keep_place)
 
 void rescan_all(app *a)
 {
-	/* The card read again: EmulationStation's indexes with it */
+	/* The card read again: EmulationStation's indexes with it, and the
+	 * menu music's folders on the player's own thread */
 	es_forget();
 	rebuild(a, NULL, false);
+	bgm_rescan();
 }
 
 /* The saved library as the shelves are now, after a change the launcher

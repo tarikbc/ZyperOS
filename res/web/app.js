@@ -97,22 +97,23 @@ for (const e of document.querySelectorAll('.pagename')) e.textContent = pageName
 
 let cwd = '';                 /* the path the listing is showing */
 let entries = [];
-let roots = [];               /* the card's six folders, in the device's order */
+let roots = [];               /* the card's folders, in the device's order */
 let info = {};                /* what the roots' listing says besides: ssh */
 
 /* The card's folders as the sidebar draws them: xfer.c's root names. */
 const PLACE_MARK = { roms: 'roms', music: 'music', books: 'books', videos: 'videos',
-                     bios: 'bios', saves: 'saves', states: 'states' };
+                     bgm: 'bgm', bios: 'bios', saves: 'saves', states: 'states' };
 
 /* Every folder wears ZyperOS's pixel art (2026-11-06: "can we use our
  * pixel art icon for all folders in the portal?"): a system's folder the
  * shelf's own picture of it, on a tile in its color, which the listing names
- * ("icon", "color"); the card's own folders theirs (Music MP4's); and any
+ * ("icon", "color"); the card's own folders theirs (Menu Music the
+ * cassette that Roms/BGM wears too); and any
  * other folder the plain one. Served by the device from the shelf's
  * pictures, /icons/KEY.png. A picture that does not come is the line mark,
  * never a broken image. */
 const PLACE_ICON = { roms: 'ROMS', music: 'MUSIC', books: 'BOOKS', videos: 'VIDEOS',
-                     bios: 'BIOS', saves: 'SAVES', states: 'STATES' };
+                     bgm: 'BGM', bios: 'BIOS', saves: 'SAVES', states: 'STATES' };
 function pix(key, color, fallback) {
 	const s = document.createElement('span');
 	s.className = 'sico';

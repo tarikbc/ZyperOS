@@ -74,7 +74,7 @@ int main(void)
 	printf("xfer: what the browser can reach\n");
 
 	printf("  the roots:\n");
-	CHECK(xfer_root_count() == 7, "expected 7 roots, got %d", xfer_root_count());
+	CHECK(xfer_root_count() == 8, "expected 8 roots, got %d", xfer_root_count());
 	CHECK(xfer_root_at(0) && !strcmp(xfer_root_at(0)->path, "/mnt/SDCARD/Roms"),
 	      "roms root wrong: %s", xfer_root_at(0) ? xfer_root_at(0)->path : "(none)");
 	CHECK(xfer_root_at(1) && !strcmp(xfer_root_at(1)->path, "/mnt/SDCARD/Music"),
@@ -83,14 +83,19 @@ int main(void)
 	      "books root wrong: %s", xfer_root_at(2) ? xfer_root_at(2)->path : "(none)");
 	CHECK(xfer_root_at(3) && !strcmp(xfer_root_at(3)->path, "/mnt/SDCARD/Videos"),
 	      "videos root wrong: %s", xfer_root_at(3) ? xfer_root_at(3)->path : "(none)");
-	CHECK(xfer_root_at(4) && !strcmp(xfer_root_at(4)->path, "/mnt/SDCARD/Bios"),
-	      "bios root wrong: %s", xfer_root_at(4) ? xfer_root_at(4)->path : "(none)");
-	CHECK(xfer_root_at(5) && !strcmp(xfer_root_at(5)->path, "/mnt/SDCARD/Saves"),
-	      "saves root wrong: %s", xfer_root_at(5) ? xfer_root_at(5)->path : "(none)");
-	CHECK(xfer_root_at(6) &&
-	      !strcmp(xfer_root_at(6)->path, "/mnt/SDCARD/.userdata/shared/.zyperos"),
-	      "states root wrong: %s", xfer_root_at(6) ? xfer_root_at(6)->path : "(none)");
-	CHECK(xfer_root_at(7) == NULL, "an eighth root appeared");
+	/* The menu music's own folder, Menu Music in the sidebar */
+	CHECK(xfer_root_at(4) && !strcmp(xfer_root_at(4)->path, "/mnt/SDCARD/Menu Music") &&
+	      !strcmp(xfer_root_at(4)->name, "bgm"),
+	      "bgm root wrong: %s", xfer_root_at(4) ? xfer_root_at(4)->path : "(none)");
+	CHECK(xfer_root_at(5) && !strcmp(xfer_root_at(5)->path, "/mnt/SDCARD/Bios"),
+	      "bios root wrong: %s", xfer_root_at(5) ? xfer_root_at(5)->path : "(none)");
+	CHECK(xfer_root_at(6) && !strcmp(xfer_root_at(6)->path, "/mnt/SDCARD/Saves"),
+	      "saves root wrong: %s", xfer_root_at(6) ? xfer_root_at(6)->path : "(none)");
+	CHECK(xfer_root_at(7) &&
+	      !strcmp(xfer_root_at(7)->path, "/mnt/SDCARD/.userdata/shared/.zyperos"),
+	      "states root wrong: %s", xfer_root_at(7) ? xfer_root_at(7)->path : "(none)");
+	CHECK(xfer_root_at(8) == NULL, "a ninth root appeared");
+	allow("bgm/Pixel Quest/01 Title.mp3", "/mnt/SDCARD/Menu Music/Pixel Quest/01 Title.mp3");
 	allow("videos/Film.mp4", "/mnt/SDCARD/Videos/Film.mp4");
 
 	printf("  ordinary paths land where they should:\n");
@@ -132,6 +137,9 @@ int main(void)
 			{ "/mnt/SDCARD/Music/Radiohead",                  XFER_DEL_ALL },
 			{ "/mnt/SDCARD/Music/Radiohead/The Bends",        XFER_DEL_ALL },
 			{ "/mnt/SDCARD/Audiobooks/Some Book",             XFER_DEL_ALL },
+			{ "/mnt/SDCARD/Menu Music",                       XFER_DEL_NO },
+			{ "/mnt/SDCARD/Menu Music/Pixel Quest",           XFER_DEL_ALL },
+			{ "/mnt/SDCARD/Menu Music/Title.mp3",             XFER_DEL_ALL },
 			{ "/mnt/SDCARD/Saves/NES",                        XFER_DEL_EMPTY },
 			{ "/mnt/SDCARD/Bios/sub",                         XFER_DEL_EMPTY },
 			{ "/mnt/SDCARD/.userdata/shared/.zyperos/NES",     XFER_DEL_EMPTY },

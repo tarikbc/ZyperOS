@@ -43,7 +43,8 @@ fi
 
 rm -rf "$OUT"
 mkdir -p "$P/system-icons" "$P/cores" "$P/res/web" \
-         "$OUT/Roms" "$OUT/Music" "$OUT/Audiobooks" "$OUT/Bios" "$OUT/Saves"
+         "$OUT/Roms" "$OUT/Music" "$OUT/Audiobooks" "$OUT/Bios" "$OUT/Saves" \
+         "$OUT/Menu Music"
 
 cp "$ZYPEROS_ELF" "$P/zyperos.elf"
 cp "$MUSE_ELF" "$P/muse"                  # the audio player's engine; Muse cannot play without it
@@ -89,7 +90,7 @@ for v in "$ROOT"/res/sounds/*/; do
 	mkdir -p "$P/res/sounds/$v"
 	cp "$ROOT/res/sounds/$v/"*.wav "$P/res/sounds/$v/"
 done
-# Menu music for a card whose Roms/BGM has none (src/bgm.h): ZyperOS's few
+# Menu music for a card with none of its own in Menu Music (src/bgm.h): ZyperOS's few
 # free tracks, credited in THIRD-PARTY-LICENSES.md, which goes to Licenses/
 # below. The OGGs only, so a .DS_Store left in the folder does not ship;
 # `make check-bgm-tracks` holds them to their licenses and their size cap.

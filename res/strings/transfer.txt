@@ -48,6 +48,17 @@ de = Videos
 ja = 動画
 it = Video
 
+[transfer.root_bgm]
+note = The menu music's own folder (Menu Music on the card) in the page's sidebar: the music behind the menus. As MENU > Menu Music says it
+en = Menu Music
+zh-Hans = 菜单音乐
+es = Música del menú
+pt-BR = Música do menu
+fr = Musique du menu
+de = Menümusik
+ja = メニュー音楽
+it = Musica del menu
+
 [transfer.root_bios]
 note = The BIOS files' folder in the page's sidebar. The same in every language
 en = BIOS

@@ -23,12 +23,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/resource.h>
 #include <sys/stat.h>
+#ifdef __linux__
+#include <sys/syscall.h>
+#endif
 #include <time.h>
 #include <unistd.h>
 
 #include "cheevos.h"
 #include "diatom.h"
+#include "statefile.h"
 
 /* Long enough that a churning game is not writing constantly, short enough
  * that a hard power cut cannot cost much. Graceful shutdown is covered
@@ -36,19 +41,8 @@
  * ~95x what an 8 KB flush needs. */
 #define WRITE_INTERVAL_US 1000000
 
-#define STATE_MAGIC   "DIATOMST"
-#define STATE_VERSION 1u
-
-/* Written ahead of the payload so a state from a core that has since changed
- * is refused with a message rather than fed to it. Fixed-width and packed by
- * construction: 8 + 4 + 4 + 64 + 32, no padding on any target. */
-struct state_header {
-	char     magic[8];
-	uint32_t version;
-	uint32_t payload;
-	char     core_name[64];
-	char     core_version[32];
-};
+/* A state's file - its header, the core's bytes packed, the achievement
+ * trailer - is statefile.c's: here are the core and the card. */
 
 static char        g_sram_path[1024];
 static uint8_t    *g_sram;        /* the core's buffer; the core owns it */
@@ -311,18 +305,13 @@ void diatom_save_shutdown(void)
 	g_late_core = NULL;
 }
 
-/* The achievement-progress trailer: "DCHV", a little-endian length, the
- * bytes. Longer than this is not progress and is not read. */
-#define PROGRESS_MAGIC "DCHV"
-#define PROGRESS_HDR   8
-#define PROGRESS_MAX   (1u << 20)
-
-/* A state as its file holds it, header, payload and trailer, in one
- * malloc'd buffer: serialized here, on the frame thread, between two frames,
- * so it is one frame's state. NULL when the core keeps none. */
-static uint8_t *state_build(diatom_core *c, size_t *len)
+/* A state as its file holds it before it is packed - header, the core's
+ * bytes, the achievement trailer - in one malloc'd buffer: serialized here, on
+ * the frame thread, between two frames, so it is one frame's state. The
+ * packing is the card's half (sf_pack), done wherever the write is. NULL when
+ * the core keeps none. */
+static uint8_t *state_build(diatom_core *c, size_t *len, size_t *core_n)
 {
-	struct state_header h;
 	struct retro_system_info si;
 	uint8_t *buf;
 	size_t   n;
@@ -342,51 +331,77 @@ static uint8_t *state_build(diatom_core *c, size_t *len)
 	 * and never sees it (diatom_cheevos_progress_restore) */
 	prog = diatom_cheevos_progress_size();
 
-	buf = malloc(sizeof h + n + (prog ? PROGRESS_HDR + prog : 0));
+	buf = malloc(SF_HEADER + n + (prog ? SF_PROGRESS_HDR + prog : 0));
 	if (!buf) return NULL;
 
-	memset(&h, 0, sizeof h);
-	memcpy(h.magic, STATE_MAGIC, sizeof h.magic);
-	h.version = STATE_VERSION;
-	h.payload = (uint32_t)n;
-	c->get_system_info(&si);
-	snprintf(h.core_name, sizeof h.core_name, "%s",
-	         si.library_name ? si.library_name : "?");
-	snprintf(h.core_version, sizeof h.core_version, "%s",
-	         si.library_version ? si.library_version : "?");
-
-	if (!c->serialize(buf + sizeof h, n)) {
+	if (!c->serialize(buf + SF_HEADER, n)) {
 		logf_(DIATOM_LOG_ERROR, "state: serialize failed");
 		free(buf);
 		return NULL;
 	}
-	memcpy(buf, &h, sizeof h);
+	c->get_system_info(&si);
+	sf_header(buf, si.library_name, si.library_version, n);
 	if (prog) {
-		uint8_t *t = buf + sizeof h + n;
+		uint8_t *t = buf + SF_HEADER + n;
 
-		memcpy(t, PROGRESS_MAGIC, 4);
+		memcpy(t, SF_PROGRESS_MAGIC, 4);
 		t[4] = (uint8_t)prog;
 		t[5] = (uint8_t)(prog >> 8);
 		t[6] = (uint8_t)(prog >> 16);
 		t[7] = (uint8_t)(prog >> 24);
-		if (!diatom_cheevos_progress_save(t + PROGRESS_HDR, prog)) prog = 0;
+		if (!diatom_cheevos_progress_save(t + SF_PROGRESS_HDR, prog)) prog = 0;
 	}
-	*len = sizeof h + n + (prog ? PROGRESS_HDR + prog : 0);
+	*len = SF_HEADER + n + (prog ? SF_PROGRESS_HDR + prog : 0);
+	*core_n = n;
+	return buf;
+}
+
+/* What a state cost, in microseconds, for its log line: the core's half
+ * (serialize or unserialize), the packing or unpacking, and the card's (the
+ * write with its fsync, or the read). The device's numbers come from these
+ * lines: `grep 'state:'` in the boot's zyperos.log. */
+typedef struct { uint64_t core, pack, card; } state_cost;
+
+static double ms(uint64_t us) { return us / 1000.0; }
+
+/* Both lines give the file's bytes on the card and the core's, as it
+ * serialized them */
+static void log_saved(const char *path, size_t len, size_t core_n, const state_cost *t)
+{
+	logf_(DIATOM_LOG_INFO, "state: wrote %zu bytes to %s (%zu from the core; serialize %.1f ms, "
+	      "pack %.1f ms, write %.1f ms)", len, path, core_n, ms(t->core), ms(t->pack),
+	      ms(t->card));
+}
+
+/* The file to write and its length: `buf` packed, timed into `t` */
+static uint8_t *state_pack(uint8_t *buf, size_t *len, state_cost *t)
+{
+	uint64_t t0 = now_us();
+
+	buf = sf_pack(buf, len);
+	t->pack = now_us() - t0;
 	return buf;
 }
 
 bool diatom_state_save(diatom_core *c, const char *path)
 {
+	state_cost t = { 0 };
 	uint8_t *buf;
-	size_t   len;
+	size_t   len, core_n;
+	uint64_t t0;
 	bool     ok;
 
 	if (!path) return false;
 	diatom_state_bg_poll(c, true, false, NULL, 0, NULL);
-	if (!(buf = state_build(c, &len))) return false;
+	t0 = now_us();
+	if (!(buf = state_build(c, &len, &core_n))) return false;
+	t.core = now_us() - t0;
+	buf = state_pack(buf, &len, &t);
+	t0 = now_us();
 	ok = write_atomic(path, buf, len);
+	t.card = now_us() - t0;
 	free(buf);
-	if (ok) logf_(DIATOM_LOG_INFO, "state: wrote %zu bytes to %s", len, path);
+	if (ok) log_saved(path, len, core_n, &t);
 	return ok;
 }
 
@@ -442,23 +457,17 @@ static bool version_twins(const char *have, const char *want)
 	return false;
 }
 
-/* A state file read whole, handed to the core: on the frame thread, as a
- * load always was. `data` is the file, `n` its length. */
-static bool state_apply(diatom_core *c, const char *path, const uint8_t *data, size_t n)
+/* A state read back (sf_unpack), handed to the core: on the frame thread, as a
+ * load always was. False, said, when the file was no state for it. */
+static bool state_apply(diatom_core *c, const char *path, sf_error e, const sf_state *st,
+                        state_cost *t)
 {
-	struct state_header h;
 	struct retro_system_info si;
-	const uint8_t *prog = NULL;
-	uint32_t nprog = 0;
+	uint64_t t0;
 	bool     ok;
 
-	if (n < sizeof h) {
-		logf_(DIATOM_LOG_WARN, "state: %s is not a Diatom state", path);
-		return false;
-	}
-	memcpy(&h, data, sizeof h);
-	if (memcmp(h.magic, STATE_MAGIC, sizeof h.magic) != 0 || h.version != STATE_VERSION) {
-		logf_(DIATOM_LOG_WARN, "state: %s is not a Diatom state", path);
+	if (e != SF_OK) {
+		logf_(DIATOM_LOG_WARN, "state: %s %s", path, sf_error_text(e));
 		return false;
 	}
 
@@ -467,39 +476,27 @@ static bool state_apply(diatom_core *c, const char *path, const uint8_t *data, s
 	 * game normally, which is right, where handing a core a foreign state is
 	 * undefined behavior. */
 	c->get_system_info(&si);
-	if (strcmp(h.core_name, si.library_name ? si.library_name : "?") != 0 ||
-	    !version_twins(h.core_version,
+	if (strcmp(st->core_name, si.library_name ? si.library_name : "?") != 0 ||
+	    !version_twins(st->core_version,
 	                   si.library_version ? si.library_version : "?")) {
 		logf_(DIATOM_LOG_WARN, "state: %s was written by %s %s, this is %s %s",
-		      path, h.core_name, h.core_version,
+		      path, st->core_name, st->core_version,
 		      si.library_name ? si.library_name : "?",
 		      si.library_version ? si.library_version : "?");
 		return false;
 	}
-	if (n - sizeof h < h.payload) {
-		logf_(DIATOM_LOG_WARN, "state: %s is truncated", path);
-		return false;
-	}
-	/* The achievement trailer, when there is one whole: "DCHV", a length,
-	 * the bytes */
-	{
-		const uint8_t *t = data + sizeof h + h.payload;
-		size_t left = n - sizeof h - h.payload;
 
-		if (left >= PROGRESS_HDR && !memcmp(t, PROGRESS_MAGIC, 4)) {
-			uint32_t k = (uint32_t)t[4] | ((uint32_t)t[5] << 8) |
-			             ((uint32_t)t[6] << 16) | ((uint32_t)t[7] << 24);
-
-			if (k && k <= PROGRESS_MAX && left - PROGRESS_HDR >= k) {
-				prog = t + PROGRESS_HDR;
-				nprog = k;
-			}
-		}
-	}
-
-	ok = c->unserialize(data + sizeof h, h.payload);
-	logf_(DIATOM_LOG_INFO, "state: %s %s",
-	      ok ? "restored" : "REFUSED by core:", path);
+	/* The core gets the bytes it serialized, every one: a state that was
+	 * packed is unpacked to the whole size first. PPSSPP's unserialize reads
+	 * the buffer with no regard for its size (CChunkFileReader::LoadPtr), so
+	 * a shorter one would be read past its end. */
+	t0 = now_us();
+	ok = c->unserialize(st->payload, st->payload_n);
+	t->core = now_us() - t0;
+	logf_(DIATOM_LOG_INFO, "state: %s %s (%zu bytes, %zu from the core%s; read %.1f ms, "
+	      "unpack %.1f ms, unserialize %.1f ms)",
+	      ok ? "restored" : "REFUSED by core:", path, st->file_n, st->payload_n,
+	      st->version == 1 ? ", version 1" : "", ms(t->card), ms(t->pack), ms(t->core));
 
 	/* Here rather than at the call sites. A loaded state is a different
 	 * point in the game's history, so the achievement progress the game had
@@ -508,7 +505,7 @@ static bool state_apply(diatom_core *c, const char *path, const uint8_t *data, s
 	 * from a timeline that no longer exists, would credit progress nobody
 	 * made. A call site added later inherits this instead of having to
 	 * remember it. */
-	if (ok) diatom_cheevos_progress_restore(prog, nprog);
+	if (ok) diatom_cheevos_progress_restore(st->prog, st->nprog);
 	return ok;
 }
 
@@ -532,17 +529,40 @@ static uint8_t *read_whole(const char *path, size_t *n)
 	return buf;
 }
 
+/* A state file read and unpacked, timed into `t`: where the load's card half
+ * runs, on the frame thread or the job's. `*file` is what was read, freed by
+ * the caller after `st`. */
+static sf_error state_read(const char *path, uint8_t **file, sf_state *st, state_cost *t)
+{
+	uint64_t t0 = now_us();
+	size_t   n;
+	sf_error e;
+
+	memset(st, 0, sizeof *st);
+	*file = read_whole(path, &n);
+	t->card = now_us() - t0;
+	if (!*file) return SF_NOT_STATE;
+	t0 = now_us();
+	e = sf_unpack(*file, n, st);
+	t->pack = now_us() - t0;
+	return e;
+}
+
 bool diatom_state_load(diatom_core *c, const char *path)
 {
+	state_cost t = { 0 };
 	uint8_t *buf;
-	size_t   n;
+	sf_state st;
+	sf_error e;
 	bool     ok;
 
 	if (!c->unserialize || !path) return false;
 	/* A state still being written to this path is the one asked for */
 	diatom_state_bg_poll(c, true, false, NULL, 0, NULL);
-	if (!(buf = read_whole(path, &n))) return false;
-	ok = state_apply(c, path, buf, n);
+	e = state_read(path, &buf, &st, &t);
+	/* Absent is not an error, and is not said */
+	ok = buf && state_apply(c, path, e, &st, &t);
+	sf_state_free(&st);
 	free(buf);
 	return ok;
 }
@@ -552,7 +572,8 @@ bool diatom_state_load(diatom_core *c, const char *path)
  * A quick save or load (SELECT+R1, SELECT+L1) happens while the game runs,
  * and the card is the slow half of it: an 8 KB write is about 8 ms here and a
  * 528 KB one 68 ms (measured, above), and a PlayStation state is 4 MB, an N64
- * one 16 MB. So the file goes to a thread of its own and the frames keep
+ * one 16 MB and a PSP one 40 MB before they are packed. So the file goes to a
+ * thread of its own, packed or unpacked there too, and the frames keep
  * coming. The core's half, serialize or unserialize, stays on the frame
  * thread, between two frames, where it always was: a state is one frame's.
  *
@@ -566,7 +587,10 @@ static struct {
 	char          path[1024];
 	char          pic_path[1024];  /* a save's picture beside it, or "" */
 	uint8_t      *data, *pic;      /* a save's bytes; a load's, once read */
-	size_t        n, pic_n;
+	size_t        n, core_n, pic_n; /* core_n: a save's bytes from the core */
+	sf_state      st;              /* a load's, unpacked */
+	sf_error      err;
+	state_cost    cost;
 	bool          ok;
 	bool          threaded;        /* run on a thread, which is joined */
 } g_bg;
@@ -576,14 +600,25 @@ static int g_bg_done;
 
 static void *bg_run(void *arg)
 {
+#ifdef __linux__
+	/* Below the game's threads, as the launcher's own background work is:
+	 * packing is CPU the emulator may want, and nothing waits on it but the
+	 * slot's answer. A core's real-time threads are above it anyway. */
+	if (g_bg.threaded) setpriority(PRIO_PROCESS, (id_t)syscall(SYS_gettid), 10);
+#endif
 	if (g_bg.kind == DIATOM_BG_SAVE) {
+		uint64_t t0;
+
+		g_bg.data = state_pack(g_bg.data, &g_bg.n, &g_bg.cost);
+		t0 = now_us();
 		g_bg.ok = write_atomic(g_bg.path, g_bg.data, g_bg.n);
+		g_bg.cost.card = now_us() - t0;
 		/* The picture after the state, so a slot that has one has a game
 		 * behind it */
 		if (g_bg.ok && g_bg.pic && g_bg.pic_path[0])
 			write_atomic(g_bg.pic_path, g_bg.pic, g_bg.pic_n);
 	} else {
-		g_bg.data = read_whole(g_bg.path, &g_bg.n);
+		g_bg.err = state_read(g_bg.path, &g_bg.data, &g_bg.st, &g_bg.cost);
 		g_bg.ok = g_bg.data != NULL;
 	}
 	__atomic_store_n(&g_bg_done, 1, __ATOMIC_RELEASE);
@@ -604,9 +639,13 @@ bool diatom_state_save_bg(diatom_core *c, const char *path, const char *pic_path
 {
 	uint8_t *buf;
 	size_t   len;
+	uint64_t t0;
 
 	diatom_state_bg_poll(c, true, false, NULL, 0, NULL);
-	if (!path || !(buf = state_build(c, &len))) { free(pic); return false; }
+	t0 = now_us();
+	if (!path || !(buf = state_build(c, &len, &g_bg.core_n))) { free(pic); return false; }
+	memset(&g_bg.cost, 0, sizeof g_bg.cost);
+	g_bg.cost.core = now_us() - t0;
 	g_bg.kind = DIATOM_BG_SAVE;
 	snprintf(g_bg.path, sizeof g_bg.path, "%s", path);
 	snprintf(g_bg.pic_path, sizeof g_bg.pic_path, "%s", pic_path ? pic_path : "");
@@ -626,6 +665,7 @@ bool diatom_state_load_bg(diatom_core *c, const char *path)
 	snprintf(g_bg.path, sizeof g_bg.path, "%s", path);
 	g_bg.pic_path[0] = '\0';
 	g_bg.data = g_bg.pic = NULL;
+	memset(&g_bg.cost, 0, sizeof g_bg.cost);
 	bg_start();
 	return true;
 }
@@ -647,11 +687,12 @@ diatom_bg_kind diatom_state_bg_poll(diatom_core *c, bool wait, bool apply,
 	k = g_bg.kind;
 	good = g_bg.ok;
 	if (k == DIATOM_BG_SAVE) {
-		if (good) logf_(DIATOM_LOG_INFO, "state: wrote %zu bytes to %s", g_bg.n, g_bg.path);
+		if (good) log_saved(g_bg.path, g_bg.n, g_bg.core_n, &g_bg.cost);
 		else logf_(DIATOM_LOG_ERROR, "state: could not write %s", g_bg.path);
 	} else if (good) {
-		good = apply && state_apply(c, g_bg.path, g_bg.data, g_bg.n);
+		good = apply && state_apply(c, g_bg.path, g_bg.err, &g_bg.st, &g_bg.cost);
 	}
+	sf_state_free(&g_bg.st);
 	free(g_bg.data);
 	free(g_bg.pic);
 	g_bg.data = g_bg.pic = NULL;

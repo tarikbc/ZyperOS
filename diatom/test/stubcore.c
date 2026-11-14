@@ -353,11 +353,40 @@ bool retro_load_game_special(unsigned t, const struct retro_game_info *i, size_t
 void retro_unload_game(void) { }
 unsigned retro_get_region(void) { return RETRO_REGION_PAL; }
 
-size_t retro_serialize_size(void) { return sizeof frame; }
+/* STUBCORE_STATE_PAD=n: n bytes more in each state after the frame, laid
+ * out as a core's memory often is - mostly zeros, a stretch of something
+ * every 4 KB - so a state is big enough to be packed (test/states.py). A
+ * state handed back with any of them changed, or fewer of them, is refused,
+ * as a core refuses a broken state: what the core is given is what it gave. */
+static size_t state_pad(void)
+{
+	const char *e = getenv("STUBCORE_STATE_PAD");
+	return e && *e ? (size_t)strtoul(e, NULL, 10) : 0;
+}
+static uint8_t pad_byte(size_t i) { return (i % 4096) < 512 ? (uint8_t)(i * 31 >> 3) : 0; }
+
+size_t retro_serialize_size(void) { return sizeof frame + state_pad(); }
 bool retro_serialize(void *d, size_t n)
-{ if (n < sizeof frame) return false; memcpy(d, &frame, sizeof frame); return true; }
+{
+	size_t pad = state_pad(), i;
+	uint8_t *p = d;
+
+	if (n < sizeof frame + pad) return false;
+	memcpy(d, &frame, sizeof frame);
+	for (i = 0; i < pad; i++) p[sizeof frame + i] = pad_byte(i);
+	return true;
+}
 bool retro_unserialize(const void *d, size_t n)
-{ if (n < sizeof frame) return false; memcpy(&frame, d, sizeof frame); return true; }
+{
+	size_t pad = state_pad(), i;
+	const uint8_t *p = d;
+
+	if (n < sizeof frame + pad) return false;
+	for (i = 0; i < pad; i++)
+		if (p[sizeof frame + i] != pad_byte(i)) return false;
+	memcpy(&frame, d, sizeof frame);
+	return true;
+}
 
 /* A block of "system RAM", so the achievement path has
  * something real to read. Deliberately predictable: an achievement condition

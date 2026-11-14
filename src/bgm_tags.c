@@ -328,7 +328,12 @@ void bgm_song_label(const bgm_tags *t, const char *file,
 	if (hn) snprintf(head, hn, "%s", h);
 	if (!bn) return;
 	if (t && t->title[0]) snprintf(body, bn, "%s", t->title);
-	else bgm_tidy_name(file ? file : "", body, bn);
+	else {
+		/* A track in a folder of BGM goes by its path in it: its
+		 * file's name alone */
+		if (file && strrchr(file, '/')) file = strrchr(file, '/') + 1;
+		bgm_tidy_name(file ? file : "", body, bn);
+	}
 }
 
 /* A leading track number's length, its separator and the spaces after it

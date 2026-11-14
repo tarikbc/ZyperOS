@@ -7,8 +7,8 @@
 
 #include "i18n.h"
 
-static xfer_root g_roots[8];
-static str_id    g_label[8];        /* each root's label, as a string's ID */
+static xfer_root g_roots[9];
+static str_id    g_label[9];        /* each root's label, as a string's ID */
 static int       g_nroots;
 
 static void add_root(const char *name, str_id label, const char *fmt,
@@ -46,6 +46,10 @@ void xfer_init(const char *roms_dir, const char *card_dir,
 	add_root("books", S_TRANSFER_ROOT_BOOKS, "%s/Audiobooks", card_dir, false);
 	/* And MP4's films and series, its third folder, for the same reason. */
 	add_root("videos", S_TRANSFER_ROOT_VIDEOS, "%s/Videos", card_dir, false);
+	/* The menu music's own folder (src/bgm.h), filled from here as Music is
+	 * (2026-11-13: "a specific BGM folder for those custom songs in flash
+	 * drive mode/sd card/web portal") */
+	add_root("bgm",   S_TRANSFER_ROOT_BGM,   "%s/Menu Music", card_dir, false);
 	add_root("bios",  S_TRANSFER_ROOT_BIOS,  "%s/Bios",  card_dir, false);
 	/* Two different things, both called saves in conversation.
 	 *
@@ -103,7 +107,8 @@ xfer_del xfer_delete_rule(const char *abs, const char **why)
 		if (why) *why = T(S_TRANSFER_WHY_CONSOLE);
 		return XFER_DEL_EMPTY;
 	}
-	if (!strcmp(root->name, "music") || !strcmp(root->name, "books"))
+	if (!strcmp(root->name, "music") || !strcmp(root->name, "books") ||
+	    !strcmp(root->name, "bgm"))
 		return XFER_DEL_ALL;
 	if (why) *why = T(S_TRANSFER_WHY_EMPTY);
 	return XFER_DEL_EMPTY;

@@ -362,18 +362,6 @@ muse.art_counts
 muse.art_counts_failed
 muse.art_stop
 
-# music: no shot draws it yet
-music.popup
-music.playing
-music.shuffle
-music.nothing
-music.builtin_count.one
-music.builtin_count.other
-music.put_yours
-music.count_in.one
-music.count_in.other
-music.put_files
-
 # musiclib: no shot draws it yet
 musiclib.sort_artist
 musiclib.sort_album

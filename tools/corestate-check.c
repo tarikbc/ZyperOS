@@ -73,6 +73,11 @@ int main(void)
 
 	snprintf(p, sizeof p, "%s/v2.state", D);
 	state(p, "DIATOMST", 2, "Mupen64Plus-Next");
+	CHECK(cst_writer(p, buf, sizeof buf) && !strcmp(buf, "Mupen64Plus-Next") &&
+	      cst_other_core(buf, "parallel_n64", N64),
+	      "a packed state (version 2) names its core in the same place");
+	snprintf(p, sizeof p, "%s/v3.state", D);
+	state(p, "DIATOMST", 3, "Mupen64Plus-Next");
 	CHECK(!cst_writer(p, buf, sizeof buf) && !buf[0], "another header version: not read");
 	snprintf(p, sizeof p, "%s/raw.state", D);
 	state(p, "RASTATE1", 1, "Mupen64Plus-Next");

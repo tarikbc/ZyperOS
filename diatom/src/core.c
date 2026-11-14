@@ -519,6 +519,17 @@ bool diatom_core_start(diatom_core *c, const char *rom_path)
  * retro_init does not reset (a Pixel 2, 2026-11-06). Unloaded, the next game
  * starts on a fresh library, as under RetroArch.
  *
+ * ParaLLEl N64 too, and Mupen64Plus-Next, which is built on the same
+ * Mupen64Plus core. Its core starts once per library: the second game in a
+ * resident Diatom, after retro_deinit and retro_init, logged "mupen64plus:
+ * Failed to initialize core", "Failed to load ROM" and "Running Dead N64
+ * Emulator" and was refused; the launcher's fallback ran it, and the game
+ * after that resumed into a dead emulator (the same line 6005 times, 0.15 ms
+ * a frame), which the player saw as controls gone wrong and which ended in
+ * "state: serialize failed" when they left (a Pixel 2, 2026-11-13, Mario
+ * Kart 64 three times in a row). Unloaded, each game starts on a fresh
+ * library, as under RetroArch; dlopen takes about 2 ms.
+ *
  * By name, because nothing a core declares says so. */
 static bool one_game_per_load(diatom_core *c)
 {
@@ -527,7 +538,9 @@ static bool one_game_per_load(diatom_core *c)
 	memset(&si, 0, sizeof si);
 	c->get_system_info(&si);
 	return si.library_name && (!strcmp(si.library_name, "ScummVM") ||
-	                           !strcmp(si.library_name, "FreeJ2ME-Plus"));
+	                           !strcmp(si.library_name, "FreeJ2ME-Plus") ||
+	                           !strcmp(si.library_name, "ParaLLEl N64") ||
+	                           !strcmp(si.library_name, "Mupen64Plus-Next"));
 }
 
 /* Stops the GAME, not the core. The core stays initialized and stays mapped -
