@@ -56,8 +56,10 @@ const char *ss_run_where(void);
  * already) fetches it too: that is how snaps reach a library that has its
  * covers. The step's answer stays the cover's or the text's; the snap is
  * extra, and ss_run_got_video says whether it came. */
-void ss_run_videos(bool (*want)(const char *folder));
-bool ss_run_video_wanted(const char *folder);
+/* Asked per game, by its system's folder and its launch path: a system's
+ * switch and which of its games (src/snaps.h, snaps_get and snaps_for) */
+void ss_run_videos(bool (*want)(const char *folder, const char *file));
+bool ss_run_video_wanted(const char *folder, const char *file);
 bool ss_run_got_video(void);
 
 /* ---- what a long run needs to know when to stop -------------------------
@@ -78,5 +80,31 @@ int ss_run_left(void);
  * 429 is worth waiting a beat and asking again; a 404 means they do not have
  * this game and asking again would be rude and useless. */
 bool ss_run_too_many(void);
+
+/* Whether the last lookup's refusal is true of every game after it, so a run
+ * stops asking (src/artscrape.c) and libretro does the rest. From the status,
+ * as ScreenScraper's api page lists them (read 2026-11-13):
+ *
+ *   SS_SPENT      430 "your scrape quota is spent for today", or 431 "sort
+ *                 your ROM files and come back tomorrow" (the day's unknown
+ *                 games are spent): nothing more until tomorrow
+ *   SS_CLOSED     401 "closed to non-members and inactive members", the
+ *                 server full, or 423 "fully closed"
+ *   SS_NO_ANSWER  no status at all (no network, the wait ran out, TLS) or a
+ *                 server error, 5xx: one is a blip, two in a row are the
+ *                 run's, as SteamGridDB's are (src/sgdbrun.h)
+ *   SS_UNKNOWN    they do not know this game: a 404, a reply with no game in
+ *                 it, or one whose name fails the check after its retry.
+ *                 About this game alone; a run remembers it for a while
+ *                 (db_ss_miss_set) and counts it toward a console's run of
+ *                 misses (src/artscrape.c)
+ *   SS_GO_ON      anything else, also about this game alone
+ *
+ * Before this, each of these was "a game they do not have", so a run asked
+ * every game on a shelf, a second or two each and sixty with no answer, all
+ * refused, before libretro had its turn: minutes with no art on the screen.
+ * 429 stays ss_run_too_many's. Survives ss_run_cancel, as that does. */
+typedef enum { SS_GO_ON, SS_SPENT, SS_CLOSED, SS_NO_ANSWER, SS_UNKNOWN } ss_refusal;
+ss_refusal ss_run_refusal(void);
 
 #endif

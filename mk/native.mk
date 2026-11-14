@@ -11,8 +11,9 @@ DEVICE ?= brick
 SRC := $(wildcard src/*.c) src/device/$(DEVICE).c
 # src/main.c and the files split from it, which call into one another: the
 # checks that link the rest of src/ leave them all out.
-MAIN_SRC := src/main.c src/aout_route.c src/bt_screen.c src/place.c src/portload.c \
-            src/powerscreens.c src/raqueue.c src/shelfbuild.c src/stats_screen.c src/zyperdraw.c
+MAIN_SRC := src/main.c src/aout_route.c src/bt_screen.c src/ctltab_screen.c src/place.c \
+            src/portload.c src/powerscreens.c src/raqueue.c src/shelfbuild.c src/stats_screen.c \
+            src/zyperdraw.c
 
 PKGS := sdl2 SDL2_image SDL2_ttf
 VERSION ?= 0.0

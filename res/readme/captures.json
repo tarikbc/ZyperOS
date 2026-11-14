@@ -739,10 +739,10 @@
         "--status",
         "10:08 24h wifi=off batt=82",
         "--fn-volume",
-        "--scraper",
-        "2"
+        "--scraper-page",
+        "1"
       ],
-      "sha256": "45edb86e7c805ca4d0364d8c2e427bfcf9870314d16775f0a3b36177bc1163a3"
+      "sha256": "0bfda685145fc42f6134c7d12ddac888b3cad8618f7fb628692d1ad08ab3b8cd"
     },
     {
       "file": "light/update.png",

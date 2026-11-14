@@ -13,6 +13,8 @@
 #include "../src/sys_menu.h"
 #include "../src/game_menu.h"
 #include "../src/controls.h"
+#include "../src/ctltab.h"
+#include "../src/padglyph.h"
 #include "../src/sidelights.h"
 #include "legend.h"   /* legend_form: DESIGN.md 11.4's one form */
 
@@ -313,6 +315,62 @@ static void channels_row(void)
 
 /* The row has to say a PLACE. "Auto" alone makes the player guess which of
  * three they are about to hear. */
+/* The Disc row (issue #102): on the Game tab right after Quick Slot, only
+ * for a game on more than one disc. Its value is the core's label when it
+ * fits the row, else "Disc N of M". */
+static bool disc_fits_short(const char *s) { return strlen(s) <= 12; }
+
+static void gm_disc_row_only_with_discs(void)
+{
+	gm_ui u = { 0 };
+	gm_bufs b;
+	menu_row rows[GM_MAX_ROWS];
+	int n, at, d;
+
+	printf("in-game menu, Disc:\n");
+	u.dmode = "Native"; u.earned = 12; u.total = 40; u.quick = 2;
+	for (d = 0; d <= 1; d++) {
+		u.discs = d;
+		n = gm_rows(&u, GT_GAME, rows, &b);
+		ck(gm_row_at(&u, GT_GAME, GM_DISC) == -1 && n == 7, "no Disc row with 0 or 1 disc, the menu as before");
+	}
+	u.discs = 3; u.disc = 1;
+	n = gm_rows(&u, GT_GAME, rows, &b);
+	at = gm_row_at(&u, GT_GAME, GM_DISC);
+	ck(n == 8 && at == gm_row_at(&u, GT_GAME, GM_QUICK) + 1 &&
+	   at + 1 == gm_row_at(&u, GT_GAME, GM_CHEEVOS), "with 3 discs: right after Quick Slot");
+	ck(at >= 0 && !strcmp(rows[at].label, "Disc") && !strcmp(val(&rows[at]), "Disc 2 of 3") &&
+	   rows[at].live && b.sound[at], "Disc says Disc 2 of 3, and steps round");
+	u.player2 = true; u.player2_value = "off";
+	n = gm_rows(&u, GT_GAME, rows, &b);
+	ck(n == 9 && gm_row_at(&u, GT_GAME, GM_PLAYER2) == gm_row_at(&u, GT_GAME, GM_DISC) + 1,
+	   "Player 2 follows Disc");
+	u.player2 = false;
+	u.port = true;
+	ck(gm_row_at(&u, GT_GAME, GM_DISC) == -1, "none over a port");
+	u.port = false;
+	ck(gm_row_at(&u, GT_DISPLAY, GM_DISC) == -1, "and not on the Display tab");
+}
+
+static void disc_value_check(void)
+{
+	char out[64];
+
+	ck(!strcmp(gm_disc_value(&(gm_ui){ .discs = 3, .disc = 1, .disc_label = "FFIX Disc 2" },
+	                         out, sizeof out, disc_fits_short), "FFIX Disc 2"),
+	   "the core's label when it fits");
+	ck(!strcmp(gm_disc_value(&(gm_ui){ .discs = 3, .disc = 1,
+	                                   .disc_label = "Final Fantasy IX (USA) (Disc 2)" },
+	                         out, sizeof out, disc_fits_short), "Disc 2 of 3"),
+	   "else Disc 2 of 3");
+	ck(!strcmp(gm_disc_value(&(gm_ui){ .discs = 2, .disc = 0 }, out, sizeof out, disc_fits_short),
+	           "Disc 1 of 2"), "no label: Disc 1 of 2");
+	ck(!strcmp(gm_disc_value(&(gm_ui){ .discs = 2, .disc = 0, .disc_label = "" }, out, sizeof out, NULL),
+	           "Disc 1 of 2"), "an empty label is no label");
+	ck(gm_disc_step(0, 3, -1) == 2 && gm_disc_step(2, 3, 1) == 0 && gm_disc_step(1, 3, 1) == 2,
+	   "the row steps round: Left on disc 1 is the last");
+}
+
 static void audio_row(void)
 {
 	sys_ui u;
@@ -525,63 +583,6 @@ static void zyperos_menu_online(void)
 	n = sys_menu_build(&u, rows, &b, &heading);
 	ck(n == PM_ROWS, "and none of that changes the row count");
 	{
-		scraper_ui su;
-		scraper_bufs sb;
-		menu_row sr[SC_ROWS];
-		sc_row ids[SC_ROWS];
-		int m, j, src = 0;
-
-		memset(&su, 0, sizeof su);
-		su.net = true;
-		su.missing = 142;
-		su.snaps = "off \xc2\xb7 0 KB";
-		m = sys_menu_scraper_rows(&su, &sb, sr, ids);
-		ck(m <= SC_ROWS, "the screen fits SC_ROWS");
-		ck(m == 6, "six rows and a rule, what the panel holds at 640x480");
-		ck(ids[0] == SC_FETCH && !strcmp(sr[0].label, "Fetch Missing Art") &&
-		   !strcmp(val(&sr[0]), "142 missing") && sr[0].live, "Fetch Missing Art first, with the count");
-		ck(ids[1] == SC_SNAPS && !strcmp(sr[1].label, "Video Snaps") && sr[1].live,
-		   "Video Snaps under it");
-		for (j = 0; j < m; j++) {
-			if (ids[j] == SC_SS) ck(src++ == 0, "ScreenScraper is asked first");
-			if (ids[j] == SC_LIBRETRO) ck(src++ == 1 && !sr[j].live &&
-			                              !strcmp(val(&sr[j]), "no account"),
-			                              "then libretro, which needs nothing");
-			if (ids[j] == SC_SGDB) ck(src++ == 2 && sr[j].live && !strcmp(val(&sr[j]), "link"),
-			                          "then SteamGridDB, which invites a link");
-			if (ids[j] == SC_SS) ck(!sr[j].live && !strcmp(val(&sr[j]), "not in this build"),
-			                        "a build without ScreenScraper's key says so");
-		}
-		ck(src == 3, "all three sources are there");
-		su.ss_have = su.ss_in = true;
-		su.ss_name = "tarik";
-		su.sgdb = "\xe2\x80\xa2\xe2\x80\xa2\xe2\x80\xa2\xe2\x80\xa2" "1a2b";
-		m = sys_menu_scraper_rows(&su, &sb, sr, ids);
-		for (j = 0; j < m; j++) {
-			if (ids[j] == SC_SS) ck(!strcmp(val(&sr[j]), "linked as tarik") && sr[j].live,
-			                        "a linked account says who, and opens its page");
-			if (ids[j] == SC_SGDB) ck(!strcmp(val(&sr[j]), su.sgdb), "the key, masked as given");
-		}
-		su.net = false;
-		m = sys_menu_scraper_rows(&su, &sb, sr, ids);
-		ck(!strcmp(val(&sr[0]), "needs Wi-Fi") && !sr[0].live && sr[1].live,
-		   "offline the fetch says why, and Video Snaps still opens");
-		su.net = true;
-		su.running = true;
-		su.done = 31;
-		su.total = 142;
-		su.ss_found = 12; su.lr_found = 17; su.sg_found = 2;
-		m = sys_menu_scraper_rows(&su, &sb, sr, ids);
-		ck(!strcmp(sr[0].label, "Fetching") && !strcmp(val(&sr[0]), "31 / 142"),
-		   "running, the first row is its progress");
-		for (j = 0; j < m; j++) {
-			if (ids[j] == SC_SS) ck(!strcmp(val(&sr[j]), "12 covers") && !sr[j].live,
-			                        "and each source counts what it found");
-			if (ids[j] == SC_SGDB) ck(!strcmp(val(&sr[j]), "2 covers") && !sr[j].live, "SteamGridDB too");
-			ck(sr[j].value != MENU_NOTE_MARK, "no notes: six rows are what the panel holds");
-		}
-	}
-	{
 		menu_row pr[SSP_ROWS];
 		ssp_row pid[SSP_ROWS];
 		int m = sys_menu_ss_rows(true, NULL, NULL, pr, pid), j, unlink = 0;
@@ -618,31 +619,25 @@ static void zyperos_menu_online(void)
 	}
 	{
 		snaps_console c[2] = { { "SNES", true, 212000000ull }, { "Game Boy", false, 0 } };
-		snaps_ui vu = { .fetch = false, .play = true, .ss_in = false, .ss_have = true,
+		snaps_ui vu = { .play = true, .ss_in = false, .ss_have = true,
 		                .sound = SNAP_MUTED,
 		                .c = c, .nc = 2, .total = 212000000ull };
 		static snaps_bufs vb;
 		menu_row vr[SN_ROWS];
 		sn_row vid[SN_ROWS];
-		int con[SN_ROWS], m = sys_menu_snaps_rows(&vu, &vb, vr, vid, con);
+		int con[SN_ROWS], m = sys_menu_snaps_rows(&vu, &vb, vr, vid, con), j;
 
 		printf("the Video Snaps page:\n");
-		ck(vid[0] == SN_FETCH && !vr[0].live && !strcmp(val(&vr[0]), "needs ScreenScraper"),
-		   "fetching needs ScreenScraper, and says so");
-		ck(vid[1] == SN_PLAY && !strcmp(val(&vr[1]), "On") && vr[1].live, "playing is On to start");
-		ck(vid[2] == SN_SOUND && !strcmp(val(&vr[2]), "muted"), "and muted to start");
-		ck(vid[4] == SN_CONSOLE && con[4] == 0 && !strcmp(vr[4].label, "SNES") &&
-		   !strcmp(val(&vr[4]), "On \xc2\xb7 212 MB"), "a console with its room and its switch");
-		ck(vid[5] == SN_CONSOLE && !strcmp(val(&vr[5]), "Off \xc2\xb7 0 KB"), "one turned off");
+		/* Getting them is MENU > Scraper's Systems grid now (2026-11-13) */
+		for (j = 0; j < m; j++) ck(!vr[j].label || strcmp(vr[j].label, "Fetch with Box Art"),
+		                            "no Fetch with Box Art row: the Systems grid gets them");
+		ck(vid[0] == SN_PLAY && !strcmp(val(&vr[0]), "On") && vr[0].live, "playing is On to start");
+		ck(vid[1] == SN_SOUND && !strcmp(val(&vr[1]), "muted"), "and muted to start");
+		ck(vid[3] == SN_CONSOLE && con[3] == 0 && !strcmp(vr[3].label, "SNES") &&
+		   !strcmp(val(&vr[3]), "On \xc2\xb7 212 MB"), "a console with its room and its switch");
+		ck(vid[4] == SN_CONSOLE && !strcmp(val(&vr[4]), "Off \xc2\xb7 0 KB"), "one turned off");
 		ck(vid[m - 1] == SN_DELETE && !strcmp(val(&vr[m - 1]), "212 MB") && vr[m - 1].live,
 		   "Delete All last, with what it gives back");
-		vu.ss_in = true;
-		m = sys_menu_snaps_rows(&vu, &vb, vr, vid, con);
-		ck(vr[0].live && !strcmp(val(&vr[0]), "Off"), "with ScreenScraper, fetching is a switch, Off to start");
-		vu.ss_have = false;
-		m = sys_menu_snaps_rows(&vu, &vb, vr, vid, con);
-		ck(!vr[0].live && !strcmp(val(&vr[0]), "not in this build"),
-		   "a build without ScreenScraper's developer pair says so, plainly");
 	}
 
 	/* Controls needs nothing of the device - no network, no account, no
@@ -1542,8 +1537,8 @@ static void what_scrolls(void)
  * byte count, no Favorite, which Y does from the shelf, and no Saves, which
  * the carousel shows with the frames themselves. A row is easy to put back by
  * habit. */
-/* Every row of a scraped game but Rename: GI_MAX less that one */
-#define INFO_FULL (GI_MAX - 1)
+/* Every row of a scraped game but Rename and Buttons: GI_MAX less those two */
+#define INFO_FULL (GI_MAX - 2)
 
 static void info_rows(void)
 {
@@ -1681,6 +1676,7 @@ static void info_rows(void)
 
 		rg.can_rename = true;
 		rg.can_favorite = true;
+		rg.own_buttons = true;
 		rg.scraped = true;
 		rg.has_synopsis = true;
 		snprintf(rg.year, sizeof rg.year, "1995");
@@ -1694,141 +1690,182 @@ static void info_rows(void)
 	}
 }
 
+/* A game with a key of its own (rms_game) shows its buttons on its details:
+ * Buttons after Favorite, valued This Game, and no other game has the row. */
+static void gi_buttons_row_only_when_own(void)
+{
+	game_info gi;
+	menu_row rows[GI_MAX];
+	int n, i, at = -1, fav = -1, base;
+
+	memset(&gi, 0, sizeof gi);
+	snprintf(gi.cheevos, sizeof gi.cheevos, "none");
+	gi.can_favorite = true;
+	gi.can_delete = true;
+	gi.has_art = true;
+	n = gi_rows(rows, &gi, true);
+	base = n;
+	printf("game info, a game on the system's buttons:\n");
+	for (i = 0; i < n; i++)
+		ck(strcmp(lbl(&rows[i]), "Buttons") != 0, "no Buttons row");
+
+	gi.own_buttons = true;
+	n = gi_rows(rows, &gi, true);
+	printf("game info, a game with its own buttons:\n");
+	ck(n == base + 1, "one row more");
+	for (i = 0; i < n; i++) {
+		if (!strcmp(lbl(&rows[i]), "Buttons")) at = i;
+		if (!strcmp(lbl(&rows[i]), "Favorite")) fav = i;
+	}
+	ck(at >= 0 && fav >= 0 && at == fav + 1, "Buttons right after Favorite");
+	ck(at >= 0 && !strcmp(val(&rows[at]), "This Game"), "valued This Game");
+	ck(at >= 0 && rows[at].live, "and live: A opens it");
+	ck(!strcmp(rows[n - 1].label, "Delete Game"), "Delete Game still last");
+}
+
 
 /* ---------- the in-game menu ---------------------------------------------- */
 
-/* Achievements is the only row that can be dead, and it is dead exactly when the
- * game has no set. Everything else is always something A does. */
+/* The in-game menu is three tabs (docs/superpowers/specs/2026-11-13-button-remap-design.md,
+ * section 1): Game, Display and Controls, MENU's tab row. gm_tab_rows says
+ * which rows a tab has, gm_rows builds them, and a port's menu has no tabs.
+ * Achievements is the only row that can be dead, and it is dead exactly when
+ * the game has no set. Everything else is always something A does. */
+static int labels_are(const menu_row *rows, int n, const char *const *want, int k)
+{
+	int i;
+
+	if (n != k) return 0;
+	for (i = 0; i < k; i++)
+		if (strcmp(lbl(&rows[i]), want[i])) return 0;
+	return 1;
+}
+
+static int row_of(const gm_ui *u, gm_tab t, gm_row id)
+{
+	return gm_row_at(u, t, id);
+}
+
 static void ingame_rows(void)
 {
+	static const char *const game[] = { "Continue", "Save", "Load", "Quick Slot", "Player 2",
+	                                    "Achievements", "Reset", "Quit" };
+	static const char *const dsp[] = { "Display", "Shader", "Screens", "Swap Screens", "Stylus" };
 	gm_ui u = { 0 };
 	gm_bufs b;
 	menu_row rows[GM_MAX_ROWS];
 	gm_row ids[GM_MAX_ROWS];
-	int got[GM_MAX_ROWS], n, k;
+	int got[GM_MAX_ROWS], n, k, t;
 
 	u.dmode = "Native"; u.earned = 12; u.total = 40; u.quick = 2;
-	n = gm_rows(&u, rows, &b);
 
-	printf("in-game menu, a game with a set:\n");
-	ck(n == GM_ROWS, "ten rows");
-	ck(!strcmp(rows[GM_CONTINUE].label, "Continue"), "Continue leads");
-	/* The quick slot right after Load (2026-11-07): the slot SELECT+R1 and
-	 * SELECT+L1 use, its number at the right, stepped round like Display */
-	ck(!strcmp(rows[GM_QUICK].label, "Quick Slot") && GM_QUICK == GM_LOAD + 1,
-	   "Quick Slot right after Load");
-	ck(!strcmp(val(&rows[GM_QUICK]), "2") && rows[GM_QUICK].live,
-	   "and says the slot, a stop");
-	/* Shader right after Display (2026-11-12), Off with no shader said,
-	 * stepped round like Display; then Controls (2026-11-06), a page to
-	 * read, so it is always a stop and says nothing at the right */
-	ck(!strcmp(rows[GM_DISPLAY + 1].label, "Shader") && GM_SHADER == GM_DISPLAY + 1,
-	   "Shader right after Display");
-	ck(!strcmp(val(&rows[GM_SHADER]), "Off") && rows[GM_SHADER].live,
-	   "and says Off when no shader is given, a stop");
-	ck(!strcmp(rows[GM_SHADER + 1].label, "Controls") && GM_CONTROLS == GM_SHADER + 1,
-	   "Controls right after Shader");
-	ck(rows[GM_CONTROLS].live && !rows[GM_CONTROLS].value, "and opens with A, no value");
-	ck(!strcmp(val(&rows[GM_DISPLAY]), "Native"), "Display carries the mode");
-	ck(!strcmp(val(&rows[GM_CHEEVOS]), "12 / 40"), "Achievements counts the set");
-	ck(rows[GM_CHEEVOS].live, "and is reachable");
-	k = reachable(rows, n, got, GM_ROWS);
-	ck(k == GM_ROWS, "every row is a stop");
-	/* X from anywhere on the page is Quit (2026-11-08), and Quit alone
-	 * carries X's glyph to say so */
-	ck(gm_x_row() == GM_QUIT && rows[GM_QUIT].value == MENU_KEY_X,
-	   "X is Quit's, and Quit draws X's glyph");
+	printf("in-game menu, the tabs:\n");
+	ck(GT_TABS == 3 && GT_GAME == 0 && GT_DISPLAY == 1 && GT_CONTROLS == 2, "three tabs, Game first");
+	ck(!strcmp(gm_tab_name(GT_GAME), "Game") && !strcmp(gm_tab_name(GT_DISPLAY), "Display") &&
+	   !strcmp(gm_tab_name(GT_CONTROLS), "Controls"), "named Game, Display and Controls");
+	ck(!strcmp(gm_tab_name(-1), "Game") && !strcmp(gm_tab_name(GT_TABS), "Game"),
+	   "a tab past the ends reads as the first");
+
+	/* An NES game: its Player 2, and no screens, shader or display on this tab */
+	u.player2 = true; u.player2_value = gm_player2_value(P2_OFF);
+	n = gm_rows(&u, GT_GAME, rows, &b);
+	printf("in-game menu, Game tab:\n");
+	ck(labels_are(rows, n, game, 8), "gm_tabs_game_rows: Continue Save Load Quick Slot Player 2 Achievements Reset Quit");
+	ck(gm_tab_rows(&u, GT_GAME, ids) == 8 && ids[0] == GM_CONTINUE && ids[4] == GM_PLAYER2 &&
+	   ids[5] == GM_CHEEVOS && ids[7] == GM_QUIT, "and the ids say the same");
+	ck(!strcmp(val(&rows[3]), "2") && rows[3].live && !strcmp(val(&rows[5]), "12 / 40"),
+	   "Quick Slot says its slot, Achievements counts the set");
+	ck(!strcmp(val(&rows[4]), "off") && rows[4].live && !b.sound[4], "Player 2 says off, a plain stop");
+	ck(reachable(rows, n, got, GM_MAX_ROWS) == 8, "every row is a stop");
+	/* X from anywhere is Quit's, and Quit alone carries X's glyph */
+	ck(gm_x_row() == GM_QUIT && rows[7].value == MENU_KEY_X, "X is Quit's, and Quit draws X's glyph");
 	for (k = 0; k < n; k++)
-		if (k != GM_QUIT && rows[k].value == MENU_KEY_X) break;
+		if (k != 7 && rows[k].value == MENU_KEY_X) break;
 	ck(k == n, "and no other row does");
-
-	/* Over a port (OpenBOR, src/portmenu.h): what a stopped program can
-	 * still be asked, every one a stop, in the game menu's order */
-	u.port = true;
-	n = gm_rows(&u, rows, &b);
-	printf("in-game menu over a port:\n");
-	ck(n == 3 && gm_row_ids(&u, ids) == 3 && ids[0] == GM_CONTINUE && ids[1] == GM_CONTROLS &&
-	   ids[2] == GM_QUIT, "Continue, Controls and Quit");
-	ck(!strcmp(rows[0].label, "Continue") && !strcmp(rows[1].label, "Controls") &&
-	   !strcmp(rows[2].label, "Quit"), "labeled as over a game");
-	ck(rows[2].value == MENU_KEY_X && gm_row_at(&u, gm_x_row()) == 2,
-	   "X is its Quit too, with the glyph");
-	ck(reachable(rows, n, got, GM_ROWS) == 3, "every row a stop");
-	u.port = false;
-
-	u.earned = 0; u.total = 0;
-	n = gm_rows(&u, rows, &b);
-	printf("in-game menu, a game with no set:\n");
-	ck(!strcmp(val(&rows[GM_CHEEVOS]), "none"), "Achievements says none");
-	ck(!rows[GM_CHEEVOS].live, "and does nothing");
-	k = reachable(rows, n, got, GM_ROWS);
-	ck(k == GM_ROWS - 1, "so the cursor steps over it");
-	ck(!holds(got, k, GM_CHEEVOS), "and never rests on it");
-	ck(holds(got, k, GM_QUIT) && holds(got, k, GM_CONTINUE),
-	   "the rows either side of it still work");
-
-	/* A system whose core keeps no state (ScummVM, J2ME): no quick slot,
-	 * so no row, and every other row a place up from its id */
-	u.earned = 12; u.total = 40; u.quick = 0;
-	n = gm_rows(&u, rows, &b);
-	printf("in-game menu, a system with no save states:\n");
-	ck(n == GM_ROWS - 1, "nine rows, no Quick Slot");
-	ck(gm_row_at(&u, GM_QUICK) == -1 && gm_row_at(&u, GM_DISPLAY) == GM_DISPLAY - 1 &&
-	   !strcmp(rows[gm_row_at(&u, GM_DISPLAY)].label, "Display"),
-	   "Display a row up, where gm_row_at says");
-	gm_row_ids(&u, ids);
-	ck(ids[2] == GM_LOAD && ids[3] == GM_DISPLAY && ids[n - 1] == GM_QUIT,
-	   "Load, then Display, Quit last");
+	ck(row_of(&u, GT_GAME, GM_QUIT) == 7 && row_of(&u, GT_GAME, GM_SHADER) == -1,
+	   "gm_row_at is a place on that tab, -1 for a row it has not");
+	u.player2 = false;
+	n = gm_rows(&u, GT_GAME, rows, &b);
+	ck(n == 7 && !strcmp(rows[4].label, "Achievements"), "a game with no Player 2 has seven");
+	u.quick = 0;
+	n = gm_rows(&u, GT_GAME, rows, &b);
+	ck(n == 6 && row_of(&u, GT_GAME, GM_QUICK) == -1 && !strcmp(rows[2].label, "Load") &&
+	   !strcmp(rows[3].label, "Achievements"), "no save states: no Quick Slot");
 	ck(ctl_has_states("SFC") && ctl_has_states("PS1") && ctl_has_states("N64") &&
 	   !ctl_has_states("SCUMMVM") && !ctl_has_states("J2ME"),
 	   "every Diatom system keeps states but ScummVM and J2ME");
+	u.quick = 2;
 
-	/* A DS game on DSperate: its two screens' three rows, after Display,
-	 * and every other row still where gm_row_ids says it is. */
-	u.quick = 1;
+	/* Achievements dead when the game has no set */
+	u.earned = 0; u.total = 0;
+	n = gm_rows(&u, GT_GAME, rows, &b);
+	printf("in-game menu, a game with no set:\n");
+	ck(!strcmp(val(&rows[gm_row_at(&u, GT_GAME, GM_CHEEVOS)]), "none"), "Achievements says none");
+	ck(!rows[gm_row_at(&u, GT_GAME, GM_CHEEVOS)].live, "and does nothing");
+	k = reachable(rows, n, got, GM_MAX_ROWS);
+	ck(k == n - 1 && !holds(got, k, gm_row_at(&u, GT_GAME, GM_CHEEVOS)),
+	   "so the cursor steps over it and never rests on it");
+	ck(holds(got, k, 6) && holds(got, k, 0), "the rows either side of it still work");
+	u.earned = 12; u.total = 40;
+
+	/* Display: a DS game adds the screens' three, in this order */
+	n = gm_rows(&u, GT_DISPLAY, rows, &b);
+	printf("in-game menu, Display tab:\n");
+	ck(n == 2 && !strcmp(rows[0].label, "Display") && !strcmp(rows[1].label, "Shader"),
+	   "a game that is not a DS one: Display and Shader");
+	ck(!strcmp(val(&rows[0]), "Native") && b.sound[0] == MENU_SND_RING && b.sound[1] == MENU_SND_RING,
+	   "Display carries the mode, and both step round");
+	u.shader = "Sharp-Shimmerless";
+	n = gm_rows(&u, GT_DISPLAY, rows, &b);
+	ck(!strcmp(val(&rows[1]), "Sharp-Shimmerless"), "Shader says the shader it is given");
+	u.shader = NULL;
+	n = gm_rows(&u, GT_DISPLAY, rows, &b);
+	ck(!strcmp(val(&rows[1]), "Off") && rows[1].live, "and Off when none is, a stop");
 	u.screens = true; u.layout = 1; u.swap = true; u.stylus = false;
-	n = gm_rows(&u, rows, &b);
-	printf("in-game menu, a game with two screens:\n");
-	ck(n == GM_MAX_ROWS - 2, "thirteen rows: every row but the N64's Pak and NES Player 2");
-	ck(gm_row_ids(&u, ids) == n && ids[3] == GM_QUICK && ids[4] == GM_DISPLAY &&
-	   ids[5] == GM_SHADER && ids[6] == GM_SCREENS && ids[7] == GM_SWAP &&
-	   ids[8] == GM_STYLUS && ids[9] == GM_CONTROLS && ids[10] == GM_CHEEVOS &&
-	   ids[12] == GM_QUIT,
-	   "Screens, Swap Screens and Stylus right after Display and Shader, then Controls");
-	ck(!strcmp(rows[6].label, "Screens") && !strcmp(val(&rows[6]), "Top Focus"),
-	   "Screens says the layout");
-	ck(!strcmp(val(&rows[7]), "On") && !strcmp(val(&rows[8]), "Off"),
-	   "Swap Screens and Stylus say On or Off, as a switch does");
-	ck(!strcmp(rows[10].label, "Achievements") && !strcmp(val(&rows[10]), "12 / 40"),
-	   "Achievements moves down with its value");
-	k = reachable(rows, n, got, GM_MAX_ROWS - 2);
-	ck(k == GM_MAX_ROWS - 2, "every row is a stop");
+	n = gm_rows(&u, GT_DISPLAY, rows, &b);
+	ck(labels_are(rows, n, dsp, 5), "gm_tabs_display_ds: Display Shader Screens Swap Screens Stylus");
+	ck(gm_tab_rows(&u, GT_DISPLAY, ids) == 5 && ids[2] == GM_SCREENS && ids[3] == GM_SWAP &&
+	   ids[4] == GM_STYLUS, "and the ids");
+	ck(!strcmp(val(&rows[2]), "Top Focus") && !strcmp(val(&rows[3]), "On") && !strcmp(val(&rows[4]), "Off"),
+	   "Screens says the layout, Swap Screens and Stylus say On or Off");
+	ck(reachable(rows, n, got, GM_MAX_ROWS) == 5, "every row is a stop");
 	ck(gm_layout_index("single") == 2 && gm_layout_index("nonsense") == 0,
 	   "a layout name Diatom did not send reads as Stacked");
 	ck(!strcmp(gm_layout_names[GM_LAYOUT_DEFAULT], "single"),
 	   "a system with no layout on record starts on one screen alone, the top one");
-
+	n = gm_rows(&u, GT_GAME, rows, &b);
+	ck(n == 7, "and the DS game's Game tab is the same as any other's");
 	u.screens = false;
-	ck(gm_row_ids(&u, ids) == GM_ROWS && ids[GM_CHEEVOS] == GM_CHEEVOS,
-	   "and any other game keeps ten, each its own id");
 
-	/* A Nintendo 64 game: its Pak, right before Controls, saying which */
+	/* No GM_CONTROLS row in any tab of a game's menu, and no Pak: the
+	 * Controls tab's rows are src/ctltab.c's, from task 7 */
 	u.pak = gm_pak_name("rumble");
-	n = gm_rows(&u, rows, &b);
-	printf("in-game menu, a Nintendo 64 game:\n");
-	ck(n == GM_ROWS + 1, "eleven rows");
-	ck(gm_row_at(&u, GM_PAK) == gm_row_at(&u, GM_SHADER) + 1 &&
-	   gm_row_at(&u, GM_CONTROLS) == gm_row_at(&u, GM_PAK) + 1, "Pak between Shader and Controls");
-	u.shader = "Sharp-Shimmerless";
-	n = gm_rows(&u, rows, &b);
-	ck(!strcmp(val(&rows[gm_row_at(&u, GM_SHADER)]), "Sharp-Shimmerless"),
-	   "Shader says the shader it is given");
-	u.shader = NULL;
-	ck(!strcmp(rows[gm_row_at(&u, GM_PAK)].label, "Pak") &&
-	   !strcmp(val(&rows[gm_row_at(&u, GM_PAK)]), "Rumble Pak"), "Pak says Rumble Pak");
-	k = reachable(rows, n, got, GM_ROWS + 1);
-	ck(k == GM_ROWS + 1, "every row is a stop");
-	u.pak = NULL;
+	u.player2 = true; u.screens = true;
+	for (t = 0; t < GT_TABS; t++) {
+		n = gm_tab_rows(&u, (gm_tab)t, ids);
+		for (k = 0; k < n; k++)
+			if (ids[k] == GM_CONTROLS || ids[k] == GM_PAK) break;
+		if (k < n) break;
+	}
+	ck(t == GT_TABS, "gm_no_controls_row: no Controls or Pak row in any tab of a game");
+	ck(gm_tab_rows(&u, GT_CONTROLS, ids) == 0 && gm_rows(&u, GT_CONTROLS, rows, &b) == 0,
+	   "the Controls tab has no rows of this file's until task 7");
+	u.pak = NULL; u.player2 = false; u.screens = false;
+
+	/* Over a port (OpenBOR, src/portmenu.h): what a stopped program can
+	 * still be asked, no tabs, every one a stop, in the game menu's order */
+	u.port = true;
+	printf("in-game menu over a port:\n");
+	n = gm_rows(&u, GT_GAME, rows, &b);
+	ck(n == 3 && gm_tab_rows(&u, GT_GAME, ids) == 3 && ids[0] == GM_CONTINUE &&
+	   ids[1] == GM_CONTROLS && ids[2] == GM_QUIT, "gm_port_untabbed: Continue, Controls and Quit");
+	ck(!strcmp(rows[0].label, "Continue") && !strcmp(rows[1].label, "Controls") &&
+	   !strcmp(rows[2].label, "Quit"), "labeled as over a game");
+	ck(rows[2].value == MENU_KEY_X && gm_row_at(&u, GT_GAME, gm_x_row()) == 2,
+	   "X is its Quit too, with the glyph");
+	ck(reachable(rows, n, got, GM_MAX_ROWS) == 3, "every row a stop");
+	ck(gm_tab_rows(&u, GT_DISPLAY, ids) == 3, "whichever tab it is asked for");
+	u.port = false;
 }
 
 /* The N64's Pak as the row steps it and the library keeps it */
@@ -1851,6 +1888,455 @@ static void n64_pak(void)
 	ck(!gm_pak_option("flycast2021") && !gm_pak_option(NULL), "no pak on any other core");
 }
 
+/* ---- the Controls tab (src/ctltab.h) ------------------------------------------
+ *
+ * Models as src/ctltab_screen.c gathers them, the tables written by hand from
+ * config/systems.cfg's map| lines: the PlayStation has none, so its table is
+ * the identity; the N64's and the Dreamcast's are theirs. */
+#define CT_N64_MAP "select:r2,r2:none,a:b,b:y,y:none,select+a:a,select+b:b,select+y:y,select+x:x"
+#define CT_DC_MAP  "a:b,b:a,x:y,y:x,l1:l2,l2:l1,r1:r2,r2:r1"
+
+static void ct_ps1(ct_model *m)
+{
+	memset(m, 0, sizeof *m);
+	m->tag = "PS1"; m->ext = "chd"; m->sys_label = "PlayStation"; m->sys_name = "PlayStation";
+	m->map = "";
+	rm_identity(&m->def);
+	m->cur = m->base = m->def;
+	m->stick_offered = true;
+}
+
+static void ct_table(rm_table *t, const char *spec)
+{
+	rm_identity(t);
+	rm_parse(spec, t);
+}
+
+/* Whether the handheld's pose for `keys` is `yaw` and `pitch` off the front's */
+static bool lean_is(unsigned keys, float yaw, float pitch)
+{
+	float y = -99.0f, p = -99.0f;
+
+	ct_lean(keys, &y, &p);
+	return y == yaw && p == pitch;
+}
+
+/* Where row `id` is, -1 for nowhere */
+static int ct_at(const ct_row *ids, int n, ct_row id)
+{
+	int i;
+
+	for (i = 0; i < n; i++) if (ids[i] == id) return i;
+	return -1;
+}
+
+static void ctl_tab(void)
+{
+	static const char *const ps1[] = { "Applies To", "D-pad as Stick", "A", "B", "X", "Y", "L1",
+	                                   "R1", "L2", "R2", "START", "SELECT", "Reset Buttons", "Hotkeys" };
+	static const char *const n64[] = { "Applies To", "D-pad as Stick", "Pak", "A", "B", "X", "Y", "L1",
+	                                   "R1", "L2", "R2", "START", "SELECT", "Reset Buttons", "Hotkeys" };
+	ct_model m;
+	ct_bufs b;
+	menu_row rows[CT_MAX_ROWS];
+	ct_row ids[CT_MAX_ROWS];
+	unsigned vcol[CT_MAX_ROWS];
+	rm_choice ch[32];
+	int n, k, i, nch;
+
+	printf("the Controls tab:\n");
+	/* ct_rows_ps1_default */
+	ct_ps1(&m);
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	ck(labels_are(rows, n, ps1, 14), "ct_rows_ps1_default: Applies To, D-pad as Stick, A to SELECT, Reset Buttons, Hotkeys");
+	ck(ids[0] == CT_SCOPE && ids[1] == CT_STICK && ids[2] == CT_BUTTON + RM_A &&
+	   ids[11] == CT_BUTTON + RM_SELECT && ids[12] == CT_RESET && ids[13] == CT_HOTKEYS,
+	   "and the ids say the same");
+	ck(!strcmp(val(&rows[0]), "This Game") && rows[0].live && !vcol[0], "Applies To: This Game, plain");
+	ck(!strcmp(val(&rows[1]), "Off") && rows[1].live, "D-pad as Stick: Off");
+	ck(!strcmp(val(&rows[2]), PAD_CIRCLE) && !strcmp(val(&rows[3]), PAD_CROSS) &&
+	   !strcmp(val(&rows[4]), PAD_TRIANGLE) && !strcmp(val(&rows[5]), PAD_SQUARE),
+	   "the faces by the core's own names, the PlayStation's shapes");
+	for (k = 2; k <= 11 && rows[k].live && !vcol[k]; k++) ;
+	ck(k == 12, "every button live and plain");
+	ck(!rows[12].live && !rows[12].value, "Reset Buttons is dead: nothing to put back");
+	ck(rows[13].live && !rows[13].value, "Hotkeys opens the pages");
+	ck(ct_lit(&m, CT_SCOPE) == 0 && ct_lit(&m, CT_HOTKEYS) == 0, "Applies To and Hotkeys light nothing");
+	ck(ct_lit(&m, CT_BUTTON + RM_R1) == 1u << TD_R1 && ct_lit(&m, CT_BUTTON + RM_SELECT) == 1u << TD_SELECT,
+	   "a button row lights its button");
+	ck(ct_lit(&m, CT_STICK) == 1u << TD_DPAD, "D-pad as Stick lights the d-pad, no SELECT on the PlayStation");
+	/* All PlayStation, and a stick off its default */
+	m.scope_all = true;
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	ck(!strcmp(val(&rows[0]), "PlayStation") && ct_at(ids, n, CT_OWN_NOTE) < 0,
+	   "every game of the system: PlayStation, by its name, and no note with no own buttons");
+	m.scope_all = false;
+	m.stick_on = true;
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	ck(!strcmp(val(&rows[1]), "On") && vcol[1] && rows[n - 2].live,
+	   "the stick off its default: accent-ink, and This Game's Reset puts it back");
+
+	/* ct_rows_n64 */
+	memset(&m, 0, sizeof m);
+	m.tag = "N64"; m.ext = "z64"; m.sys_label = "N64"; m.map = CT_N64_MAP;
+	ct_table(&m.def, CT_N64_MAP);
+	m.cur = m.base = m.def;
+	m.stick_offered = m.stick_on = m.stick_default = true;
+	m.pak = "Rumble Pak";
+	m.select_held_c = true;
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	ck(labels_are(rows, n, n64, 15), "ct_rows_n64: the Pak after D-pad as Stick, SELECT held for the C buttons");
+	ck(ids[2] == CT_PAK && !strcmp(val(&rows[2]), "Rumble Pak") && rows[2].live, "Pak says what is in");
+	ck(!strcmp(val(&rows[1]), "On") && !vcol[1], "the stick On, its default");
+	ck(!rows[12].live && !strcmp(val(&rows[12]), "C buttons"), "SELECT is dead: C buttons");
+	ck(ct_select_held_c(&m.def), "the N64's SELECT layer (select+a:a) holds SELECT for the C buttons");
+	ck(ct_lit(&m, CT_STICK) == (1u << TD_DPAD | 1u << TD_SELECT), "the stick lights SELECT, the way to the D-pad");
+	ck(ct_lit(&m, CT_PAK) == 0, "Pak lights nothing");
+
+	/* ct_rows_dc_face_stick_on */
+	memset(&m, 0, sizeof m);
+	m.tag = "DC"; m.ext = "chd"; m.sys_label = "Dreamcast"; m.map = CT_DC_MAP;
+	ct_table(&m.def, CT_DC_MAP);
+	m.cur = m.base = m.zdef = m.def;
+	m.stick_offered = m.stick_on = true;
+	m.face_offered = ctl_letter_layout("DC", &m.letters);
+	m.select_held_dpad = true;
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	k = ct_at(ids, n, CT_FACE);
+	ck(m.face_offered && k == 2 && !strcmp(val(&rows[k]), "By Letter") && rows[k].live,
+	   "ct_rows_dc_face_stick_on: Face Buttons after the stick, By Letter as ZyperOS has it");
+	k = ct_at(ids, n, CT_BUTTON + RM_SELECT);
+	ck(k > 0 && !rows[k].live && !strcmp(val(&rows[k]), "Held: D-pad"), "SELECT is dead: Held: D-pad");
+	ck(vcol[1], "the stick On off its default (Off): accent-ink");
+	ck(ct_lit(&m, CT_STICK) == (1u << TD_DPAD | 1u << TD_SELECT), "the stick lights SELECT too");
+	ck(ct_lit(&m, CT_FACE) == (1u << TD_A | 1u << TD_B | 1u << TD_X | 1u << TD_Y), "Face Buttons the four faces");
+	ck(ct_faces(&m, &m.cur) == 0, "the default reads By Letter");
+	ct_faces_set(&m, &m.cur, 1);
+	ck(ct_faces(&m, &m.cur) == 1 && m.cur.b[RM_A].to == RT_A && m.cur.b[RM_L1].to == RT_L2,
+	   "By Place writes the faces alone: the shoulders stay the Dreamcast's");
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	k = ct_at(ids, n, CT_FACE);
+	ck(!strcmp(val(&rows[k]), "By Place") && vcol[k], "By Place, off the default: accent-ink");
+	m.cur.b[RM_A] = (rm_choice){ RT_X, 0 };
+	ck(ct_faces(&m, &m.cur) == 2 && ct_faces_next(2) == 0, "one face changed is Mixed, and a step from it By Letter");
+	m.stick_on = false; m.select_held_dpad = false;
+	ck(ct_lit(&m, CT_STICK) == 1u << TD_DPAD, "the stick off: the d-pad alone");
+
+	/* ct_scope_accent_when_own */
+	ct_ps1(&m);
+	m.game_has_own = true;
+	ct_table(&m.cur, "b:y,y:b");
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	ck(vcol[0] && !strcmp(val(&rows[0]), "This Game"), "ct_scope_accent_when_own: Applies To in accent-ink");
+	k = ct_at(ids, n, CT_BUTTON + RM_B);
+	ck(vcol[k] && !strcmp(val(&rows[k]), PAD_SQUARE) && vcol[k + 2] && !vcol[k - 1],
+	   "the changed buttons in accent-ink, the rest plain");
+	ck(rows[ct_at(ids, n, CT_RESET)].live, "and Reset Buttons is live");
+	m.game_has_own = false;
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	ck(!vcol[0], "no own buttons: Applies To plain");
+
+	/* ct_own_note_when_all */
+	ct_ps1(&m);
+	m.scope_all = m.game_has_own = true;
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	ck(ids[1] == CT_OWN_NOTE && !rows[1].live && !strcmp(lbl(&rows[1]), "This game keeps its own buttons."),
+	   "ct_own_note_when_all: the note right under Applies To");
+	m.scope_all = false;
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	ck(ct_at(ids, n, CT_OWN_NOTE) < 0, "not in This Game");
+
+	/* ct_warn_under_cause */
+	ct_ps1(&m);
+	m.cur.b[RM_B] = (rm_choice){ RM_NONE, 0 };
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	k = ct_at(ids, n, CT_BUTTON + RM_B);
+	ck(k > 0 && ids[k + 1] == CT_WARN + RT_B && !rows[k + 1].live &&
+	   !strcmp(lbl(&rows[k + 1]), PAD_CROSS " has no button now"),
+	   "ct_warn_under_cause: \"× has no button now\" right under B");
+	ck(!strcmp(val(&rows[k]), "Nothing") && vcol[k], "B says Nothing, in accent-ink");
+	m.cur.b[RM_X] = (rm_choice){ RT_B, RM_TURBO };
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	ck(ct_at(ids, n, CT_WARN + RT_B) < 0 && ct_at(ids, n, CT_WARN + RT_X) == ct_at(ids, n, CT_BUTTON + RM_X) + 1,
+	   "a turbo of it is a button; triangle is the one with none now, under X");
+
+	/* ct_warn_cause: Y given cross, so B gives square; then B on Nothing:
+	 * square has no button now, under B, whose change did it, not under Y,
+	 * which gave it by default */
+	ct_ps1(&m);
+	rm_set(&m.cur, &m.base, RM_Y, (rm_choice){ RT_B, 0 });
+	m.base = m.cur;
+	m.cur.b[RM_B] = (rm_choice){ RM_NONE, 0 };
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	k = ct_at(ids, n, CT_WARN + RT_Y);
+	ck(k > 0 && ids[k - 1] == CT_BUTTON + RM_B && !strcmp(lbl(&rows[k]), PAD_SQUARE " has no button now"),
+	   "ct_warn_cause: \"□ has no button now\" under B, the row that did it");
+	m.cur.b[RM_A] = (rm_choice){ RM_NONE, 0 };
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	ck(ct_at(ids, n, CT_WARN + RT_A) == ct_at(ids, n, CT_BUTTON + RM_A) + 1 &&
+	   ct_at(ids, n, CT_WARN + RT_Y) == ct_at(ids, n, CT_BUTTON + RM_B) + 1,
+	   "and with A on Nothing too, circle's under A and square's still under B");
+
+	/* ct_dead_select: the Dreamcast with the stick on sends SELECT as SELECT,
+	 * so what a SELECT changed before gave is lost, and said, under SELECT;
+	 * and a swap never lands on the dead row */
+	memset(&m, 0, sizeof m);
+	m.tag = "DC"; m.ext = "chd"; m.sys_label = "Dreamcast"; m.map = CT_DC_MAP;
+	ct_table(&m.def, CT_DC_MAP);
+	m.cur = m.base = m.zdef = m.def;
+	m.cur.b[RM_SELECT] = (rm_choice){ RT_START, 0 };
+	m.cur.b[RM_START] = (rm_choice){ RT_SELECT, 0 };
+	m.stick_offered = true;
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	ck(ct_at(ids, n, CT_WARN + RT_START) < 0, "the stick off: SELECT gives Start, nothing lost");
+	m.stick_on = m.select_held_dpad = true;
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	k = ct_at(ids, n, CT_WARN + RT_START);
+	ck(k > 0 && ids[k - 1] == CT_BUTTON + RM_SELECT, "the stick on: Start has no button now, under SELECT");
+	m.cur = m.base = m.def;
+	ct_pick(&m, RM_A, (rm_choice){ RT_SELECT, 0 });
+	ck(m.cur.b[RM_SELECT].to == RT_SELECT && m.cur.b[RM_A].to == RT_SELECT,
+	   "a choice SELECT gives is no swap with the dead SELECT: it keeps it");
+	/* ct_sent_select_default: the stick's rule sends ZyperOS's own SELECT,
+	 * not a plain one and not the scope's default. This Game under a
+	 * Dreamcast whose SELECT and START were swapped for every game: the
+	 * game is sent a plain SELECT, so its Start is lost, and said */
+	m.def.b[RM_SELECT] = (rm_choice){ RT_START, 0 };
+	m.def.b[RM_START] = (rm_choice){ RT_SELECT, 0 };
+	m.cur = m.base = m.def;
+	{
+		rm_table sent;
+
+		ct_sent(&m, &sent);
+		ck(sent.b[RM_SELECT].to == RT_SELECT, "ct_sent_select_default: ZyperOS's SELECT, as rms_sent sends it");
+		n = ct_rows(&m, ids, rows, vcol, &b);
+		k = ct_at(ids, n, CT_WARN + RT_START);
+		ck(k > 0 && ids[k - 1] == CT_BUTTON + RM_SELECT, "and Start has no button now, under SELECT");
+		m.zdef.b[RM_SELECT] = (rm_choice){ RT_R2, 0 };
+		ct_sent(&m, &sent);
+		ck(sent.b[RM_SELECT].to == RT_R2 && sent.b[RM_SELECT].turbo == 0,
+		   "a default whose SELECT is a pair of its own (the N64's select:r2) has it put back");
+	}
+	memset(&m, 0, sizeof m);
+	m.tag = "N64"; m.ext = "z64"; m.map = CT_N64_MAP;
+	ct_table(&m.def, CT_N64_MAP);
+	m.cur = m.base = m.def;
+	m.select_held_c = true;
+	ct_pick(&m, RM_Y, (rm_choice){ RT_R2, 0 });
+	ck(m.cur.b[RM_SELECT].to == RT_R2 && m.cur.b[RM_Y].to == RT_R2,
+	   "the N64's SELECT keeps R2, the C buttons' own, when another button is given it");
+	ck(!ct_step(&m, CT_BUTTON + RM_SELECT, +1), "and its dead row has no step");
+
+	/* ct_held_psp: the PSP's R2 is Diatom's under stick=toggle (it turns
+	 * the d-pad into the stick, and no map reaches it): a dead row that
+	 * says so, no choice, and never a swap's partner */
+	memset(&m, 0, sizeof m);
+	m.tag = "PSP"; m.ext = "iso"; m.sys_label = "PSP"; m.sys_name = "PSP"; m.map = "";
+	rm_identity(&m.def);
+	m.cur = m.base = m.zdef = m.def;
+	m.stick_offered = true;
+	m.held = ct_held_of("PSP", "toggle");
+	ck(m.held == 1u << RM_R2 && ct_held_of("PSP", "") == 0 && ct_held_of("PS1", "plain") == 0 &&
+	   ct_held_of("DC", "dpad") == 0, "ct_held_of: the PSP's R2 under toggle, on no other system");
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	k = ct_at(ids, n, CT_BUTTON + RM_R2);
+	ck(k > 0 && !rows[k].live && !strcmp(val(&rows[k]), "D-pad as stick") && !vcol[k],
+	   "ct_held_psp: R2 is a dead row: D-pad as stick");
+	nch = ctl_remap_choices("PSP", "iso", "", ch, 32);
+	for (i = 0; i < nch && ch[i].to != RT_R2; i++) ;
+	ck(i == nch && nch == 13, "and no choice: four faces, L, R, Start, Select, four turbos, Nothing");
+	ck(ct_dead(&m, RM_R2) && !ct_dead(&m, RM_Y) && !ct_step(&m, CT_BUTTON + RM_R2, +1) &&
+	   rm_equal(&m.cur, &m.base), "R2 has no step");
+	ct_pick(&m, RM_Y, (rm_choice){ RT_R2, 0 });
+	ck(m.cur.b[RM_R2].to == RT_R2 && m.cur.b[RM_Y].to == RT_R2,
+	   "a swap never lands on R2: Y given the core's R2 leaves R2 as it was");
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	k = ct_at(ids, n, CT_WARN + RT_Y);
+	ck(k > 0 && ids[k - 1] == CT_BUTTON + RM_Y && !strcmp(val(&rows[k - 1]), "Nothing"),
+	   "the core has no R2: Y reads Nothing, and square has no button now, under Y");
+	/* a key from before the fix: y:r2,r2:y gave square to the R2 Diatom
+	 * hides, and says so now */
+	ct_table(&m.cur, "y:r2,r2:y");
+	m.base = m.cur;
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	k = ct_at(ids, n, CT_WARN + RT_Y);
+	ck(k > 0 && ids[k - 1] == CT_BUTTON + RM_R2 && !strcmp(lbl(&rows[k]), PAD_SQUARE " has no button now"),
+	   "a stored y:r2,r2:y: square has no button now, under the R2 that has it");
+
+	/* ct_held_nds: a DS game's L2 and R2 are Diatom's, the other screen and
+	 * the stylus */
+	memset(&m, 0, sizeof m);
+	m.tag = "NDS"; m.ext = "nds"; m.sys_label = "NDS"; m.sys_name = "Nintendo DS"; m.map = "";
+	rm_identity(&m.def);
+	m.cur = m.base = m.zdef = m.def;
+	m.held = ct_held_of("NDS", "");
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	k = ct_at(ids, n, CT_BUTTON + RM_L2);
+	ck(m.held == (1u << RM_L2 | 1u << RM_R2) && k > 0 && !rows[k].live &&
+	   !strcmp(val(&rows[k]), "Other screen") && ids[k + 1] == CT_BUTTON + RM_R2 && !rows[k + 1].live &&
+	   !strcmp(val(&rows[k + 1]), "Stylus on/off"),
+	   "ct_held_nds: L2 and R2 are dead rows: Other screen, Stylus on/off");
+	ck(!ct_step(&m, CT_BUTTON + RM_L2, -1) && !ct_step(&m, CT_BUTTON + RM_R2, +1) &&
+	   rm_equal(&m.cur, &m.base), "no step on either");
+	ct_pick(&m, RM_A, (rm_choice){ RT_L2, 0 });
+	ck(m.cur.b[RM_L2].to == RT_L2 && m.cur.b[RM_R2].to == RT_R2,
+	   "a swap never lands on them: A given L2 leaves L2 giving its own");
+	nch = ctl_remap_choices("NDS", "nds", "", ch, 32);
+	for (i = 0; i < nch && ch[i].to != RT_L2 && ch[i].to != RT_R2; i++) ;
+	ck(i == nch, "and neither is a choice");
+
+	/* ct_lit_swap */
+	ct_ps1(&m);
+	rm_set(&m.cur, &m.base, RM_Y, (rm_choice){ RT_B, 0 });
+	ck(m.cur.b[RM_B].to == RT_Y, "Y given cross: B gives square");
+	ck(ct_lit(&m, CT_BUTTON + RM_Y) == (1u << TD_Y | 1u << TD_B), "ct_lit_swap: the Y row lights Y and B");
+	m.base = m.cur;
+	ck(ct_lit(&m, CT_BUTTON + RM_Y) == 1u << TD_Y, "once the cursor comes back, Y alone");
+	ck(ct_lit(&m, CT_RESET) == (1u << TD_Y | 1u << TD_B), "Reset Buttons lights every changed button");
+
+	/* ct_lean: the handheld turns toward the side the focused row lights, the
+	 * d-pad's further, and tilts back to show its top for a shoulder */
+	ck(CT_LEAN_DPAD_DEG >= 20.0f && CT_LEAN_DPAD_DEG <= 25.0f && CT_LEAN_DPAD_DEG > CT_LEAN_DEG,
+	   "ct_lean: the d-pad leans 20 to 25 degrees, further than a side's keys");
+	ck(CT_PITCH_DEG > 0.0f, "ct_lean: a shoulder's pitch shows the top");
+	ct_ps1(&m);
+	ck(lean_is(ct_lit(&m, CT_BUTTON + RM_Y), CT_LEAN_DEG, 0.0f), "ct_lean: the Y row leans right, no pitch");
+	ck(lean_is(ct_lit(&m, CT_STICK), -CT_LEAN_DPAD_DEG, 0.0f),
+	   "ct_lean: D-pad as Stick on the PlayStation leans further left, no pitch");
+	ck(lean_is(ct_lit(&m, CT_BUTTON + RM_L1), -CT_LEAN_DEG, CT_PITCH_DEG), "ct_lean: the L1 row leans left and shows the top");
+	ck(lean_is(ct_lit(&m, CT_BUTTON + RM_L2), -CT_LEAN_DEG, CT_PITCH_DEG), "ct_lean: the L2 row leans left and shows the top");
+	ck(lean_is(ct_lit(&m, CT_BUTTON + RM_R2), CT_LEAN_DEG, CT_PITCH_DEG), "ct_lean: the R2 row leans right and shows the top");
+	ck(lean_is(ct_lit(&m, CT_BUTTON + RM_R1), CT_LEAN_DEG, CT_PITCH_DEG), "ct_lean: the R1 row leans right and shows the top");
+	ck(lean_is(ct_lit(&m, CT_BUTTON + RM_SELECT), 0.0f, 0.0f), "ct_lean: the SELECT row, front");
+	ck(lean_is(ct_lit(&m, CT_SCOPE), 0.0f, 0.0f) && lean_is(ct_lit(&m, CT_HOTKEYS), 0.0f, 0.0f),
+	   "ct_lean: Applies To and Hotkeys, front");
+	ck(lean_is(1u << TD_START, 0.0f, 0.0f) && lean_is(0, 0.0f, 0.0f), "ct_lean: START alone and no keys, front");
+	ck(lean_is(1u << TD_L1 | 1u << TD_R1, 0.0f, 0.0f), "ct_lean: both sides' shoulders, front");
+	ck(lean_is(1u << TD_L1 | 1u << TD_SELECT, -CT_LEAN_DEG, CT_PITCH_DEG),
+	   "ct_lean: a shoulder with a centre key leans to its side and shows the top");
+	ck(lean_is(1u << TD_A | 1u << TD_R2, CT_LEAN_DEG, 0.0f), "ct_lean: a face with a right shoulder, no pitch");
+	ck(lean_is(1u << TD_DPAD | 1u << TD_L2, -CT_LEAN_DPAD_DEG, 0.0f), "ct_lean: the d-pad with a left shoulder, the d-pad's");
+	rm_set(&m.cur, &m.base, RM_B, (rm_choice){ RT_L1, 0 });
+	ck(lean_is(ct_lit(&m, CT_RESET), 0.0f, 0.0f), "ct_lean: Reset Buttons with B and L1 changed, front");
+	ct_ps1(&m);
+	rm_set(&m.cur, &m.base, RM_B, (rm_choice){ RT_R1, 0 });
+	ck(lean_is(ct_lit(&m, CT_RESET), CT_LEAN_DEG, 0.0f), "ct_lean: Reset Buttons with B and R1 changed, right, no pitch");
+	/* The N64's stick lights the d-pad and SELECT: left and centre is left */
+	memset(&m, 0, sizeof m);
+	m.tag = "N64"; m.ext = "z64"; m.sys_label = "N64"; m.map = CT_N64_MAP;
+	ct_table(&m.def, CT_N64_MAP);
+	m.cur = m.base = m.def;
+	m.stick_offered = m.stick_on = m.stick_default = true;
+	m.select_held_c = true;
+	ck(ct_lit(&m, CT_STICK) == (1u << TD_DPAD | 1u << TD_SELECT) && lean_is(ct_lit(&m, CT_STICK), -CT_LEAN_DPAD_DEG, 0.0f),
+	   "ct_lean: the stick on the N64 (d-pad and SELECT) leans as the d-pad does");
+	/* The Dreamcast's Face Buttons light the four faces */
+	memset(&m, 0, sizeof m);
+	m.tag = "DC"; m.ext = "chd"; m.sys_label = "Dreamcast"; m.map = CT_DC_MAP;
+	ct_table(&m.def, CT_DC_MAP);
+	m.cur = m.base = m.zdef = m.def;
+	m.face_offered = ctl_letter_layout("DC", &m.letters);
+	ck(lean_is(ct_lit(&m, CT_FACE), CT_LEAN_DEG, 0.0f), "ct_lean: Face Buttons lean right, no pitch");
+
+	/* The steps, round the choices, and Nothing */
+	ct_ps1(&m);
+	nch = ctl_remap_choices("PS1", "chd", "", ch, 32);
+	ck(nch == 15, "the PlayStation's choices: four faces, six more, four turbos, Nothing");
+	ck(ct_next(&m, ch, nch, RM_A, +1).to == RT_B && ct_next(&m, ch, nch, RM_A, -1).to == RM_NONE,
+	   "Right on A is cross, Left goes round to Nothing");
+	ck(!ct_select_held_c(&m.def), "the PlayStation's SELECT is its own");
+	/* A step works from the table as it was when the cursor came onto the
+	 * row: a second step undoes the first one's swap */
+	ck(ct_step(&m, CT_BUTTON + RM_Y, -1) && m.cur.b[RM_Y].to == RT_X && m.cur.b[RM_X].to == RT_Y,
+	   "Left on Y: triangle, and X takes square");
+	ck(ct_step(&m, CT_BUTTON + RM_Y, -1) && m.cur.b[RM_Y].to == RT_B && m.cur.b[RM_B].to == RT_Y &&
+	   m.cur.b[RM_X].to == RT_X, "Left again: cross, B takes square, and X has triangle back");
+	ck(ct_step(&m, CT_BUTTON + RM_Y, +1) && ct_step(&m, CT_BUTTON + RM_Y, +1) && rm_equal(&m.cur, &m.base),
+	   "and two Rights put the table back as it was");
+	ck(!ct_step(&m, CT_SCOPE, +1) && rm_equal(&m.cur, &m.base), "no step on a row that is no button");
+	i = ct_choice_at(&m, ch, nch, m.cur.b[RM_START]);
+	ck(i >= 0 && ch[i].to == RT_START, "START is among them");
+	m.cur.b[RM_A] = (rm_choice){ RT_L1, 0 };
+	ck(ct_choice_at(&m, ch, nch, m.cur.b[RM_A]) == 4, "L1 is the first after the faces");
+	{
+		ct_model nes;
+		rm_choice nc[32];
+		int nn;
+
+		memset(&nes, 0, sizeof nes);
+		nes.tag = "NES"; nes.ext = "nes"; nes.map = "";
+		ct_table(&nes.def, "x:a~3,y:b~3");
+		nes.cur = nes.base = nes.def;
+		nn = ctl_remap_choices("NES", "nes", "", nc, 32);
+		ck(ct_says_nothing(&nes, nes.cur.b[RM_L1]) && ct_choice_at(&nes, nc, nn, nes.cur.b[RM_L1]) == nn - 1,
+		   "an NES game's L1 gives nothing: it reads Nothing");
+		ck(ct_taken(&nes, RM_L1, (rm_choice){ RM_NONE, 0 }).to == RT_L1,
+		   "and Nothing taken there is its own, so nothing is kept");
+		n = ct_rows(&nes, ids, rows, vcol, &b);
+		k = ct_at(ids, n, CT_BUTTON + RM_L1);
+		ck(!strcmp(val(&rows[k]), "Nothing") && !vcol[k], "its row says Nothing, plain");
+		nes.cur.b[RM_L1] = (rm_choice){ RT_A, RM_TURBO };
+		n = ct_rows(&nes, ids, rows, vcol, &b);
+		for (k = 0; k < n && !(ids[k] >= CT_WARN && ids[k] < CT_RESET); k++) ;
+		ck(k == n, "no warning for a button the core names nothing");
+	}
+
+	/* A button's choices */
+	{
+		ct_pick_bufs pb;
+		int sel = -1;
+
+		ct_ps1(&m);
+		rm_set(&m.cur, &m.base, RM_Y, (rm_choice){ RT_B, 0 });
+		nch = ctl_remap_choices("PS1", "chd", "", ch, 32);
+		n = ct_pick_rows(&m, RM_Y, ch, nch, rows, &pb, &sel);
+		ck(n == nch && !strcmp(pb.head, "Y: PlayStation"), "the choices of Y, under \"Y: PlayStation\"");
+		ck(sel == 1 && rows[1].value == MENU_TICK && !strcmp(lbl(&rows[1]), PAD_CROSS),
+		   "a tick on cross, what it gives now, the cursor on it");
+		ck(!strcmp(val(&rows[3]), "default") && !strcmp(lbl(&rows[3]), PAD_SQUARE), "default on square");
+		for (k = 0, i = 0; k < n; k++) i += rows[k].live;
+		ck(i == n, "every choice can be taken");
+		n = ct_pick_rows(&m, RM_A, ch, nch, rows, &pb, &sel);
+		ck(sel == 0 && rows[0].value == MENU_TICK, "A at its default: the tick alone");
+	}
+
+	/* The Hotkeys row's pages, beside the handheld: none of the system's
+	 * buttons (the tab shows them), SELECT alone a row */
+	{
+		ctl_game g;
+		ctl_buf cb;
+		menu_row pr[CTL_MAX_ROWS];
+		int np, pages;
+
+		memset(&g, 0, sizeof g);
+		g.tag = "PS1"; g.name = "PlayStation"; g.short_name = "PS1"; g.map = ""; g.ext = "chd";
+		pages = ctl_game_pages(&g);
+		g.no_buttons = true;
+		ck(ctl_game_pages(&g) == 2 && pages > 2, "the PlayStation's pages less its buttons: Hotkeys, In a game");
+		np = ctl_game_rows(&g, 0, pr, &cb);
+		ck(!strcmp(cb.head, "Controls: Hotkeys") && np == 5 && ROW_IS_NOTE(pr[4]),
+		   "Hotkeys first, as ever, SELECT alone its note");
+		memset(&g, 0, sizeof g);
+		g.tag = "N64"; g.name = "Nintendo 64"; g.short_name = "N64"; g.ext = "z64";
+		g.map = CT_N64_MAP; g.accessory = "Rumble Pak"; g.no_buttons = true;
+		np = ctl_game_rows(&g, 0, pr, &cb);
+		ck(!strcmp(cb.head, "Controls: C buttons") && np > 0 && ROW_IS_NOTE(pr[np - 1]) &&
+		   !strcmp(lbl(&pr[np - 1]), "Pak: Rumble Pak"),
+		   "the N64's C buttons first, and which Pak is in, not where (the tab's Pak row is)");
+		/* ...and SELECT then the d-pad only while the d-pad is the stick */
+		g.stick = CTL_STICK_ON;
+		np = ctl_game_rows(&g, 0, pr, &cb);
+		for (k = 0; k < np && strcmp(lbl(&pr[k]), "SELECT+D-pad"); k++) ;
+		ck(np == 6 && k < np && !strcmp(val(&pr[k]), "N64 D-pad"),
+		   "the stick on: SELECT then the d-pad is the N64's D-pad");
+		g.stick = CTL_STICK_OFF;
+		np = ctl_game_rows(&g, 0, pr, &cb);
+		for (k = 0; k < np && strcmp(lbl(&pr[k]), "SELECT+D-pad"); k++) ;
+		ck(np == 5 && k == np && ROW_IS_NOTE(pr[np - 1]),
+		   "the stick off: no such row, the d-pad being the N64's D-pad already");
+	}
+}
+
 /* NES Player 2 (src/p2.h): its row right after Shader's group, on a game
  * whose core the system table offers it on (gm_gather asks p2_offered), and
  * on no other game's menu; A opens its page, so it is a stop and plain. Its
@@ -1860,50 +2346,39 @@ static void player2_row_on_nes_only(void)
 	gm_ui u = { 0 };
 	gm_bufs b;
 	menu_row rows[GM_MAX_ROWS];
-	gm_row ids[GM_MAX_ROWS];
-	int got[GM_MAX_ROWS], n, at, i;
+	int n, at, i;
 
 	printf("in-game menu, NES Player 2:\n");
 	u.dmode = "Native"; u.earned = 12; u.total = 40; u.quick = 2;
-	ck(gm_row_at(&u, GM_PLAYER2) == -1 && gm_row_ids(&u, ids) == GM_ROWS,
+	ck(gm_row_at(&u, GT_GAME, GM_PLAYER2) == -1 && gm_tab_rows(&u, GT_GAME, (gm_row[GM_MAX_ROWS]){ 0 }) == 7,
 	   "no Player 2 row where it is not offered");
 	u.player2 = true;
 	u.player2_value = gm_player2_value(P2_OFF);
-	n = gm_rows(&u, rows, &b);
-	at = gm_row_at(&u, GM_PLAYER2);
-	ck(n == GM_ROWS + 1, "eleven rows with it");
-	ck(at == gm_row_at(&u, GM_SHADER) + 1 && gm_row_at(&u, GM_CONTROLS) == at + 1,
-	   "right after Shader, before Controls");
+	n = gm_rows(&u, GT_GAME, rows, &b);
+	at = gm_row_at(&u, GT_GAME, GM_PLAYER2);
+	ck(n == 8, "eight rows with it");
+	ck(at == gm_row_at(&u, GT_GAME, GM_QUICK) + 1 && at + 1 == gm_row_at(&u, GT_GAME, GM_CHEEVOS),
+	   "right after Quick Slot, before Achievements");
 	ck(at >= 0 && !strcmp(rows[at].label, "Player 2") && !strcmp(val(&rows[at]), "off"),
 	   "Player 2, off until it is started");
 	ck(at >= 0 && rows[at].live && !b.sound[at], "a stop, and plain: A opens its page");
-	ck(reachable(rows, n, got, GM_MAX_ROWS) == n, "every row is a stop");
 	ck(!strcmp(gm_player2_value(P2_OFF), "off") &&
 	   !strcmp(gm_player2_value(P2_WAITING), "waiting") &&
 	   !strcmp(gm_player2_value(P2_CONNECTED), "connected"),
 	   "its three values: off, waiting, connected");
 	ck(!strcmp(gm_player2_value(P2_FAILED), "off"), "and a start that failed reads off");
 	u.player2_value = gm_player2_value(P2_CONNECTED);
-	n = gm_rows(&u, rows, &b);
-	ck(!strcmp(val(&rows[gm_row_at(&u, GM_PLAYER2)]), "connected"), "the row says the value it is given");
-	/* After the whole of Shader's group, a DS game's three rows and a Pak
-	 * included, wherever they come */
-	u.screens = true; u.pak = gm_pak_name("rumble");
-	n = gm_row_ids(&u, ids);
-	ck(gm_row_at(&u, GM_PLAYER2) == gm_row_at(&u, GM_PAK) + 1 &&
-	   gm_row_at(&u, GM_PAK) == gm_row_at(&u, GM_STYLUS) + 1 &&
-	   gm_row_at(&u, GM_CONTROLS) == gm_row_at(&u, GM_PLAYER2) + 1 && n == GM_MAX_ROWS,
-	   "after the screens' rows and the Pak, still before Controls");
-	u.screens = false; u.pak = NULL;
+	n = gm_rows(&u, GT_GAME, rows, &b);
+	ck(!strcmp(val(&rows[gm_row_at(&u, GT_GAME, GM_PLAYER2)]), "connected"), "the row says the value it is given");
 	/* Over a port, none */
 	u.port = true;
-	ck(gm_row_at(&u, GM_PLAYER2) == -1, "and none over a port");
+	ck(gm_row_at(&u, GT_GAME, GM_PLAYER2) == -1, "and none over a port");
 	u.port = false;
 	u.player2 = false;
-	n = gm_rows(&u, rows, &b);
+	n = gm_rows(&u, GT_GAME, rows, &b);
 	for (i = 0; i < n; i++)
 		if (!strcmp(lbl(&rows[i]), "Player 2")) break;
-	ck(i == n && n == GM_ROWS, "without it, every other game keeps its ten");
+	ck(i == n && n == 7, "without it, every other game keeps its seven");
 }
 
 /* The quick slot as the device's database keeps it: per system, slot 1
@@ -2322,16 +2797,18 @@ static void row_sounds(void)
 	/* The in-game menu's Display steps on A as well as left and right
 	 * (gm_key's GM_DISPLAY), so A is accept there, not deny. Shader too. */
 	g.dmode = "Native"; g.screens = true; g.quick = 3;
-	n = gm_rows(&g, gr, &gb);
-	gm_row_ids(&g, ids);
-	for (i = 0; i < n; i++) {
-		unsigned want = ids[i] == GM_DISPLAY || ids[i] == GM_SHADER || ids[i] == GM_QUICK ||
-		                ids[i] == GM_SCREENS || ids[i] == GM_SWAP || ids[i] == GM_STYLUS ||
-		                ids[i] == GM_PAK
-		                ? MENU_SND_RING : 0;
+	for (int t = 0; t < GT_TABS; t++) {
+		n = gm_rows(&g, (gm_tab)t, gr, &gb);
+		gm_tab_rows(&g, (gm_tab)t, ids);
+		for (i = 0; i < n; i++) {
+			unsigned want = ids[i] == GM_DISPLAY || ids[i] == GM_SHADER || ids[i] == GM_QUICK ||
+			                ids[i] == GM_SCREENS || ids[i] == GM_SWAP || ids[i] == GM_STYLUS ||
+			                ids[i] == GM_PAK
+			                ? MENU_SND_RING : 0;
 
-		ck(menu_sound_at(gb.sound, n, i) == want,
-		   "in-game: Display, Shader, Quick Slot and the screens' rows step round, on A too; the rest plain");
+			ck(menu_sound_at(gb.sound, n, i) == want,
+			   "in-game: Display, Shader, Quick Slot and the screens' rows step round, on A too; the rest plain");
+		}
 	}
 
 	/* The Wi-Fi screen's rows are networks, named by whoever runs them, and
@@ -2379,10 +2856,14 @@ int main(void)
 	window_returns();
 	what_scrolls();
 	info_rows();
+	gi_buttons_row_only_when_own();
 	ingame_rows();
 	quick_slot();
 	n64_pak();
+	ctl_tab();
 	player2_row_on_nes_only();
+	gm_disc_row_only_with_discs();
+	disc_value_check();
 	audio_row();
 	channels_row();
 	sounds_row();

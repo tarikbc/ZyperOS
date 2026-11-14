@@ -492,7 +492,11 @@ SDL_Texture *ui_card_upload(SDL_Renderer *r, SDL_Surface *s, int theme_ix);
  * the two answers when something on the Pixel 2's port wants power (11.36):
  * headphones for a USB accessory, a laptop for a computer. And Flash
  * Drive's two ways (11.18): an arrow down into a tray, to the card, and up
- * out of it, from the card. */
+ * out of it, from the card. And MENU > Scraper's (11.19): a box with a
+ * picture on it for covers, a screen with a play triangle for video snaps,
+ * its three sources' own marks, never their logos - a cloud for
+ * ScreenScraper, an open book for libretro's catalog, a grid for
+ * SteamGridDB - and a heart for the favorites. */
 typedef enum {
 	UI_GLYPH_REPEAT, UI_GLYPH_REPEAT_ONE, UI_GLYPH_SHUFFLE,
 	UI_GLYPH_CHARGE, UI_GLYPH_TRANSFER, UI_GLYPH_TERMINAL,
@@ -501,6 +505,8 @@ typedef enum {
 	UI_GLYPH_CHECK,
 	UI_GLYPH_HEADPHONES, UI_GLYPH_LAPTOP, UI_GLYPH_PHONE,
 	UI_GLYPH_TO_CARD, UI_GLYPH_FROM_CARD,
+	UI_GLYPH_COVER, UI_GLYPH_FILM,
+	UI_GLYPH_CLOUD, UI_GLYPH_BOOK, UI_GLYPH_GRID, UI_GLYPH_HEART, UI_GLYPH_CLOCK,
 	UI_GLYPH_COUNT
 } ui_glyph;
 void ui_glyph_draw(SDL_Renderer *r, ui_glyph g, int cx, int cy, int size,

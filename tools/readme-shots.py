@@ -121,7 +121,7 @@ LR_REPO={'PlayStation':'Sony_-_PlayStation','NES':'Nintendo_-_Nintendo_Entertain
          'Nintendo 64':'Nintendo_-_Nintendo_64','Dreamcast':'Sega_-_Dreamcast','ScummVM':'ScummVM'}
 # With --art, the in-game menu and its Controls pages stand over a screenshot
 # of a PlayStation game (--backdrop) rather than a made-up frame
-BACKDROP=['gamemenu','gamemenu-shader','controls-ps1','controls-hotkeys','controls-psp']
+BACKDROP=['gamemenu','gamemenu-shader','controls-tab','controls-ps1','controls-hotkeys','controls-psp']
 BACKDROP_GAME='Spyro the Dragon (USA)'   # bright, so the panel reads against it
 ART_CACHE=Path.home()/'Library/Caches/zyperos-readme-art'
 GAMES=[Path(f).stem for f,_ in LIBRARY['PlayStation']]
@@ -196,7 +196,7 @@ SHOTS={
     # The in-game menu over OpenBOR (src/portmenu.h), on the launcher's
     # made-up frame rather than a game's
     'openbor':('openbor','OPENBOR',['--screen','games','--gamemenu','0','port']),
-    'scraper':('demo','PS1',['--scraper','2']),
+    'scraper':('demo','PS1',['--scraper-page','1']),
     'update':('demo','PS1',['--update']),
     # The screensaver (DESIGN.md 11.37) over the focused game's screenshot,
     # which is the picture its video snap would be
@@ -255,11 +255,17 @@ SHOTS={
     # its Hotkeys page, SELECT with a shoulder
     'gamemenu':('demo','PS1',['--screen','games','--gamemenu','3']),
     # ...on its Shader row, Sharp-Shimmerless (SHOT_SETTINGS)
-    'gamemenu-shader':('demo','PS1',['--screen','games','--gamemenu','5']),
+    'gamemenu-shader':('demo','PS1',['--screen','games','--gamemenu','1','--gm-tab','1']),
+    # The in-game menu's Controls tab (2026-11-13), light: a PlayStation game
+    # with Y given Cross, so B gives Square (two Lefts on Y, the swap, both
+    # values in the accent ink and both keys lit on the handheld). It is kept
+    # in the library, so on a library of its own (SHOT_OWN_LIB)
+    'controls-tab':('demo','PS1',['--screen','games','--gamemenu','5','--gm-tab','2','--gm-press','left,left','--shot-at','400']),
     'controls-ps1':('demo','PS1',['--screen','games','--gamecontrols','0','PS1']),
     'controls-hotkeys':('demo','PS1',['--screen','games','--gamecontrols','2','PS1']),
     # The PSP's buttons, with R2, which turns the d-pad into its stick
-    'controls-psp':('psp','PSP',['--screen','games','--gamecontrols','1','PSP']),
+    # (2026-11-13: the Controls tab, on D-pad as Stick, the d-pad lit on the handheld)
+    'controls-psp':('psp','PSP',['--screen','games','--gamemenu','1','--gm-tab','2']),
 }
 # Favorites for a shot alone, set before it is taken and cleared after: the
 # games page with the focused game and the one before it kept, so the heart
@@ -484,6 +490,7 @@ def media_card(card,art=None,manifest=None):
 
 # A shot's settings in the handheld's own database (userdata/zyperos.db, as
 # the launcher's db_dev keeps them), there only while it is taken
+SHOT_OWN_LIB={'controls-tab'}   # shots that write the library, on one of their own
 SHOT_SETTINGS={'gamemenu-shader':{'shader.PS1':'shimmerless'}}
 
 def set_settings(card,settings,on):
@@ -912,7 +919,10 @@ def main():
                 if backdrop and name in BACKDROP: command+=['--backdrop',str(backdrop)]
                 set_favs(card,SHOT_FAVS.get(name,[]),True)
                 set_settings(card,SHOT_SETTINGS.get(name),True)
-                result=subprocess.run(command,cwd=ROOT,env=pm_env(env_for(card),name,temporary),text=True,
+                shot_env=pm_env(env_for(card),name,temporary)
+                if name in SHOT_OWN_LIB:
+                    lib=Path(tempfile.mkdtemp(prefix='shot-lib-',dir=temporary));shot_env['ZYPEROS_SHARED']=str(lib)
+                result=subprocess.run(command,cwd=ROOT,env=shot_env,text=True,
                                       stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
                 set_favs(card,SHOT_FAVS.get(name,[]),False)
                 set_settings(card,SHOT_SETTINGS.get(name),False)

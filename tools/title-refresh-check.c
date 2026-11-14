@@ -36,25 +36,19 @@ static void muse_order_view(sysview *v) { (void)v; failures++; }
 static int shelf_owner(app *a, int s, int i) { return a->view[s].owner ? a->view[s].owner[i] : s; }
 static void free_view_textures(sysview *v) { v->dropped++; }
 static void cf_reset(coverflow *cf, int cursor) { cf->cursor = cursor; }
-static menu_result next_result;
-/* The scrape screen's panel (main.c's menu motion): opened and closed once */
-static int panels_open, panels_closed;
-static int panel_open(void) { return ++panels_open; }
-static void panel_close(app *a, int lv, bool cut)
-{
-	(void)a; (void)cut;
-	CHECK(lv == panels_open);
-	panels_closed++;
-}
-static menu_result art_run(app *a, const char *only, const char *one,
-                           const char *stem, const char *file, unsigned accent, int lv)
+/* The shelf told the card's media changed (src/snapshelf.h), stubbed */
+static int media_changes;
+static void snapshelf_media_changed(void) { media_changes++; }
+/* MENU > Scraper's page (scp_page), stubbed: it ran once, and named a game
+ * the way a run does, in the library alone */
+static int pages_run;
+static void scp_page(app *a, const char *only)
 {
 	game_meta m = {0};
-	(void)a; (void)one; (void)stem; (void)accent;
-	CHECK(lv == panels_open && panels_closed == panels_open - 1);
+	(void)a;
+	pages_run++;
 	strcpy(m.title, "Alpha");
-	CHECK(db_game_set(db_lib(), only, file, &m));
-	return next_result;
+	CHECK(db_game_set(db_lib(), only, "same.zip", &m));
 }
 #include "title-refresh-hooks.h"
 
@@ -78,7 +72,7 @@ int main(void)
 	a.view[2].list = (game_list){.items = snes, .count = 1};
 	a.view[3].list = (game_list){.items = muse, .count = 1};
 	/* Same filename on two systems. Refresh and movement must retain owners. */
-	for (int outcome = MENU_STAY; outcome <= MENU_FAILED; outcome++) {
+	for (int outcome = 0; outcome < 3; outcome++) {
 		game_meta empty = {0}; strcpy(empty.title, "Zulu");
 		CHECK(db_game_set(db_lib(), "NES", "same.zip", &empty));
 		put(&nes[0], "Middle", "middle.zip"); put(&nes[1], "Zulu", "same.zip");
@@ -87,9 +81,9 @@ int main(void)
 		fav[0] = nes[0]; fav[1] = snes[0]; fav[2] = nes[1];
 		owners[0] = 1; owners[1] = 2; owners[2] = 1;
 		a.view[0].cursor = 2; a.view[1].cursor = 1;
-		next_result = (menu_result)outcome;
-		CHECK(art_screen(&a, "NES", nes[1].title, nes[1].name, nes[1].file, 0) == next_result);
-		CHECK(panels_open == outcome + 1 && panels_closed == panels_open);
+		scraper_page(&a, "NES");
+		CHECK(pages_run == outcome + 1);
+		CHECK(media_changes == outcome + 1); /* the focused game's snap looked for again */
 		CHECK(a.view[0].cursor == 0 && a.view[1].cursor == 0);
 		CHECK(owners[0] == 1 && !strcmp(fav[0].file, "same.zip") && !strcmp(fav[0].title, "Alpha"));
 		CHECK(!strcmp(snes[0].title, "Zulu") && !strcmp(muse[0].title, "Album"));
@@ -150,6 +144,6 @@ int main(void)
 	}
 	db_shutdown();
 	if (failures) return 1;
-	puts("ok: scrape exits refresh titles, textures, sorting and selection without reboot");
+	puts("ok: scrape exits refresh titles, textures, sorting, selection and the focused snap without reboot");
 	return 0;
 }

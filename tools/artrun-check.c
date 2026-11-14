@@ -32,7 +32,11 @@
 #include <sys/stat.h>
 
 #include "../src/artscrape.h"
+#include "../src/db.h"
 #include "../src/net.h"
+#include "../src/ssrun.h"
+
+#include <time.h>
 
 static int failures;
 
@@ -66,6 +70,16 @@ static char g_pend_url[2048], g_pend_path[2048];
 static bool g_pending;
 static char g_urls[4096];            /* every URL asked for, one per line */
 static int  g_nreq;
+/* Both sources' requests in the order they were made: "N <url>" for the
+ * network, "S <stem>" for a ScreenScraper lookup */
+static char g_seq[8192];
+
+static void seq_add(const char *kind, const char *what)
+{
+	size_t n = strlen(g_seq);
+
+	snprintf(g_seq + n, sizeof g_seq - n, "%s %s\n", kind, what);
+}
 
 bool net_get_async(const char *url, const char *path, int timeout_s)
 {
@@ -74,6 +88,7 @@ bool net_get_async(const char *url, const char *path, int timeout_s)
 	snprintf(g_pend_path, sizeof g_pend_path, "%s", path);
 	g_pending = true;
 	g_nreq++;
+	seq_add("N", url);
 	if (strlen(g_urls) + strlen(url) + 2 < sizeof g_urls) {
 		strcat(g_urls, url);
 		strcat(g_urls, "\n");
@@ -157,6 +172,12 @@ static int  g_ss_asked;       /* lookups started */
 static char g_ss_stem[256];
 static char g_ss_dest[512];
 static bool g_ss_toomany;
+/* Lookups refused for a reason true of every game after them (ss_run_refusal):
+ * that reason, for the next g_ss_no_n lookups, or for all of them at -1 */
+static ss_refusal g_ss_no = SS_GO_ON;
+static int  g_ss_no_n = -1;
+static ss_refusal g_ss_refusal;
+static bool g_ss_unknown;     /* a game they have not got is a 404, SS_UNKNOWN */
 
 bool ss_signed_in(void) { return g_ss_on; }
 
@@ -168,6 +189,7 @@ bool ss_run_begin(const char *folder, const char *file, const char *stem,
 	snprintf(g_ss_stem, sizeof g_ss_stem, "%s", stem);
 	snprintf(g_ss_dest, sizeof g_ss_dest, "%s/.media/%s.png", rom_dir, stem);
 	g_ss_asked++;
+	seq_add("S", stem);
 	return true;
 }
 
@@ -181,15 +203,25 @@ bool ss_run_begin_metadata(const char *a, const char *b, const char *c,
 int ss_run_step(void)
 {
 	g_ss_toomany = false;
+	g_ss_refusal = SS_GO_ON;
 	if (g_ss_busy > 0) { g_ss_busy--; g_ss_toomany = true; return -1; }
-	if (!g_ss_has || strcmp(g_ss_has, g_ss_stem)) return -1;
+	if (g_ss_no != SS_GO_ON && g_ss_no_n != 0) {
+		if (g_ss_no_n > 0) g_ss_no_n--;
+		g_ss_refusal = g_ss_no;
+		return -1;
+	}
+	if (!g_ss_has || strcmp(g_ss_has, g_ss_stem)) {
+		if (g_ss_unknown) g_ss_refusal = SS_UNKNOWN;
+		return -1;
+	}
 	return write_cover(g_ss_dest, "SS") ? 0 : -1;
 }
 
 void ss_run_cancel(void) { g_ss_stem[0] = '\0'; }
 int  ss_run_left(void) { return g_ss_left; }
 bool ss_run_too_many(void) { return g_ss_toomany; }
-bool ss_run_video_wanted(const char *folder) { (void)folder; return false; }
+ss_refusal ss_run_refusal(void) { return g_ss_refusal; }
+bool ss_run_video_wanted(const char *folder, const char *file) { (void)folder; (void)file; return false; }
 bool ss_run_got_video(void) { return false; }
 
 /* ---- SteamGridDB, stubbed the same way -----------------------------------
@@ -304,6 +336,22 @@ static const char *cover_of(const char *stem)
 	return word_of(buf);
 }
 
+/* A game's cover on another shelf, by stem */
+static const char *cover_of_in(const char *shelf, const char *stem)
+{
+	static char buf[64];
+	char p[600];
+	FILE *f;
+	size_t n;
+
+	snprintf(p, sizeof p, "%s/.media/%s.png", shelf, stem);
+	if (!(f = fopen(p, "rb"))) return "(none)";
+	n = fread(buf, 1, sizeof buf - 1, f);
+	fclose(f);
+	buf[n] = '\0';
+	return word_of(buf);
+}
+
 static void put16(FILE *f, unsigned v)
 {
 	fputc((int)(v & 255), f);
@@ -366,6 +414,9 @@ static bool part_left(void)
 
 /* A whole run, to the end. Bounded, so a step machine that never finishes is a
  * failing check rather than a hung one. */
+/* MENU > Scraper's covers switch, off for Game Boy alone */
+static bool covers_not_game_boy(const char *folder) { return strcmp(folder, "Game Boy") != 0; }
+
 static int run_on(const char *folder, const char *only, art_progress *out)
 {
 	systems_cfg sys;
@@ -579,8 +630,189 @@ int main(void)
 		CHECK(strstr(st.problem, "quota") != NULL,
 		      "the run did not say the quota was spent: \"%s\"", st.problem);
 
+		/* The server's own "not today" and "closed", and no answer: each
+		 * true of every game after it. They were "a game they do not
+		 * have" once, and a run asked every game of the shelf, refused,
+		 * before libretro had its turn (Discord, 1.0.4). */
+		printf("  a day the server says is spent (430, 431) stops it at once:\n");
+		snprintf(p, sizeof p, "%s/Hit Game.png", g_media);  remove(p);
+		snprintf(p, sizeof p, "%s/Other Game.png", g_media); remove(p);
+		g_ss_left = -1;
+		g_ss_no = SS_SPENT;
+		g_ss_no_n = -1;
+		g_ss_asked = 0;
+		CHECK(run(NULL, &st) == 0, "the run did not finish");
+		CHECK(g_ss_asked == 1, "asked %d times, wanted one and then a stop",
+		      g_ss_asked);
+		CHECK(!strcmp(cover_of("Hit Game"), "NEW"),
+		      "libretro did not finish the job after the pass stopped");
+		CHECK(strstr(st.problem, "quota") != NULL,
+		      "the run did not say the quota was spent: \"%s\"", st.problem);
+
+		printf("  a server closed to the account (401, 423) stops it at once:\n");
+		snprintf(p, sizeof p, "%s/Hit Game.png", g_media);  remove(p);
+		g_ss_no = SS_CLOSED;
+		g_ss_asked = 0;
+		CHECK(run(NULL, &st) == 0, "the run did not finish");
+		CHECK(g_ss_asked == 1, "asked %d times, wanted one and then a stop",
+		      g_ss_asked);
+		CHECK(!strcmp(cover_of("Hit Game"), "NEW"),
+		      "libretro did not finish the job after the pass stopped");
+		CHECK(strstr(st.problem, "busy") != NULL,
+		      "the run did not say the server is busy: \"%s\"", st.problem);
+
+		/* A third game, so that "stopped after two" and "asked them all"
+		 * are different counts whatever came before. With the checksum
+		 * pass's Old Name (USA), the shelf now has four with no cover. */
+		snprintf(p, sizeof p, "%s/Third Game.gb", g_shelf); write_file(p, "rom");
+
+		printf("  no answer twice in a row stops it:\n");
+		snprintf(p, sizeof p, "%s/Hit Game.png", g_media);  remove(p);
+		g_ss_no = SS_NO_ANSWER;
+		g_ss_asked = 0;
+		CHECK(run(NULL, &st) == 0, "the run did not finish");
+		CHECK(g_ss_asked == 2, "asked %d times, wanted two and then a stop",
+		      g_ss_asked);
+		CHECK(!strcmp(cover_of("Hit Game"), "NEW"),
+		      "libretro did not finish the job after the pass stopped");
+		CHECK(strstr(st.problem, "no answer") != NULL,
+		      "the run did not say there was no answer: \"%s\"", st.problem);
+
+		printf("  one with no answer is a blip, and the rest are asked:\n");
+		snprintf(p, sizeof p, "%s/Hit Game.png", g_media);  remove(p);
+		g_ss_no_n = 1;
+		g_ss_asked = 0;
+		CHECK(run(NULL, &st) == 0, "the run did not finish");
+		CHECK(g_ss_asked == 4, "asked %d times, wanted all four", g_ss_asked);
+		CHECK(!st.problem[0], "a single blip stopped the run: \"%s\"", st.problem);
+
+		snprintf(p, sizeof p, "%s/Third Game.gb", g_shelf); remove(p);
+		snprintf(p, sizeof p, "%s/Third Game.png", g_media); remove(p);
+		snprintf(p, sizeof p, "%s/Other Game.png", g_media); remove(p);
+		g_ss_no = SS_GO_ON;
+		g_ss_no_n = -1;
 		g_ss_on = false;
 		g_ss_left = -1;
+	}
+
+	/* ---- a console ScreenScraper does not know (2026-11-13) -------------
+	 *
+	 * Twelve games it has never heard of, all of them on libretro. Libretro
+	 * is asked about each game right after ScreenScraper's miss, not after
+	 * the whole console; ten misses in a row leave the rest of the console
+	 * to libretro; the misses are kept, so the next run does not ask again,
+	 * until they are a month old. And the count moves with every game.
+	 * Whatever order the folder lists them in. */
+	{
+		char shelf[400], p[512];
+		const char *u;
+		systems_cfg sys;
+		int i, steps = 0, direct = 0;
+		long long now = (long long)time(NULL);
+
+		CHECK(db_init(":memory:", ":memory:", NULL), "no database to keep misses in");
+		snprintf(shelf, sizeof shelf, "%s/Game Boy Color", g_root);
+		mkdir(shelf, 0755);
+		for (i = 1; i <= 12; i++) {
+			snprintf(p, sizeof p, "%s/Game %02d.gb", shelf, i);
+			write_file(p, "rom");
+		}
+		memset(&sys, 0, sizeof sys);
+		sys.count = 1;
+		snprintf(sys.systems[0].folder, sizeof sys.systems[0].folder, "Game Boy Color");
+		snprintf(sys.systems[0].exts, sizeof sys.systems[0].exts, "gb");
+		g_ss_on = true;
+		g_ss_has = NULL;
+		g_ss_unknown = true;
+		g_ss_busy = 0;
+		g_ss_left = -1;
+		g_serve_image = "Game%20";
+		g_serve_also = NULL;
+		g_index = NULL;
+
+		printf("  a miss is libretro's at once, and the count moves with every game:\n");
+		g_urls[0] = g_seq[0] = '\0';
+		g_ss_asked = 0;
+		art_begin(&sys, g_root, NULL);
+		while (g_ss_asked < 2 && art_step() == 1 && steps < 1000) steps++;
+		art_status(&st);
+		CHECK(st.found == 1 && st.lr_found == 1,
+		      "libretro's cover for the first game waited: %d found", st.found);
+		CHECK(st.looked == 1, "looked %d, wanted the first game counted", st.looked);
+		CHECK(st.src == ART_SRC_SS, "the dot is not on ScreenScraper (%d)", st.src);
+		{
+			/* "S Game NN", then libretro for Game NN, then the next lookup */
+			char first[16], want[64];
+
+			CHECK(sscanf(g_seq, "S Game %15[0-9]", first) == 1, "no first lookup:\n%s", g_seq);
+			snprintf(want, sizeof want, "Game%%20%s.png\nS Game ", first);
+			CHECK(strstr(g_seq, want) != NULL,
+			      "libretro was not asked before the next game:\n%s", g_seq);
+		}
+		while (art_step() == 1 && steps < 2000) steps++;
+		art_status(&st);
+
+		printf("  ten misses in a row leave the rest of the console to libretro:\n");
+		CHECK(g_ss_asked == 10, "ScreenScraper asked %d times, wanted ten", g_ss_asked);
+		for (u = g_urls; (u = strstr(u, "Named_Boxarts/Game%20")); u++) direct++;
+		CHECK(direct == 12, "libretro asked %d times by name, wanted each game once", direct);
+		CHECK(st.looked == 12, "looked %d, wanted all twelve", st.looked);
+		CHECK(st.found == 12 && !strcmp(cover_of_in(shelf, "Game 01"), "NEW"),
+		      "libretro's covers are not there: %d found", st.found);
+
+		printf("  the misses are kept, and the next run does not ask again:\n");
+		for (i = 1; i <= 12; i++) {
+			snprintf(p, sizeof p, "%s/.media/Game %02d.png", shelf, i);
+			remove(p);
+		}
+		g_serve_image = NULL;
+		g_ss_asked = 0;
+		CHECK(run_on("Game Boy Color", NULL, &st) == 0, "the run did not finish");
+		CHECK(g_ss_asked == 2, "asked %d times, wanted only the two never asked", g_ss_asked);
+
+		printf("  a miss a month old is asked about again:\n");
+		CHECK(db_ss_miss_set(db_lib(), "Game Boy Color", "Game 05.gb", now - 31 * 86400LL),
+		      "could not age a miss");
+		g_ss_asked = 0;
+		g_seq[0] = '\0';
+		CHECK(run_on("Game Boy Color", NULL, &st) == 0, "the run did not finish");
+		CHECK(g_ss_asked == 1 && strstr(g_seq, "S Game 05"),
+		      "asked %d times, wanted Game 05 alone:\n%s", g_ss_asked, g_seq);
+
+		for (i = 1; i <= 12; i++) {
+			snprintf(p, sizeof p, "%s/Game %02d.gb", shelf, i);         remove(p);
+			snprintf(p, sizeof p, "%s/.media/Game %02d.png", shelf, i); remove(p);
+		}
+		snprintf(p, sizeof p, "%s/.media", shelf); rmdir(p);
+		rmdir(shelf);
+		db_shutdown();
+		g_ss_unknown = false;
+		g_ss_on = false;
+		g_serve_image = NULL;
+	}
+
+	/* ---- a system with covers off (MENU > Scraper's Systems, 2026-11-13) - */
+	{
+		char p[512];
+
+		snprintf(p, sizeof p, "%s/Hit Game.png", g_media);   remove(p);
+		snprintf(p, sizeof p, "%s/Other Game.png", g_media); remove(p);
+		printf("  a system with covers off is not asked about:\n");
+		art_covers_rule(covers_not_game_boy);
+		g_ss_on = true;
+		g_ss_has = NULL;
+		g_ss_asked = 0;
+		g_serve_image = "Hit%20Game";
+		CHECK(run(NULL, &st) == 0, "the run did not finish");
+		CHECK(g_ss_asked == 0 && !strstr(g_urls, "Named_Boxarts"),
+		      "asked about a system with covers off: %d lookups, urls:\n%s", g_ss_asked, g_urls);
+		CHECK(!strcmp(cover_of("Hit Game"), "(none)"), "a cover came for a system with covers off");
+		printf("  and a replace of one of its games still is:\n");
+		CHECK(run("Hit Game", &st) == 0, "the replace did not finish");
+		CHECK(!strcmp(cover_of("Hit Game"), "NEW"), "the replace got no cover: \"%s\"", cover_of("Hit Game"));
+		art_covers_rule(NULL);
+		g_ss_on = false;
+		g_serve_image = NULL;
 	}
 
 	/* ---- the last source: SteamGridDB, with a key ----------------------- */

@@ -79,9 +79,14 @@ typedef struct {
 	 * games play with a stick and the device has none (Diatom's stick.h);
 	 * "toggle": R2 turns the d-pad into the stick and back, for a system
 	 * whose games move with one or the other (the PSP's; src/main.c,
-	 * stick_get). Sent with RUN as stick=. Empty is the d-pad as the d-pad.
-	 * From a `stick|tag|dpad` or `stick|tag|toggle` line. */
+	 * rms_stick_get); "plain": the stick without the SELECT rule, the d-pad
+	 * still the d-pad as well (the PlayStation's). Sent with RUN as stick=
+	 * (rms_run_stick). Empty is the d-pad as the d-pad. From a
+	 * `stick|tag|mode` or `stick|tag|mode|off` line. */
 	char stick[8];
+	/* The `stick|` line's last field was "off": the stick starts off for
+	 * a game (src/remapstore.c, rms_stick_default). The default is on. */
+	bool stick_off;
 	/* EmulationStation's names for this shelf's folder, comma separated, in
 	 * the order they are preferred: "nds" for Nintendo DS, "megadrive,md"
 	 * for Genesis. The folders Knulli, ROCKNIX, ArkOS, ROGUE OS and the other
@@ -106,7 +111,8 @@ bool cfg_load_systems(const char *path, systems_cfg *out);
 
 /* The RUN keys a game on `s` needs beyond the usual, tab separated, into
  * `out` ("" for none): two screens for a DS game (`dual`), the clock ceiling,
- * the controller type and the d-pad as a stick. */
+ * the controller type. The d-pad as a stick is the game's own
+ * (src/remapstore.c, rms_run_stick). */
 /* Two system names in A to Z order (2026-11-06): case and accents do
  * not count ("Pokémon" is "pokemon") and a run of digits counts as its
  * number, so 3DO comes before 32X and Atari 2600 before Atari 5200 and Atari

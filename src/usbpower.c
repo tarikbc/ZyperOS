@@ -75,6 +75,16 @@ bool usbpower_resume(const usb_power *p, bool kept, unsigned since_start_ms)
 	       !p->computer && !p->automatic && since_start_ms < USBPOWER_RESUME_MS;
 }
 
+bool usbpower_offer_after(unsigned answers, bool automatic, bool answered, unsigned *count)
+{
+	*count = answers;
+	if (automatic || answered)
+		return false;
+	if (*count < USBPOWER_OFFER_AT)
+		(*count)++;
+	return *count >= USBPOWER_OFFER_AT;
+}
+
 void usbpower_guard_start(usbpower_guard *g, unsigned now_ms, unsigned down)
 {
 	g->opened = now_ms;

@@ -248,6 +248,10 @@ static void rows_for(const shelf *s, const char *file, const char *title)
 	CHECK(db_set_str(db_lib(), key, "600\tquit"));
 	snprintf(key, sizeof key, "sess.1730086400.200.%s\t%s", s->tag, file);
 	CHECK(db_set_str(db_lib(), key, "300\tlost"));
+	snprintf(key, sizeof key, "map.%s.%s", s->tag, file);
+	CHECK(db_set_str(db_lib(), key, "a:b"));
+	snprintf(key, sizeof key, "stick.%s.%s", s->tag, file);
+	CHECK(db_set_str(db_lib(), key, "1"));
 }
 
 struct sess_count { const char *tag, *file; int n; };
@@ -291,16 +295,29 @@ static bool details(const shelf *s, const char *file)
 static void rows_there(const char *what, const shelf *s, const char *file, bool want)
 {
 	bool d = details(s, file), f = fav_row(s, file), fm;
+	char key[700];
+	bool mk, sk;
 	int n = sessions(s, file);
 
 	fav_load();
 	fm = fav_is(s->tag, file);
+	snprintf(key, sizeof key, "map.%s.%s", s->tag, file);
+	mk = db_has(db_lib(), key);
+	snprintf(key, sizeof key, "stick.%s.%s", s->tag, file);
+	sk = db_has(db_lib(), key);
 	if (want) {
+		if (!mk || !sk) {
+			printf("  FAIL %s: %s's map/stick went (%d/%d)\n", what, file, mk, sk);
+			failures++;
+		}
 		if (!d || !f || !fm || n != 2) {
 			printf("  FAIL %s: %s's rows went (details %d, favorite %d/%d, sessions %d)\n",
 			       what, file, d, f, fm, n);
 			failures++;
 		}
+	} else if (mk || sk) {
+		printf("  FAIL delete_drops_map_and_stick: %s's map/stick stayed (%d/%d)\n", file, mk, sk);
+		failures++;
 	} else if (d || f || fm || n) {
 		printf("  FAIL %s: %s's rows stayed (details %d, favorite %d/%d, sessions %d)\n",
 		       what, file, d, f, fm, n);
@@ -461,6 +478,9 @@ static void make_card(void)
 	/* Two systems' games of one stem, which write one .srm */
 	put("Roms/Game Boy/Pokemon (USA).gb", "red");
 	put("Roms/Game Boy/.media/Pokemon (USA).png", "png");
+	/* RetroAchievements' answer that it has nothing for it (chv_none_mark):
+	 * left behind, it kept .cheevos from going with the shelf's last game */
+	put("Roms/Game Boy/.cheevos/Pokemon (USA).none", "");
 	put("Roms/Game Boy Color/Pokemon (USA).gbc", "gold");
 	put("Saves/Pokemon (USA).srm", "srm");
 
@@ -681,10 +701,11 @@ int main(void)
 		static const char *const gone[] = {
 			"Roms/Game Boy/Pokemon (USA).gb",
 			"Roms/Game Boy/.media/Pokemon (USA).png",
+			"Roms/Game Boy/.cheevos/Pokemon (USA).none",
 			NULL
 		};
 		deleted("a cartridge whose .srm a Game Boy Color game of its name writes too:",
-		        GB, "Pokemon (USA).gb", "Pokemon (USA)", gone, 2);
+		        GB, "Pokemon (USA).gb", "Pokemon (USA)", gone, 3);
 		CHECK(there("Saves/Pokemon (USA).srm"));
 	}
 	{

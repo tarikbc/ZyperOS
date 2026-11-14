@@ -51,19 +51,21 @@ static struct {
  * business and must survive a cancel. */
 static int  g_left = -1;
 static bool g_toomany;
-static bool (*g_want_video)(const char *folder);
+static ss_refusal g_refusal;
+static bool (*g_want_video)(const char *folder, const char *file);
 static bool g_got_video;
 
-void ss_run_videos(bool (*want)(const char *folder)) { g_want_video = want; }
-bool ss_run_video_wanted(const char *folder)
+void ss_run_videos(bool (*want)(const char *folder, const char *file)) { g_want_video = want; }
+bool ss_run_video_wanted(const char *folder, const char *file)
 {
-	return g_want_video && folder && g_want_video(folder);
+	return g_want_video && folder && file && g_want_video(folder, file);
 }
 bool ss_run_got_video(void) { return g_got_video; }
 
 const char      *ss_run_where(void)  { return g_run.where; }
 int              ss_run_left(void)   { return g_left; }
 bool             ss_run_too_many(void) { return g_toomany; }
+ss_refusal       ss_run_refusal(void) { return g_refusal; }
 
 void ss_run_cancel(void)
 {
@@ -95,6 +97,7 @@ static bool run_begin(const char *folder, const char *file, const char *stem,
 {
 	memset(&g_run, 0, sizeof g_run);
 	g_toomany = false;
+	g_refusal = SS_GO_ON;
 	g_got_video = false;
 	g_run.metadata_only = metadata_only;
 	g_run.lookup_only = lookup_only;
@@ -231,7 +234,7 @@ static bool start_video(int answer)
 	char want[SS_DEST_MAX];
 	struct stat st;
 
-	if (!g_run.got.video[0] || !ss_run_video_wanted(g_run.folder)) return false;
+	if (!g_run.got.video[0] || !ss_run_video_wanted(g_run.folder, g_run.file)) return false;
 	if (snprintf(want, sizeof want, "%s/.media/%s.mp4", g_run.dir, g_run.stem)
 	    >= (int)sizeof want) return false;
 	if (stat(want, &st) == 0 && st.st_size > 0) return false;
@@ -292,8 +295,16 @@ static int run_step(void)
 		if (poll < 0) {
 			http = net_async_http();
 			g_toomany = (http == 429);
+			g_refusal = http == 430 || http == 431 ? SS_SPENT
+			          : http == 401 || http == 423 ? SS_CLOSED
+			          : http == 0 || http >= 500   ? SS_NO_ANSWER
+			          : http == 404                ? SS_UNKNOWN : SS_GO_ON;
 			say_reply(how, 0, 0, http == 429 ? "too many requests"
 			                   : http == 404 ? "not a game they know"
+			                   : http == 430 ? "today's quota is spent"
+			                   : http == 431 ? "today's unknown games are spent"
+			                   : http == 401 ? "closed to non-members for now"
+			                   : http == 423 ? "closed"
 			                   : http == 0   ? "no answer" : "refused");
 			g_run.phase = R_FAIL;
 			return -1;
@@ -302,6 +313,7 @@ static int run_step(void)
 			say_reply(how, bytes, parse_ms,
 			          bytes >= SS_REPLY_MAX ? "too big, not read"
 			          : bytes == 0 ? "empty" : "no game in it");
+			if (bytes > 0 && bytes < SS_REPLY_MAX) g_refusal = SS_UNKNOWN;
 			g_run.phase = R_FAIL;
 			return -1;
 		}
@@ -317,6 +329,7 @@ static int run_step(void)
 				if (start_ask(0)) { g_run.phase = R_RETRY; return 1; }
 			}
 			/* The wrong game. Never persist its title or prose. */
+			g_refusal = SS_UNKNOWN;
 			g_run.phase = R_FAIL;
 			return -1;
 		}

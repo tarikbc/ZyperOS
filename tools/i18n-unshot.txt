@@ -36,6 +36,8 @@ art.why_index_failed
 art.why_index_bad
 art.ss_quota
 art.ss_too_many
+art.ss_busy
+art.ss_no_answer
 art.sg_refused
 art.sg_busy
 art.sg_no_answer
@@ -122,11 +124,6 @@ cheevos.ra_user
 cheevos.unchecked_said
 
 # clock: no shot draws it yet
-clock.time_zone
-clock.month
-clock.day
-clock.hour
-clock.minute
 clock.month_jan
 clock.month_feb
 clock.month_mar
@@ -136,7 +133,6 @@ clock.month_jun
 clock.month_jul
 clock.month_aug
 clock.month_sep
-clock.month_oct
 clock.month_nov
 clock.month_dec
 clock.short_jan
@@ -185,7 +181,6 @@ corner.held
 corner.full
 
 # datetime: no shot draws it yet
-datetime.change
 datetime.wifi_sets
 
 # emptyhome: no shot draws it yet
@@ -194,6 +189,9 @@ emptyhome.cheer.one
 emptyhome.cheer.other
 
 # gamemenu: no shot draws it yet
+gamemenu.own_buttons  # wrapped to the Controls tab's column a line a row, as a paragraph is, so no drawn line is the string; gamemenu-controls-all draws it
+gamemenu.reset_buttons_game  # wrapped to its question's lines as Delete Game's is; gamemenu-controls-ask draws it
+gamemenu.reset_buttons_all  # wrapped to its question's lines as Delete Game's is; gamemenu-controls-ask-all draws it
 gamemenu.delete_ask
 gamemenu.delete_ask_this
 gamemenu.delete_ask_port
@@ -408,19 +406,6 @@ ra.sign_in_no_token
 scraper.complete
 scraper.on
 scraper.key_refused
-scraper.found_n.one
-scraper.found_n.other
-scraper.already_n.one
-scraper.already_n.other
-scraper.names_n.one
-scraper.names_n.other
-scraper.starting
-scraper.done
-scraper.fetching
-scraper.found
-scraper.replaced
-scraper.not_found
-scraper.not_found_kept
 scraper.ss_user
 scraper.ss_no_key
 scraper.ss_left_today.one
@@ -549,8 +534,6 @@ sysmenu.muse_books
 sysmenu.muse_albums
 sysmenu.muse_author
 sysmenu.muse_artist
-sysmenu.sc_fetching
-sysmenu.sc_complete
 sysmenu.not_in_build
 sysmenu.sc_link
 sysmenu.ss_account
@@ -560,10 +543,7 @@ sysmenu.unlink
 sysmenu.ss_note_brings
 sysmenu.ss_note_free
 sysmenu.ss_note_key
-sysmenu.sn_fetch
 sysmenu.sn_needs_ss
-sysmenu.sn_play
-sysmenu.sn_muted
 sysmenu.sn_quiet
 sysmenu.sn_full
 sysmenu.sn_delete

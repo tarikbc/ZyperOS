@@ -126,55 +126,6 @@ int sys_menu_system_rows(const sys_ui *u, sm_row *out)
 	return n;
 }
 
-int sys_menu_scraper_rows(const scraper_ui *u, scraper_bufs *b, menu_row *out,
-                          sc_row *ids)
-{
-	int n = 0;
-	bool counts = u->running || u->ran;
-
-	/* The run: its progress while it goes, else what it would fetch */
-	if (u->running) {
-		snprintf(b->fetch, sizeof b->fetch, "%d / %d", u->done, u->total);
-		ids[n] = SC_FETCH;
-		out[n++] = (menu_row){ T(S_SYSMENU_SC_FETCHING), b->fetch, true };
-	} else {
-		if (!u->net) snprintf(b->fetch, sizeof b->fetch, "%s", T(S_MENU_NEEDS_WIFI));
-		else if (u->missing == 0) snprintf(b->fetch, sizeof b->fetch, "%s", T(S_SYSMENU_SC_COMPLETE));
-		else if (u->missing > 0)
-			snprintf(b->fetch, sizeof b->fetch, TN(S_SYSMENU_SC_MISSING, u->missing), u->missing);
-		else b->fetch[0] = '\0';
-		ids[n] = SC_FETCH;
-		out[n++] = (menu_row){ T(S_SYSMENU_SC_FETCH), b->fetch[0] ? b->fetch : NULL, u->net };
-	}
-	ids[n] = SC_SNAPS;
-	out[n++] = (menu_row){ T(S_SYSMENU_SC_VIDEO_SNAPS), u->snaps, !u->running };
-	ids[n] = SC_NONE;
-	out[n++] = MENU_HR;
-
-	/* The sources, in the order a run asks them */
-	if (counts) {
-		snprintf(b->ss, sizeof b->ss, TN(S_SYSMENU_SC_COVERS, u->ss_found), u->ss_found);
-	} else if (!u->ss_have) {
-		snprintf(b->ss, sizeof b->ss, "%s", T(S_SYSMENU_NOT_IN_BUILD));
-	} else if (u->ss_in) {
-		snprintf(b->ss, sizeof b->ss, T(S_SYSMENU_SC_LINKED_AS), u->ss_name ? u->ss_name : "");
-	} else {
-		snprintf(b->ss, sizeof b->ss, "%s", T(S_SYSMENU_SC_LINK));
-	}
-	ids[n] = SC_SS;
-	out[n++] = (menu_row){ "ScreenScraper", b->ss, !u->running && u->ss_have };
-	if (counts) snprintf(b->lr, sizeof b->lr, TN(S_SYSMENU_SC_COVERS, u->lr_found), u->lr_found);
-	else snprintf(b->lr, sizeof b->lr, "%s", T(S_SYSMENU_SC_NO_ACCOUNT));
-	ids[n] = SC_LIBRETRO;
-	out[n++] = (menu_row){ "libretro", b->lr, false };
-	if (counts) snprintf(b->sg, sizeof b->sg, TN(S_SYSMENU_SC_COVERS, u->sg_found), u->sg_found);
-	else snprintf(b->sg, sizeof b->sg, "%s", u->sgdb ? u->sgdb : T(S_SYSMENU_SC_LINK));
-	ids[n] = SC_SGDB;
-	out[n++] = (menu_row){ "SteamGridDB", b->sg, !u->running };
-	/* No notes: at 640x480 the panel holds these six rows and no more. */
-	return n;
-}
-
 int sys_menu_ss_rows(bool have, const char *user, const char *status,
                      menu_row *out, ssp_row *ids)
 {
@@ -221,13 +172,8 @@ int sys_menu_snaps_rows(const snaps_ui *u, snaps_bufs *b, menu_row *out,
 {
 	int n = 0, i;
 
-	/* Fetching needs ScreenScraper, the one source with snaps; what is on
-	 * the card already plays without it. */
-	ids[n] = SN_FETCH; console[n] = -1;
-	out[n++] = (menu_row){ T(S_SYSMENU_SN_FETCH),
-	                       !u->ss_have ? T(S_SYSMENU_NOT_IN_BUILD) :
-	                       !u->ss_in ? T(S_SYSMENU_SN_NEEDS_SS) : u->fetch ? T(S_MENU_ON_TITLE) : T(S_MENU_OFF_TITLE),
-	                       u->ss_have && u->ss_in };
+	/* Which systems GET videos is MENU > Scraper's Systems grid (2026-11-13);
+	 * this page is how the shelf plays the ones on the card, and their room */
 	ids[n] = SN_PLAY; console[n] = -1;
 	out[n++] = (menu_row){ T(S_SYSMENU_SN_PLAY), u->play ? T(S_MENU_ON_TITLE) : T(S_MENU_OFF_TITLE), true };
 	ids[n] = SN_SOUND; console[n] = -1;

@@ -2,7 +2,8 @@
 /* The launcher's half of usbrole (src/usbpower.h): usbrole's state lines as
  * it writes them, a request as usbrole reads it, and the question asked once
  * per plug, after the plug has waited USBPOWER_ASK_MS, never for a computer's
- * plug that usbrole says may not be asked about. */
+ * plug that usbrole says may not be asked about; and Automatic offered once,
+ * at the second USB Accessory answer. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -159,6 +160,30 @@ int main(void)
 	usbpower_parse("plug=1 ask=0 pin=1 vbus=0 computer=1 role=device auto=0 paused=0", &p);
 	CHECK(!usbpower_resume(&p, true, 4000), "a computer seen: powered again");
 
+	/* Zyper's offer of Automatic: at the second USB Accessory answer, on
+	 * Ask, while it was never answered; once answered, never again; an
+	 * offer with no answer comes back at the next USB Accessory */
+	{
+		unsigned n = 99, i;
+
+		CHECK(!usbpower_offer_after(0, false, false, &n) && n == 1, "the first answer: offered, or %u kept", n);
+		CHECK(usbpower_offer_after(n, false, false, &n) && n == USBPOWER_OFFER_AT,
+		      "the second answer: not offered (%u kept)", n);
+		/* No answer to it (POWER): offered again, the count no higher */
+		CHECK(usbpower_offer_after(n, false, false, &n) && n == USBPOWER_OFFER_AT,
+		      "an offer with no answer not offered again (%u kept)", n);
+		/* Answered: never again, whatever the count; the count left as it is */
+		for (i = 0; i < 2 * USBPOWER_OFFER_AT; i++)
+			CHECK(!usbpower_offer_after(n, false, true, &n) && n == USBPOWER_OFFER_AT,
+			      "an answered offer offered again (%u kept)", n);
+		CHECK(!usbpower_offer_after(0, false, true, &n) && n == 0, "answered: counted on");
+		/* On Automatic (a paused Automatic asks): not counted, not offered */
+		CHECK(!usbpower_offer_after(1, true, false, &n) && n == 1, "on Automatic: offered or counted");
+		CHECK(!usbpower_offer_after(USBPOWER_OFFER_AT, true, false, &n), "on Automatic: offered");
+		/* A count from before past the offer's: due, and kept as it was */
+		CHECK(usbpower_offer_after(7, false, false, &n) && n == 7, "a higher count: not offered");
+	}
+
 	/* A question that came by itself: a button held through its start, or
 	 * pressed in its first half second, counts only after a release */
 	{
@@ -241,6 +266,7 @@ int main(void)
 		fprintf(stderr, "usbpower-check: %d failed\n", fails);
 		return 1;
 	}
-	printf("usbpower-check: usbrole's lines read, a request written whole, asked once per plug after 2 s\n");
+	printf("usbpower-check: usbrole's lines read, a request written whole, asked once per plug after 2 s, "
+	       "Automatic offered once at the second USB Accessory\n");
 	return 0;
 }

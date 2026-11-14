@@ -168,6 +168,20 @@ EXTRA = {
     # "auto (alto-falante)" was cut there and nowhere a shot looked
     "menu-audio-under": ("demo", "PS1", ["--menu", "Audio Channels"]),
     "menu-clock": ("demo", "PS1", ["--menu", "Language"]),
+    # Date & Time's page (src/main.c's clock_page_rows): Time Zone on Auto
+    # before it has found a zone, with the zone it found and with a long
+    # city; a zone of the list; and what Auto says as it is chosen
+    "datetime-auto": ("demo", "PS1", ["--datetime", "0"]),
+    "datetime-found": ("demo", "PS1", ["--datetime", "1"]),
+    "datetime-long": ("demo", "PS1", ["--datetime", "2"]),
+    "datetime": ("demo", "PS1", ["--datetime", "3"]),
+    "datetime-auto-said": ("demo", "PS1", ["--datetime", "4"]),
+    # Time Zone's list, A on its row: open on its first zone, on its longest
+    # city in the middle, and on Auto with the zone it found, short and long
+    "timezone-list": ("demo", "PS1", ["--datetime", "5"]),
+    "timezone-list-middle": ("demo", "PS1", ["--datetime", "6"]),
+    "timezone-list-auto": ("demo", "PS1", ["--datetime", "7"]),
+    "timezone-list-auto-long": ("demo", "PS1", ["--datetime", "8"]),
     "menu-look": ("demo", "PS1", ["--menu", "Appearance"]),
     "menu-end": ("demo", "PS1", ["--menu", "About ZyperOS"]),
     "language": ("demo", "PS1", ["--language"]),
@@ -209,6 +223,11 @@ EXTRA = {
     "controls-1": ("demo", "PS1", ["--controls", "1"]),
     "controls-2": ("demo", "PS1", ["--controls", "2"]),
     "gamemenu": ("demo", "PS1", ["--gamemenu", "0"]),
+    # A game on more than one disc: the Disc row with the core's name for
+    # the disc (it fits), and with one too long, which reads "Disc 2 of 3"
+    "gamemenu-disc": ("demo", "PS1", ["--gamemenu", "4", "--gm-discs", "3", "FFIX (Disc 2)"]),
+    "gamemenu-disc-long": ("demo", "PS1", ["--gamemenu", "4", "--gm-discs", "3",
+                                           "Final Fantasy IX (USA) (Rev 1) (Disc 2)"]),
     # Achievements offline: the list with unlocks waiting, Zyper saying they
     # went, and the rows of a game never played with a network
     "cheevos-waiting": ("demo", "PS1", ["--cheevos-screen", "0", "--cheevos-waiting", "2"]),
@@ -216,7 +235,13 @@ EXTRA = {
     "ranews-one": ("demo", "PS1", ["--ranews", "1"]),
     "gamemenu-unchecked": ("demo", "PS1", ["--gamemenu", "0", "--cheevos-unchecked"]),
     "info-unchecked": ("demo", "PS1", ["--screen", "games", "--info", "--cheevos-unchecked"]),
-    "gamemenu-display": ("demo", "PS1", ["--gamemenu", "3"]),
+    "gamemenu-display": ("demo", "PS1", ["--gamemenu", "0", "--gm-tab", "1"]),
+    "gamemenu-controls": ("demo", "PS1", ["--gamemenu", "0", "--gm-tab", "2"]),
+    # ...and of a game the launcher has no hash for: a PSP game ("system"),
+    # a PlayStation .chd ("file"), one in each screen; the Achievements row
+    # is on the in-game menu's Game tab
+    "gamemenu-nohash": ("demo", "PS1", ["--gamemenu", "0", "--cheevos-no-hash", "system"]),
+    "info-nohash": ("demo", "PS1", ["--screen", "games", "--info", "--cheevos-no-hash", "file"]),
     "gamecontrols": ("demo", "PS1", ["--gamecontrols", "1", "MD"]),
     "slots": ("demo", "PS1", ["--slots", "0"]),
     "synopsis": ("demo", "PS1", ["--screen", "games", "--info", "--synopsis"]),
@@ -274,8 +299,28 @@ EXTRA = {
     "dev-page-none": ("demo", "PS1", ["--dev-page", "2"]),
     "dev-on": ("demo", "PS1", ["--dev-page", "3"]),
     "empty-ways": ("empty", "", ["--ways", "none,brick"]),
-    # A row whose value is "needs Wi-Fi", the longest it has in most languages
-    "scraper-offline": ("demo", "PS1", ["--scraper", "5"]),
+    # MENU > Scraper's page (DESIGN.md 11.19): the plan with videos off, on
+    # for three systems and for one (the plurals' one), Systems with a long
+    # name in focus too, Videos for, Settings, the run, done (and with one
+    # system's videos), offline, and a system's own Box Art
+    "scraper-page-plan-off": ("demo", "PS1", ["--scraper-page", "0"]),
+    "scraper-page-plan": ("demo", "PS1", ["--scraper-page", "1"]),
+    "scraper-page-plan-one": ("demo", "PS1", ["--scraper-page", "2"]),
+    "scraper-page-systems": ("demo", "PS1", ["--scraper-page", "3"]),
+    "scraper-page-systems-long": ("demo", "PS1", ["--scraper-page", "4"]),
+    "scraper-page-videos-for": ("demo", "PS1", ["--scraper-page", "5"]),
+    "scraper-page-settings": ("demo", "PS1", ["--scraper-page", "6"]),
+    "scraper-page-run": ("demo", "PS1", ["--scraper-page", "7", "7180"]),
+    "scraper-page-done": ("demo", "PS1", ["--scraper-page", "8"]),
+    "scraper-page-done-one": ("demo", "PS1", ["--scraper-page", "9"]),
+    "scraper-page-offline": ("demo", "PS1", ["--scraper-page", "10"]),
+    "scraper-page-boxart": ("demo", "PS1", ["--scraper-page", "11"]),
+    "scraper-page-done-no-account": ("demo", "PS1", ["--scraper-page", "12"]),
+    "scraper-page-plan-short": ("demo", "PS1", ["--scraper-page", "13"]),
+    "scraper-page-videos-for-one": ("demo", "PS1", ["--scraper-page", "14"]),
+    "scraper-page-done-full": ("demo", "PS1", ["--scraper-page", "15"]),
+    # and the Video Snaps page it opens: how the shelf plays them, the room
+    "scraper-video-snaps": ("demo", "PS1", ["--scraper", "3"]),
     # A game's Cover and Video (DESIGN.md 11.34) in every state, a tile of
     # each kind and region focused, Delete's question and the message of a
     # download that did not come; and the details row's other value
@@ -370,6 +415,8 @@ EXTRA.setdefault("usb-menu-wait", ("demo", "PS1", ["--usb-menu", "--menu", "USB 
 EXTRA.setdefault("usb-menu-ask", ("demo", "PS1", ["--usb-menu", "--menu", "USB Accessories"]))
 EXTRA.setdefault("usb-menu-auto", ("demo", "PS1", ["--usb-menu", "auto", "--menu", "USB Accessories"]))
 EXTRA.setdefault("usb-menu-said", ("demo", "PS1", ["--usb-menu", "said"]))
+# Zyper's one-time offer of Automatic, after a second USB Accessory
+EXTRA.setdefault("usb-offer", ("demo", "PS1", ["--usb-offer"]))
 EXTRA.setdefault("usb-mark", ("demo", "PS1", _USB_WAIT))
 # System Update (DESIGN.md 11.17, 2026-11-11): What's New scrolled to its
 # end, the corner's mark of a download behind the shelf, and Zyper's news
@@ -379,9 +426,9 @@ for _k in ("available", "ready"):
     EXTRA.setdefault("update-news-" + _k, ("demo", "PS1", ["--upnews", _k]))
 EXTRA.setdefault("hotspot-waiting", ("demo", "PS1", ["--hotspot", "ZyperOS-7A2B", "q7mx-3kpa", "0 joined", "waiting"]))
 EXTRA.setdefault("gamemenu-dual", ("demo", "PS1", ["--gamemenu", "0", "dual"]))
-# ...on its Stylus row, which the Shader row (2026-11-12) put below the first
-# window of rows
-EXTRA.setdefault("gamemenu-dual-stylus", ("demo", "PS1", ["--gamemenu", "8", "dual"]))
+# ...and its Display tab, where the screens' three rows are, on the Stylus row
+EXTRA.setdefault("gamemenu-dual-display", ("demo", "PS1", ["--gamemenu", "0", "dual", "--gm-tab", "1"]))
+EXTRA.setdefault("gamemenu-dual-stylus", ("demo", "PS1", ["--gamemenu", "4", "dual", "--gm-tab", "1"]))
 # MENU's Shader when a system has its own (SHOT_SETTINGS below): "per system"
 EXTRA.setdefault("menu-shader", ("demo", "PS1", ["--menu", "Shader"]))
 
@@ -415,10 +462,70 @@ def set_files(card, files, on):
             path.touch()
         elif path.exists():
             path.unlink()
+
+
 # The in-game menu's Shader at each old screen, so each name is drawn and fit
-for _s in ("crt", "crt-curved", "scanlines", "lcd"):
-    EXTRA.setdefault("gamemenu-shader-" + _s, ("demo", "PS1", ["--screen", "games", "--gamemenu", "5"]))
+for _s in ("shimmerless", "crt", "crt-curved", "scanlines", "lcd"):
+    EXTRA.setdefault("gamemenu-shader-" + _s, ("demo", "PS1", ["--screen", "games", "--gamemenu", "1", "--gm-tab", "1"]))
     SHOT_SETTINGS["gamemenu-shader-" + _s] = {"shader.PS1": _s}
+
+# The in-game menu's Controls tab (src/ctltab.c), beside the handheld: its
+# end (Reset Buttons, Hotkeys), a button's choices, the system over a game
+# with buttons of its own and the note under it, a game button left with
+# none, Reset Buttons' two questions, the Hotkeys row's pages (at their own
+# width, as the Controls pages are); the Nintendo 64's
+# (Pak, SELECT held for the C buttons) and the Dreamcast's (Face Buttons in
+# each of its three values, the stick on and SELECT held for its d-pad).
+# Their buttons and sticks are the card's library's (SHOT_LIB), the shelf on
+# CTL_FOCUS's game.
+_MGS = "map.PS1." + R.FOCUS + ".chd"
+_SONIC = "Sonic Adventure (USA).chd"
+for _name, _tag, _flags in (
+        ("end", "PS1", ["--gamemenu", "13"]), ("pick", "PS1", ["--gamemenu", "5", "--gm-pick"]),
+        ("all", "PS1", ["--gamemenu", "0", "--gm-all"]), ("warn", "PS1", ["--gamemenu", "3"]),
+        ("ask", "PS1", ["--gamemenu", "12", "--gm-ask"]),
+        ("ask-all", "PS1", ["--gamemenu", "12", "--gm-ask", "--gm-all"]),
+        ("keys", "PS1", ["--gamemenu", "13", "--gm-keys", "0"]),
+        ("keys-ingame", "PS1", ["--gamemenu", "13", "--gm-keys", "1"]),
+        ("n64-end", "N64", ["--gamemenu", "13"]),
+        ("dc", "DC", ["--gamemenu", "2"]), ("dc-end", "DC", ["--gamemenu", "13"]),
+        ("dc-place", "DC", ["--gamemenu", "2"]), ("dc-mixed", "DC", ["--gamemenu", "2"])):
+    EXTRA.setdefault("gamemenu-controls-" + _name,
+                     ("demo", _tag, ["--screen", "games", "--gm-tab", "2"] + _flags))
+# A Nintendo 64 game's Pak row, back in the Controls tab
+EXTRA.setdefault("gamemenu-pak", ("demo", "N64", ["--screen", "games", "--gm-tab", "2", "--gamemenu", "2"]))
+CTL_FOCUS = {"gamemenu-pak": "Mario Kart 64 (USA).z64",
+             "gamemenu-controls-n64-end": "Mario Kart 64 (USA).z64",
+             **{"gamemenu-controls-" + _n: _SONIC for _n in ("dc", "dc-end", "dc-place", "dc-mixed")}}
+# A game's details with its own buttons (Buttons, This Game), and the page that
+# row opens
+EXTRA.setdefault("info-buttons", ("demo", "PS1", ["--screen", "games", "--info"]))
+EXTRA.setdefault("info-buttons-page", ("demo", "PS1", ["--screen", "games", "--info-buttons"]))
+SHOT_LIB = {"info-buttons": {_MGS: "1;b:y,y:b"},
+            "info-buttons-page": {_MGS: "1;b:y,y:b"},
+            "gamemenu-controls-all": {_MGS: "1;b:y,y:b"},
+            "gamemenu-controls-pick": {_MGS: "1;b:y,y:b"},
+            "gamemenu-controls-warn": {_MGS: "1;b:none"},
+            "gamemenu-controls-ask": {_MGS: "1;b:y,y:b"},
+            "gamemenu-controls-ask-all": {"map.PS1": "1;b:y,y:b"},
+            "gamemenu-controls-dc-end": {"stick.DC." + _SONIC: "1"},
+            "gamemenu-controls-dc-place": {"map.DC." + _SONIC: "1;a:a,b:b,x:x,y:y"},
+            "gamemenu-controls-dc-mixed": {"map.DC." + _SONIC: "1;a:a"}}
+
+
+def set_lib(card, settings, on):
+    """A shot's keys (SHOT_LIB) into the card's library, or out of it"""
+    if not settings:
+        return
+    import sqlite3
+    with sqlite3.connect(card / "shared/.zyperos/library.db") as db:
+        db.execute("CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY NOT NULL,value TEXT NOT NULL)")
+        for key, value in settings.items():
+            if on:
+                db.execute("INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)", (key, value))
+            else:
+                db.execute("DELETE FROM settings WHERE key=?", (key,))
+
 
 # MENU's tabs (DESIGN.md 11.3), each the one that is on, its name centered
 # and its neighbours' beside it; Display on its Theme row, with its chips
@@ -456,9 +563,6 @@ for _kind in ("saved", "loaded", "save_failed", "load_failed", "slot_empty", "no
     EXTRA.setdefault("popup-" + _kind, ("demo", "PS1", ["--popup", _kind]))
 EXTRA.setdefault("popup-speed-half", ("demo", "PS1", ["--popup", "speed", "3"]))
 EXTRA.setdefault("popup-speed-whole", ("demo", "PS1", ["--popup", "speed", "4"]))
-# A Nintendo 64 game's in-game menu, with its Pak row (the shelf of a system
-# with a game in it: the card with one in every system)
-EXTRA.setdefault("gamemenu-pak", ("all", "N64", ["--screen", "games", "--gamemenu", "12"]))
 # NES Player 2 (src/p2.h): its page over a paused NES game in every state
 # (--player2), the code on the hotspot with nobody yet and its address under
 # it, a player connected, the cable, before A on each link, with neither
@@ -467,7 +571,7 @@ EXTRA.setdefault("gamemenu-pak", ("all", "N64", ["--screen", "games", "--gamemen
 for _kind in ("hotspot", "connected", "cable", "off", "off-cable", "none", "failed", "starting",
               "closing", "closing-cable"):
     EXTRA.setdefault("player2-" + _kind, ("demo", "NES", ["--screen", "games", "--player2", _kind]))
-EXTRA.setdefault("gamemenu-player2", ("demo", "NES", ["--screen", "games", "--gamemenu", "6",
+EXTRA.setdefault("gamemenu-player2", ("demo", "NES", ["--screen", "games", "--gamemenu", "4",
                                                        "--player2", "connected"]))
 
 # MENU > System Update in the states whose lines are longest, each as the
@@ -588,7 +692,7 @@ def run_language(code, shots, binary, keep):
         out.mkdir(parents=True, exist_ok=True)
         for name, (card_name, tag, flags) in shots.items():
             card = cards[card_name]
-            focus = PORT_FOCUS.get(name) or R.SHOT_FOCUS.get(name) or \
+            focus = PORT_FOCUS.get(name) or CTL_FOCUS.get(name) or R.SHOT_FOCUS.get(name) or \
                 {"PS1": R.FOCUS + ".chd", "SCUMMVM": R.SCUMMVM_FOCUS, "OPENBOR": R.OPENBOR[0],
                  "PRT": "PortMaster.sh"}.get(tag, "")
             (card / "ZyperOS/.last").write_text(tag + "\n" + focus + "\n")
@@ -623,10 +727,12 @@ def run_language(code, shots, binary, keep):
             # A shot's own settings (readme-shots' SHOT_SETTINGS), only while it
             # is taken: the Shader row at its widest value
             R.set_settings(card, SHOT_SETTINGS.get(name), True)
+            set_lib(card, SHOT_LIB.get(name), True)
             set_files(card, SHOT_FILES.get(name), True)
             r = subprocess.run(command, cwd=ROOT, env=env, text=True, errors="replace",
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             R.set_settings(card, SHOT_SETTINGS.get(name), False)
+            set_lib(card, SHOT_LIB.get(name), False)
             set_files(card, SHOT_FILES.get(name), False)
             for line in r.stdout.splitlines():
                 if line.startswith(("i18n: cut data: ", "i18n: slides data: ", "i18n: tight data: ")):

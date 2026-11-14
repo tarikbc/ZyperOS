@@ -9,8 +9,8 @@ import sys
 import tempfile
 
 # src/main.c and the files split from it
-LAUNCHER = ("src/main.c", "src/aout_route.c", "src/bt_screen.c", "src/place.c",
-            "src/portload.c", "src/powerscreens.c", "src/raqueue.c",
+LAUNCHER = ("src/main.c", "src/aout_route.c", "src/bt_screen.c", "src/ctltab_screen.c",
+            "src/place.c", "src/portload.c", "src/powerscreens.c", "src/raqueue.c",
             "src/shelfbuild.c", "src/stats_screen.c", "src/zyperdraw.c")
 source = "\n".join(Path(p).read_text() for p in LAUNCHER)
 source = re.sub(r'/\*.*?\*/|//[^\n]*', '', source, flags=re.S)
@@ -47,7 +47,8 @@ sites = {
     # not start (xs_open), the hotspot stopped (xs_stop), and closed for a game
     # (xs_before_game)
     "xs_open": (2, 0), "xs_stop": (1, 0), "xs_before_game": (1, 0),
-    "art_run": (2, 0), "album_art_screen": (1, 0),
+    # MENU > Scraper's page: A with no network, and A with too little room
+    "scp_page": (0, 2), "album_art_screen": (1, 0),
     "launch_port": (0, 1), "launch": (0, 1),
 }
 for name, counts in sites.items():

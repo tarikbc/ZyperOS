@@ -468,6 +468,13 @@ int gr_follow(const char *folder, const char *tag, const char *file, const char 
 	snprintf(a, sizeof a, "pak.%s.%s", tag, file);
 	snprintf(b, sizeof b, "pak.%s.%s", tag, new_file);
 	n += db_key_move(db_lib(), a, b);
+	/* The game's own buttons and its D-pad as Stick follow the file the same way */
+	snprintf(a, sizeof a, "map.%s.%s", tag, file);
+	snprintf(b, sizeof b, "map.%s.%s", tag, new_file);
+	n += db_key_move(db_lib(), a, b);
+	snprintf(a, sizeof a, "stick.%s.%s", tag, file);
+	snprintf(b, sizeof b, "stick.%s.%s", tag, new_file);
+	n += db_key_move(db_lib(), a, b);
 	snprintf(a, sizeof a, "artsrc.%s/%s", folder, name);
 	snprintf(b, sizeof b, "artsrc.%s/%s", folder, new_name);
 	n += db_key_move(db_lib(), a, b);

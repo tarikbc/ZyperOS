@@ -125,6 +125,28 @@ de = ScreenScraper: zu viele Anfragen, gestoppt
 ja = ScreenScraper：リクエスト過多で停止
 it = ScreenScraper: troppe richieste, fermato
 
+[art.ss_busy]
+note = tight. ScreenScraper is closed to the account for now (full, or closed); it is not asked again this run. The words are art.sg_busy's, shorter in zh-Hans and pt-BR: the heading's line holds about 28 characters and ScreenScraper is the longer name (check-i18n-shots, scraper-refused)
+en = ScreenScraper: too busy
+zh-Hans = ScreenScraper：繁忙
+es = ScreenScraper: saturado
+pt-BR = ScreenScraper: ocupado
+fr = ScreenScraper : surchargé
+de = ScreenScraper: überlastet
+ja = ScreenScraper：混雑中
+it = ScreenScraper: sovraccarico
+
+[art.ss_no_answer]
+note = tight. ScreenScraper did not answer twice in a row; it is not asked again this run. The words are art.sg_no_answer's
+en = ScreenScraper: no answer
+zh-Hans = ScreenScraper：无响应
+es = ScreenScraper: sin respuesta
+pt-BR = ScreenScraper: sem resposta
+fr = ScreenScraper : pas de réponse
+de = ScreenScraper: keine Antwort
+ja = ScreenScraper：応答なし
+it = ScreenScraper: nessuna risposta
+
 [art.sg_refused]
 note = tight. SteamGridDB refused the key; it is not asked again this run
 en = SteamGridDB: key refused

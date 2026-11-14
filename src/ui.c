@@ -3458,6 +3458,90 @@ static void g_build(ui_glyph g, g_shape *s)
 		}
 		return;
 	}
+	if (g == UI_GLYPH_COVER) {
+		/* A box, upright, its corners cut, and a picture on it: a hill
+		 * and the sun */
+		g_line(s, 0.30f, 0.08f, 0.70f, 0.08f, G_W);
+		g_line(s, 0.70f, 0.08f, 0.76f, 0.14f, G_W);
+		g_line(s, 0.76f, 0.14f, 0.76f, 0.86f, G_W);
+		g_line(s, 0.76f, 0.86f, 0.70f, 0.92f, G_W);
+		g_line(s, 0.70f, 0.92f, 0.30f, 0.92f, G_W);
+		g_line(s, 0.30f, 0.92f, 0.24f, 0.86f, G_W);
+		g_line(s, 0.24f, 0.86f, 0.24f, 0.14f, G_W);
+		g_line(s, 0.24f, 0.14f, 0.30f, 0.08f, G_W);
+		g_line(s, 0.33f, 0.72f, 0.44f, 0.54f, G_W);
+		g_line(s, 0.44f, 0.54f, 0.53f, 0.66f, G_W);
+		g_line(s, 0.53f, 0.66f, 0.59f, 0.58f, G_W);
+		g_line(s, 0.59f, 0.58f, 0.67f, 0.72f, G_W);
+		g_line(s, 0.58f, 0.32f, 0.58f, 0.32f, 0.07f);
+		return;
+	}
+	if (g == UI_GLYPH_FILM) {
+		/* A screen, wide, its corners cut, and a play triangle in it */
+		g_line(s, 0.14f, 0.20f, 0.86f, 0.20f, G_W);
+		g_line(s, 0.86f, 0.20f, 0.92f, 0.26f, G_W);
+		g_line(s, 0.92f, 0.26f, 0.92f, 0.74f, G_W);
+		g_line(s, 0.92f, 0.74f, 0.86f, 0.80f, G_W);
+		g_line(s, 0.86f, 0.80f, 0.14f, 0.80f, G_W);
+		g_line(s, 0.14f, 0.80f, 0.08f, 0.74f, G_W);
+		g_line(s, 0.08f, 0.74f, 0.08f, 0.26f, G_W);
+		g_line(s, 0.08f, 0.26f, 0.14f, 0.20f, G_W);
+		s->tri[s->ntri++] = (g_tri){ 0.42f, 0.36f, 0.42f, 0.64f, 0.65f, 0.50f };
+		return;
+	}
+	if (g == UI_GLYPH_CLOUD) {
+		/* A cloud: a flat foot, a small bump each side and a big one on
+		 * top - ScreenScraper, the one asked over the internet */
+		g_line(s, 0.26f, 0.74f, 0.76f, 0.74f, G_W);
+		g_arc(s, 0.26f, 0.60f, 0.14f, 0.5f * pi, 1.5f * pi);
+		g_arc(s, 0.50f, 0.48f, 0.21f, 1.05f * pi, 1.95f * pi);
+		g_arc(s, 0.76f, 0.60f, 0.14f, 1.5f * pi, 2.5f * pi);
+		return;
+	}
+	if (g == UI_GLYPH_BOOK) {
+		/* An open book: two pages from the spine - libretro's catalog */
+		g_line(s, 0.50f, 0.30f, 0.12f, 0.22f, G_W);
+		g_line(s, 0.12f, 0.22f, 0.12f, 0.78f, G_W);
+		g_line(s, 0.12f, 0.78f, 0.50f, 0.86f, G_W);
+		g_line(s, 0.50f, 0.30f, 0.88f, 0.22f, G_W);
+		g_line(s, 0.88f, 0.22f, 0.88f, 0.78f, G_W);
+		g_line(s, 0.88f, 0.78f, 0.50f, 0.86f, G_W);
+		g_line(s, 0.50f, 0.30f, 0.50f, 0.86f, G_W);
+		return;
+	}
+	if (g == UI_GLYPH_HEART) {
+		/* A heart: two lobes and the point under them - the favorites */
+		g_arc(s, 0.33f, 0.36f, 0.17f, 0.75f * pi, 2.0f * pi);
+		g_arc(s, 0.67f, 0.36f, 0.17f, pi, 2.25f * pi);
+		g_line(s, 0.21f, 0.48f, 0.50f, 0.84f, G_W);
+		g_line(s, 0.79f, 0.48f, 0.50f, 0.84f, G_W);
+		return;
+	}
+	if (g == UI_GLYPH_CLOCK) {
+		/* A clock face and its two hands - how long a run takes. The face
+		 * in four quarters: g_arc's six steps make a whole one a hexagon */
+		int q;
+
+		for (q = 0; q < 4; q++) g_arc(s, 0.50f, 0.50f, 0.38f, q * 0.5f * pi, (q + 1) * 0.5f * pi);
+		g_line(s, 0.50f, 0.50f, 0.50f, 0.26f, G_W);
+		g_line(s, 0.50f, 0.50f, 0.68f, 0.60f, G_W);
+		return;
+	}
+	if (g == UI_GLYPH_GRID) {
+		/* Four squares, two by two - SteamGridDB */
+		static const float o[4][2] = { { 0.14f, 0.14f }, { 0.56f, 0.14f }, { 0.14f, 0.56f }, { 0.56f, 0.56f } };
+		int i;
+
+		for (i = 0; i < 4; i++) {
+			float x = o[i][0], y = o[i][1], d = 0.30f;
+
+			g_line(s, x, y, x + d, y, G_W);
+			g_line(s, x + d, y, x + d, y + d, G_W);
+			g_line(s, x + d, y + d, x, y + d, G_W);
+			g_line(s, x, y + d, x, y, G_W);
+		}
+		return;
+	}
 	if (g == UI_GLYPH_CHECK) {
 		/* A tick, the finish's own, alone and a stroke heavier */
 		g_line(s, 0.14f, 0.54f, 0.38f, 0.78f, G_W * 1.4f);
@@ -3578,13 +3662,14 @@ static SDL_Texture *g_render(SDL_Renderer *r, ui_glyph g, int size)
 }
 
 /* A handful of (mark, size) pairs is all a screen asks for. */
-static struct { ui_glyph g; int size; SDL_Texture *tex; } g_cache[8];
+#define G_CACHE 32   /* a glyph a size: MENU > Scraper's page draws ~20 at once */
+static struct { ui_glyph g; int size; SDL_Texture *tex; } g_cache[G_CACHE];
 
 static void glyphs_free(void)
 {
 	int i;
 
-	for (i = 0; i < 8; i++)
+	for (i = 0; i < G_CACHE; i++)
 		if (g_cache[i].tex) { SDL_DestroyTexture(g_cache[i].tex); g_cache[i].tex = NULL; }
 }
 
@@ -3595,7 +3680,7 @@ void ui_glyph_draw(SDL_Renderer *r, ui_glyph g, int cx, int cy, int size,
 	int i, free_slot = -1;
 
 	if (g < 0 || g >= UI_GLYPH_COUNT || size <= 0) return;
-	for (i = 0; i < 8; i++) {
+	for (i = 0; i < G_CACHE; i++) {
 		if (g_cache[i].tex && g_cache[i].g == g && g_cache[i].size == size) {
 			t = g_cache[i].tex;
 			break;

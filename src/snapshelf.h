@@ -45,4 +45,23 @@ const char *snapshelf_step(snapshelf *s, const char *path, bool front,
 /* Whether the cover is turning one way or the other: a frame is wanted. */
 bool snapshelf_moving(const snapshelf *s);
 
+/* WHICH FILE, AND WHEN TO LOOK AGAIN. The shelf works out the focused
+ * game's snap file when the focus moves, not every frame (a stat or two).
+ * It must also look again when the card's media changed under the same
+ * focus: a Box Art run from a shelf, or MENU > Scraper, can bring the very
+ * game's snap while the shelf keeps its focus under the page (2026-11-14,
+ * on the Pixel 2: "after i download a video from A4, and go back to the game
+ * list, the video doesnt render automaticlaly"). A run says so with
+ * snapshelf_media_changed; snapshelf_refocus compares where the file was
+ * worked out with where the shelf is now, generation and all. Pure. */
+typedef struct {
+	int         sys, cursor;
+	const char *file;        /* the game's file, relative to its system */
+	unsigned    gen;         /* snapshelf_media_gen() when worked out */
+} snapshelf_at;
+
+void snapshelf_media_changed(void);
+unsigned snapshelf_media_gen(void);
+bool snapshelf_refocus(snapshelf_at was, snapshelf_at now);
+
 #endif

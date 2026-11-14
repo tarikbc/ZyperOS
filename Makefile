@@ -7,10 +7,10 @@
 
 .PHONY: all clean native px2-payload vendor boot system-art checkmark \
         check check-cheevos check-hare check-portal check-httpd check-idle check-taskhold check-saver check-rahash check-signin check-search \
-        check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-status check-battery check-corner check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
+        check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-status check-battery check-corner check-artscrape check-artrun check-sgdb check-snapshelf check-snaps check-audioout \
         check-db check-gamedel check-gamern check-esmedia check-corepins check-targets yuvtarget check-storage check-stats check-sort check-bt check-ss check-titles check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-randgame check-shelfdir \
         check-sysmark check-flip check-menushots check-controls-shots check-design check-systemart check-linebreak check-portload \
-        check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages check-tour check-tour-shots check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-portdoc check-boottheme check-px2-push check-captive check-mdns check-linksteps check-usbrole check-usbdrive check-gauge check-usbpower check-phonelink check-usblog check-clients check-keyhints check-pace check-qr \
+        check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages check-tour check-tour-shots check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-portdoc check-boottheme check-px2-push check-captive check-mdns check-linksteps check-usbrole check-usbdrive check-gauge check-usbpower check-phonelink check-usblog check-clients check-keyhints check-pace check-qr check-autozone \
         check-home check-home-shots check-games check-cardpaint check-putpace landbench check-favorites-shots check-np-footer check-layout-shots check-artbadge check-artbadge-shots design sounds strings cjk-font check-strings check-i18n-shots \
         check-tour-previews tour-previews check-prep check-diatom check-simulator check-px2sim check-building-doc check-blog check-discord-release \
         check-installer release
@@ -29,10 +29,10 @@ NATIVE_J = $(if $(filter -j%,$(MAKEFLAGS))$(findstring j,$(filter-out -%,$(first
 # of good intentions is a plan. A check nobody runs is a check that does not
 # exist, and check-menus was about to join eight others in that state.
 CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-taskhold check-saver check-rahash check-rasubmit check-raoffline check-signin check-noticeq check-badges check-badge-shots \
-         check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
+         check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-snaps check-audioout \
          check-db check-gamedel check-gamern check-esmedia check-media check-snapsize check-corepins check-targets check-storage check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
-         check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-p2share check-webtheme check-p2ws check-p2codec check-p2d check-play check-p2 check-resident check-controls check-controls-shots check-logpack \
-         check-clock check-status check-battery check-battery-eta check-dslang check-dsresume check-corestate check-core-stamp check-core-room check-px2-perf check-px2-snap check-px2 check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-randgame check-shelfdir check-look \
+         check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-p2share check-webtheme check-p2ws check-p2codec check-p2d check-play check-p2 check-resident check-controls check-remap check-controls-shots check-logpack \
+         check-clock check-autozone check-status check-battery check-battery-eta check-dslang check-dsresume check-corestate check-core-stamp check-core-room check-px2-perf check-px2-snap check-px2 check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-randgame check-shelfdir check-look \
          check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-sysmark check-flip check-menushots check-design \
          check-systemart check-linebreak check-portload check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages \
          check-tour check-tour-shots check-tour-previews check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-pmart check-portdoc check-boottheme check-panelgamma check-px2-push check-captive check-mdns check-linksteps check-usbrole check-usbdrive check-gauge check-usbpower check-phonelink check-usblog check-clients check-keyhints check-pace check-qr \
@@ -494,10 +494,10 @@ check-portdoc: build-native/portdoc-check
 	@./build-native/portdoc-check
 
 build-native/portdoc-check: tools/portdoc-check.c src/portdoc.c src/portdoc.h src/rajson.c src/rajson.h \
-                           src/controls.c src/controls.h src/portmenu.h src/menu.h $(I18N_SRC) FORCE
+                           src/controls.c src/controls.h src/remap.c src/remap.h src/portmenu.h src/menu.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -o $@ tools/portdoc-check.c src/portdoc.c \
-	      src/rajson.c src/controls.c $(I18N_SRC)
+	      src/rajson.c src/controls.c src/remap.c $(I18N_SRC)
 
 # plastron's make push writes the system slot the Pixel 2 is not running,
 # never the one it runs from (scripts/px2-slot.sh): the slot choice, the
@@ -1090,32 +1090,48 @@ check-systemart:
 check-controls: build-native/controls-check
 	@./build-native/controls-check
 
+# The remap rules, pure: Diatom's map language read and written, the swap rule
+# of a button's change, what is stored for a scope, and the choices a system
+# offers (docs/superpowers/specs/2026-11-13-button-remap-design.md).
+check-remap: build-native/remap-check
+	@./build-native/remap-check
+
+build-native/remap-check: tools/remap-check.c src/remap.c src/remap.h src/remapstore.c src/remapstore.h src/controls.c \
+                          src/controls.h src/padglyph.h src/menu.h src/config.c src/config.h \
+                          src/db.c src/db.h src/atomic.c config/systems.cfg \
+                          $(I18N_SRC) FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
+	      -o $@ tools/remap-check.c src/remap.c src/remapstore.c src/controls.c src/config.c src/db.c src/atomic.c \
+	      $(I18N_SRC) -lsqlite3
+
 # The in-game Controls pages and the home's A to Z order, drawn
 check-controls-shots:
 	@if pkg-config --exists sdl2 SDL2_image SDL2_ttf 2>/dev/null; then \
 		$(MAKE) --no-print-directory native || exit 1; \
 	fi
-	@sh tools/controls-shots-check.sh
+	@PYIMG='$(PYIMG)' sh tools/controls-shots-check.sh
 
 build-native/controls-check: tools/controls-check.c tools/legend.h src/controls.c \
-                            src/controls.h src/padglyph.h src/menu.h src/config.c src/config.h \
+                            src/controls.h src/remap.c src/remap.h src/padglyph.h src/menu.h src/config.c src/config.h \
                             src/db.c src/db.h src/atomic.c config/systems.cfg \
                             $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/controls-check.c src/controls.c src/config.c src/db.c src/atomic.c \
+	      -o $@ tools/controls-check.c src/controls.c src/remap.c src/config.c src/db.c src/atomic.c \
 	      $(I18N_SRC) -lsqlite3
 
 build-native/menu-check: tools/menu-check.c tools/legend.h src/wifi_menu.c src/wifi.c \
-                        src/sys_menu.c src/menu.c src/game_menu.c src/controls.c \
+                        src/sys_menu.c src/menu.c src/game_menu.c src/controls.c src/remap.c \
+                        src/ctltab.c src/ctltab.h src/tdkey.h src/padglyph.h \
                         src/audioout.c src/sidelights.c src/wifi_menu.h src/sys_menu.h \
                         src/game_menu.h src/menu.h src/audioout.h src/sidelights.h \
                         src/controls.h src/spawn.c src/spawn.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -o $@ \
 	      tools/menu-check.c src/wifi_menu.c src/wifi.c src/sys_menu.c \
-	      src/menu.c src/game_menu.c src/controls.c src/audioout.c src/sidelights.c \
-	      src/keyhints.c src/spawn.c $(I18N_SRC)
+	      src/menu.c src/game_menu.c src/controls.c src/remap.c src/ctltab.c src/audioout.c \
+	      src/sidelights.c src/keyhints.c src/spawn.c $(I18N_SRC)
 
 # What the launcher tells the side lights' gauge (src/sidelights.h): the lines
 # as plastron's gauge reads them, the FIFO writer that never waits and never
@@ -1226,7 +1242,8 @@ build-native/saver-check: tools/saver-check.c src/saver.c src/saver.h src/idle.c
 	      -o $@ tools/saver-check.c src/saver.c src/idle.c
 
 # Date & Time: each row moving only itself, the 12-hour and 24-hour words, the
-# shelf's short clock, and the zone list running west to east - see
+# shelf's short clock, the zone list running west to east, and Time Zone's
+# list with its rule (a zone picked by hand turns Auto off) - see
 # tools/clock-check.c.
 check-clock: build-native/clock-check
 	@./build-native/clock-check
@@ -1260,6 +1277,23 @@ build-native/clock-check: tools/clock-check.c src/clock.c src/clock.h src/menu.h
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
 	      -o $@ tools/clock-check.c src/clock.c $(I18N_SRC)
+
+# Date & Time's Auto: ipwho.is's reply read (and refusals, pages that are not
+# JSON, replies cut short and names that are paths not), the zone it comes to
+# (the name the system has, else the offset's), the row's words, when it
+# asks, and 1.0.5's default on scratch databases (on for a new card, switched
+# on once for a card from before, a zone picked after it kept) - see
+# tools/autozone-check.c.
+check-autozone: build-native/autozone-check
+	@./build-native/autozone-check
+
+build-native/autozone-check: tools/autozone-check.c src/autozone.c src/autozone.h src/clock.c src/clock.h \
+                             src/rajson.c src/rajson.h src/menu.h src/db.c src/db.h src/atomic.c \
+                             $(I18N_SRC) FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
+	      -o $@ tools/autozone-check.c src/autozone.c src/clock.c src/rajson.c src/db.c src/atomic.c \
+	      $(I18N_SRC) -lsqlite3 -lpthread
 
 # The device's title matcher against the host tool's. A drift here does not
 # fail, it just finds fewer games - see tools/artscrape-check.c.
@@ -1302,6 +1336,16 @@ build-native/sgdb-check: tools/sgdb-check.c src/sgdb.c src/sgdb.h src/sgdbrun.c 
 	      -DINDEX_TMP='"$(CURDIR)/build-native/sgdb-check-artindex"' -DDAT_TMP='"$(CURDIR)/build-native/sgdb-check-artdat"' \
 	      -o $@ tools/sgdb-check.c src/sgdb.c src/sgdbrun.c src/artscrape.c src/artsrc.c src/rajson.c \
 	      src/urlenc.c src/library.c src/db.c $(I18N_SRC) -lsqlite3 -lpthread
+
+# Which systems get videos and for which games (src/snaps.h): off to start,
+# 1.0.4's setting kept, a system's own switch, Videos for.
+check-snaps: build-native/snaps-check
+	@./build-native/snaps-check
+
+build-native/snaps-check: tools/snaps-check.c src/snaps.c src/snaps.h src/db.c src/db.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Isrc \
+	      -o $@ tools/snaps-check.c src/snaps.c src/db.c -lsqlite3
 
 # When the shelf's cover turns into its video snap and back (src/snapshelf.h),
 # on a clock the check moves by hand.

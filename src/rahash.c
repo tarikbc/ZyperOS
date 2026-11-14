@@ -117,12 +117,17 @@ static uint32_t rd32(const unsigned char *p)
 	       ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
 }
 
-/* The disc containers ZyperOS's shelves take (src/library.c's list, less .bin,
- * which is a cartridge too). */
+/* The disc containers ZyperOS's shelves take: src/library.c's list, less .bin,
+ * which is a cartridge too, and the Dreamcast's .cdi and .gdi, which that list
+ * has no folder to rank. .cso and .mds were missing until 2026-11-14, so a
+ * PSP .cso, up to 1.8 GB, was read whole into memory beside the game it was
+ * running, for a hash of the container that no game has; a .cdi was the same,
+ * up to 700 MB. */
 static bool is_disc_image(const char *path)
 {
 	static const char *const ext[] = {
-		"chd", "cue", "ccd", "toc", "iso", "img", "m3u", "pbp", "mdf", "cbn", NULL
+		"chd", "cue", "ccd", "toc", "iso", "cso", "img", "m3u", "pbp", "mdf",
+		"cbn", "mds", "cdi", "gdi", NULL
 	};
 	const char *dot = strrchr(path, '.'), *slash = strrchr(path, '/');
 	int i;
@@ -329,8 +334,10 @@ static bool n64_to_z64(unsigned char *d, size_t n)
  *   .pbp  RetroAchievements does not hash PlayStation PBPs at all: rcheevos
  *         files the extension under the PSP. A PBP has no hash to find.
  *
- * Both answer false, which the launcher already reads as "no set to fetch".
- * Converting a .chd to .cue/.bin is how such a game gets its achievements. */
+ * Both answer false, unread (refused_by_name), which the launcher reads as "no
+ * set to fetch", and its Achievements rows as "not for this file"
+ * (ra_hash_support). Converting a .chd to .cue/.bin is how such a game gets
+ * its achievements. */
 typedef struct {
 	FILE *f;
 	long  ss;        /* bytes a sector takes in the file: 2352, 2336 or 2048 */
@@ -622,6 +629,54 @@ void ra_md5_hex(const void *data, size_t len, char *out)
 	md5_hex(&m, out);
 }
 
+/* What ra_hash_rom refuses by the file's name, before it opens it: a disc it
+ * has no walk for. The PlayStation's walk reads a .cue (and an .m3u's first
+ * disc), a bare .bin, .iso or .img, and nothing else (ra_hash_psx); an arcade
+ * set is hashed by its name, whatever the file is.
+ *
+ * Any other system's disc is refused UNREAD. Only the PlayStation's has a
+ * walk here, and the cartridge path reads a file whole: a Sega CD or Neo Geo
+ * CD .chd is 100 to 430 MB, which on the Pixel 2's 1 GB, beside the game that
+ * is running, is the whole problem, for a hash of the container that no game
+ * has. .bin is not on the list, because it is also what a Genesis or 2600
+ * cartridge is called. */
+static bool refused_by_name(const char *tag, const char *path)
+{
+	if (!strcmp(tag, "PS1"))
+		return !has_ext(path, "m3u") && !has_ext(path, "cue") &&
+		       !has_ext(path, "bin") && !has_ext(path, "iso") &&
+		       !has_ext(path, "img");
+	if (!strcmp(tag, "ARCADE") || !strcmp(tag, "NEOGEO") || !strcmp(tag, "MAME"))
+		return false;
+	return is_disc_image(path);
+}
+
+ra_hash_kind ra_hash_support(const char *tag, const char *path, const char *exts)
+{
+	const char *p = exts;
+
+	if (!tag || !path) return RA_HASH_NO_FILE;
+	if (!refused_by_name(tag, path)) return RA_HASH_OK;
+
+	/* Refused. Is any kind of file this shelf takes not? Asked of a name made
+	 * of each of its extensions, by the same test, in systems.cfg's own
+	 * spelling of a list (commas, or spaces, as src/library.c reads it). */
+	while (p && *p) {
+		char probe[40];
+		size_t n = 0;
+
+		while (*p == ',' || *p == ' ') p++;
+		while (p[n] && p[n] != ',' && p[n] != ' ') n++;
+		if (n && n < sizeof probe - 3) {
+			snprintf(probe, sizeof probe, "x.%.*s", (int)n, p);
+			if (!refused_by_name(tag, probe)) return RA_HASH_NO_FILE;
+		}
+		p += n;
+	}
+	/* An empty list takes every file, so another kind may be read */
+	return exts && *exts ? RA_HASH_NO_SYSTEM : RA_HASH_NO_FILE;
+}
+
 bool ra_hash_rom(const char *path, const char *tag, char *out)
 {
 	unsigned char *data = NULL;
@@ -630,6 +685,10 @@ bool ra_hash_rom(const char *path, const char *tag, char *out)
 
 	if (!path || !tag || !out) return false;
 	out[0] = '\0';
+
+	/* The one test ra_hash_support asks too, so the rows and this cannot
+	 * disagree about which games have no hash */
+	if (refused_by_name(tag, path)) return false;
 
 	/* Before anything reads the file: a disc is hashed by what is on it. */
 	if (!strcmp(tag, "PS1")) return ra_hash_psx(path, out);
@@ -650,13 +709,7 @@ bool ra_hash_rom(const char *path, const char *tag, char *out)
 		return true;
 	}
 
-	/* Any other disc is refused UNREAD. Only the PlayStation's has a walk
-	 * here, and the path below reads a file whole: a Sega CD or Neo Geo CD
-	 * .chd is 100 to 430 MB, which on the Pixel 2's 1 GB, beside the game
-	 * that is running, is the whole problem, for a hash of the container
-	 * that no game has. .bin is not on the list, because it is also what a
-	 * Genesis or 2600 cartridge is called. */
-	if (is_disc_image(path)) return false;
+	/* Any other disc was refused above, unread (refused_by_name) */
 
 	if (is_zip(path)) {
 		data = zip_largest(path, &len);

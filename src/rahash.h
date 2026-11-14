@@ -25,6 +25,30 @@
  * not be read or the archive could not be opened. */
 bool ra_hash_rom(const char *path, const char *tag, char *out);
 
+/* Whether ra_hash_rom could identify a game at all, decided from the file's
+ * name alone: nothing is read, so the Achievements rows can ask it on every
+ * open, with or without a network.
+ *
+ *   RA_HASH_OK         it may: the hash it makes may still be one
+ *                      RetroAchievements does not know, which only asking
+ *                      tells
+ *   RA_HASH_NO_FILE    this kind of file is refused unread (a .chd on the
+ *                      PlayStation), though another the shelf takes is not
+ *   RA_HASH_NO_SYSTEM  every kind of file the shelf takes is (`exts`,
+ *                      systems.cfg's list): the PSP, whose discs have no walk
+ *                      here, nor any other disc-only system's
+ *
+ * Not OK is final, so a row says so rather than "not checked yet", which
+ * promises a play with Wi-Fi that would ask nothing. ra_hash_rom refuses by
+ * the same test before it opens the file, so the two cannot disagree. */
+typedef enum {
+	RA_HASH_OK,
+	RA_HASH_NO_FILE,
+	RA_HASH_NO_SYSTEM,
+} ra_hash_kind;
+
+ra_hash_kind ra_hash_support(const char *tag, const char *path, const char *exts);
+
 /* Plain MD5 of a buffer, same 33-byte output. Exposed because submitting an
  * unlock needs one too: RetroAchievements signs the request with
  * md5(achievement id + username + hardcore flag) and checks it server-side.

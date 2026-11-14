@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include "i18n.h"
 
@@ -176,6 +177,144 @@ int clock_zone_step(const char *id, int d)
 	if (i < 0) i = 0;
 	if (i >= CLOCK_ZONE_COUNT) i = CLOCK_ZONE_COUNT - 1;
 	return i;
+}
+
+int clock_zone_step_auto(const char *id, bool autoz, int d)
+{
+	int i;
+
+	if (autoz) return d > 0 ? 0 : CLOCK_ZONE_AUTO;
+	i = clock_zone_find(id);
+	if (i == 0 && d < 0) return CLOCK_ZONE_AUTO;
+	return clock_zone_step(id, d);
+}
+
+static bool zone_letter(char c)
+{
+	return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+}
+
+bool clock_zone_name_ok(const char *id)
+{
+	size_t i, n;
+
+	if (!id || !id[0]) return false;
+	n = strlen(id);
+	if (n > 63) return false;
+	for (i = 0; i < n; i++) {
+		char c = id[i];
+
+		/* each part starts with a letter: the first, and each after a / */
+		if ((i == 0 || id[i - 1] == '/') && !zone_letter(c)) return false;
+		if (!zone_letter(c) && !(c >= '0' && c <= '9') && c != '_' && c != '+' &&
+		    c != '-' && c != '/')
+			return false;
+	}
+	return id[n - 1] != '/';
+}
+
+bool clock_zone_have(const char *id)
+{
+	char path[sizeof CLOCK_ZONEINFO + 72];
+	struct stat st;
+
+	if (clock_zone_find(id) >= 0) return true;
+	if (!clock_zone_name_ok(id)) return false;
+	snprintf(path, sizeof path, "%s/%s", CLOCK_ZONEINFO, id);
+	return stat(path, &st) == 0 && S_ISREG(st.st_mode);
+}
+
+void clock_zone_city(const char *id, char *out, size_t n)
+{
+	const char *last;
+	size_t i;
+	int z = clock_zone_find(id);
+
+	if (!n) return;
+	if (z >= 0) { snprintf(out, n, "%s", CLOCK_ZONES[z].city); return; }
+	if (!id || !id[0]) { out[0] = '\0'; return; }
+	/* Etc/GMT-3 is three hours east: POSIX's sign, the other way round */
+	if (!strncmp(id, "Etc/GMT", 7) && (id[7] == '+' || id[7] == '-') && id[8]) {
+		snprintf(out, n, "UTC%c%s", id[7] == '+' ? '-' : '+', id + 8);
+		return;
+	}
+	if (!strcmp(id, "Etc/GMT") || !strcmp(id, "Etc/UTC")) { snprintf(out, n, "UTC"); return; }
+	last = strrchr(id, '/');
+	snprintf(out, n, "%s", last ? last + 1 : id);
+	for (i = 0; out[i]; i++)
+		if (out[i] == '_') out[i] = ' ';
+}
+
+void clock_zone_value(const char *id, bool autoz, const char *found, char *out,
+                      size_t n)
+{
+	char city[64];
+	int z;
+
+	if (!autoz) {
+		z = clock_zone_find(id);
+		snprintf(out, n, "%s", z >= 0 ? CLOCK_ZONES[z].city : id ? id : "");
+		return;
+	}
+	if (!id || !found || !found[0] || strcmp(found, id)) {
+		snprintf(out, n, "%s", T(S_CLOCK_ZONE_AUTO));
+		return;
+	}
+	clock_zone_city(id, city, sizeof city);
+	snprintf(out, n, T(S_CLOCK_ZONE_AUTO_FOUND), city);
+}
+
+clock_zone_change clock_zone_choose(const char *id, bool autoz, int choice)
+{
+	clock_zone_change c = { false, false, NULL };
+
+	if (choice == CLOCK_ZONE_AUTO) {
+		c.auto_on = true;
+		c.auto_chosen = !autoz;
+		return c;
+	}
+	if (choice < 0 || choice >= CLOCK_ZONE_COUNT) {   /* no choice: as it is */
+		c.auto_on = autoz;
+		return c;
+	}
+	if (autoz || !id || strcmp(id, CLOCK_ZONES[choice].id)) c.zone = CLOCK_ZONES[choice].id;
+	return c;
+}
+
+int clock_zone_list(const char *id, bool autoz, const char *found, menu_row *rows,
+                    int max, char *auto_buf, size_t n)
+{
+	int i, k = 0;
+
+	if (k < max) {
+		clock_zone_value(id, true, autoz ? found : "", auto_buf, n);
+		rows[k++] = (menu_row){ auto_buf, NULL, true };
+	}
+	for (i = 0; i < CLOCK_ZONE_COUNT && k < max; i++)
+		rows[k++] = (menu_row){ CLOCK_ZONES[i].city, NULL, true };
+	return k;
+}
+
+int clock_zone_list_on(const char *id, bool autoz)
+{
+	int z;
+
+	if (autoz) return 0;
+	z = clock_zone_find(id);
+	return z >= 0 ? z + 1 : -1;
+}
+
+int clock_zone_list_row(const char *id, bool autoz)
+{
+	int on = clock_zone_list_on(id, autoz);
+
+	return on >= 0 ? on : 1 + clock_zone_find("America/New_York");
+}
+
+int clock_zone_list_choice(int row)
+{
+	if (row == 0) return CLOCK_ZONE_AUTO;
+	return row >= 1 && row <= CLOCK_ZONE_COUNT ? row - 1 : -2;
 }
 
 /* ---- the screen's rows --------------------------------------------------------- */

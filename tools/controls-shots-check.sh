@@ -49,7 +49,7 @@ run() {
 	ZYPEROS_HEADLESS=1 SDL_VIDEODRIVER=dummy SDL_RENDER_DRIVER=software \
 	SDL_AUDIODRIVER=dummy \
 	ZYPEROS_ROOT="$D/root" ZYPEROS_CARD="$D" ZYPEROS_ROMS="$D/Roms" \
-	ZYPEROS_USERDATA="$D/userdata" ZYPEROS_SHARED="$D/shared" ZYPEROS_WEB="$D" \
+	ZYPEROS_USERDATA="$D/userdata" ZYPEROS_SHARED="${SHARED:-$D/shared}" ZYPEROS_WEB="$D" \
 	ZYPEROS_FONT=res/fonts/menu.ttf "$BIN" "$@"
 }
 
@@ -65,6 +65,19 @@ shot() {
 
 same()  { cmp -s "$D/$2.png" "$D/$3.png" || fail "$1 ($D/$2.png against $D/$3.png)"; }
 other() { cmp -s "$D/$2.png" "$D/$3.png" && fail "$1 ($D/$2.png is $D/$3.png)"; }
+# The same pixels in the screen's left edge, outside every panel (x 0 to 7,
+# y 100 to 699): the same backdrop under two panels. With Pillow, which make
+# passes as PYIMG; without it, said and not judged.
+edge() {
+	if [ -z "${PYIMG:-}" ]; then
+		echo "  (no Python with Pillow: $1 not judged)"
+		return
+	fi
+	"$PYIMG" -c 'import sys
+from PIL import Image
+a, b = (Image.open(p).convert("RGB").crop((0, 100, 8, 700)).tobytes() for p in sys.argv[1:3])
+sys.exit(a != b)' "$D/$2.png" "$D/$3.png" || fail "$1 ($D/$2.png against $D/$3.png, the left edge)"
+}
 
 echo "the in-game Controls pages, still, each its own"
 # tag:pages - Genesis's buttons, then Hotkeys and In a game; the Nintendo 64
@@ -137,6 +150,19 @@ fi
 measured=$(sed -n 's/^controls-fit: \([0-9]*\) pages measured.*/\1/p' "$D/one.log")
 [ "${measured:-0}" -gt 150 ] || fail "the fit test measured ${measured:-no} pages"
 
+echo "the Controls tab's handheld stays in its kept box, every pose and turn"
+# ctlscr_box_check: each row's pose, every frame of the turn from one row's
+# to another's and of coming in with the rows, measured against the box the
+# texture it is kept in covers (a box too small cuts the figure off)
+run --shot "$D/box.png" --theme light --handheld-box tab >"$D/one.log" 2>&1
+cat "$D/one.log" >>"$D/log"
+if grep -q '^HANDHELD-BOX:' "$D/one.log"; then
+	grep '^HANDHELD-BOX:' "$D/one.log" | head -5 | sed 's/^/  FAIL /'
+	fails=$((fails + 1))
+fi
+measured=$(sed -n 's/^handheld-box: \([0-9]*\) poses of the Controls tab.*/\1/p' "$D/one.log")
+[ "${measured:-0}" -gt 10000 ] || fail "the box check measured ${measured:-no} poses of the Controls tab"
+
 echo "the home's Controls pages, each its own"
 for th in light dark; do
 	p=0
@@ -147,14 +173,106 @@ for th in light dark; do
 	done
 done
 
-echo "the in-game menu has Quick Slot after Load, Controls after Display"
+echo "the in-game menu is in tabs: Game, Display and Controls, MENU's tab row"
+# Quick Slot after Load on the Game tab, Display and Shader on the Display tab,
+# and the Controls tab (its rows come with the remap screen) drawn empty
 for th in light dark; do
-	shot "gamemenu-$th" --theme "$th" --screen games --gamemenu 5
-	shot "gamemenu-display-$th" --theme "$th" --screen games --gamemenu 4
-	shot "gamemenu-quick-$th" --theme "$th" --screen games --gamemenu 3
-	other "$th: the sixth row is not Display" "gamemenu-$th" "gamemenu-display-$th"
-	other "$th: the fourth row is not Display" "gamemenu-quick-$th" "gamemenu-display-$th"
+	shot "gamemenu-$th" --theme "$th" --screen games --gamemenu 3 --gm-tab 0
+	shot "gamemenu-display-$th" --theme "$th" --screen games --gamemenu 0 --gm-tab 1
+	shot "gamemenu-shader-$th" --theme "$th" --screen games --gamemenu 1 --gm-tab 1
+	shot "gamemenu-controls-$th" --theme "$th" --screen games --gamemenu 0 --gm-tab 2
+	other "$th: the Game tab is not the Display tab" "gamemenu-$th" "gamemenu-display-$th"
+	other "$th: Shader is not Display" "gamemenu-shader-$th" "gamemenu-display-$th"
+	other "$th: the Controls tab is not the Display tab" "gamemenu-controls-$th" "gamemenu-display-$th"
 done
+
+echo "the Controls tab: its rows beside the handheld, in both themes, still"
+# The PlayStation's game (the shelf on it, ZyperOS/.last): the tab at rest
+# and later the same picture; the cursor on D-pad as Stick lights the
+# d-pad, and the handheld leans left; Y leans it right, SELECT front; L1 and
+# R2 lean it to their side and tilt it back to show the top, still once
+# there; a swap of Y and B (two Lefts on Y) colors both values and lights
+# both keys; A on Y opens its choices; the Hotkeys row's page; and a
+# Nintendo 64 game's tab, with its Pak and SELECT held for the C buttons
+printf 'PS1\nRidge Racer.chd\n' >"$D/root/.last"
+for th in light dark; do
+	shot "ctltab-$th" --theme "$th" --screen games --gamemenu 0 --gm-tab 2
+	shot "ctltab-later-$th" --theme "$th" --screen games --gamemenu 0 --gm-tab 2 --shot-at 4000
+	same "$th: the Controls tab sits still" "ctltab-$th" "ctltab-later-$th"
+	other "$th: a PlayStation game's Controls tab is its own" "ctltab-$th" "gamemenu-controls-$th"
+	shot "ctltab-stick-$th" --theme "$th" --screen games --gamemenu 1 --gm-tab 2
+	other "$th: D-pad as Stick is its own row, its key lit" "ctltab-stick-$th" "ctltab-$th"
+	shot "ctltab-y-$th" --theme "$th" --screen games --gamemenu 5 --gm-tab 2
+	# the handheld leans toward the side of the keys the row lights (ct_lean):
+	# the d-pad's row, a right-side key's row (Y) and SELECT's differ
+	shot "ctltab-select-$th" --theme "$th" --screen games --gamemenu 11 --gm-tab 2
+	other "$th: a left row and a right row lean the handheld apart" "ctltab-stick-$th" "ctltab-y-$th"
+	other "$th: SELECT (front) is not Y (leaning right)" "ctltab-select-$th" "ctltab-y-$th"
+	other "$th: SELECT (front) is not D-pad as Stick (leaning left)" "ctltab-select-$th" "ctltab-stick-$th"
+	# a shoulder's row leans the handheld its way and tilts it to show the
+	# top: L1 is not the d-pad's lean, R2 not Y's, neither the front
+	shot "ctltab-l1-$th" --theme "$th" --screen games --gamemenu 6 --gm-tab 2
+	shot "ctltab-r2-$th" --theme "$th" --screen games --gamemenu 9 --gm-tab 2
+	shot "ctltab-r2-later-$th" --theme "$th" --screen games --gamemenu 9 --gm-tab 2 --shot-at 4000
+	other "$th: L1 (tilted, leaning left) is not D-pad as Stick (level, further left)" "ctltab-l1-$th" "ctltab-stick-$th"
+	other "$th: R2 (tilted, leaning right) is not Y (level, leaning right)" "ctltab-r2-$th" "ctltab-y-$th"
+	other "$th: L1 (leaning left) is not R2 (leaning right)" "ctltab-l1-$th" "ctltab-r2-$th"
+	other "$th: L1 (tilted) is not SELECT (front)" "ctltab-l1-$th" "ctltab-select-$th"
+	other "$th: R2 (tilted) is not SELECT (front)" "ctltab-r2-$th" "ctltab-select-$th"
+	same "$th: the tilted handheld sits still" "ctltab-r2-$th" "ctltab-r2-later-$th"
+	# The swap is kept in the library, so on a library of its own: the
+	# shots after it show the card's own table
+	rm -rf "$D/shared-swap" && mkdir -p "$D/shared-swap" || exit 1
+	SHARED="$D/shared-swap"
+	shot "ctltab-swap-$th" --theme "$th" --screen games --gamemenu 5 --gm-tab 2 \
+	     --gm-press left,left --shot-at 400
+	SHARED=""
+	other "$th: a swap changes the rows and the handheld" "ctltab-swap-$th" "ctltab-y-$th"
+	shot "ctltab-pick-$th" --theme "$th" --screen games --gamemenu 5 --gm-tab 2 --gm-pick
+	other "$th: A on Y opens its choices" "ctltab-pick-$th" "ctltab-y-$th"
+	shot "ctltab-keys-$th" --theme "$th" --screen games --gamemenu 13 --gm-tab 2 --gm-keys 0
+	other "$th: the Hotkeys row opens its page" "ctltab-keys-$th" "ctltab-$th"
+	# ...and the swap left nothing behind: the tab on Y is as it was
+	shot "ctltab-y-after-$th" --theme "$th" --screen games --gamemenu 5 --gm-tab 2
+	same "$th: the swap's shot left the card's table as it was" "ctltab-y-after-$th" "ctltab-y-$th"
+done
+other "the Controls tab's themes are the same picture" "ctltab-light" "ctltab-dark"
+
+echo "the Controls tab keeps its cursor on the row a change moved"
+# A and B on Nothing (one Left on A, two on B) put two warnings above X;
+# then seven Lefts take X from triangle to Turbo circle, and each one adds or
+# takes away a warning above it. The cursor stays on X all the way (it went
+# to the warning row under X and stepped on to Y, losing the Lefts after the
+# first), on a library of its own, as the swap's
+rm -rf "$D/shared-keep" && mkdir -p "$D/shared-keep" || exit 1
+SHARED="$D/shared-keep"
+run --shot "$D/ctltab-keep.png" --theme light --screen games --gamemenu 2 --gm-tab 2 \
+    --gm-press left,down,left,left,down,left,left,left,left,left,left,left --shot-at 400 \
+    --status "20:41 24h wifi=3 batt=80" >"$D/one.log" 2>&1
+SHARED=""
+cat "$D/one.log" >>"$D/log"
+grep -q "^gm-press: the cursor on X, Turbo $(printf '\356\200\201')\$" "$D/one.log" ||
+	fail "the cursor stays on X, now Turbo circle (got: $(grep '^gm-press:' "$D/one.log"))"
+
+echo "the details page's Buttons page: its own screens over the shelf"
+# A on Y in the page the Buttons row opens: its choices over the shelf under
+# the scrim, as the page itself stands, not over whatever the frame before
+# left (they had no backdrop, and POWER there only closed them)
+for th in light dark; do
+	shot "info-page-$th" --theme "$th" --screen games --info-buttons
+	shot "info-pick-$th" --theme "$th" --screen games --info-buttons --gm-pick
+	other "$th: A on Y opens its choices over the page" "info-pick-$th" "info-page-$th"
+	edge "$th: the choices stand over the shelf and its scrim, as the page does" \
+	     "info-pick-$th" "info-page-$th"
+done
+other "the choices' themes are the same picture" "info-pick-light" "info-pick-dark"
+printf 'N64\nMario Kart 64.z64\n' >"$D/root/.last"
+for th in light dark; do
+	shot "ctltab-n64-$th" --theme "$th" --screen games --gamemenu 2 --gm-tab 2
+	other "$th: the N64's tab is the PlayStation's" "ctltab-n64-$th" "ctltab-$th"
+done
+grep -q 'drawn: Pak' "$D/log" || fail "the N64's tab draws its Pak row"
+rm -f "$D/root/.last"
 
 echo "the home: A to Z on a new card, release dates as a choice"
 order() {
@@ -184,5 +302,7 @@ if [ "$fails" -ne 0 ]; then
 	echo "controls-shots: $fails FAILED"
 	exit 1
 fi
-echo "ok: every page sits still and is its own, Controls follows Display, and the"
+echo "ok: every page sits still and is its own, Controls follows Display, the"
+echo "Controls tab sits still beside its handheld and keeps its cursor, the"
+echo "Buttons page's choices stand over the shelf, and the"
 echo "home goes A to Z, to release dates and back"

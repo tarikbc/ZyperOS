@@ -84,3 +84,21 @@ bool snapshelf_moving(const snapshelf *s)
 {
 	return s->phase == SNS_IN || s->phase == SNS_OUT;
 }
+
+static unsigned g_media_gen;
+
+void snapshelf_media_changed(void)
+{
+	g_media_gen++;
+}
+
+unsigned snapshelf_media_gen(void)
+{
+	return g_media_gen;
+}
+
+bool snapshelf_refocus(snapshelf_at was, snapshelf_at now)
+{
+	return was.sys != now.sys || was.cursor != now.cursor || was.gen != now.gen ||
+	       strcmp(was.file ? was.file : "", now.file ? now.file : "") != 0;
+}

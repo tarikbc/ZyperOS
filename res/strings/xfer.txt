@@ -124,6 +124,39 @@ de = Handy
 ja = スマートフォン
 it = Telefono
 
+[xfer.usb_offer]
+note = The heading of Zyper's one-time offer (DESIGN.md 11.36): after the player answers USB Accessory to What did you plug in? a second time, the shelf offers to power accessories with no question from now on, as MENU > USB Accessories' Automatic does. A yes/no question; its answers are sysmenu.usb_auto (Automatic) and xfer.usb_offer_keep. One line in the panel's heading (about 780 units at the heading's size).
+en = Power without asking?
+zh-Hans = 不再询问，直接供电？
+es = ¿Dar energía sin preguntar?
+pt-BR = Dar energia sem perguntar?
+fr = Alimenter sans demander\u00a0?
+de = Strom ohne Nachfrage geben?
+ja = 確認せずに給電しますか？
+it = Alimentare senza chiedere?
+
+[xfer.usb_offer_said]
+note = The words under xfer.usb_offer: what Automatic does and its one risk, as sysmenu.usb_auto_said says them, plainly. "Automatic" is sysmenu.usb_auto, the answer under them. Up to four balanced lines.
+en = Automatic powers what you plug in after 2 seconds. A computer not connected yet gets about 2 seconds of power.
+zh-Hans = “自动”会在插入 2 秒后供电。尚未连接的电脑会得到约 2 秒电力。
+es = Automático da energía a lo que conectes tras 2 segundos. Una computadora sin conectar recibe unos 2 segundos de energía.
+pt-BR = Automático dá energia ao que você conectar após 2 segundos. Um computador ainda não conectado recebe uns 2 segundos de energia.
+fr = Automatique alimente ce que vous branchez après 2 secondes. Un ordinateur non connecté reçoit 2 secondes de courant.
+de = „Automatisch“ gibt Zubehör nach 2 Sekunden Strom. Ein noch nicht verbundener Computer bekommt etwa 2 Sekunden Strom.
+ja = 「自動」では、接続して 2 秒後に給電します。まだ接続していないパソコンにも約 2 秒給電されます。
+it = Automatico dà corrente a ciò che colleghi dopo 2 secondi. Un computer non ancora collegato riceve circa 2 secondi di corrente.
+
+[xfer.usb_offer_keep]
+note = The safe answer of xfer.usb_offer, where the cursor starts: the handheld goes on asking What did you plug in? each time, as MENU > USB Accessories' Ask. A choice in a row, sentence case outside English.
+en = Keep Asking
+zh-Hans = 继续询问
+es = Seguir preguntando
+pt-BR = Continuar perguntando
+fr = Toujours demander
+de = Weiter fragen
+ja = 毎回確認する
+it = Continua a chiedere
+
 [xfer.replug_computer]
 note = A computer on the USB cable has not connected (its port took the side that waits for power, which the handheld never gives a computer). Which side a port takes is a coin toss at each plug, so it can take a few tries: say so, without blaming the player or the cable. Over any screen but a game, after the player answers Computer, or when a computer showed up on the port during the plug, until the cable comes out; and under USB File Transfer's Cable step. A replug at once is a new plug, so no wait is asked. Never say "power" here. Up to three balanced lines.
 en = Your computer didn't connect. It can take a few tries: unplug the cable and plug it back in.
