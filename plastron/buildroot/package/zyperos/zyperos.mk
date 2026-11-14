@@ -78,7 +78,8 @@ ZYPEROS_EXTRA += $(if $(filter pixel2,$(ZYPEROS_DEVICE)),$(ZYPEROS_BUILD_DIR)/p2
 # ZyperOS runs from the card's games partition, as on the Brick, so it can be
 # updated by copying files onto the card. What goes there is ZyperOS's own
 # payload (mk/payload.sh, DEVICE=pixel2): the launcher, Muse, diatom, the
-# cores, cards and fonts, and the empty Roms, Bios and Saves folders. The
+# cores, cards and fonts, and the empty Roms, Music, Audiobooks, Bios, Saves
+# and Menu Music folders. The
 # image keeps a copy in /usr/share/zyperos/card, laid out as on the card, and
 # /etc/init.d/zyperos copies it there when the card has no ZyperOS, or an older
 # one: the version goes in as ZyperOS/VERSION, which the payload writes only

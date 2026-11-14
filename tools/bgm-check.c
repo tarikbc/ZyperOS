@@ -199,44 +199,6 @@ static void rate(void)
 	ck(n >= 6142 && n <= 6146, "an 8 kHz slice fits the output it is given");
 }
 
-/* ZyperOS's own tracks, for a card whose Roms/BGM has none: `own` is a
- * folder with three tracks in it */
-static void either(const char *own)
-{
-	char builtin[] = "build-native/bgm-check-XXXXXX", empty[] = "build-native/bgm-check-XXXXXX";
-	char p[128];
-	bgm_list l = { 0 };
-	const char *from;
-	FILE *f;
-
-	if (!mkdtemp(builtin) || !mkdtemp(empty)) { ck(0, "two more scratch folders"); return; }
-	snprintf(p, sizeof p, "%s/Napping on a Cloud.ogg", builtin);
-	if ((f = fopen(p, "w"))) fclose(f);
-	/* Not a track: a folder holding only these is empty */
-	snprintf(p, sizeof p, "%s/._Song.mp3", empty);
-	if ((f = fopen(p, "w"))) fclose(f);
-
-	from = bgm_scan_either(own, builtin, &l);
-	ck(from == own && l.n == 3, "the card's own tracks win over ZyperOS's");
-	from = bgm_scan_either(empty, builtin, &l);
-	ck(from == builtin && l.n == 1 && !strcmp(l.names[0], "Napping on a Cloud.ogg"),
-	   "a folder with no track in it plays ZyperOS's");
-	from = bgm_scan_either("build-native/no-such-folder", builtin, &l);
-	ck(from == builtin && l.n == 1, "and so does no folder at all");
-	from = bgm_scan_either(empty, empty, &l);
-	ck(!from && l.n == 0, "neither with a track is silence");
-	from = bgm_scan_either(empty, NULL, &l);
-	ck(!from && l.n == 0, "and so is no folder of ZyperOS's");
-	bgm_free(&l);
-
-	snprintf(p, sizeof p, "%s/Napping on a Cloud.ogg", builtin);
-	unlink(p);
-	snprintf(p, sizeof p, "%s/._Song.mp3", empty);
-	unlink(p);
-	rmdir(builtin);
-	rmdir(empty);
-}
-
 static void scan(void)
 {
 	char dir[] = "build-native/bgm-check-XXXXXX";
@@ -261,7 +223,6 @@ static void scan(void)
 	   bgm_find(&l, "") == -1, "found by name");
 	bgm_scan("build-native/no-such-folder", &l);
 	ck(l.n == 0 && !l.names, "a missing folder is an empty list");
-	either(dir);
 	for (i = 0; i < sizeof files / sizeof files[0]; i++) {
 		char p[128];
 
@@ -269,6 +230,104 @@ static void scan(void)
 		unlink(p);
 	}
 	rmdir(dir);
+}
+
+/* A file, and the folders it needs, made empty */
+static void touch(const char *root, const char *rel)
+{
+	char p[512];
+	char *q;
+	FILE *f;
+
+	snprintf(p, sizeof p, "%s/%s", root, rel);
+	for (q = p + strlen(root) + 1; (q = strchr(q, '/')); q++) {
+		*q = '\0';
+		mkdir(p, 0755);
+		*q = '/';
+	}
+	if ((f = fopen(p, "w"))) fclose(f);
+}
+
+static void rm_tree(const char *dir)
+{
+	char cmd[600];
+
+	snprintf(cmd, sizeof cmd, "rm -rf '%s'", dir);
+	if (system(cmd) != 0) printf("  (could not remove %s)\n", dir);
+}
+
+/* Everything that plays, from its two places (bgm_scan_all) */
+static void all(void)
+{
+	char card[] = "build-native/bgm-check-XXXXXX";
+	char dir[600], builtin[600], p[700];
+	bgm_sources src;
+	bgm_list l = { 0 };
+
+	printf("everything that plays:\n");
+	if (!mkdtemp(card)) { ck(0, "a scratch card"); return; }
+	snprintf(dir, sizeof dir, "%s/Menu Music", card);
+	snprintf(builtin, sizeof builtin, "%s/ZyperOS/res/bgm", card);
+	touch(card, "Menu Music/b.mp3");
+	touch(card, "Menu Music/FC001.mp3");
+	touch(card, "Menu Music/Pixel Quest/02 Green Fields.mp3");
+	touch(card, "Menu Music/Pixel Quest/01 Title Theme.ogg");
+	touch(card, "Menu Music/Pixel Quest/cover.jpg");
+	touch(card, "Menu Music/Pixel Quest/Disc 2/01 Ending.mp3");
+	touch(card, "Menu Music/A/B/C/too deep.mp3");
+	touch(card, "Menu Music/.media/hidden.mp3");
+	touch(card, "Menu Music/Star Racer/Neon Circuit.flac");
+	/* ROGUE OS's, an ordinary folder since 1.0.5 */
+	touch(card, "Roms/BGM/WLF033.mp3");
+	touch(card, "ZyperOS/res/bgm/Leap.mp3");
+	touch(card, "ZyperOS/res/bgm/FC001.mp3");
+
+	src = (bgm_sources){ dir, builtin, true };
+	bgm_scan_all(&src, &l);
+	ck(l.n == 6 && l.own == 5, "five of the card's own and one of ZyperOS's");
+	ck(l.n == 6 && !strcmp(l.names[0], "b.mp3") && !strcmp(l.names[1], "FC001.mp3") &&
+	   !strcmp(l.names[2], "Pixel Quest/01 Title Theme.ogg") &&
+	   !strcmp(l.names[3], "Pixel Quest/02 Green Fields.mp3") &&
+	   !strcmp(l.names[4], "Pixel Quest/Disc 2/01 Ending.mp3") && l.from[0] == BGM_FROM_FOLDER,
+	   "Menu Music's first, its folders' too, in name order, each by its path in it");
+	ck(bgm_find(&l, "A/B/C/too deep.mp3") < 0, "not deeper than BGM_DEPTH");
+	ck(bgm_find(&l, ".media/hidden.mp3") < 0, "nor in a dot folder");
+	ck(bgm_find(&l, "Star Racer/Neon Circuit.flac") < 0, "nor a FLAC");
+	ck(bgm_find(&l, "WLF033.mp3") < 0, "and nothing from Roms/BGM, an ordinary folder now");
+	ck(l.n == 6 && !strcmp(l.names[5], "Leap.mp3") && l.from[5] == BGM_FROM_BUILTIN,
+	   "then ZyperOS's, less the one the card has of the same name");
+	snprintf(p, sizeof p, "%s/Pixel Quest/02 Green Fields.mp3", dir);
+	ck(l.n == 6 && !strcmp(l.paths[3], p), "a track's path is in its folder");
+	snprintf(p, sizeof p, "%s/Leap.mp3", builtin);
+	ck(l.n == 6 && !strcmp(l.paths[5], p), "and ZyperOS's in ZyperOS's");
+
+	src.with_builtin = false;
+	bgm_scan_all(&src, &l);
+	ck(l.n == 5 && l.own == 5, "ZyperOS Tracks Off: the card's own alone");
+
+	touch(card, "Menu Music/Pixel Quest/03 Later.mp3");
+	bgm_scan_all(&src, &l);
+	ck(l.n == 6 && bgm_find(&l, "Pixel Quest/03 Later.mp3") >= 0, "a track copied on later, read again");
+
+	src = (bgm_sources){ "build-native/no-such-folder", builtin, false };
+	bgm_scan_all(&src, &l);
+	ck(l.n == 2 && l.own == 0 && l.from[0] == BGM_FROM_BUILTIN,
+	   "none of the card's own: ZyperOS's play, whatever ZyperOS Tracks says");
+	src.builtin = NULL;
+	bgm_scan_all(&src, &l);
+	ck(l.n == 0, "and with no folder of ZyperOS's either, nothing");
+	bgm_free(&l);
+	ck(!l.n && !l.names && !l.paths && !l.from, "freed is empty");
+
+	{
+		char t[64], h[64], body[64];
+
+		bgm_title("Pixel Quest/02 Green Fields.mp3", t, sizeof t);
+		ck(!strcmp(t, "02 Green Fields"), "a track in a folder is titled by its file");
+		bgm_song_label(NULL, "Pixel Quest/02 Green Fields.mp3", h, sizeof h, body, sizeof body);
+		ck(!strcmp(body, "Green Fields"), "and the pop-up says its file's name, tidied, with no folders");
+	}
+	rm_tree(card);
 }
 
 /* L2's way back, and what R2 does after it */
@@ -593,18 +652,35 @@ static void popup_mp4(void)
 	          "a video, as music");
 }
 
+/* The row that is `id` in the last build, or -1 when it is not there */
+static int row_of(const bgm_bufs *b, int n, int id)
+{
+	int i;
+
+	for (i = 0; i < n; i++)
+		if (b->id[i] == id) return i;
+	return -1;
+}
+
 static void menu(void)
 {
 	menu_row rows[BGM_ROWS + 3];
 	bgm_bufs b;
 	const char *heading = NULL;
-	bgm_ui u = { true, 5, "", "FC001.mp3", 330, false, true };
-	int n;
+	/* 330 of the card's own and ZyperOS's 10 with them */
+	bgm_ui u = { true, 5, "", "FC001.mp3", 340, 330, true, true, NULL };
+	int n, k;
 
 	printf("the Menu Music screen:\n");
 	n = bgm_menu_build(&u, rows, BGM_ROWS + 3, &b, &heading);
 	ck(heading && !strcmp(heading, "Menu Music"), "is headed Menu Music");
-	ck(n == BGM_ROWS + 2, "five rows, a rule and a note");
+	ck(n == BGM_ROWS + 2, "six rows, a rule and a note");
+	for (k = 0; k < BGM_ROWS; k++) ck(row_of(&b, n, k) == k, "each row in its place");
+	ck(!strcmp(rows[BGM_ROW_BUILTIN].label, "ZyperOS Tracks") &&
+	   !strcmp(rows[BGM_ROW_BUILTIN].value, "On") && rows[BGM_ROW_BUILTIN].live &&
+	   b.sound[BGM_ROW_BUILTIN] == MENU_SND_RING, "ZyperOS Tracks reads On, and comes round");
+	ck(BGM_ROW_VOLUME < BGM_ROW_BUILTIN && BGM_ROW_BUILTIN < BGM_ROW_TRACK,
+	   "ZyperOS Tracks before Track, which steps through what it lets in");
 	ck(!strcmp(rows[BGM_ROW_POPUP].label, "Song Pop-up") &&
 	   !strcmp(rows[BGM_ROW_POPUP].value, "On") && rows[BGM_ROW_POPUP].live &&
 	   b.sound[BGM_ROW_POPUP] == MENU_SND_RING, "Song Pop-up reads On, and comes round");
@@ -615,9 +691,23 @@ static void menu(void)
 	ck(!strcmp(rows[BGM_ROW_TRACK].value, "Shuffle"), "no track is Shuffle");
 	ck(!strcmp(rows[BGM_ROW_NOW].value, "FC001"), "Playing names the track");
 	ck(rows[BGM_ROW_NOW].live, "and A on it is live, for the next");
-	ck(!strcmp(rows[n - 1].label, "330 tracks in Roms/BGM"), "the note counts the tracks");
+	ck(!strcmp(rows[n - 1].label, "330 of yours, 10 ZyperOS"), "the note counts whose they are");
 	ck(b.sound[BGM_ROW_ON] == MENU_SND_RING && b.sound[BGM_ROW_VOLUME] == MENU_SND_NO_A,
 	   "On comes round, Volume stops at its ends");
+	ck(b.id[n - 1] == BGM_ROWS && b.id[n - 2] == BGM_ROWS, "the rule and the note are no row");
+
+	u.with_builtin = false;
+	u.ntracks = 330;
+	n = bgm_menu_build(&u, rows, BGM_ROWS + 3, &b, &heading);
+	ck(!strcmp(rows[BGM_ROW_BUILTIN].value, "Off") && rows[BGM_ROW_BUILTIN].live,
+	   "ZyperOS Tracks Off, still live to turn on");
+	ck(!strcmp(rows[n - 1].label, "330 tracks of yours"), "and the note counts only yours");
+	u.own = u.ntracks = 1;
+	n = bgm_menu_build(&u, rows, BGM_ROWS + 3, &b, &heading);
+	ck(!strcmp(rows[n - 1].label, "1 track of yours"), "one track, said as one");
+	u.own = 330;
+	u.ntracks = 340;
+	u.with_builtin = true;
 
 	u.now_name = "Stage 1 - Gotham City";
 	bgm_menu_build(&u, rows, BGM_ROWS + 3, &b, &heading);
@@ -627,38 +717,54 @@ static void menu(void)
 	u.track = "Waterflame - Byzantine.ogg";
 	bgm_menu_build(&u, rows, BGM_ROWS + 3, &b, &heading);
 	ck(!strcmp(rows[BGM_ROW_TRACK].value, "Waterflame - Byzantine"), "a track names itself");
+	u.track = "Pixel Quest/02 Green Fields.mp3";
+	u.now = "Pixel Quest/02 Green Fields.mp3";
+	bgm_menu_build(&u, rows, BGM_ROWS + 3, &b, &heading);
+	ck(!strcmp(rows[BGM_ROW_TRACK].value, "02 Green Fields") &&
+	   !strcmp(rows[BGM_ROW_NOW].value, "02 Green Fields"),
+	   "one in a folder of Menu Music by its file's name, not its path");
+	u.track = "";
+	u.now = "FC001.mp3";
 
 	u.on = false;
 	bgm_menu_build(&u, rows, BGM_ROWS + 3, &b, &heading);
 	ck(!strcmp(rows[BGM_ROW_ON].value, "Off") && rows[BGM_ROW_ON].live,
 	   "Off, and still live to turn on");
 	ck(!rows[BGM_ROW_VOLUME].live && !rows[BGM_ROW_TRACK].live && !rows[BGM_ROW_NOW].live &&
-	   !rows[BGM_ROW_POPUP].live, "the rest quiet while off");
+	   !rows[BGM_ROW_POPUP].live && !rows[BGM_ROW_BUILTIN].live, "the rest quiet while off");
 	ck(!strcmp(rows[BGM_ROW_NOW].value, "nothing"), "and nothing playing");
 
 	u.on = true;
 	u.popup = false;
 	bgm_menu_build(&u, rows, BGM_ROWS + 3, &b, &heading);
 	ck(!strcmp(rows[BGM_ROW_POPUP].value, "Off"), "Song Pop-up reads Off");
+
+	/* ZyperOS's alone: none of the card's own, so ZyperOS Tracks is not
+	 * there (they play whatever it says), and the note says where yours
+	 * would come from */
+	u.ntracks = 10;
+	u.own = 0;
+	u.with_builtin = false;
+	u.now = "Apple Cider.ogg";
+	n = bgm_menu_build(&u, rows, BGM_ROWS + 3, &b, &heading);
+	ck(n == BGM_ROWS + 1, "ZyperOS's own tracks: five rows, a rule and a note");
+	ck(row_of(&b, n, BGM_ROW_BUILTIN) < 0, "no ZyperOS Tracks with none of yours");
+	k = row_of(&b, n, BGM_ROW_TRACK);
+	ck(k == 2 && rows[k].live && !strcmp(rows[row_of(&b, n, BGM_ROW_NOW)].value, "Apple Cider"),
+	   "chosen and named like a card's own, the rows moved up one");
+	ck(b.sound[k] == (MENU_SND_RING | MENU_SND_NO_A), "each row's sound with it");
+	ck(!strcmp(rows[n - 1].label, "Add MP3 or OGG to Menu Music"),
+	   "the note says where yours go");
+
 	u.ntracks = 0;
 	u.now = "";
 	n = bgm_menu_build(&u, rows, BGM_ROWS + 3, &b, &heading);
-	ck(!rows[BGM_ROW_TRACK].live && !rows[BGM_ROW_NOW].live, "no tracks, nothing to choose");
-	ck(!strcmp(rows[n - 1].label, "Put MP3 or OGG files in Roms/BGM"),
+	k = row_of(&b, n, BGM_ROW_TRACK);
+	ck(k >= 0 && !rows[k].live && !rows[row_of(&b, n, BGM_ROW_NOW)].live,
+	   "no tracks, nothing to choose");
+	ck(!strcmp(rows[n - 1].label, "Add MP3 or OGG to Menu Music"),
 	   "and the note says where they go");
 	ck(bgm_menu_build(&u, rows, 3, &b, &heading) == 0, "a short array gets nothing");
-
-	u.ntracks = 4;
-	u.builtin = true;
-	u.now = "Apple Cider.ogg";
-	n = bgm_menu_build(&u, rows, BGM_ROWS + 3, &b, &heading);
-	ck(n == BGM_ROWS + 3, "ZyperOS's own tracks: the rows, a rule and two notes");
-	ck(rows[BGM_ROW_TRACK].live && !strcmp(rows[BGM_ROW_NOW].value, "Apple Cider"),
-	   "chosen and named like a card's own");
-	ck(!strcmp(rows[n - 2].label, "4 ZyperOS tracks"), "the note says whose they are");
-	ck(!strcmp(rows[n - 1].label, "Put yours in Roms/BGM"), "and where a card's own go");
-	n = bgm_menu_build(&u, rows, BGM_ROWS + 2, &b, &heading);
-	ck(n == BGM_ROWS + 2, "a shorter array keeps the first note");
 
 	ck(!strcmp(bgm_menu_value(true, 3), "On") && !strcmp(bgm_menu_value(false, 3), "Off"),
 	   "the ZyperOS menu's row says On or Off");
@@ -722,6 +828,7 @@ int main(void)
 	level();
 	rate();
 	scan();
+	all();
 	menu();
 	tags();
 	names();

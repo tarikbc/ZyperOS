@@ -1,13 +1,12 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* Menu music's player. See src/bgm.h.
  *
- * One thread. It reads the folder - Roms/BGM, or ZyperOS's own tracks when
- * that has none (bgm_scan_either) - opens a track and the output when there is
- * music to play, decodes and writes a slice at a time - the write is what
- * paces it - and fades out and lets the output go when something holds it:
- * a game, Muse, the video player, the setting turned off. The track stays
- * open while held, so the music comes back where it stopped. The main thread
- * only sets a few fields under a lock and signals.
+ * One thread. It reads what plays - Menu Music and ZyperOS's own tracks
+ * (bgm_scan_all) - opens a track and the output when there is music to play,
+ * decodes and writes a slice at a time - the write is what paces it - and
+ * fades out and lets the output go when something holds it: a game, Muse,
+ * the video player, the setting turned off. The track stays open while held, so the music comes back where it
+ * stopped. The main thread only sets a few fields under a lock and signals.
  *
  * The output is ALSA's "default", opened by name as the interface sounds'
  * is (src/pcm_out.c, which both use): the system's dmix, so the music mixes
@@ -45,12 +44,13 @@ static struct {
 	SDL_cond   *wake;
 	SDL_Thread *thread;
 	bool        quit, done;
-	char        dir[512];
+	char        dir[512];      /* Menu Music, at the top of the card */
 	char        builtin[512];  /* ZyperOS's tracks, "" for none */
+	bool        with_builtin;  /* ZyperOS Tracks */
 	/* The settings, the main thread's to set */
 	bool        on;
 	int         volume;
-	char        track[256];
+	char        track[512];
 	unsigned    hold;
 	char        want[64];      /* the device; "" is nowhere */
 	bool        left, right;   /* the sides that carry it */
@@ -60,16 +60,14 @@ static struct {
 	bool        rescan;
 	/* The thread's to set, the main thread's to read */
 	bgm_list    list;
-	char        from[512];     /* the folder list came from */
-	bool        from_builtin;
-	char        now[256];
+	char        now[512];
 	/* The last track begun that was news (bgm_song) */
 	unsigned    song_seq;
 	Uint32      song_at;
-	char        song_file[256];
+	char        song_file[512];
 	bgm_tags    song_tags;
 } g = { .on = true, .volume = BGM_VOLUME_DEFAULT, .hold = BGM_HOLD_START,
-        .left = true, .right = true };
+        .left = true, .right = true, .with_builtin = true };
 
 /* ---- the output ------------------------------------------------------------- */
 
@@ -85,7 +83,7 @@ static pcm_out g_pcm = {
 /* What the thread holds; only it touches these */
 typedef struct {
 	bgm_dec *dec;
-	char     file[256];     /* the file dec is, "" for none */
+	char     file[512];     /* the track dec is, by its name in the list; "" for none */
 	bgm_deck deck;
 	bool     open;          /* the output */
 	char     at[64];        /* ...on this device */
@@ -96,31 +94,31 @@ typedef struct {
 	int      steps;         /* presses taken and not yet acted on, R2s less L2s */
 	bool     pressed;       /* ...any at all: R2 then L2 is this track again */
 	bgm_hist hist;          /* what was heard, for L2 */
-	char     last[256];     /* the file opened last, kept past its close */
+	char     last[512];     /* the track opened last, kept past its close */
 	Uint32   retry_at;
 } player;
 
-/* The folder read into g.list. True when that is not the list it had: the
- * deck and what was heard are indices into it, and go with it. */
+/* Everything that plays read into g.list (bgm_scan_all), the lock let go
+ * meanwhile. True when that is not the list it had: the deck and what was
+ * heard are indices into it, and go with it. */
 static bool scan(void)
 {
 	bgm_list l = { 0 };
 	char dir[512], builtin[512];
-	const char *from;
-	bool same;
 	int i;
+	bool same;
+	bgm_sources src;
 
 	snprintf(dir, sizeof dir, "%s", g.dir);
 	snprintf(builtin, sizeof builtin, "%s", g.builtin);
+	src = (bgm_sources){ dir, builtin[0] ? builtin : NULL, g.with_builtin };
 	SDL_UnlockMutex(g.lock);
-	from = bgm_scan_either(dir, builtin[0] ? builtin : NULL, &l);
+	bgm_scan_all(&src, &l);
 	SDL_LockMutex(g.lock);
-	same = l.n == g.list.n && (from == builtin) == g.from_builtin;
-	for (i = 0; same && i < l.n; i++) same = !strcmp(l.names[i], g.list.names[i]);
+	same = l.n == g.list.n;
+	for (i = 0; same && i < l.n; i++) same = !strcmp(l.paths[i], g.list.paths[i]);
 	bgm_free(&g.list);
 	g.list = l;
-	snprintf(g.from, sizeof g.from, "%s", from ? from : "");
-	g.from_builtin = from == builtin;
 	return !same;
 }
 
@@ -215,7 +213,7 @@ static bool open_track(player *p, bool ended)
 	p->pressed = false;
 	for (tries = 0; tries < g.list.n && !g.quit; tries++) {
 		const char *want = wanted_file();
-		char path[1024], file[256];
+		char path[1024], file[512];
 		bgm_tags tags;
 		bgm_dec *d;
 		int k;
@@ -227,7 +225,8 @@ static bool open_track(player *p, bool ended)
 			if ((k = pick(p, steps)) < 0) return false;
 			snprintf(file, sizeof file, "%s", g.list.names[k]);
 		}
-		snprintf(path, sizeof path, "%s/%s", g.from, file);
+		if (k < 0) return false;
+		snprintf(path, sizeof path, "%s", g.list.paths[k]);
 		SDL_UnlockMutex(g.lock);
 		d = bgm_dec_open(path, &tags);
 		SDL_LockMutex(g.lock);
@@ -304,7 +303,7 @@ static int run(void *unused)
 	memset(&p, 0, sizeof p);
 	SDL_LockMutex(g.lock);
 	scan();
-	if (g.list.n) fprintf(stderr, "bgm: %d tracks in %s\n", g.list.n, g.from);
+	if (g.list.n) fprintf(stderr, "bgm: %d tracks, %d of them the card's\n", g.list.n, g.list.own);
 	while (!g.quit) {
 		bool play = g.on && !g.hold && g.want[0] && g.list.n > 0;
 		const char *want = wanted_file();
@@ -450,6 +449,8 @@ void bgm_set_on(bool on)              { SET(g.on = on); }
 void bgm_set_volume(int volume)       { SET(g.volume = bgm_volume_step(volume, 0)); }
 void bgm_set_track(const char *file)  { SET(snprintf(g.track, sizeof g.track, "%s", file ? file : "")); }
 void bgm_skip(void)                   { SET(g.skips++); }
+void bgm_set_builtin(bool with)       { SET(if (g.with_builtin != with) { g.with_builtin = with; g.rescan = true; }); }
+bool bgm_builtin(void)                { return g.with_builtin; }
 
 bool bgm_step(int dir, char *track, size_t n)
 {

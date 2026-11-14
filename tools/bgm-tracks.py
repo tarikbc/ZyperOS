@@ -22,8 +22,9 @@ author, its license and the page that grants it, so the shipped MP3 can
 always be made again from the file that was reviewed, and its license read
 again where it was given.
 
-A Roms/BGM with tracks of its own always wins (src/bgm.c, bgm_scan_either):
-these play only on a card that has none, so a fresh download has music.
+These play on a card with no music of its own, so a fresh download has
+music, and with the card's own while MENU > Menu Music > ZyperOS Tracks is
+on (src/bgm.c, bgm_scan_all).
 
 Making a track, the same way for the lab and for the card: the source
 decoded (a tracker module rendered with openmpt123 from the author's own

@@ -1149,7 +1149,7 @@ of the player's own goes on from wherever the loop was.
   four steps make the handheld the player's - **Theme** (Appearance, Light
   or Dark), **Home Screen** (Spotlight or Gallery), **Sounds** (UI Sounds:
   Wood, Glass, Bubble or Off) and **Menu Music** (On or Off), the last only
-  on a card whose `Roms/BGM` has tracks. *(I asked for them on
+  on a card with menu music to play. *(I asked for them on
   2026-11-06, "our onboarding should ask the user for which theme, display
   mode, and sounds they want", and picked in the onboarding lab: after the
   lessons, side by side, the Home Screen as the display mode, Menu Music a
@@ -1540,10 +1540,10 @@ block. *(My picks in the File Transfer lab, 2026-11-05:
   corners: the system's color at 14% over **surface**, ringed at 30%; a folder
   of no system on the same tile in **text-dim**. A system's folder in ROMs and
   Save States has its own picture - every system the card knows, not only
-  the shelves with games; BGM, the menu music's, a cassette; the card's
-  folders theirs (ROMs a cartridge, Music a vinyl album, Audiobooks a book with
-  headphones, Videos a video tape, BIOS a chip, Saves a memory card, Save
-  States a floppy disk); any other folder the small folder drawn for rows.
+  the shelves with games; the card's folders theirs (ROMs a cartridge, Music a
+  vinyl album, Audiobooks a book with headphones, Videos a video tape, Menu
+  Music a cassette, BIOS a chip, Saves a memory card, Save States a floppy
+  disk); any other folder the small folder drawn for rows.
   All are ZyperOS's own system art (`res/system-art/original`). A picture
   that does not come leaves the line mark on the tile.
 - **Hidden folders**: a name that starts with a dot (`.media`, where covers
@@ -2459,7 +2459,7 @@ asks it.
   | Games | each system's `Roms/<folder>` but its `.media` | **store-games** |
   | Saves | `Saves/` and the states | **store-saves** |
   | Art | covers and video snaps, the systems' `.media` | **store-art** |
-  | Media | Music, Videos, Audiobooks, `Roms/BGM` | **text-soft** |
+  | Media | Music, Videos, Audiobooks, Menu Music | **text-soft** |
   | ZyperOS | the `ZyperOS/` folder, `Emulators/` and the system's partitions beside the card's filesystem | **accent-ink** |
   | Other | BIOS, the library and settings, the filesystem's own tables: what is used less everything above | **text-dim** |
 
@@ -2516,7 +2516,7 @@ a track at the top; in Videos a film at the top, or a folder of them (a
 series) whole. Each by its folder's name or its file's without the
 extension; under the list "The Lowlights · 40 songs", "Jane Austen · 61
 files", or a film's file name. Music's has **Menu Music** too, the menu's
-own tracks in `Roms/BGM`, which the card's Music row counts; A on it is
+own tracks in its `Menu Music` folder, which the card's Music row counts; A on it is
 **deny** (MENU > Menu Music is where they are chosen). A last **Other
 Files** holds what none of the rows does - a cover beside the albums, a
 playlist, a hidden file - so the rows come to the folder's whole. A on an
@@ -3606,6 +3606,36 @@ Pixel's own under `play.zyperos.com`, asked for once and only when the owner
 wants it; the captive portal API (RFC 8908 and 8910), so a phone opens the
 page by itself on joining; and a game controller paired with the phone,
 through the browser's Gamepad API, which needs HTTPS.
+
+### 11.44 Menu music of your own
+The owner's own music behind the shelf, from a folder of its own, and a
+choice of whether ZyperOS's ten tracks play with it *(2026-11-13: "a
+specific BGM folder for those custom songs in flash drive mode/sd card/web
+portal", and "being able to disable the standard tracks")*.
+
+**The folder.** `Menu Music`, at the top of the card beside `Music`,
+`Videos` and `Audiobooks`, named as MENU calls it (my pick, 2026-11-13), and
+filled the way they are: on the card in a computer, in Flash Drive, or on
+File Transfer's page, where it is in the sidebar between Videos and BIOS,
+in the red cassette (#116). A new card has it, and the
+launcher makes it on a card that does not. Its tracks play from it and from
+its folders, two deep (`Menu Music/Album/Disc 1/01 Song.mp3`):
+MP3 and Ogg, as before. It is the only folder that plays: ROGUE OS's
+`Roms/BGM`, which played until 1.0.5, is an ordinary folder now, and
+nothing in it is moved (my pick, 2026-11-13: "if we are getting rid of
+roms/bgm, then only menu music"); tools/from-rogue.sh copies ROGUE's BGM
+into Menu Music. Storage counts it with the media. A track copied on is heard once File Transfer closes, or
+after Flash Drive, with no restart.
+
+**ZyperOS Tracks.** A row of MENU > Menu Music, between Volume and Track:
+**On**, ZyperOS's ten play in the shuffle with the owner's; **Off**, the
+owner's alone. On as it ships (my pick, 2026-11-13). It is there only when
+the card has music of its own: with none, ZyperOS's play whatever it says,
+and the page is as it was. Track steps through what plays, the owner's
+first, then ZyperOS's. The note under the rows counts them ("330 of yours,
+10 ZyperOS", "330 tracks of yours"), or with none of the owner's says where
+they go ("Add MP3 or OGG to Menu Music"); the panel's rows leave it in the
+window once the list goes round.
 
 ## 12. Copy
 

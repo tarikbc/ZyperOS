@@ -437,7 +437,7 @@ static void media_items_say(const char *when)
 	free(m);
 
 	/* The menu's own tracks, counted beside Music */
-	CHECK_EQ(c.bgm, on("Roms/BGM/Theme.ogg"));
+	CHECK_EQ(c.bgm, on("Menu Music/Theme.ogg"));
 	CHECK_EQ(c.nbgm, 1);
 }
 
@@ -459,7 +459,7 @@ static void media_pages(void)
 	put("Videos/Series/Ep 2.mkv", 700000);
 	put("Videos/notes.txt", 1000);
 	put("Audiobooks/Author/Book Two/Part 1.mp3", 250000);
-	put("Roms/BGM/Theme.ogg", 100000);
+	put("Menu Music/Theme.ogg", 100000);
 	snprintf(lnk, sizeof lnk, "%s/Music/Link", root);
 	if (symlink("../Roms", lnk) != 0) CHECK(!"a link could be made");
 	games(false);

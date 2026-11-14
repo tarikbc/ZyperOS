@@ -10,8 +10,9 @@ does for its pictures, and headless Chrome runs the page over the DevTools
 protocol. What it holds, each a thing I asked for on 2026-11-06:
 
   - every folder wears its pixel art (the shelf's, served at /icons/KEY.png):
-    a console its own, Atomiswave too though it has no games, the menu
-    music's BGM the cassette, the card's folders in the sidebar theirs
+    a console its own, Atomiswave too though it has no games, the card's
+    folders in the sidebar theirs, Menu Music the cassette; a folder of
+    ROMs that is no system, such as ROGUE's old BGM, the plain one
   - dot folders (.media) are not listed, and are when Settings says so
   - a console's .media, dropped onto its folder or in a folder picked,
     goes up with its covers, and nothing else hidden does (2026-11-07)
@@ -187,6 +188,8 @@ def main():
         base = Path(temporary)
         card, web = base / 'card', base / 'web'
         rs.portal_card(card)
+        # ROGUE OS's menu music folder, an ordinary folder since 1.0.5
+        (card / 'Roms/BGM').mkdir(exist_ok=True)
         rs.web_dir(web)
         (card / 'Roms/NES/.media').mkdir()
         page = Page(args.chrome, base)
@@ -205,11 +208,11 @@ def main():
                                                     : [...b.classList].find((c) => c.startsWith('i-'))) }; })()""")
             check(got['nes'] == '/icons/NES.png' and got['snes'] == '/icons/SNES.png', f"consoles wear the shelf's art: {got}")
             check(got['aw'] == '/icons/AW.png', 'Atomiswave, with no games, has its art')
-            check(got['bgm'] == '/icons/BGM.png', 'BGM has the cassette')
+            check(got['bgm'] == '/icons/FOLDER.png', f"Roms/BGM is an ordinary folder: {got['bgm']}")
             check(bool(got['tile']), "a console's tile is in its color")
             check(got['places'] == ['/icons/ROMS.png', '/icons/MUSIC.png', '/icons/BOOKS.png', '/icons/VIDEOS.png',
-                                    '/icons/BIOS.png', '/icons/SAVES.png', '/icons/STATES.png'],
-                  f"the card's folders wear theirs, Music its vinyl album: {got['places']}")
+                                    '/icons/BGM.png', '/icons/BIOS.png', '/icons/SAVES.png', '/icons/STATES.png'],
+                  f"the card's folders wear theirs, Music its vinyl album, Menu Music the cassette: {got['places']}")
             # Lazy, so the ones on screen: those below come as they scroll in
             check(page.until("[...document.querySelectorAll('#list .sico img, #places img')]"
                              ".filter((i) => i.getBoundingClientRect().top < innerHeight)"

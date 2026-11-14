@@ -2,11 +2,16 @@
 /* Menu music: tracks from the card played behind the shelf and the menus, and
  * never over a game, a port or Muse.
  *
- * ROGUE OS played EmulationStation's frontend music from roms/BGM; this plays
- * from Roms/BGM, the same folder on a ZyperOS card, so a library copied over
- * from ROGUE brings its music with it. ZyperOS ships a few free 8-bit
- * tracks of its own (res/bgm/, credited in THIRD-PARTY-LICENSES.md), played
- * only while Roms/BGM has none: a card's own music always wins.
+ * The card's own come from Menu Music, a folder of their own at the top of
+ * the card beside Music and Videos, filled as they are: on the card in a
+ * computer, in Flash Drive, or on File Transfer's page (2026-11-13: "a
+ * specific BGM folder for those custom songs in flash drive mode/sd card/web
+ * portal"; named Menu Music, my pick, as MENU calls it). It is the only one:
+ * ROGUE OS's Roms/BGM, which played until 1.0.5, is an ordinary folder now
+ * ("if we are getting rid of roms/bgm, then only menu music"). ZyperOS ships
+ * a few free 8-bit tracks of its own (res/bgm/, credited in
+ * THIRD-PARTY-LICENSES.md), played with the card's own while ZyperOS Tracks
+ * is on, and whatever it says while the card has none (bgm_scan_all).
  *
  * Three halves, the split src/uisound.h uses. src/bgm.c is the rule and the
  * arithmetic - which files are tracks, the settings, the shuffle, the gain -
@@ -26,18 +31,22 @@
 
 #include "bgm_tags.h"
 
-/* The folder under the ROM root that holds the tracks */
-#define BGM_DIR "BGM"
+/* The card's menu music folder, at its top (P_CARD) */
+#define BGM_CARD_DIR "Menu Music"
 /* ...and the one under ZyperOS's own files (P_ROOT) that holds the tracks it
- * ships, for a card whose BGM folder has none */
+ * ships */
 #define BGM_BUILTIN_DIR "res/bgm"
+/* How many folders deep in its folder a track is found: two, as in
+ * Menu Music/Album/Disc 1/01 Song.mp3 */
+#define BGM_DEPTH 2
 
 /* ---- the settings -----------------------------------------------------------
  *
- * Three keys in the device database, beside "uisounds": "bgm" on or off,
+ * Four keys in the device database, beside "uisounds": "bgm" on or off,
  * "bgm.volume" 1 to 10 (tenths of the track's own level, under the system's
- * volume), and "bgm.track", "" for shuffle or a file name in the folder,
- * played over and over. */
+ * volume), "bgm.track", "" for shuffle or a track's name in the list
+ * (bgm_list), played over and over, and "bgm.builtin", ZyperOS Tracks, on or
+ * off (bgm_on_parse: on to start). */
 #define BGM_VOLUME_MIN     1
 #define BGM_VOLUME_MAX     10
 #define BGM_VOLUME_DEFAULT 5
@@ -56,28 +65,49 @@ int         bgm_volume_step(int volume, int dir);
  * start with a dot - macOS leaves ._ files beside everything it copies. */
 bool bgm_is_track(const char *name);
 
-/* The folder's tracks, sorted by name (strcasecmp), so a track's place in the
- * list and in the Track row does not depend on the order readdir gives. */
+/* Where a track in the list comes from */
+enum { BGM_FROM_FOLDER, BGM_FROM_BUILTIN };
+
+/* The tracks that play. A folder's are sorted by name (strcasecmp), so a
+ * track's place in the list and in the Track row does not depend on the
+ * order readdir gives.
+ *
+ * `names` is what the Track setting keeps for each: its path in its folder,
+ * which for a file straight in it is its name, as the setting always was
+ * ("FC001.mp3"), and for one in a folder of its own the folder's too
+ * ("Pixel Quest/02 Green Fields.mp3"). `paths` is where each one is, `from`
+ * which of the two folders it came from, and `own` how many are the card's
+ * own: Menu Music's. */
 typedef struct {
-	char **names;
-	int    n;
+	char         **names;
+	char         **paths;
+	unsigned char *from;
+	int            n, own;
 } bgm_list;
 
-/* Fills `l` from `dir`; a missing or empty folder is an empty list, not a
- * failure. Frees what `l` held first. */
+/* Fills `l` from `dir` and its folders, BGM_DEPTH deep; a missing or empty
+ * folder is an empty list, not a failure. Frees what `l` held first. */
 void bgm_scan(const char *dir, bgm_list *l);
 void bgm_free(bgm_list *l);
-/* The folder the music comes from: `own` (Roms/BGM) when it holds a track,
- * else `builtin` (ZyperOS's), the list filled from it either way. Never the
- * two mixed: whoever puts their own tracks on the card chose what plays, and
- * one copied on later takes over at the next read. Returns the folder the
- * list came from - `own` or `builtin` itself, so the caller can tell which by
- * comparing - or NULL when neither has a track. `builtin` may be NULL. */
-const char *bgm_scan_either(const char *own, const char *builtin, bgm_list *l);
+/* Everything that plays (2026-11-13: "being able to disable the standard
+ * tracks"): the card's own, Menu Music's, and ZyperOS's after them while
+ * `with_builtin` (MENU > Menu Music > ZyperOS Tracks) is on. With none of
+ * the card's own, ZyperOS's play whatever it says, so there is always music
+ * to turn on. One of ZyperOS's that the card has a copy of by name plays
+ * once, as the card's. */
+typedef struct {
+	const char *dir;       /* Menu Music, at the top of the card */
+	const char *builtin;   /* ZyperOS's, NULL for none */
+	bool        with_builtin;
+} bgm_sources;
+
+void bgm_scan_all(const bgm_sources *s, bgm_list *l);
+
 /* The index of `name` in the list, or -1 */
 int  bgm_find(const bgm_list *l, const char *name);
 
-/* What the Track row shows for a file: the name without its extension */
+/* What the Track row shows for a file: the name without its folders and its
+ * extension */
 void bgm_title(const char *file, char *out, size_t n);
 
 /* The Track row's positions: -1 is Shuffle, then each track. Steps either
@@ -192,14 +222,17 @@ enum {
 	BGM_HOLD_SNAP  = 1 << 4,  /* a video snap on the shelf, with its sound on */
 };
 
-/* `dir` is the folder of tracks, `builtin` ZyperOS's own for when `dir` has
- * none (bgm_scan_either). Starts held by BGM_HOLD_START. */
+/* The two folders (bgm_sources): Menu Music and ZyperOS's own. Starts held
+ * by BGM_HOLD_START. */
 void bgm_init(const char *dir, const char *builtin);
 /* Lets the output go without waiting long; for the exit, a port's too. */
 void bgm_quit(void);
 
 void bgm_set_on(bool on);
 void bgm_set_volume(int volume);
+/* ZyperOS Tracks: ZyperOS's tracks with the card's own, or the card's alone */
+void bgm_set_builtin(bool with);
+bool bgm_builtin(void);
 /* "" for shuffle, or a file in the folder */
 void bgm_set_track(const char *file);
 bool bgm_on(void);
@@ -245,7 +278,7 @@ bool bgm_audible(void);
 typedef struct {
 	unsigned seq;
 	unsigned at;
-	char     file[256];
+	char     file[512];
 	bgm_tags tags;
 } bgm_song;
 
