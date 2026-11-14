@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include "home.h"
 #include "design.h"
+#include "ds/layout.h"   /* DS_HINT_*: a hint's glyph and the gap to its word */
 #include "theme.h"
 #include "ui.h"
 #include "texload.h"
@@ -425,13 +426,13 @@ static void sprite(home *h, SDL_Renderer *r, const home_item *item,
 void page_hint_fade(SDL_Renderer *r, const char *key, const char *label,
                     int x, int cy, bool focus, bool favorite, Uint8 alpha)
 {
-    int size=focus?40:32, w=ui_button_width(key,size);
+    int size=focus?DS_HINT_GLYPH_FOCUS:DS_HINT_GLYPH, w=ui_button_width(key,size);
     TTF_Font *font=page_font(focus?PAGE_ACTION:PAGE_CHROME);
     SDL_Color c=favorite?ui_col(theme()->favorite,255):UI_TEXT_SOFT;
     c.a=(Uint8)(c.a*alpha/255);
     ui_button_pressed(r,key,x+w/2,cy,size,focus?UI_BUTTON_ON_ACCENT:UI_BUTTON_PLAIN,
                       0.0f,1.0f,alpha/255.0f);
-    ui_text(r,font,label,x+w+12,ui_cap_y(font,cy),-1,c);
+    ui_text(r,font,label,x+w+DS_HINT_GAP,ui_cap_y(font,cy),-1,c);
 }
 void page_hint(SDL_Renderer *r, const char *key, const char *label,
                int x, int cy, bool focus, bool favorite)
@@ -440,7 +441,8 @@ void page_hint(SDL_Renderer *r, const char *key, const char *label,
 }
 int page_hint_width(const char *key, const char *label, bool focus)
 {
-    return ui_button_width(key,focus?40:32)+12+ui_text_width(page_font(focus?PAGE_ACTION:PAGE_CHROME),label);
+    return ui_button_width(key,focus?DS_HINT_GLYPH_FOCUS:DS_HINT_GLYPH)+DS_HINT_GAP+
+           ui_text_width(page_font(focus?PAGE_ACTION:PAGE_CHROME),label);
 }
 /* These draws alter only the draw color/blend. Targets, scale, viewport and
  * clipping stay untouched, including when a menu draws the home into a target. */

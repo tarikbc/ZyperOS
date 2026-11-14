@@ -23,6 +23,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "ds/layout.h"   /* DS_HINTS_*: the room between hints and rows */
+
 typedef struct {
 	const char *key;      /* the button, as printed: "A", "L1/R1", KEYHINT_LEFT_RIGHT */
 	const char *label;    /* what it does, one word or two */
@@ -30,9 +32,9 @@ typedef struct {
 
 #define KEYHINT_LEFT_RIGHT "< >"
 #define KEYHINTS_MAX  8          /* hints in one list, and rows at most */
-#define KEYHINTS_GAP  32         /* the room between two hints in a centered row */
-#define KEYHINTS_GAP_SPREAD 16   /* the least between two in a spread row (a foot) */
-#define KEYHINTS_ROW  44         /* one row's height */
+#define KEYHINTS_GAP  DS_HINTS_GAP         /* 32: the room between two hints in a centered row */
+#define KEYHINTS_GAP_SPREAD DS_HINTS_GAP_SPREAD   /* 16: the least between two in a spread row (a foot) */
+#define KEYHINTS_ROW  DS_HINTS_ROW         /* 44: one row's height */
 
 /* How wide a hint is drawn, glyph to the word's end */
 typedef int (*keyhint_width_fn)(const char *key, const char *label);
