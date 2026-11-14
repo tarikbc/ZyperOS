@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "design.h"
+#include "ds/layout.h"
 #include "hotpanel.h"
 #include "platform.h"
 #include "qr.h"
@@ -158,7 +159,10 @@ void hotpanel_draw(SDL_Renderer *r, const hotpanel *p, unsigned now_ms)
 	{
 		const char *leg = p->legend ? p->legend
 		                : keyhints_legend((key_hint[]){ { "B", T(S_KEYHINT_CLOSE) } }, 1);
-		int cy = ZYPEROS_SCREEN_H - DS_INSET - DS_GRID - ui_font_line(UI_F_META) / 2;
+		/* at a page's foot (src/ds/page.h), as File Transfer's page has them once
+		 * someone comes in (it was 718, a line of **meta** over the inset and a
+		 * grid step) */
+		int cy = DS_PAGE_FOOT_Y;
 
 		if (keyhints_is(leg))
 			keyhints_draw_packed(r, leg, DS_INSET, ZYPEROS_SCREEN_W - DS_INSET, cy, 255);
