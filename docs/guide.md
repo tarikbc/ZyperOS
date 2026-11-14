@@ -314,12 +314,27 @@ start with, when nothing has been pressed on the shelf. Each clip shows for
   consoles whose Video Snaps are on. **With no snaps on the card it shows the
   games' covers**, each for 8 seconds; with no covers either, it does nothing.
 
+### Date & Time
+
 Date & Time has a row for each part of the clock and one for the time zone,
 each changed with left and right and set the moment it changes, so the time
 holds through a power-off. The zones are one or two cities per hour of offset,
 west to east. Each time Wi-Fi connects it sets the clock, so with Wi-Fi this
 screen is mainly for the zone. A Pixel 2 with no adapter cannot get the time
 from a network: set it here once.
+
+The time zone's first choice, left of Honolulu, is **Auto**: each time the
+handheld gets internet, over Wi-Fi or a phone's USB tethering, it asks
+[ipwho.is](https://ipwho.is), a free service, for the time zone of its
+internet address, and sets it, so a trip to another zone needs nothing from
+you. The row says what it found, `Auto (Sao Paulo)`, and just `Auto` until
+its first answer, while the zone you had stays. It asks once a connection and
+at most every three hours, and when it gets no answer it keeps the zone it
+has. The service sees the handheld's internet address, which is how it knows
+where you are: choosing Auto says so, and Auto is off until you choose it. It
+sets the zone's own name, so daylight saving and half-hour zones follow on
+their own. The clock is still set as above, by the network, each time Wi-Fi
+or the phone's tethering connects.
 
 Games read the same zone: a game with a clock of its own, such as Pokemon's
 day and night, keeps the time of the zone chosen here, and a new zone

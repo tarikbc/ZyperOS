@@ -172,6 +172,32 @@ int main(void)
 	      "and so does the east");
 	CHECK(!strcmp(CLOCK_ZONES[clock_zone_step("America/New_York", +1)].city, "Halifax"),
 	      "one east of New York is Halifax");
+	/* Auto, before the west end (src/autozone.h) */
+	CHECK(clock_zone_step_auto(CLOCK_ZONES[0].id, false, -1) == CLOCK_ZONE_AUTO,
+	      "left from the west end is Auto");
+	CHECK(clock_zone_step_auto("America/New_York", true, -1) == CLOCK_ZONE_AUTO,
+	      "left from Auto stays on Auto");
+	CHECK(clock_zone_step_auto("America/Sao_Paulo", true, +1) == 0,
+	      "right from Auto is the list's first, whatever zone Auto found");
+	CHECK(clock_zone_step_auto("America/New_York", false, +1) == clock_zone_find("America/Halifax"),
+	      "and the list steps as it did");
+	CHECK(clock_zone_step_auto("Asia/Ho_Chi_Minh", false, -1) == clock_zone_find("America/New_York"),
+	      "an id off the list steps onto it from New York");
+	CHECK(clock_zone_step_auto(CLOCK_ZONES[CLOCK_ZONE_COUNT - 1].id, false, +1) == CLOCK_ZONE_COUNT - 1,
+	      "the east end stops");
+	/* A zone name for TZ, never a path */
+	CHECK(clock_zone_name_ok("America/Argentina/Buenos_Aires") && clock_zone_name_ok("Etc/GMT+3") &&
+	      clock_zone_name_ok("America/Port-au-Prince") && clock_zone_name_ok("UTC"),
+	      "the zone database's names are names");
+	CHECK(!clock_zone_name_ok(":/etc/passwd") && !clock_zone_name_ok("/etc/localtime") &&
+	      !clock_zone_name_ok("../etc/passwd") && !clock_zone_name_ok("America/../../etc") &&
+	      !clock_zone_name_ok("<-03>3") && !clock_zone_name_ok("America/") &&
+	      !clock_zone_name_ok("America//Sao_Paulo") && !clock_zone_name_ok("") &&
+	      !clock_zone_name_ok(NULL) && !clock_zone_name_ok("Am erica/X"),
+	      "and paths, TZ's other forms and the rest are not");
+	CHECK(clock_zone_have("America/New_York") && clock_zone_have("Asia/Ho_Chi_Minh") &&
+	      !clock_zone_have("Mars/Olympus_Mons") && !clock_zone_have("America"),
+	      "this system has a zone of the list and one off it, not a made-up one or a folder");
 	{
 		/* West to east, by what each zone is on one fixed day. A zone this
 		 * machine did not know would read as UTC and break the order, so

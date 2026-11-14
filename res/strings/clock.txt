@@ -13,6 +13,28 @@ de = Zeitzone
 ja = タイムゾーン
 it = Fuso orario
 
+[clock.zone_auto]
+note = Time Zone's first choice, Auto: the zone of where the handheld is, asked of an internet service each time it gets internet. Shown alone until it has found one; a word as Appearance's Auto is
+en = Auto
+zh-Hans = 自动
+es = Automática
+pt-BR = Automático
+fr = Auto
+de = Automatisch
+ja = 自動
+it = Automatico
+
+[clock.zone_auto_found]
+note = Time Zone's value once Auto has found where the handheld is: %s is the zone's city, not translated (Sao Paulo, Ho Chi Minh, UTC+3); written as Game Language's Auto (%s)
+en = Auto (%s)
+zh-Hans = 自动（%s）
+es = Auto (%s)
+pt-BR = Auto (%s)
+fr = Auto (%s)
+de = Auto (%s)
+ja = 自動（%s）
+it = Auto (%s)
+
 [clock.year]
 note = A Date & Time row; its value is the year, 2026
 en = Year

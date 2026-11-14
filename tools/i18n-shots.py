@@ -168,6 +168,14 @@ EXTRA = {
     # "auto (alto-falante)" was cut there and nowhere a shot looked
     "menu-audio-under": ("demo", "PS1", ["--menu", "Audio Channels"]),
     "menu-clock": ("demo", "PS1", ["--menu", "Language"]),
+    # Date & Time's page (src/main.c's clock_page_rows): Time Zone on Auto
+    # before it has found a zone, with the zone it found and with a long
+    # city; a zone of the list; and what Auto says as it is chosen
+    "datetime-auto": ("demo", "PS1", ["--datetime", "0"]),
+    "datetime-found": ("demo", "PS1", ["--datetime", "1"]),
+    "datetime-long": ("demo", "PS1", ["--datetime", "2"]),
+    "datetime": ("demo", "PS1", ["--datetime", "3"]),
+    "datetime-auto-said": ("demo", "PS1", ["--datetime", "4"]),
     "menu-look": ("demo", "PS1", ["--menu", "Appearance"]),
     "menu-end": ("demo", "PS1", ["--menu", "About ZyperOS"]),
     "language": ("demo", "PS1", ["--language"]),

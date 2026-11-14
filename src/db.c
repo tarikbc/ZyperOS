@@ -45,6 +45,10 @@ static const db_default device_defaults[] = {
 
 static const db_default library_defaults[] = {
 	{ "timezone",       "America/New_York" },
+	/* Date & Time's Auto (src/autozone.h): off, on every card the launcher
+	 * opens from 1.0.5 on, new or old, until it is chosen. Seeded where it
+	 * is absent, so a later default of on would reach new cards only. */
+	{ "timezone.auto",  "0" },
 	{ "startup_system", "NES" },
 
 	/* Turbo, per system tag. `x:a~3,y:b~3` says X is a turbo A and Y a turbo
