@@ -1697,138 +1697,146 @@ static void info_rows(void)
 
 /* ---------- the in-game menu ---------------------------------------------- */
 
-/* Achievements is the only row that can be dead, and it is dead exactly when the
- * game has no set. Everything else is always something A does. */
+/* The in-game menu is three tabs (docs/superpowers/specs/2026-11-13-button-remap-design.md,
+ * section 1): Game, Display and Controls, MENU's tab row. gm_tab_rows says
+ * which rows a tab has, gm_rows builds them, and a port's menu has no tabs.
+ * Achievements is the only row that can be dead, and it is dead exactly when
+ * the game has no set. Everything else is always something A does. */
+static int labels_are(const menu_row *rows, int n, const char *const *want, int k)
+{
+	int i;
+
+	if (n != k) return 0;
+	for (i = 0; i < k; i++)
+		if (strcmp(lbl(&rows[i]), want[i])) return 0;
+	return 1;
+}
+
+static int row_of(const gm_ui *u, gm_tab t, gm_row id)
+{
+	return gm_row_at(u, t, id);
+}
+
 static void ingame_rows(void)
 {
+	static const char *const game[] = { "Continue", "Save", "Load", "Quick Slot", "Player 2",
+	                                    "Achievements", "Reset", "Quit" };
+	static const char *const dsp[] = { "Display", "Shader", "Screens", "Swap Screens", "Stylus" };
 	gm_ui u = { 0 };
 	gm_bufs b;
 	menu_row rows[GM_MAX_ROWS];
 	gm_row ids[GM_MAX_ROWS];
-	int got[GM_MAX_ROWS], n, k;
+	int got[GM_MAX_ROWS], n, k, t;
 
 	u.dmode = "Native"; u.earned = 12; u.total = 40; u.quick = 2;
-	n = gm_rows(&u, rows, &b);
 
-	printf("in-game menu, a game with a set:\n");
-	ck(n == GM_ROWS, "ten rows");
-	ck(!strcmp(rows[GM_CONTINUE].label, "Continue"), "Continue leads");
-	/* The quick slot right after Load (2026-11-07): the slot SELECT+R1 and
-	 * SELECT+L1 use, its number at the right, stepped round like Display */
-	ck(!strcmp(rows[GM_QUICK].label, "Quick Slot") && GM_QUICK == GM_LOAD + 1,
-	   "Quick Slot right after Load");
-	ck(!strcmp(val(&rows[GM_QUICK]), "2") && rows[GM_QUICK].live,
-	   "and says the slot, a stop");
-	/* Shader right after Display (2026-11-12), Off with no shader said,
-	 * stepped round like Display; then Controls (2026-11-06), a page to
-	 * read, so it is always a stop and says nothing at the right */
-	ck(!strcmp(rows[GM_DISPLAY + 1].label, "Shader") && GM_SHADER == GM_DISPLAY + 1,
-	   "Shader right after Display");
-	ck(!strcmp(val(&rows[GM_SHADER]), "Off") && rows[GM_SHADER].live,
-	   "and says Off when no shader is given, a stop");
-	ck(!strcmp(rows[GM_SHADER + 1].label, "Controls") && GM_CONTROLS == GM_SHADER + 1,
-	   "Controls right after Shader");
-	ck(rows[GM_CONTROLS].live && !rows[GM_CONTROLS].value, "and opens with A, no value");
-	ck(!strcmp(val(&rows[GM_DISPLAY]), "Native"), "Display carries the mode");
-	ck(!strcmp(val(&rows[GM_CHEEVOS]), "12 / 40"), "Achievements counts the set");
-	ck(rows[GM_CHEEVOS].live, "and is reachable");
-	k = reachable(rows, n, got, GM_ROWS);
-	ck(k == GM_ROWS, "every row is a stop");
-	/* X from anywhere on the page is Quit (2026-11-08), and Quit alone
-	 * carries X's glyph to say so */
-	ck(gm_x_row() == GM_QUIT && rows[GM_QUIT].value == MENU_KEY_X,
-	   "X is Quit's, and Quit draws X's glyph");
+	printf("in-game menu, the tabs:\n");
+	ck(GT_TABS == 3 && GT_GAME == 0 && GT_DISPLAY == 1 && GT_CONTROLS == 2, "three tabs, Game first");
+	ck(!strcmp(gm_tab_name(GT_GAME), "Game") && !strcmp(gm_tab_name(GT_DISPLAY), "Display") &&
+	   !strcmp(gm_tab_name(GT_CONTROLS), "Controls"), "named Game, Display and Controls");
+	ck(!strcmp(gm_tab_name(-1), "Game") && !strcmp(gm_tab_name(GT_TABS), "Game"),
+	   "a tab past the ends reads as the first");
+
+	/* An NES game: its Player 2, and no screens, shader or display on this tab */
+	u.player2 = true; u.player2_value = gm_player2_value(P2_OFF);
+	n = gm_rows(&u, GT_GAME, rows, &b);
+	printf("in-game menu, Game tab:\n");
+	ck(labels_are(rows, n, game, 8), "gm_tabs_game_rows: Continue Save Load Quick Slot Player 2 Achievements Reset Quit");
+	ck(gm_tab_rows(&u, GT_GAME, ids) == 8 && ids[0] == GM_CONTINUE && ids[4] == GM_PLAYER2 &&
+	   ids[5] == GM_CHEEVOS && ids[7] == GM_QUIT, "and the ids say the same");
+	ck(!strcmp(val(&rows[3]), "2") && rows[3].live && !strcmp(val(&rows[5]), "12 / 40"),
+	   "Quick Slot says its slot, Achievements counts the set");
+	ck(!strcmp(val(&rows[4]), "off") && rows[4].live && !b.sound[4], "Player 2 says off, a plain stop");
+	ck(reachable(rows, n, got, GM_MAX_ROWS) == 8, "every row is a stop");
+	/* X from anywhere is Quit's, and Quit alone carries X's glyph */
+	ck(gm_x_row() == GM_QUIT && rows[7].value == MENU_KEY_X, "X is Quit's, and Quit draws X's glyph");
 	for (k = 0; k < n; k++)
-		if (k != GM_QUIT && rows[k].value == MENU_KEY_X) break;
+		if (k != 7 && rows[k].value == MENU_KEY_X) break;
 	ck(k == n, "and no other row does");
-
-	/* Over a port (OpenBOR, src/portmenu.h): what a stopped program can
-	 * still be asked, every one a stop, in the game menu's order */
-	u.port = true;
-	n = gm_rows(&u, rows, &b);
-	printf("in-game menu over a port:\n");
-	ck(n == 3 && gm_row_ids(&u, ids) == 3 && ids[0] == GM_CONTINUE && ids[1] == GM_CONTROLS &&
-	   ids[2] == GM_QUIT, "Continue, Controls and Quit");
-	ck(!strcmp(rows[0].label, "Continue") && !strcmp(rows[1].label, "Controls") &&
-	   !strcmp(rows[2].label, "Quit"), "labeled as over a game");
-	ck(rows[2].value == MENU_KEY_X && gm_row_at(&u, gm_x_row()) == 2,
-	   "X is its Quit too, with the glyph");
-	ck(reachable(rows, n, got, GM_ROWS) == 3, "every row a stop");
-	u.port = false;
-
-	u.earned = 0; u.total = 0;
-	n = gm_rows(&u, rows, &b);
-	printf("in-game menu, a game with no set:\n");
-	ck(!strcmp(val(&rows[GM_CHEEVOS]), "none"), "Achievements says none");
-	ck(!rows[GM_CHEEVOS].live, "and does nothing");
-	k = reachable(rows, n, got, GM_ROWS);
-	ck(k == GM_ROWS - 1, "so the cursor steps over it");
-	ck(!holds(got, k, GM_CHEEVOS), "and never rests on it");
-	ck(holds(got, k, GM_QUIT) && holds(got, k, GM_CONTINUE),
-	   "the rows either side of it still work");
-
-	/* A system whose core keeps no state (ScummVM, J2ME): no quick slot,
-	 * so no row, and every other row a place up from its id */
-	u.earned = 12; u.total = 40; u.quick = 0;
-	n = gm_rows(&u, rows, &b);
-	printf("in-game menu, a system with no save states:\n");
-	ck(n == GM_ROWS - 1, "nine rows, no Quick Slot");
-	ck(gm_row_at(&u, GM_QUICK) == -1 && gm_row_at(&u, GM_DISPLAY) == GM_DISPLAY - 1 &&
-	   !strcmp(rows[gm_row_at(&u, GM_DISPLAY)].label, "Display"),
-	   "Display a row up, where gm_row_at says");
-	gm_row_ids(&u, ids);
-	ck(ids[2] == GM_LOAD && ids[3] == GM_DISPLAY && ids[n - 1] == GM_QUIT,
-	   "Load, then Display, Quit last");
+	ck(row_of(&u, GT_GAME, GM_QUIT) == 7 && row_of(&u, GT_GAME, GM_SHADER) == -1,
+	   "gm_row_at is a place on that tab, -1 for a row it has not");
+	u.player2 = false;
+	n = gm_rows(&u, GT_GAME, rows, &b);
+	ck(n == 7 && !strcmp(rows[4].label, "Achievements"), "a game with no Player 2 has seven");
+	u.quick = 0;
+	n = gm_rows(&u, GT_GAME, rows, &b);
+	ck(n == 6 && row_of(&u, GT_GAME, GM_QUICK) == -1 && !strcmp(rows[2].label, "Load") &&
+	   !strcmp(rows[3].label, "Achievements"), "no save states: no Quick Slot");
 	ck(ctl_has_states("SFC") && ctl_has_states("PS1") && ctl_has_states("N64") &&
 	   !ctl_has_states("SCUMMVM") && !ctl_has_states("J2ME"),
 	   "every Diatom system keeps states but ScummVM and J2ME");
+	u.quick = 2;
 
-	/* A DS game on DSperate: its two screens' three rows, after Display,
-	 * and every other row still where gm_row_ids says it is. */
-	u.quick = 1;
+	/* Achievements dead when the game has no set */
+	u.earned = 0; u.total = 0;
+	n = gm_rows(&u, GT_GAME, rows, &b);
+	printf("in-game menu, a game with no set:\n");
+	ck(!strcmp(val(&rows[gm_row_at(&u, GT_GAME, GM_CHEEVOS)]), "none"), "Achievements says none");
+	ck(!rows[gm_row_at(&u, GT_GAME, GM_CHEEVOS)].live, "and does nothing");
+	k = reachable(rows, n, got, GM_MAX_ROWS);
+	ck(k == n - 1 && !holds(got, k, gm_row_at(&u, GT_GAME, GM_CHEEVOS)),
+	   "so the cursor steps over it and never rests on it");
+	ck(holds(got, k, 6) && holds(got, k, 0), "the rows either side of it still work");
+	u.earned = 12; u.total = 40;
+
+	/* Display: a DS game adds the screens' three, in this order */
+	n = gm_rows(&u, GT_DISPLAY, rows, &b);
+	printf("in-game menu, Display tab:\n");
+	ck(n == 2 && !strcmp(rows[0].label, "Display") && !strcmp(rows[1].label, "Shader"),
+	   "a game that is not a DS one: Display and Shader");
+	ck(!strcmp(val(&rows[0]), "Native") && b.sound[0] == MENU_SND_RING && b.sound[1] == MENU_SND_RING,
+	   "Display carries the mode, and both step round");
+	u.shader = "Sharp-Shimmerless";
+	n = gm_rows(&u, GT_DISPLAY, rows, &b);
+	ck(!strcmp(val(&rows[1]), "Sharp-Shimmerless"), "Shader says the shader it is given");
+	u.shader = NULL;
+	n = gm_rows(&u, GT_DISPLAY, rows, &b);
+	ck(!strcmp(val(&rows[1]), "Off") && rows[1].live, "and Off when none is, a stop");
 	u.screens = true; u.layout = 1; u.swap = true; u.stylus = false;
-	n = gm_rows(&u, rows, &b);
-	printf("in-game menu, a game with two screens:\n");
-	ck(n == GM_MAX_ROWS - 2, "thirteen rows: every row but the N64's Pak and NES Player 2");
-	ck(gm_row_ids(&u, ids) == n && ids[3] == GM_QUICK && ids[4] == GM_DISPLAY &&
-	   ids[5] == GM_SHADER && ids[6] == GM_SCREENS && ids[7] == GM_SWAP &&
-	   ids[8] == GM_STYLUS && ids[9] == GM_CONTROLS && ids[10] == GM_CHEEVOS &&
-	   ids[12] == GM_QUIT,
-	   "Screens, Swap Screens and Stylus right after Display and Shader, then Controls");
-	ck(!strcmp(rows[6].label, "Screens") && !strcmp(val(&rows[6]), "Top Focus"),
-	   "Screens says the layout");
-	ck(!strcmp(val(&rows[7]), "On") && !strcmp(val(&rows[8]), "Off"),
-	   "Swap Screens and Stylus say On or Off, as a switch does");
-	ck(!strcmp(rows[10].label, "Achievements") && !strcmp(val(&rows[10]), "12 / 40"),
-	   "Achievements moves down with its value");
-	k = reachable(rows, n, got, GM_MAX_ROWS - 2);
-	ck(k == GM_MAX_ROWS - 2, "every row is a stop");
+	n = gm_rows(&u, GT_DISPLAY, rows, &b);
+	ck(labels_are(rows, n, dsp, 5), "gm_tabs_display_ds: Display Shader Screens Swap Screens Stylus");
+	ck(gm_tab_rows(&u, GT_DISPLAY, ids) == 5 && ids[2] == GM_SCREENS && ids[3] == GM_SWAP &&
+	   ids[4] == GM_STYLUS, "and the ids");
+	ck(!strcmp(val(&rows[2]), "Top Focus") && !strcmp(val(&rows[3]), "On") && !strcmp(val(&rows[4]), "Off"),
+	   "Screens says the layout, Swap Screens and Stylus say On or Off");
+	ck(reachable(rows, n, got, GM_MAX_ROWS) == 5, "every row is a stop");
 	ck(gm_layout_index("single") == 2 && gm_layout_index("nonsense") == 0,
 	   "a layout name Diatom did not send reads as Stacked");
 	ck(!strcmp(gm_layout_names[GM_LAYOUT_DEFAULT], "single"),
 	   "a system with no layout on record starts on one screen alone, the top one");
-
+	n = gm_rows(&u, GT_GAME, rows, &b);
+	ck(n == 7, "and the DS game's Game tab is the same as any other's");
 	u.screens = false;
-	ck(gm_row_ids(&u, ids) == GM_ROWS && ids[GM_CHEEVOS] == GM_CHEEVOS,
-	   "and any other game keeps ten, each its own id");
 
-	/* A Nintendo 64 game: its Pak, right before Controls, saying which */
+	/* No GM_CONTROLS row in any tab of a game's menu, and no Pak: the
+	 * Controls tab's rows are src/ctltab.c's, from task 7 */
 	u.pak = gm_pak_name("rumble");
-	n = gm_rows(&u, rows, &b);
-	printf("in-game menu, a Nintendo 64 game:\n");
-	ck(n == GM_ROWS + 1, "eleven rows");
-	ck(gm_row_at(&u, GM_PAK) == gm_row_at(&u, GM_SHADER) + 1 &&
-	   gm_row_at(&u, GM_CONTROLS) == gm_row_at(&u, GM_PAK) + 1, "Pak between Shader and Controls");
-	u.shader = "Sharp-Shimmerless";
-	n = gm_rows(&u, rows, &b);
-	ck(!strcmp(val(&rows[gm_row_at(&u, GM_SHADER)]), "Sharp-Shimmerless"),
-	   "Shader says the shader it is given");
-	u.shader = NULL;
-	ck(!strcmp(rows[gm_row_at(&u, GM_PAK)].label, "Pak") &&
-	   !strcmp(val(&rows[gm_row_at(&u, GM_PAK)]), "Rumble Pak"), "Pak says Rumble Pak");
-	k = reachable(rows, n, got, GM_ROWS + 1);
-	ck(k == GM_ROWS + 1, "every row is a stop");
-	u.pak = NULL;
+	u.player2 = true; u.screens = true;
+	for (t = 0; t < GT_TABS; t++) {
+		n = gm_tab_rows(&u, (gm_tab)t, ids);
+		for (k = 0; k < n; k++)
+			if (ids[k] == GM_CONTROLS || ids[k] == GM_PAK) break;
+		if (k < n) break;
+	}
+	ck(t == GT_TABS, "gm_no_controls_row: no Controls or Pak row in any tab of a game");
+	ck(gm_tab_rows(&u, GT_CONTROLS, ids) == 0 && gm_rows(&u, GT_CONTROLS, rows, &b) == 0,
+	   "the Controls tab has no rows of this file's until task 7");
+	u.pak = NULL; u.player2 = false; u.screens = false;
+
+	/* Over a port (OpenBOR, src/portmenu.h): what a stopped program can
+	 * still be asked, no tabs, every one a stop, in the game menu's order */
+	u.port = true;
+	printf("in-game menu over a port:\n");
+	n = gm_rows(&u, GT_GAME, rows, &b);
+	ck(n == 3 && gm_tab_rows(&u, GT_GAME, ids) == 3 && ids[0] == GM_CONTINUE &&
+	   ids[1] == GM_CONTROLS && ids[2] == GM_QUIT, "gm_port_untabbed: Continue, Controls and Quit");
+	ck(!strcmp(rows[0].label, "Continue") && !strcmp(rows[1].label, "Controls") &&
+	   !strcmp(rows[2].label, "Quit"), "labeled as over a game");
+	ck(rows[2].value == MENU_KEY_X && gm_row_at(&u, GT_GAME, gm_x_row()) == 2,
+	   "X is its Quit too, with the glyph");
+	ck(reachable(rows, n, got, GM_MAX_ROWS) == 3, "every row a stop");
+	ck(gm_tab_rows(&u, GT_DISPLAY, ids) == 3, "whichever tab it is asked for");
+	u.port = false;
 }
 
 /* The N64's Pak as the row steps it and the library keeps it */
@@ -1860,50 +1868,39 @@ static void player2_row_on_nes_only(void)
 	gm_ui u = { 0 };
 	gm_bufs b;
 	menu_row rows[GM_MAX_ROWS];
-	gm_row ids[GM_MAX_ROWS];
-	int got[GM_MAX_ROWS], n, at, i;
+	int n, at, i;
 
 	printf("in-game menu, NES Player 2:\n");
 	u.dmode = "Native"; u.earned = 12; u.total = 40; u.quick = 2;
-	ck(gm_row_at(&u, GM_PLAYER2) == -1 && gm_row_ids(&u, ids) == GM_ROWS,
+	ck(gm_row_at(&u, GT_GAME, GM_PLAYER2) == -1 && gm_tab_rows(&u, GT_GAME, (gm_row[GM_MAX_ROWS]){ 0 }) == 7,
 	   "no Player 2 row where it is not offered");
 	u.player2 = true;
 	u.player2_value = gm_player2_value(P2_OFF);
-	n = gm_rows(&u, rows, &b);
-	at = gm_row_at(&u, GM_PLAYER2);
-	ck(n == GM_ROWS + 1, "eleven rows with it");
-	ck(at == gm_row_at(&u, GM_SHADER) + 1 && gm_row_at(&u, GM_CONTROLS) == at + 1,
-	   "right after Shader, before Controls");
+	n = gm_rows(&u, GT_GAME, rows, &b);
+	at = gm_row_at(&u, GT_GAME, GM_PLAYER2);
+	ck(n == 8, "eight rows with it");
+	ck(at == gm_row_at(&u, GT_GAME, GM_QUICK) + 1 && at + 1 == gm_row_at(&u, GT_GAME, GM_CHEEVOS),
+	   "right after Quick Slot, before Achievements");
 	ck(at >= 0 && !strcmp(rows[at].label, "Player 2") && !strcmp(val(&rows[at]), "off"),
 	   "Player 2, off until it is started");
 	ck(at >= 0 && rows[at].live && !b.sound[at], "a stop, and plain: A opens its page");
-	ck(reachable(rows, n, got, GM_MAX_ROWS) == n, "every row is a stop");
 	ck(!strcmp(gm_player2_value(P2_OFF), "off") &&
 	   !strcmp(gm_player2_value(P2_WAITING), "waiting") &&
 	   !strcmp(gm_player2_value(P2_CONNECTED), "connected"),
 	   "its three values: off, waiting, connected");
 	ck(!strcmp(gm_player2_value(P2_FAILED), "off"), "and a start that failed reads off");
 	u.player2_value = gm_player2_value(P2_CONNECTED);
-	n = gm_rows(&u, rows, &b);
-	ck(!strcmp(val(&rows[gm_row_at(&u, GM_PLAYER2)]), "connected"), "the row says the value it is given");
-	/* After the whole of Shader's group, a DS game's three rows and a Pak
-	 * included, wherever they come */
-	u.screens = true; u.pak = gm_pak_name("rumble");
-	n = gm_row_ids(&u, ids);
-	ck(gm_row_at(&u, GM_PLAYER2) == gm_row_at(&u, GM_PAK) + 1 &&
-	   gm_row_at(&u, GM_PAK) == gm_row_at(&u, GM_STYLUS) + 1 &&
-	   gm_row_at(&u, GM_CONTROLS) == gm_row_at(&u, GM_PLAYER2) + 1 && n == GM_MAX_ROWS,
-	   "after the screens' rows and the Pak, still before Controls");
-	u.screens = false; u.pak = NULL;
+	n = gm_rows(&u, GT_GAME, rows, &b);
+	ck(!strcmp(val(&rows[gm_row_at(&u, GT_GAME, GM_PLAYER2)]), "connected"), "the row says the value it is given");
 	/* Over a port, none */
 	u.port = true;
-	ck(gm_row_at(&u, GM_PLAYER2) == -1, "and none over a port");
+	ck(gm_row_at(&u, GT_GAME, GM_PLAYER2) == -1, "and none over a port");
 	u.port = false;
 	u.player2 = false;
-	n = gm_rows(&u, rows, &b);
+	n = gm_rows(&u, GT_GAME, rows, &b);
 	for (i = 0; i < n; i++)
 		if (!strcmp(lbl(&rows[i]), "Player 2")) break;
-	ck(i == n && n == GM_ROWS, "without it, every other game keeps its ten");
+	ck(i == n && n == 7, "without it, every other game keeps its seven");
 }
 
 /* The quick slot as the device's database keeps it: per system, slot 1
@@ -2322,16 +2319,18 @@ static void row_sounds(void)
 	/* The in-game menu's Display steps on A as well as left and right
 	 * (gm_key's GM_DISPLAY), so A is accept there, not deny. Shader too. */
 	g.dmode = "Native"; g.screens = true; g.quick = 3;
-	n = gm_rows(&g, gr, &gb);
-	gm_row_ids(&g, ids);
-	for (i = 0; i < n; i++) {
-		unsigned want = ids[i] == GM_DISPLAY || ids[i] == GM_SHADER || ids[i] == GM_QUICK ||
-		                ids[i] == GM_SCREENS || ids[i] == GM_SWAP || ids[i] == GM_STYLUS ||
-		                ids[i] == GM_PAK
-		                ? MENU_SND_RING : 0;
+	for (int t = 0; t < GT_TABS; t++) {
+		n = gm_rows(&g, (gm_tab)t, gr, &gb);
+		gm_tab_rows(&g, (gm_tab)t, ids);
+		for (i = 0; i < n; i++) {
+			unsigned want = ids[i] == GM_DISPLAY || ids[i] == GM_SHADER || ids[i] == GM_QUICK ||
+			                ids[i] == GM_SCREENS || ids[i] == GM_SWAP || ids[i] == GM_STYLUS ||
+			                ids[i] == GM_PAK
+			                ? MENU_SND_RING : 0;
 
-		ck(menu_sound_at(gb.sound, n, i) == want,
-		   "in-game: Display, Shader, Quick Slot and the screens' rows step round, on A too; the rest plain");
+			ck(menu_sound_at(gb.sound, n, i) == want,
+			   "in-game: Display, Shader, Quick Slot and the screens' rows step round, on A too; the rest plain");
+		}
 	}
 
 	/* The Wi-Fi screen's rows are networks, named by whoever runs them, and

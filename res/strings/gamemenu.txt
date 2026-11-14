@@ -347,6 +347,39 @@ de = Beenden
 ja = 終了
 it = Esci
 
+[gamemenu.tab_game]
+note = The in-game menu's tab row, beside L1 and R1 (like sysmenu.tab_*): the rows about the running game
+en = Game
+zh-Hans = 游戏
+es = Juego
+pt-BR = Jogo
+fr = Jeu
+de = Spiel
+ja = ゲーム
+it = Gioco
+
+[gamemenu.tab_display]
+note = The in-game menu's tab row, beside L1 and R1: how the picture is drawn
+en = Display
+zh-Hans = 显示
+es = Pantalla
+pt-BR = Tela
+fr = Affichage
+de = Anzeige
+ja = 画面
+it = Schermo
+
+[gamemenu.tab_controls]
+note = The in-game menu's tab row, beside L1 and R1: what the buttons do
+en = Controls
+zh-Hans = 按键说明
+es = Controles
+pt-BR = Controles
+fr = Commandes
+de = Steuerung
+ja = 操作方法
+it = Comandi
+
 [gamemenu.screens]
 note = The in-game menu of a two-screen game (Nintendo DS): how the two are laid out
 en = Screens

@@ -6085,7 +6085,10 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 		if (tween_moving(&give, nw)) redraw_now();    /* the list still easing: moving */
 	}
 
-	if (sel >= 0 && sel < n && rows[sel].label) {
+	/* No plate on a note nothing can land on: a list that is only that (the
+	 * in-game menu's Controls tab before it has rows) has no cursor to show */
+	if (sel >= 0 && sel < n && rows[sel].label &&
+	    !(ROW_IS_NOTE(rows[sel]) && !rows[sel].live)) {
 		static int   pl_n = -1;
 		static unsigned pl_ep;
 		static tween pl_y, pl_h;
@@ -6671,6 +6674,8 @@ static void snap_record(menu_snap *s, int kind, const char *heading,
 	s->frame = g_frame_no;
 	s->kind  = kind;
 	s->tab   = g_menu_tabs ? g_menu_tabs->at : -1;
+	s->tab_count = g_menu_tabs ? g_menu_tabs->count : 0;
+	s->tab_name  = g_menu_tabs ? g_menu_tabs->name : NULL;
 	s->row_mark = (void *)g_row_mark;
 	s->header = (void *)g_menu_header;
 	s->header_h = g_menu_header_h;
@@ -6707,9 +6712,9 @@ static void snap_draw(app *a, mm_pose pose)
 
 	g_menu_zyper = s->zyper ? &s->zy : NULL;
 	g_menu_zyper_at = anim_now() + s->zy_ahead;
-	/* the tab row as it was, at rest */
-	rest = (menu_tabs){ s->tab, s->tab, 0, 0, g_tabs.count, g_tabs.name };
-	g_menu_tabs = s->tab >= 0 ? &rest : NULL;
+	/* the tab row as it was, at rest, with the names of its own set */
+	rest = (menu_tabs){ s->tab, s->tab, 0, 0, s->tab_count, s->tab_name };
+	g_menu_tabs = s->tab >= 0 && s->tab_name ? &rest : NULL;
 	{
 		void (*mark)(app *, const menu_row *, int, int, float) = g_row_mark;
 		void (*head)(app *, const SDL_Rect *) = g_menu_header;
@@ -19820,13 +19825,32 @@ static void gm_gather(app *a, gm_ui *out)
 	*out = u;
 }
 
-static int gm_build(app *a, menu_row *out, gm_bufs *b)
-{
-	gm_ui u;
+/* What the in-game menu remembers of the game running: the tab it was on,
+ * the row each tab was left on (by identity; GM_MAX_ROWS is none, the tab's
+ * first) and, for the Controls tab's Applies To, whether a change is for
+ * every game of the system (Task 7 reads and writes it). Reset when a game
+ * starts (launch) and kept across MENU presses until it ends, so MENU opens
+ * where it was closed. */
+static struct {
+	int  tab;
+	int  row[GT_TABS];
+	bool scope_all;
+} g_gm_mem;
 
-	gm_gather(a, &u);
-	return gm_rows(&u, out, b);
+static void gm_mem_reset(void)
+{
+	int t;
+
+	g_gm_mem.tab = GT_GAME;
+	for (t = 0; t < GT_TABS; t++) g_gm_mem.row[t] = GM_MAX_ROWS;
+	g_gm_mem.scope_all = false;
 }
+
+static const char *gm_tab_name_i(int i) { return gm_tab_name(i); }
+
+/* The panel's one width on every tab and every value, so it holds still as
+ * the tabs go round; a port's menu has no tabs and sizes itself */
+#define GM_PANEL_W 860
 
 /* The list itself, over the paused frame. menu_draw already windows a list
  * longer than the screen, which a set of 166 certainly is.
@@ -22533,71 +22557,13 @@ static void game_controls_screen(app *a, SDL_Texture *bg)
 	memset(&a->in, 0, sizeof a->in);
 }
 
-/* Measured across every mode label, so cycling the row does not resize the
- * panel under the cursor - the same reason the shelf menus have a fixed width. */
+/* One width on every tab (GM_PANEL_W), so cycling a value or turning a tab
+ * does not resize the panel under the cursor. A port's menu, which has no
+ * tabs and no values to cycle, is as wide as its rows. */
 static int gm_width(app *a)
 {
-	menu_row rows[GM_MAX_ROWS];
-	gm_bufs b;
-	gm_ui u;
-	int w = 0, k, n, disp, scr;
-
-	n = gm_build(a, rows, &b);
-	gm_gather(a, &u);
-	/* Where the rows are, which the quick slot's row moves: none where the
-	 * system keeps no states */
-	disp = gm_row_at(&u, GM_DISPLAY);
-	scr  = gm_row_at(&u, GM_SCREENS);
-	for (k = 0; disp >= 0 && k < DMODE_COUNT; k++) {
-		int mw;
-		rows[disp].value = dmode_label(k);
-		mw = menu_measure(rows, n, NULL);
-		if (mw > w) w = mw;
-	}
-	if (disp >= 0) rows[disp].value = dmode_label(0);
-	/* Shader, at each, for the same reason */
-	{
-		int sh = gm_row_at(&u, GM_SHADER);
-
-		for (k = 0; sh >= 0 && k < SHADER_COUNT; k++) {
-			int mw;
-			if (!shader_offered(k)) continue;
-			rows[sh].value = shader_label(k);
-			mw = menu_measure(rows, n, NULL);
-			if (mw > w) w = mw;
-		}
-	}
-	/* An N64 game's Pak, at each */
-	{
-		int pk = gm_row_at(&u, GM_PAK);
-
-		for (k = 0; pk >= 0 && k < 2; k++) {
-			int mw;
-			rows[pk].value = gm_pak_name(k ? "memory" : "rumble");
-			mw = menu_measure(rows, n, NULL);
-			if (mw > w) w = mw;
-		}
-	}
-	/* An NES game's Player 2, at each of its values */
-	{
-		static const p2_state st[] = { P2_OFF, P2_WAITING, P2_CONNECTED };
-		int p2 = gm_row_at(&u, GM_PLAYER2);
-
-		for (k = 0; p2 >= 0 && k < (int)(sizeof st / sizeof st[0]); k++) {
-			int mw;
-			rows[p2].value = gm_player2_value(st[k]);
-			mw = menu_measure(rows, n, NULL);
-			if (mw > w) w = mw;
-		}
-	}
-	/* A DS game's Screens row, right under Shader, at each layout. */
-	for (k = 0; scr >= 0 && k < GM_LAYOUTS; k++) {
-		int mw;
-		rows[scr].value = gm_layout_label(k);
-		mw = menu_measure(rows, n, NULL);
-		if (mw > w) w = mw;
-	}
-	return w;
+	(void)a;
+	return g_port_menu ? 0 : GM_PANEL_W;
 }
 
 /* The DS rows: the layout steps through the three, the swap and the stylus
@@ -22634,16 +22600,32 @@ typedef struct {
 	gm_bufs      bufs;
 	menu_style   st;
 	bool         resume;
+	menu_tabs    tabs;     /* Game, Display, Controls; none over a port */
+	int          seen;     /* the runner's cursor (menu_style.sel_out) */
 } gm_ctx;
 
 static int gm_menu_build(void *ctx, menu_row *rows, int max,
                          const char **heading)
 {
 	gm_ctx *c = ctx;
+	gm_ui u;
+	int n;
 
 	(void)max;
-	*heading = NULL;       /* no title: the game behind it is the title */
-	return gm_build(c->a, rows, &c->bufs);
+	gm_gather(c->a, &u);
+	/* A game's menu names its tab in the heading's place (menu_draw draws the
+	 * tab row there, which MENU's does the same); a port's has no title: the
+	 * game behind it is the title */
+	*heading = u.port ? NULL : gm_tab_name(c->tabs.at);
+	n = gm_rows(&u, (gm_tab)c->tabs.at, rows, &c->bufs);
+	/* A tab with no rows yet (Controls, until src/ctltab.c): one empty note,
+	 * with no cursor on it, because the runner leaves a menu that has none */
+	if (n == 0) {
+		rows[0] = MENU_NOTE("");
+		c->bufs.sound[0] = 0;
+		n = 1;
+	}
+	return n;
 }
 
 /* The paused game, not the shelf. Diatom reports its rect with every DISPLAY
@@ -22678,15 +22660,31 @@ static menu_result gm_key(app *a, void *ctx, in_button key, int sel)
 {
 	gm_ctx *c = ctx;
 
-	/* A row's place to its id: a DS game has three rows more after Display,
-	 * and the same list the build used says which row is which. */
+	/* A row's place to its id: the tab on says which rows there are, and the
+	 * same list the build used says which is which. */
 	{
 		gm_ui u;
 		gm_row ids[GM_MAX_ROWS];
 		int n;
 
 		gm_gather(a, &u);
-		n = gm_row_ids(&u, ids);
+		n = gm_tab_rows(&u, (gm_tab)c->tabs.at, ids);
+		/* The row this tab is on is kept, for MENU's next press */
+		if (!u.port && sel >= 0 && sel < n) g_gm_mem.row[c->tabs.at] = ids[sel];
+		/* L1 and R1 go round the tabs, as MENU's do: the row each tab was
+		 * on is kept and the cursor lands on the next tab's own */
+		if (!u.port && (key == IN_L1 || key == IN_R1)) {
+			int k;
+
+			tabs_turn(&c->tabs, key == IN_R1 ? +1 : -1);
+			g_gm_mem.tab = c->tabs.at;
+			n = gm_tab_rows(&u, (gm_tab)c->tabs.at, ids);
+			for (k = 0; k < n && (int)ids[k] != g_gm_mem.row[c->tabs.at]; k++) ;
+			g_menu_sel_to = k < n ? k : 0;
+			moved_sound(a, key);
+			redraw_now();
+			return MENU_STAY;
+		}
 		sel = sel >= 0 && sel < n ? (int)ids[sel] : GM_MAX_ROWS;
 	}
 	/* X, wherever the cursor is: what A on its row does (gm_x_row), heard
@@ -22853,6 +22851,22 @@ static void game_menu(app *a)
 	c.st.follow_tint = true;
 	c.st.backdrop    = gm_backdrop;
 	c.st.on_power    = gm_power;
+	/* MENU's tab row, opened where this game's menu was last closed */
+	c.tabs = (menu_tabs){ .count = GT_TABS, .name = gm_tab_name_i };
+	c.tabs.at = c.tabs.from = g_gm_mem.tab;
+	if (!g_port_menu) {
+		gm_ui u;
+		gm_row ids[GM_MAX_ROWS];
+		int n, k;
+
+		c.st.tabs = &c.tabs;
+		c.st.sel_out = &c.seen;
+		gm_gather(a, &u);
+		n = gm_tab_rows(&u, (gm_tab)c.tabs.at, ids);
+		for (k = 0; k < n && (int)ids[k] != g_gm_mem.row[c.tabs.at]; k++) ;
+		c.st.start_sel = k < n ? k : 0;
+		g_menu_epoch++;
+	}
 
 	/* B and MENU are the runner's, and both mean Continue here. The runner has
 	 * to be the one to say so: it flushes the input on its way out, so asking
@@ -22865,6 +22879,18 @@ static void game_menu(app *a)
 		c.resume = true;
 	g_in_game_menu = false;
 	g_menu_closing = false;
+	/* Where it was closed, for the next MENU press in this game: the cursor
+	 * moves without asking gm_key, so it is read from the runner here */
+	if (c.st.tabs) {
+		gm_ui u;
+		gm_row ids[GM_MAX_ROWS];
+		int n;
+
+		gm_gather(a, &u);
+		n = gm_tab_rows(&u, (gm_tab)c.tabs.at, ids);
+		g_gm_mem.tab = c.tabs.at;
+		if (c.seen >= 0 && c.seen < n) g_gm_mem.row[c.tabs.at] = ids[c.seen];
+	}
 	/* Closed by px2-open's quit, which said STOP as Quit does: no Continue */
 	if (g_ctl_close_menu) c.resume = false;
 	g_ctl_close_menu = false;
@@ -22943,7 +22969,7 @@ static void game_menu(app *a)
 /* The in-game menu over a port (src/portmenu.h): this process started by
  * portkeys for it alone, with the port stopped and its last frame saved. The
  * same menu as over a Diatom game, over that frame, with the rows a stopped
- * program can answer to (gm_row_ids): Continue, Controls - the port's system's
+ * program can answer to (gm_tab_rows): Continue, Controls - the port's system's
  * page and In a game's - and Quit. Its exit status says which: Continue, and
  * B or MENU, go back to the game; Quit ends it and the shelf comes back;
  * POWER, here or on the Controls page, or the battery run flat, end it and
@@ -23563,6 +23589,8 @@ static void launch(app *a)
 		return;
 	}
 
+	/* A new game: its in-game menu starts on the Game tab again */
+	gm_mem_reset();
 	snprintf(rom, sizeof rom, "%s/%s/%s", P_ROMS, s->folder, romfile);
 	snprintf(save, sizeof save, "%s/Saves", P_CARD);
 	snprintf(bios, sizeof bios, "%s/Bios", P_CARD);
@@ -24766,7 +24794,7 @@ static void shot_draw_slots(app *a)
 /* --gamemenu [row] port: the menu over a port instead (src/portmenu.h), as
  * port_menu shows it over OpenBOR; --backdrop PNG puts a picture of a real
  * game under it in place of the made-up frame, at the screen's size. */
-static int shot_gamemenu, shot_gamemenu_sel;
+static int shot_gamemenu, shot_gamemenu_sel, shot_gamemenu_tab;
 static const char *shot_backdrop;
 
 static void shot_draw_gamemenu(app *a)
@@ -24775,12 +24803,20 @@ static void shot_draw_gamemenu(app *a)
 	gm_bufs b;
 	SDL_Texture *bg = shot_backdrop ? IMG_LoadTexture(a->r, shot_backdrop)
 	                                : fake_frame(a->r, 4.0f / 3);
+	gm_ui u;
+	menu_tabs tabs = { .count = GT_TABS, .name = gm_tab_name_i };
 	int n;
 
+	gm_gather(a, &u);
+	tabs.at = tabs.from = shot_gamemenu_tab % GT_TABS;
 	gm_backdrop(a, &(gm_ctx){ .a = a, .bg = bg }, 1.0f);
-	n = gm_build(a, rows, &b);
-	menu_draw(a, NULL, rows, n, shot_gamemenu_sel < n ? shot_gamemenu_sel : n - 1,
+	n = gm_rows(&u, (gm_tab)tabs.at, rows, &b);
+	if (n == 0) rows[n++] = MENU_NOTE("");
+	g_menu_tabs = u.port ? NULL : &tabs;
+	menu_draw(a, u.port ? NULL : gm_tab_name(tabs.at), rows, n,
+	          shot_gamemenu_sel < n ? shot_gamemenu_sel : n - 1,
 	          gm_width(a), a->tint);
+	g_menu_tabs = NULL;
 	if (bg) SDL_DestroyTexture(bg);
 }
 
@@ -27466,6 +27502,8 @@ int main(int argc, char *argv[])
 				i++;
 			}
 		}
+		/* --gm-tab N: the in-game menu's tab, 0 Game, 1 Display, 2 Controls */
+		else if (!strcmp(argv[i], "--gm-tab") && i + 1 < argc) shot_gamemenu_tab = atoi(argv[++i]);
 		else if (!strcmp(argv[i], "--backdrop") && i + 1 < argc) shot_backdrop = argv[++i];
 		else if (!strcmp(argv[i], "--press") && i + 1 < argc) {
 			i++;

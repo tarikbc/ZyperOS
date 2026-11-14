@@ -191,28 +191,44 @@ void gm_pak_key(const char *tag, const char *file, char *out, size_t n)
 	snprintf(out, n, "pak.%s.%s", tag ? tag : "", file ? file : "");
 }
 
-int gm_row_ids(const gm_ui *u, gm_row *ids)
+const char *gm_tab_name(int t)
 {
-	int n = 0, i;
+	switch (t) {
+	case GT_DISPLAY:  return T(S_GAMEMENU_TAB_DISPLAY);
+	case GT_CONTROLS: return T(S_GAMEMENU_TAB_CONTROLS);
+	default:          return T(S_GAMEMENU_TAB_GAME);
+	}
+}
 
-	/* Over a port: what a stopped program can still be asked */
+int gm_tab_rows(const gm_ui *u, gm_tab t, gm_row *ids)
+{
+	int n = 0;
+
+	/* Over a port: what a stopped program can still be asked, on no tabs */
 	if (u->port) {
 		ids[n++] = GM_CONTINUE;
 		ids[n++] = GM_CONTROLS;
 		ids[n++] = GM_QUIT;
 		return n;
 	}
-	for (i = 0; i < GM_ROWS; i++) {
-		if (i == GM_QUICK && !u->quick) continue;
-		ids[n++] = (gm_row)i;
-		/* A DS game's three come after Shader, which is every game's */
-		if (i == GM_SHADER && u->screens) {
+	if (t == GT_GAME) {
+		ids[n++] = GM_CONTINUE;
+		ids[n++] = GM_SAVE;
+		ids[n++] = GM_LOAD;
+		if (u->quick) ids[n++] = GM_QUICK;
+		if (u->player2) ids[n++] = GM_PLAYER2;
+		ids[n++] = GM_CHEEVOS;
+		ids[n++] = GM_RESET;
+		ids[n++] = GM_QUIT;
+	} else if (t == GT_DISPLAY) {
+		ids[n++] = GM_DISPLAY;
+		ids[n++] = GM_SHADER;
+		/* A DS game's three belong with the picture */
+		if (u->screens) {
 			ids[n++] = GM_SCREENS;
 			ids[n++] = GM_SWAP;
 			ids[n++] = GM_STYLUS;
 		}
-		if (i == GM_SHADER && u->pak) ids[n++] = GM_PAK;
-		if (i == GM_SHADER && u->player2) ids[n++] = GM_PLAYER2;
 	}
 	return n;
 }
@@ -229,17 +245,17 @@ gm_row gm_x_row(void)
 	return GM_QUIT;
 }
 
-int gm_row_at(const gm_ui *u, gm_row id)
+int gm_row_at(const gm_ui *u, gm_tab t, gm_row id)
 {
 	gm_row ids[GM_MAX_ROWS];
-	int n = gm_row_ids(u, ids), i;
+	int n = gm_tab_rows(u, t, ids), i;
 
 	for (i = 0; i < n; i++)
 		if (ids[i] == id) return i;
 	return -1;
 }
 
-int gm_rows(const gm_ui *u, menu_row *out, gm_bufs *b)
+int gm_rows(const gm_ui *u, gm_tab t, menu_row *out, gm_bufs *b)
 {
 	static const str_id label[GM_MAX_ROWS] = {
 		S_GAMEMENU_CONTINUE, S_GAMEMENU_SAVE, S_GAMEMENU_LOAD, S_GAMEMENU_QUICK,
@@ -282,7 +298,7 @@ int gm_rows(const gm_ui *u, menu_row *out, gm_bufs *b)
 	/* X quits from anywhere on the page (gm_x_row), and Quit says so */
 	full[GM_QUIT].value    = MENU_KEY_X;
 
-	n = gm_row_ids(u, ids);
+	n = gm_tab_rows(u, t, ids);
 	for (i = 0; i < n; i++) {
 		out[i] = full[ids[i]];
 		/* Display steps round on left and right and on A; so do Shader,

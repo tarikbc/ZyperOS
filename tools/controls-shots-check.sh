@@ -147,13 +147,17 @@ for th in light dark; do
 	done
 done
 
-echo "the in-game menu has Quick Slot after Load, Controls after Display"
+echo "the in-game menu is in tabs: Game, Display and Controls, MENU's tab row"
+# Quick Slot after Load on the Game tab, Display and Shader on the Display tab,
+# and the Controls tab (its rows come with the remap screen) drawn empty
 for th in light dark; do
-	shot "gamemenu-$th" --theme "$th" --screen games --gamemenu 5
-	shot "gamemenu-display-$th" --theme "$th" --screen games --gamemenu 4
-	shot "gamemenu-quick-$th" --theme "$th" --screen games --gamemenu 3
-	other "$th: the sixth row is not Display" "gamemenu-$th" "gamemenu-display-$th"
-	other "$th: the fourth row is not Display" "gamemenu-quick-$th" "gamemenu-display-$th"
+	shot "gamemenu-$th" --theme "$th" --screen games --gamemenu 3 --gm-tab 0
+	shot "gamemenu-display-$th" --theme "$th" --screen games --gamemenu 0 --gm-tab 1
+	shot "gamemenu-shader-$th" --theme "$th" --screen games --gamemenu 1 --gm-tab 1
+	shot "gamemenu-controls-$th" --theme "$th" --screen games --gamemenu 0 --gm-tab 2
+	other "$th: the Game tab is not the Display tab" "gamemenu-$th" "gamemenu-display-$th"
+	other "$th: Shader is not Display" "gamemenu-shader-$th" "gamemenu-display-$th"
+	other "$th: the Controls tab is not the Display tab" "gamemenu-controls-$th" "gamemenu-display-$th"
 done
 
 echo "the home: A to Z on a new card, release dates as a choice"

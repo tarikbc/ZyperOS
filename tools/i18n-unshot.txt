@@ -194,7 +194,9 @@ emptyhome.unplug_adapter
 emptyhome.cheer.one
 emptyhome.cheer.other
 
-# gamemenu: no shot draws it yet
+# gamemenu: no shot draws it yet (gamemenu.pak: the Pak row left the in-game menu for
+# the Controls tab, whose rows come with the remap work, and its shot returns then)
+gamemenu.pak
 gamemenu.delete_ask
 gamemenu.delete_ask_this
 gamemenu.delete_ask_port

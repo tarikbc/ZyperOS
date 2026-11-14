@@ -151,7 +151,7 @@ int gi_rows(menu_row *out, const game_info *gi, bool net);
  * picture is already the subject: Screens (the layout), Swap Screens and
  * Stylus. Their
  * ids come after GM_ROWS so that every other game's rows are still their own
- * ids, in order; gm_row_ids says which rows a menu has, in the order shown. */
+ * ids, in order; gm_tab_rows says which rows a tab has, in the order shown. */
 /* Controls, after Display (2026-11-06, docs/design/mock/controls-lab.html):
  * every control this game has, on its system (src/controls.h). After a DS
  * game's three rows, which belong with Display. Eight rows is one more than
@@ -161,7 +161,7 @@ int gi_rows(menu_row *out, const game_info *gi, bool net);
  * SELECT+L1 loads from, 1 to GM_SLOTS, kept per system; left, right and A
  * step it. With Save and Load, where states are. A system whose core keeps
  * no state (controls.h, ctl_has_states) has no quick slot and no row, so
- * its menu has a row fewer: gm_row_ids says which rows a menu has. */
+ * its menu has a row fewer: gm_tab_rows says which rows a tab has. */
 /* Shader, right after Display (2026-11-12): how the picture is drawn at its
  * last step, Off or a shader by its name (src/app.h SHADERS), kept for the
  * game's system and sent to the game at once. Every game's, so it is one of
@@ -227,13 +227,24 @@ typedef struct {
 	const char *player2_value;
 } gm_ui;
 
-/* The rows this menu has, in the order shown: GM_ROWS of them, three more
- * with the screens' rows, a row fewer with no quick slot, one more with an
- * N64 game's Pak or an NES game's Player 2; over a port, Continue, Controls
- * and Quit. */
-int gm_row_ids(const gm_ui *u, gm_row *ids);
-/* Where row `id` is in that list, or -1 when the menu has none */
-int gm_row_at(const gm_ui *u, gm_row id);
+/* The in-game menu is in tabs, MENU's tab row (docs/superpowers/specs/
+ * 2026-11-13-button-remap-design.md, section 1): Game, Display and Controls,
+ * L1 and R1 going round them. gm_tab_name is a tab's name in the language
+ * that is on, the first for a tab past the ends.
+ *
+ * gm_tab_rows says which rows a tab has, in the order shown:
+ *   Game      Continue, Save, Load, Quick Slot (a system that keeps states),
+ *             Player 2 (an NES game), Achievements, Reset, Quit
+ *   Display   Display, Shader, and a DS game's Screens, Swap Screens, Stylus
+ *   Controls  none from here: its rows are src/ctltab.c's
+ * GM_CONTROLS and GM_PAK are in no tab: Controls is a tab now and Pak is one
+ * of its rows. A port's menu (u->port) has no tabs and is Continue, Controls
+ * and Quit whichever tab is asked for. */
+typedef enum { GT_GAME, GT_DISPLAY, GT_CONTROLS, GT_TABS } gm_tab;
+const char *gm_tab_name(int t);
+int gm_tab_rows(const gm_ui *u, gm_tab t, gm_row *ids);
+/* Where row `id` is in tab `t`'s list, or -1 when that tab has none */
+int gm_row_at(const gm_ui *u, gm_tab t, gm_row id);
 /* The row X does from anywhere on the menu's page, as A on it does: Quit,
  * in every in-game menu (a game's, a port's, PortMaster's), so leaving a
  * game is one press and not a walk to the last row. Its row carries X's
@@ -251,6 +262,7 @@ typedef struct {
 	unsigned char sound[GM_MAX_ROWS];
 } gm_bufs;
 
-int gm_rows(const gm_ui *u, menu_row *out, gm_bufs *b);
+/* Tab `t`'s rows, built from gm_tab_rows's list */
+int gm_rows(const gm_ui *u, gm_tab t, menu_row *out, gm_bufs *b);
 
 #endif
