@@ -229,6 +229,28 @@ bool result_message(app *a, const char *heading, const char *text);
 kb_result keyboard_prompt(app *a, const char *title, char *buf, int cap);
 /* MENU pressed in a screen over the one asking: every screen closing */
 extern bool g_menu_closing;
+/* The menus' measures: a row's height, the air inside a panel, the margin
+ * around it and its top */
+int menu_row_h(void);
+int menu_pad(void);
+/* The air between the panel and the screen edge, on every side. */
+#define MENU_MARGIN 24
+/* ...but the top, where the status corner stands (DESIGN.md 11.12) on every
+ * screen a panel opens over - the shelf, Now Playing, a paused game: a panel
+ * starts a grid step under the corner's row, and a list that would reach
+ * higher scrolls in its window instead. Centered as before when it is short
+ * enough; only a tall one moves down. */
+#define MENU_TOP    96
+/* The height a panel can have between the two. */
+#define MENU_AVAIL_H (ZYPEROS_SCREEN_H - MENU_TOP - MENU_MARGIN)
+/* A question on a panel already open at `lv`, its rows `rows`, Yes on
+ * `yes_label`: true on Yes */
+bool confirm_rows(app *a, const char *heading, menu_row *rows, int nq,
+                  const char *yes_label, int fixed_w, int lv);
+/* `src` wrapped to `w` in `f`, a line a row of `out`; how many lines */
+#define CHV_WRAP_COLS  96
+int wrap_text(TTF_Font *f, const char *src, int w,
+              char out[][CHV_WRAP_COLS], int max);
 
 /* SELECT: Muse, over whatever is on screen */
 bool muse_open(app *a, const menu_style *over, void *ctx);
