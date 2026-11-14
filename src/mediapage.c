@@ -12,6 +12,8 @@
 #include "theme.h"
 #include "topbar.h"
 #include "ui.h"
+#include "ds/layout.h"
+#include "ds/mark.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -249,13 +251,9 @@ static void video_draw(SDL_Renderer *r, const mpg_page *p)
 		q.y = (int)f.y;
 		if (p->row >= 0) ui_lift(r, &q, CFG_NO_COLOR, UI_LIFT_FOCUS_SMALL);
 		SDL_RenderCopyF(r, p->vid_tex, p->vid_src.w > 0 ? &p->vid_src : NULL, &f);
-		if (p->vid_disc) {
-			int d = 40;
-			SDL_Rect disc = { q.x + q.w - 12 - d, q.y + q.h - 12 - d, d, d };
-
-			ui_round_rect(r, &disc, d / 2, col(th->accent));
-			ui_glyph_draw(r, UI_GLYPH_PLAY, disc.x + d / 2 + d / 16, disc.y + d / 2, d / 2, col(th->on_accent));
-		}
+		if (p->vid_disc)
+			ds_play_disc(r, q.x + q.w - DS_BADGE_INSET - DS_BADGE, q.y + q.h - DS_BADGE_INSET - DS_BADGE,
+			             DS_BADGE, 255);
 	} else {
 		char lines[2][LB_LINE];
 		int n, k;

@@ -9989,7 +9989,7 @@ static void ud_tile(SDL_Renderer *r, const SDL_Rect *q, const ud_rows *at, bool 
 	if (speed) ud_draw_tokens(r, ft, speed, ns, left, speed_cy, UI_TEXT);
 	if (total) ud_draw_tokens(r, fs, total, nt, left, total_cy, UI_TEXT_SOFT);
 	if (bar >= 0.0f)
-		ds_bar(r, left, q->y + at->bar, room, (int)(room * (bar > 1.0f ? 1.0f : bar) + 0.5f));
+		ds_bar(r, left, q->y + at->bar, room, (int)(room * (bar > 1.0f ? 1.0f : bar) + 0.5f), 255);
 	ud_fit_widest(ft, true, room);
 	ud_fit_widest(fs, false, room);
 	if (slot) {
@@ -13309,7 +13309,7 @@ static void scp_run_draw(scp_view *v, unsigned now)
 		int w = SCP_X1 - hx - 120 - ui_text_width(fs, cnt) - 24;
 
 		ds_bar(a->r, hx + 120, DS_PAGE_SUB_Y - UI_BAR_H / 2, w,
-		       total > 0 ? (int)((long long)w * (looked > total ? total : looked) / total) : 0);
+		       total > 0 ? (int)((long long)w * (looked > total ? total : looked) / total) : 0, 255);
 	}
 	ui_text(a->r, fs, cnt, SCP_X1, ui_cap_y(fs, DS_PAGE_SUB_Y), 1, UI_TEXT_DIM);
 	/* The six before the newest, three by two; the one that was big comes

@@ -263,6 +263,8 @@ LAYOUT = [
     ("badge",           40,  "a disc with a mark on a cover: its source, a video"),
     ("badge-small",     30,  "the same on a small cover"),
     ("badge-ring",      2,   "the edge round a badge, and a switch mark's ring"),
+    ("badge-inset",     12,  "a badge from its cover's corner"),
+    ("badge-inset-small", 9, "the same on a small cover"),
     ("mark-line",       36,  "a mark beside its words over the keys"),
     ("mark-line-pad",   14,  "that mark to its words"),
     ("mark-stat",       44,  "a count's mark"),

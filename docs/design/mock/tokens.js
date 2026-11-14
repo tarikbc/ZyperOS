@@ -154,6 +154,8 @@ window.ZYPER_TOKENS = {
     "badge": 40,
     "badge-small": 30,
     "badge-ring": 2,
+    "badge-inset": 12,
+    "badge-inset-small": 9,
     "mark-line": 36,
     "mark-line-pad": 14,
     "mark-stat": 44,

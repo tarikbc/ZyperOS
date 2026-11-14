@@ -5,6 +5,8 @@
 #include "home.h"
 #include "keyhints_draw.h"
 #include "ui.h"
+#include "ds/layout.h"
+#include "ds/mark.h"
 #include "theme.h"
 #include <math.h>
 #include <stdio.h>
@@ -158,11 +160,9 @@ uint32_t games_draw(games_row *row,SDL_Renderer *r,const games_info *info,
          * 2026-11-06). Two sizes, the focused card's and the others', so the
          * glyph's cache holds both rather than drawing it anew each frame. */
         if(info->snap_of && k<1 && info->snap_of(ctx,slots[i].item)) {
-            int d=focus>.5f?40:30, inset=focus>.5f?12:9;
-            Uint8 ba=(Uint8)lroundf(a*(1-k));
-            SDL_Rect disc={(int)lroundf(dst.x+dst.w)-inset-d,(int)lroundf(dst.y+dst.h)-inset-d,d,d};
-            ui_round_rect(r,&disc,d/2,ui_col(theme()->accent,ba));
-            ui_glyph_draw(r,UI_GLYPH_PLAY,disc.x+d/2+d/16,disc.y+d/2,d/2,ui_col(theme()->on_accent,ba));
+            int d=focus>.5f?DS_BADGE:DS_BADGE_SMALL, inset=focus>.5f?DS_BADGE_INSET:DS_BADGE_INSET_SMALL;
+            ds_play_disc(r,(int)lroundf(dst.x+dst.w)-inset-d,(int)lroundf(dst.y+dst.h)-inset-d,d,
+                         (Uint8)lroundf(a*(1-k)));
         }
         /* The wait for the snap: a bar under the focused cover, the cover's
          * width, filling over hold-snap, held full while the first picture
@@ -170,11 +170,7 @@ uint32_t games_draw(games_row *row,SDL_Renderer *r,const games_info *info,
         if(info->snap_wait>0 && slots[i].item==info->cursor && fabsf(slots[i].offset)<.001f && k<1) {
             int bw=(int)lroundf(dst.w),bx=(int)lroundf(dst.x),by=(int)lroundf(dst.y+dst.h)+12;
             float fade=(1-k)*slots[i].alpha;
-            SDL_Color track=ui_col(theme()->track,(Uint8)lroundf(255*fade));
-            SDL_Color fill=ui_col(theme()->accent_ink,(Uint8)lroundf(255*fade));
-            int fw=(int)lroundf(bw*fminf(info->snap_wait,1));
-            ui_round_rect(r,&(SDL_Rect){bx,by,bw,UI_BAR_H},UI_BAR_H/2,track);
-            if(fw>0) ui_round_rect(r,&(SDL_Rect){bx,by,fw,UI_BAR_H},UI_BAR_H/2,fill);
+            ds_bar(r,bx,by,bw,(int)lroundf(bw*fminf(info->snap_wait,1)),(Uint8)lroundf(255*fade));
         }
     }
     TTF_Font *title=page_font(PAGE_GAME_TITLE);

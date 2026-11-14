@@ -45,6 +45,8 @@
 #define DS_BADGE                40
 #define DS_BADGE_SMALL          30
 #define DS_BADGE_RING           2
+#define DS_BADGE_INSET          12
+#define DS_BADGE_INSET_SMALL    9
 #define DS_MARK_LINE            36
 #define DS_MARK_LINE_PAD        14
 #define DS_MARK_STAT            44

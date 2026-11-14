@@ -30,9 +30,15 @@ void ds_switch(SDL_Renderer *r, int cx, int cy, int d, ui_glyph g, bool on)
 	ui_glyph_draw(r, g, cx, cy, d * 60 / 100, UI_TEXT_DIM);
 }
 
-void ds_bar(SDL_Renderer *r, int x, int y, int w, int fill)
+void ds_play_disc(SDL_Renderer *r, int x, int y, int d, Uint8 al)
 {
-	ui_round_rect(r, &(SDL_Rect){ x, y, w, UI_BAR_H }, UI_BAR_H / 2, ui_col(theme()->track, 255));
+	ui_round_rect(r, &(SDL_Rect){ x, y, d, d }, d / 2, ui_col(theme()->accent, al));
+	ui_glyph_draw(r, UI_GLYPH_PLAY, x + d / 2 + d / 16, y + d / 2, d / 2, ui_col(theme()->on_accent, al));
+}
+
+void ds_bar(SDL_Renderer *r, int x, int y, int w, int fill, Uint8 al)
+{
+	ui_round_rect(r, &(SDL_Rect){ x, y, w, UI_BAR_H }, UI_BAR_H / 2, ui_col(theme()->track, al));
 	if (fill > 0)
-		ui_round_rect(r, &(SDL_Rect){ x, y, fill, UI_BAR_H }, UI_BAR_H / 2, ui_col(theme()->accent_ink, 255));
+		ui_round_rect(r, &(SDL_Rect){ x, y, fill, UI_BAR_H }, UI_BAR_H / 2, ui_col(theme()->accent_ink, al));
 }
