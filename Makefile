@@ -6,7 +6,7 @@
 # docs/building.md says how to work on a device.
 
 .PHONY: all clean native px2-payload vendor boot system-art checkmark \
-        check check-cheevos check-hare check-portal check-httpd check-idle check-taskhold check-saver check-rahash check-flacdec check-signin check-search \
+        check check-cheevos check-hare check-portal check-httpd check-idle check-taskhold check-saver check-rahash check-flacdec check-achtab check-signin check-search \
         check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-status check-battery check-corner check-artscrape check-artrun check-sgdb check-snapshelf check-snaps check-audioout \
         check-db check-gamedel check-gamern check-esmedia check-corepins check-targets yuvtarget check-storage check-stats check-sort check-bt check-ss check-titles check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-randgame check-shelfdir \
         check-sysmark check-flip check-menushots check-controls-shots check-design check-systemart check-linebreak check-portload \
@@ -28,7 +28,7 @@ NATIVE_J = $(if $(filter -j%,$(MAKEFLAGS))$(findstring j,$(filter-out -%,$(first
 # had to be remembered by name, which is a suite in the same sense that a list
 # of good intentions is a plan. A check nobody runs is a check that does not
 # exist, and check-menus was about to join eight others in that state.
-CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-taskhold check-saver check-rahash check-flacdec check-rasubmit check-raoffline check-signin check-noticeq check-badges check-badge-shots \
+CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-taskhold check-saver check-rahash check-flacdec check-achtab check-rasubmit check-raoffline check-signin check-noticeq check-badges check-badge-shots \
          check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-snaps check-audioout \
          check-db check-gamedel check-gamern check-esmedia check-media check-snapsize check-corepins check-targets check-storage check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
          check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-p2share check-webtheme check-p2ws check-p2codec check-p2d check-play check-p2 check-resident check-controls check-remap check-controls-shots check-logpack \
@@ -1369,6 +1369,17 @@ build-native/snapshelf-check: tools/snapshelf-check.c src/snapshelf.c src/snapsh
 # has never seen, which is indistinguishable from a game RA does not know.
 check-rahash: build-native/rahash-check
 	@python3 tools/rahash-check.py
+
+# The in-game menu's Achievements tab, as words and rows (src/achtab.h): each
+# state its own sentence, in the order that decides it, the counts line, and
+# an achievement's row as both lists draw it
+check-achtab: build-native/achtab-check
+	@./build-native/achtab-check
+
+build-native/achtab-check: tools/achtab-check.c src/achtab.c src/achtab.h src/cheevos.h $(I18N_SRC) FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Isrc \
+	      -o $@ tools/achtab-check.c src/achtab.c $(I18N_SRC)
 
 # The FLAC frame decoder a CHD's FLAC hunks go through (src/flacdec.h), held
 # to libFLAC's own encoder at every setting it has. Needs the flac tool

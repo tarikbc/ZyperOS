@@ -130,6 +130,14 @@ typedef struct {
 	 * beside it change. NULL: none. */
 	void   (*side)(app *a, const menu_side *at);
 	int      side_w;
+	/* Every row reachable by the cursor, dead ones too, where `live` says
+	 * how a row reads rather than whether it can be chosen: the
+	 * Achievements tab's list, whose unearned rows are quieter and still
+	 * open with A (menu_row_moves's visits_all) */
+	bool     visits_all;
+	/* A picture at each row's left, by place: the Achievements tab's
+	 * badges (main.c's g_row_icon while the panel is drawn). NULL: none. */
+	SDL_Texture *(*row_icon)(int row);
 } menu_style;
 
 /* ---- the menu runner (main.c's menu_run) ------------------------------------

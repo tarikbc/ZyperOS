@@ -241,6 +241,19 @@ EXTRA = {
     # a PlayStation .chd ("file"), one in each screen; the Achievements row
     # is on the in-game menu's Game tab
     "gamemenu-nohash": ("demo", "PS1", ["--gamemenu", "0", "--cheevos-no-hash", "system"]),
+    # The Achievements tab (1.0.5), in every state it has: the list (with
+    # unlocks waiting too), every one earned, and the sentence where a game
+    # has no list (src/achtab.h)
+    "achtab-list": ("demo", "PS1", ["--gamemenu", "1", "--gm-tab", "3", "--achtab", "list"]),
+    "achtab-waiting-send": ("demo", "PS1", ["--gamemenu", "4", "--gm-tab", "3", "--achtab", "list",
+                                            "--cheevos-waiting", "2"]),
+    "achtab-all": ("demo", "PS1", ["--gamemenu", "0", "--gm-tab", "3", "--achtab", "all"]),
+    "achtab-not-system": ("demo", "PS1", ["--gamemenu", "0", "--gm-tab", "3", "--achtab", "not-system"]),
+    "achtab-not-file": ("demo", "PS1", ["--gamemenu", "0", "--gm-tab", "3", "--achtab", "not-file"]),
+    "achtab-signed-out": ("demo", "PS1", ["--gamemenu", "0", "--gm-tab", "3", "--achtab", "signed-out"]),
+    "achtab-waiting": ("demo", "PS1", ["--gamemenu", "0", "--gm-tab", "3", "--achtab", "waiting"]),
+    "achtab-unchecked": ("demo", "PS1", ["--gamemenu", "0", "--gm-tab", "3", "--achtab", "unchecked"]),
+    "achtab-none": ("demo", "PS1", ["--gamemenu", "0", "--gm-tab", "3", "--achtab", "none"]),
     "info-nohash": ("demo", "PS1", ["--screen", "games", "--info", "--cheevos-no-hash", "file"]),
     "gamecontrols": ("demo", "PS1", ["--gamecontrols", "1", "MD"]),
     "slots": ("demo", "PS1", ["--slots", "0"]),

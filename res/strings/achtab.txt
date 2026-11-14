@@ -1,0 +1,86 @@
+# The in-game menu's Achievements tab (src/achtab.h, src/achtab_screen.h):
+# the line of counts over the list, and the sentence said where the list would
+# be when the game has none.
+
+[achtab.counts]
+note = The line over the list of achievements in the in-game menu's Achievements tab: earned of all achievements, then points earned of all points (cheevolist.heading's second line)
+en = %d / %d · %d / %d points
+zh-Hans = %d / %d · %d / %d 分
+es = %d / %d · %d / %d puntos
+pt-BR = %d / %d · %d / %d pontos
+fr = %d / %d · %d / %d points
+de = %d / %d · %d / %d Punkte
+ja = %d / %d · %d / %d ポイント
+it = %d / %d · %d / %d punti
+
+[achtab.counts_waiting]
+note = The same line when some of this game's achievements were earned offline and wait to be sent: earned of all, then how many wait (cheevolist.heading_waiting's second line)
+en.one = %d / %d · %d waiting to send
+en.other = %d / %d · %d waiting to send
+zh-Hans = %d / %d · %d 个待发送
+es.one = %d / %d · %d por enviar
+es.other = %d / %d · %d por enviar
+pt-BR.one = %d / %d · %d a enviar
+pt-BR.other = %d / %d · %d a enviar
+fr.one = %d / %d · %d à envoyer
+fr.other = %d / %d · %d à envoyer
+de.one = %d / %d · %d noch zu senden
+de.other = %d / %d · %d noch zu senden
+ja = %d / %d · 送信待ち %d
+it.one = %d / %d · %d da inviare
+it.other = %d / %d · %d da inviare
+
+[achtab.not_system]
+note = Where the list would be, for a game of a system whose games ZyperOS cannot identify for RetroAchievements (the Sega CD, the Saturn, ...). One or two sentences, balanced onto up to four lines.
+en = ZyperOS cannot yet identify this system's games for RetroAchievements.
+zh-Hans = ZyperOS 暂时无法为 RetroAchievements 识别此系统的游戏。
+es = ZyperOS aún no puede identificar los juegos de este sistema para RetroAchievements.
+pt-BR = O ZyperOS ainda não consegue identificar os jogos deste sistema para o RetroAchievements.
+fr = ZyperOS ne sait pas encore identifier les jeux de ce système pour RetroAchievements.
+de = ZyperOS kann die Spiele dieses Systems noch nicht für RetroAchievements erkennen.
+ja = ZyperOS はまだこのシステムのゲームを RetroAchievements 用に識別できません。
+it = ZyperOS non sa ancora riconoscere i giochi di questo sistema per RetroAchievements.
+
+[achtab.not_file]
+note = The same, for a game in a kind of file ZyperOS cannot identify, on a system where another kind works (a PlayStation .ccd)
+en = ZyperOS cannot identify games in this kind of file for RetroAchievements. Another kind of file may work.
+zh-Hans = ZyperOS 无法为 RetroAchievements 识别这种文件中的游戏。换成其他文件类型也许可以。
+es = ZyperOS no puede identificar juegos en este tipo de archivo para RetroAchievements. Otro tipo de archivo puede funcionar.
+pt-BR = O ZyperOS não consegue identificar jogos neste tipo de arquivo para o RetroAchievements. Outro tipo de arquivo pode funcionar.
+fr = ZyperOS ne sait pas identifier les jeux dans ce type de fichier pour RetroAchievements. Un autre type de fichier peut marcher.
+de = ZyperOS kann Spiele in dieser Dateiart nicht für RetroAchievements erkennen. Eine andere Dateiart geht vielleicht.
+ja = ZyperOS はこの種類のファイルのゲームを RetroAchievements 用に識別できません。別の種類のファイルなら使えるかもしれません。
+it = ZyperOS non sa riconoscere i giochi in questo tipo di file per RetroAchievements. Un altro tipo di file potrebbe funzionare.
+
+[achtab.signed_out]
+note = Where the list would be, when nobody is signed in to RetroAchievements and the card has no set for the game. MENU is the button's name; Achievements is the MENU row (sysmenu.cheevos).
+en = Sign in to RetroAchievements in MENU > Achievements, then play with Wi-Fi to get this game's achievements.
+zh-Hans = 在 MENU > 成就 中登录 RetroAchievements，然后连接 Wi-Fi 游玩即可获取这个游戏的成就。
+es = Inicia sesión en RetroAchievements en MENU > Logros y juega con Wi-Fi para obtener los logros de este juego.
+pt-BR = Entre no RetroAchievements em MENU > Conquistas e jogue com Wi-Fi para receber as conquistas deste jogo.
+fr = Connectez-vous à RetroAchievements dans MENU > Succès, puis jouez avec le Wi-Fi pour obtenir les succès de ce jeu.
+de = Melde dich unter MENU > Erfolge bei RetroAchievements an und spiele dann mit WLAN, um die Erfolge dieses Spiels zu erhalten.
+ja = MENU > 実績 で RetroAchievements にサインインし、Wi-Fi に接続して遊ぶと、このゲームの実績を取得できます。
+it = Accedi a RetroAchievements in MENU > Obiettivi, poi gioca con il Wi-Fi per avere gli obiettivi di questo gioco.
+
+[achtab.waiting]
+note = Where the list would be, while the game's achievements are being fetched behind it, the first time it is played with Wi-Fi
+en = This game's achievements are on their way. They start as soon as they arrive.
+zh-Hans = 正在获取这个游戏的成就，送达后就会立即生效。
+es = Los logros de este juego están en camino. Empiezan en cuanto lleguen.
+pt-BR = As conquistas deste jogo estão a caminho. Elas começam assim que chegarem.
+fr = Les succès de ce jeu arrivent. Ils commencent dès qu'ils sont là.
+de = Die Erfolge dieses Spiels sind unterwegs. Sie gelten, sobald sie da sind.
+ja = このゲームの実績を取得中です。届きしだい有効になります。
+it = Gli obiettivi di questo gioco stanno arrivando. Partono appena arrivano.
+
+[achtab.none]
+note = Where the list would be, when RetroAchievements answered that it has nothing for this game: it has no achievements, or RetroAchievements does not know this copy of the file
+en = RetroAchievements has no achievements for this game, or does not know this copy of it.
+zh-Hans = RetroAchievements 没有这个游戏的成就，或者无法识别这个版本。
+es = RetroAchievements no tiene logros para este juego, o no reconoce esta copia.
+pt-BR = O RetroAchievements não tem conquistas para este jogo ou não reconhece esta cópia.
+fr = RetroAchievements n'a pas de succès pour ce jeu, ou ne reconnaît pas cette copie.
+de = RetroAchievements hat keine Erfolge für dieses Spiel oder kennt diese Kopie nicht.
+ja = RetroAchievements にはこのゲームの実績がないか、このコピーを認識できません。
+it = RetroAchievements non ha obiettivi per questo gioco, o non riconosce questa copia.
