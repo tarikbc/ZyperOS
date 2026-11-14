@@ -352,6 +352,10 @@ typedef struct {
 } shot_status;
 extern shot_status shot_st;
 
+/* For MENU > Storage (src/storage_screen.c): Muse's place in a book or film
+ * let go of the file about to be deleted */
+void muse_before_delete(const char *abs);
+
 /* The launcher's own accent, Muse's and Favorites': ui.h and theme.h's */
 #define ZYPEROS_ACCENT ui_rgb(theme()->accent)
 

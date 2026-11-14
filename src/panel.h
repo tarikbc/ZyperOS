@@ -251,6 +251,33 @@ bool confirm_rows(app *a, const char *heading, menu_row *rows, int nq,
 #define CHV_WRAP_COLS  96
 int wrap_text(TTF_Font *f, const char *src, int w,
               char out[][CHV_WRAP_COLS], int max);
+/* The roles a row of menu_draw_ex's `vcolors` names. VCOL_EARNED is
+ * the value in **accent-ink**, lime as a mark: an earned achievement. On the
+ * focus fill it is **on-accent**, like every other value. */
+#define VCOL_EARNED  1u
+/* The row is a one-line message (menu_message): its label in **text-soft**,
+ * as the mock draws one, whatever `live` says. `live` stays the caller's,
+ * since menu_row_moves reads it to decide whether a long message scrolls. */
+#define VCOL_MESSAGE 2u
+/* A menu's panel with each row's value role (`vcolors`, NULL for none),
+ * `visits_all` when the cursor reaches every row, and the row a synopsis
+ * loops at (0 none) */
+void menu_draw_ex(app *a, const char *heading, const menu_row *rows,
+                  int n, int sel, int fixed_w, unsigned accent,
+                  const unsigned *vcolors, bool visits_all, int loop_at);
+/* confirm_rows over a screen's own backdrop (`over`, `ctx`) */
+bool confirm_rows_over(app *a, const char *heading, menu_row *rows, int nq,
+                       const char *yes_label, int fixed_w, int lv,
+                       const menu_style *over, void *ctx);
+/* A screen that is a base for panels (Muse's shelf, Storage): its level,
+ * and its own context while it is up */
+int  panel_base(void);
+extern void (*g_base_page)(app *, void *);
+extern void *g_base_ctx;
+/* A panel leaving over the shelf, or over a game (`game`) */
+bool panel_leave_draw(app *a, int game);
+/* --shot-at's panel level (with shot_motion's, main.c) */
+extern int shot_lv;
 
 /* SELECT: Muse, over whatever is on screen */
 bool muse_open(app *a, const menu_style *over, void *ctx);
