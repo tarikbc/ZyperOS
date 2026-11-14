@@ -122,7 +122,7 @@ UNSHOT_WHY = {
     "media": "drawn composed with another word (\"Box Front · USA\", \"libretro · no match\") or "
              "wrapped onto balanced lines (the question, the line under \"Connect to Wi-Fi first.\", "
              "the video's tile), so no drawn line is the string; the media-* shots draw every one "
-             "and fail on any cut (src/mediapage.c, src/main.c's media_shot)",
+             "and fail on any cut (src/mediapage.c, src/media_screen.c's media_shot)",
     "storage": "drawn wrapped to their lines, in pieces of a line (the used number as a title, "
                "a part of the line under the list), with tabular digits, or a plural's one form "
                "the stand-in card has none of (src/storage_page.c, src/main.c's storage_shot)",
@@ -168,7 +168,7 @@ EXTRA = {
     # "auto (alto-falante)" was cut there and nowhere a shot looked
     "menu-audio-under": ("demo", "PS1", ["--menu", "Audio Channels"]),
     "menu-clock": ("demo", "PS1", ["--menu", "Language"]),
-    # Date & Time's page (src/main.c's clock_page_rows): Time Zone on Auto
+    # Date & Time's page (src/clock_screen.c's clock_page_rows): Time Zone on Auto
     # before it has found a zone, with the zone it found and with a long
     # city; a zone of the list; and what Auto says as it is chosen
     "datetime-auto": ("demo", "PS1", ["--datetime", "0"]),
