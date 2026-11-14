@@ -300,6 +300,23 @@ void free_all_textures(app *a);
 void copy_file(const char *from, const char *to);
 bool file_nonempty(const char *p);
 
+/* For px2-open's commands (src/ctl_channel.c): a core on the card, a disc
+ * system's BIOS there, whether a shelf is Muse's, and the in-game menu's
+ * Quit */
+bool core_present(const char *core);
+bool disc_bios_found(const char *bios, const char *names);
+bool is_muse(const system_cfg *s);
+void gm_quit(void);
+/* A Ports shelf's core, and a standalone emulator's: "run:<script>"
+ * (main.c's launch_port hands both to launch.sh) */
+#define PORT_CORE    "port"
+#define RUN_PREFIX   "run:"
+/* A game Random Game, Search Games or px2-open picked, started once the
+ * menu has gone (main.c's pick_launch) */
+typedef struct { int shelf, game; unsigned hold_ms; } game_pick;
+extern game_pick g_pick;
+void pick_launch(app *a);
+
 /* The launcher's own accent, Muse's and Favorites': ui.h and theme.h's */
 #define ZYPEROS_ACCENT ui_rgb(theme()->accent)
 
