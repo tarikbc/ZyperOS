@@ -33,6 +33,9 @@
 #define DEV_DEG   10.0f
 /* Turned this far as the tab comes in, to DEV_DEG in **turn** */
 #define DEV_DEG_IN 40.0f
+/* Leaning toward the side of the keys the focused row lights, this far
+ * either way of DEV_DEG, in **turn** (ct_lean says which side) */
+#define DEV_LEAN  12.0f
 /* How far a tab's move takes it: in with the rows, 64 units the press's way;
  * out with the old tab's name, 96 the press's way (menu_tabs_draw's) */
 #define DEV_IN_DX  64.0f
@@ -68,6 +71,10 @@ static struct {
 	rm_table    base;
 	/* Each key's light, and its press: from where it was, and when */
 	tween       on[TD_KEYS];
+	/* The lean, degrees off DEV_DEG: from where it was, to where it goes,
+	 * and when, retargeted at each new row, never queued */
+	float       lean_from, lean_to;
+	unsigned    lean_t0;
 	bool        snap;
 	float       press_from[TD_KEYS];
 	unsigned    press_t0[TD_KEYS];
@@ -230,12 +237,38 @@ static void press(int k)
 	g_cs.press_t0[k] = now ? now : 1;
 }
 
+/* The lean (degrees off DEV_DEG) at `now`, in **turn** */
+static float lean_at(unsigned now)
+{
+	const unsigned el = now - g_cs.lean_t0;
+
+	if (!g_cs.lean_t0 || el >= DS_MS_TURN) return g_cs.lean_to;
+	return g_cs.lean_from + (g_cs.lean_to - g_cs.lean_from) * ds_turn((float)el / DS_MS_TURN);
+}
+
+/* The lean heads for the side of `target`'s keys, from where it is; there at
+ * once, the first time */
+static void lean_toward(unsigned target, unsigned now)
+{
+	const float to = DEV_LEAN * (float)ct_lean(target);
+
+	if (g_cs.snap) {
+		g_cs.lean_from = g_cs.lean_to = to;
+		g_cs.lean_t0 = 0;
+	} else if (to != g_cs.lean_to) {
+		g_cs.lean_from = lean_at(now);
+		g_cs.lean_to = to;
+		g_cs.lean_t0 = now ? now : 1;
+	}
+}
+
 /* The keys lit move to `target`, each in **quick** from where it is, the
  * old going out as the new come in; or there at once, the first time */
 static void lights_to(unsigned target, unsigned now)
 {
 	int k;
 
+	lean_toward(target, now);
 	for (k = 0; k < TD_KEYS; k++) {
 		const float to = target >> k & 1u ? 1.0f : 0.0f;
 
@@ -296,6 +329,8 @@ static bool pose_of(const menu_side *at, td_pose *p, bool *moving)
 		if (mv < 1.0f) *moving = true;
 	}
 	if (op <= 0.004f) return false;
+	deg += lean_at(at->now);
+	if (g_cs.lean_t0 && at->now - g_cs.lean_t0 < DS_MS_TURN) *moving = true;
 	/* Cleared whole, padding too, so two poses compare as bytes */
 	memset(p, 0, sizeof *p);
 	p->cx = (float)at->content_x + DEV_DX + dx;
@@ -350,6 +385,8 @@ void ctlscr_open(void)
 	g_cs.base_row = -1;
 	g_cs.mode = CS_TAB;
 	g_cs.steady = false;
+	g_cs.lean_from = g_cs.lean_to = 0.0f;
+	g_cs.lean_t0 = 0;
 	for (k = 0; k < TD_KEYS; k++) g_cs.press_t0[k] = 0;
 }
 

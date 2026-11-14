@@ -176,7 +176,7 @@ done
 echo "the Controls tab: its rows beside the handheld, in both themes, still"
 # The PlayStation's game (the shelf on it, ZyperOS/.last): the tab at rest
 # and later the same picture; the cursor on D-pad as Stick lights the
-# d-pad; a swap of Y and B (two Lefts on Y) colors both values and lights
+# d-pad, and the handheld leans left; Y leans it right, SELECT front; a swap of Y and B (two Lefts on Y) colors both values and lights
 # both keys; A on Y opens its choices; the Hotkeys row's page; and a
 # Nintendo 64 game's tab, with its Pak and SELECT held for the C buttons
 printf 'PS1\nRidge Racer.chd\n' >"$D/root/.last"
@@ -188,6 +188,12 @@ for th in light dark; do
 	shot "ctltab-stick-$th" --theme "$th" --screen games --gamemenu 1 --gm-tab 2
 	other "$th: D-pad as Stick is its own row, its key lit" "ctltab-stick-$th" "ctltab-$th"
 	shot "ctltab-y-$th" --theme "$th" --screen games --gamemenu 5 --gm-tab 2
+	# the handheld leans toward the side of the keys the row lights (ct_lean):
+	# the d-pad's row, a right-side key's row (Y) and SELECT's differ
+	shot "ctltab-select-$th" --theme "$th" --screen games --gamemenu 11 --gm-tab 2
+	other "$th: a left row and a right row lean the handheld apart" "ctltab-stick-$th" "ctltab-y-$th"
+	other "$th: SELECT (front) is not Y (leaning right)" "ctltab-select-$th" "ctltab-y-$th"
+	other "$th: SELECT (front) is not D-pad as Stick (leaning left)" "ctltab-select-$th" "ctltab-stick-$th"
 	# The swap is kept in the library, so on a library of its own: the
 	# shots after it show the card's own table
 	rm -rf "$D/shared-swap" && mkdir -p "$D/shared-swap" || exit 1

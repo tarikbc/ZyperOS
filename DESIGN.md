@@ -3888,13 +3888,17 @@ cursor in the tutorial's lit look (accent fill, ring, halo): a button row its
 button; D-pad as Stick the d-pad (and SELECT on the N64 and the Dreamcast);
 Face Buttons the four faces; Reset Buttons every changed button; a swap
 both buttons while the cursor stays on the row; Applies To, Pak and Hotkeys
-nothing. A lit shoulder stands up out of the top edge.
+nothing. A lit shoulder stands up out of the top edge. It **leans**
+toward the side of the keys lit, 12 degrees either way of the front pose: the
+right keys (A, B, X, Y, R1, R2) turn it to show its right side (22 degrees),
+the left keys (the d-pad, L1, L2) the other way (-2); SELECT, START, keys on
+both sides and no keys bring it back to the front pose.
 
 | What | Token and how |
 |---|---|
-| R1 or L1 into Controls | the handheld comes with the rows, 64 units the press's way and faded up in **move**, and turns from 40 to 10 degrees in **turn** |
+| R1 or L1 into Controls | the handheld comes with the rows, 64 units the press's way and faded up in **move**, and turns from 40 to 10 degrees, plus the lean of its first row, in **turn** |
 | Out of Controls | it leaves with the old tab's name, 96 units the press's way, gone in the first two fifths of **move** |
-| Up or Down | the fill glides in **quick**; the old key's light goes out and the new key's comes in, in **quick** |
+| Up or Down | the fill glides in **quick**; the old key's light goes out and the new key's comes in, in **quick**; the lean eases to the new row's side in **turn**, from where it is |
 | Left or Right on a button | the key presses in **press** (in, then out); a swapped partner lights in **quick** |
 | A shoulder row | the shoulder stands up in **quick** |
 | A to a button's choices, and back | the handheld holds still while the list beside it changes |
