@@ -24556,8 +24556,9 @@ static void gm_ctl_game(app *a, gm_ctx *c, ctlscr_game *g)
 }
 
 /* A tab's rows by identity, each tab's own kind: gm_row for Game and
- * Display, ct_row for Controls; at most CT_MAX_ROWS. The count. */
-static int gm_ids(app *a, gm_ctx *c, const gm_ui *u, int tab, int *ids)
+ * Display, ct_row for Controls, AT_ID0 and a place for Achievements; at
+ * most `max` (GM_IDS_MAX holds any tab's). The count. */
+static int gm_ids(app *a, gm_ctx *c, const gm_ui *u, int tab, int *ids, int max)
 {
 	gm_row r[GM_MAX_ROWS];
 	int n, i;
@@ -24566,21 +24567,28 @@ static int gm_ids(app *a, gm_ctx *c, const gm_ui *u, int tab, int *ids)
 		ctlscr_game g;
 		menu_row rows[CT_MAX_ROWS];
 		unsigned vcol[CT_MAX_ROWS];
+		int ct[CT_MAX_ROWS];
 
 		gm_ctl_game(a, c, &g);
-		return ctlscr_rows(a, &g, rows, vcol, NULL, ids);
+		n = ctlscr_rows(a, &g, rows, vcol, NULL, ct);
+		if (n > max) n = max;
+		for (i = 0; i < n; i++) ids[i] = ct[i];
+		return n;
 	}
 	/* The Achievements tab: an achievement's place, or the one row of a
-	 * sentence, which the cursor cannot leave */
+	 * sentence, which the cursor cannot leave. A set can be CHV_MAX long,
+	 * far more than any other tab's rows */
 	if (!u->port && tab == GT_ACHIEVEMENTS) {
 		at_facts f;
 
 		gm_at_facts(&f);
 		n = at_state_of(&f) == AT_LIST ? (f.count < CHV_MAX ? f.count : CHV_MAX) : 1;
+		if (n > max) n = max;
 		for (i = 0; i < n; i++) ids[i] = AT_ID0 + i;
 		return n;
 	}
 	n = gm_tab_rows(u, (gm_tab)tab, r);
+	if (n > max) n = max;
 	for (i = 0; i < n; i++) ids[i] = (int)r[i];
 	return n;
 }
@@ -24681,7 +24689,7 @@ static menu_result gm_key(app *a, void *ctx, in_button key, int sel)
 		int n;
 
 		gm_gather(a, &u);
-		n = gm_ids(a, c, &u, c->tabs.at, ids);
+		n = gm_ids(a, c, &u, c->tabs.at, ids, GM_IDS_MAX);
 		/* The row this tab is on is kept, for MENU's next press */
 		if (!u.port && sel >= 0 && sel < n) g_gm_mem.row[c->tabs.at] = ids[sel];
 		/* L1 and R1 go round the tabs, as MENU's do: the row each tab was
@@ -24692,7 +24700,7 @@ static menu_result gm_key(app *a, void *ctx, in_button key, int sel)
 			tabs_turn(&c->tabs, key == IN_R1 ? +1 : -1);
 			g_gm_mem.tab = c->tabs.at;
 			if (c->tabs.at == GT_CONTROLS) ctlscr_enter();
-			n = gm_ids(a, c, &u, c->tabs.at, ids);
+			n = gm_ids(a, c, &u, c->tabs.at, ids, GM_IDS_MAX);
 			for (k = 0; k < n && ids[k] != g_gm_mem.row[c->tabs.at]; k++) ;
 			g_menu_sel_to = k < n ? k : 0;
 			moved_sound(a, key);
@@ -24860,7 +24868,7 @@ static menu_result gm_key(app *a, void *ctx, in_button key, int sel)
 		gm_gather(a, &u);
 		tabs_turn(&c->tabs, -1);
 		g_gm_mem.tab = c->tabs.at;
-		n = gm_ids(a, c, &u, c->tabs.at, ids);
+		n = gm_ids(a, c, &u, c->tabs.at, ids, GM_IDS_MAX);
 		for (k = 0; k < n && ids[k] != g_gm_mem.row[c->tabs.at]; k++) ;
 		g_menu_sel_to = k < n ? k : 0;
 		redraw_now();
@@ -24929,7 +24937,7 @@ static void game_menu(app *a)
 		c.st.side = ctlscr_side;
 		ctlscr_open();
 		gm_gather(a, &u);
-		n = gm_ids(a, &c, &u, c.tabs.at, ids);
+		n = gm_ids(a, &c, &u, c.tabs.at, ids, GM_IDS_MAX);
 		for (k = 0; k < n && ids[k] != g_gm_mem.row[c.tabs.at]; k++) ;
 		c.st.start_sel = k < n ? k : 0;
 		g_menu_epoch++;
@@ -24950,11 +24958,11 @@ static void game_menu(app *a)
 	 * moves without asking gm_key, so it is read from the runner here */
 	if (c.st.tabs) {
 		gm_ui u;
-		int ids[CT_MAX_ROWS];
+		int ids[GM_IDS_MAX];
 		int n;
 
 		gm_gather(a, &u);
-		n = gm_ids(a, &c, &u, c.tabs.at, ids);
+		n = gm_ids(a, &c, &u, c.tabs.at, ids, GM_IDS_MAX);
 		g_gm_mem.tab = c.tabs.at;
 		if (c.seen >= 0 && c.seen < n) g_gm_mem.row[c.tabs.at] = ids[c.seen];
 	}
