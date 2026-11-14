@@ -112,6 +112,7 @@
 #include "controls.h"
 #include "ctltab_screen.h"
 #include "achtab_screen.h"
+#include "rahashjob.h"
 #include "remapstore.h"
 #include "tour.h"
 #include "tourdraw.h"
@@ -2238,6 +2239,8 @@ static void sync_abandon(void)
  * only way anyone can be told during a game - over Diatom's overlay. */
 static char g_pending_set[LIB_PATH * 2];
 static char g_pending_active[LIB_PATH * 2];
+/* ...whose hash is still being made, on its own thread (src/rahashjob.h) */
+static bool g_pending_hashing;
 /* Auto crossed 7:00 or 19:00 while a game ran, and the file was rewritten
  * for Diatom's bar but nobody has told the shelf: theme() is the new theme
  * and the cards kept are the old one's. tick_theme takes it as a change like
@@ -2407,6 +2410,25 @@ static void on_game_tick(void)
 		fprintf(stderr, "cheevos: the account held some already; watching the rest\n");
 	}
 
+	/* A first play's hash, made on its own thread (src/rahashjob.h): the
+	 * set is asked for when it lands, for the set the job was started for.
+	 * No hash: the file could not be read, or an .m3u's first disc has no
+	 * reader, and its rows say "none" (chv_none_mark), as before. */
+	if (g_pending_hashing) {
+		char h[33], set[sizeof g_pending_set];
+		int r = rhj_poll(h, set, sizeof set);
+
+		if (r == 0) return;
+		g_pending_hashing = false;
+		if (r == 1) {
+			snprintf(g_pending_set, sizeof g_pending_set, "%s", set);
+			ra_fetch_begin(h, g_pending_set);
+		} else {
+			if (r == -1) chv_none_mark(set, true);
+			g_pending_set[0] = '\0';
+		}
+		return;
+	}
 	if (!g_pending_set[0]) return;
 
 	/* Once. Calling it twice advances the state machine twice, which is a
@@ -25927,23 +25949,19 @@ static void launch(app *a)
 			 * branch is precisely the one a first play does not take.
 			 *
 			 * Hashing is local work and happens after RUN, so it overlaps the
-			 * game's own startup rather than delaying it. The two requests
-			 * then run behind the game and on_game_tick hands the set over
-			 * when they land. */
+			 * game's own startup rather than delaying it - on a thread of its
+			 * own since 1.0.5 (src/rahashjob.h), because a PSP disc's hash
+			 * can take seconds and this loop is the power button's watchdog.
+			 * The two requests then run behind the game and on_game_tick
+			 * hands the set over when they land. A file the launcher cannot
+			 * read gets the "none" marker there; a kind it has no hash for at
+			 * all never gets here (first_play) and needs no marker: its rows
+			 * say so by its name. */
 			if (first_play) {
-				char h[33];
-
-				if (ra_hash_rom(rom, s->tag, h)) {
-					chv_active_path(g_pending_active, sizeof g_pending_active);
+				chv_active_path(g_pending_active, sizeof g_pending_active);
+				if (rhj_begin(rom, s->tag, set)) {
 					snprintf(g_pending_set, sizeof g_pending_set, "%s", set);
-					ra_fetch_begin(h, set);
-				} else {
-					/* A file the launcher could not read, or an .m3u whose
-					 * first disc it has no reader for: nothing will be asked
-					 * about it. A kind it has no hash for at all never gets
-					 * here (first_play) and needs no marker: its rows say
-					 * so by its name. */
-					chv_none_mark(set, true);
+					g_pending_hashing = true;
 				}
 			}
 			/* Coming back from a shutdown: the game loads and the menu is

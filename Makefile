@@ -1387,10 +1387,11 @@ build-native/achtab-check: tools/achtab-check.c src/achtab.c src/achtab.h src/ch
 check-flacdec:
 	@python3 tools/flacdec-check.py
 
-build-native/rahash-check: tools/rahash-check.c $(RAHASH_SRC) src/rahash.h src/discimg.h src/chd.h src/flacdec.h FORCE
+build-native/rahash-check: tools/rahash-check.c $(RAHASH_SRC) src/rahashjob.c src/rahash.h src/rahashjob.h \
+                          src/discimg.h src/chd.h src/flacdec.h FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g $(LZMA_CFLAGS) \
-	      -o $@ tools/rahash-check.c $(RAHASH_SRC) -lz $(LZMA_LIBS)
+	      -o $@ tools/rahash-check.c $(RAHASH_SRC) src/rahashjob.c -lz $(LZMA_LIBS) -lpthread
 
 .PHONY: check-noticeq check-badges check-badge-shots check-rasubmit check-lowbatt check-heat check-charging
 

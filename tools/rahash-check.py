@@ -67,7 +67,7 @@ def lzma_flags():
     return out.stdout.split() if out.returncode == 0 else ["-llzma"]
 
 
-HASH_SRC = ("rahash.c", "discimg.c", "chd.c", "flacdec.c")
+HASH_SRC = ("rahash.c", "discimg.c", "chd.c", "flacdec.c", "rahashjob.c")
 
 
 def asan_build(out):
@@ -81,7 +81,7 @@ def asan_build(out):
                            "-fsanitize=address", "-fno-omit-frame-pointer", "-o", out,
                            os.path.join(ROOT, "tools", "rahash-check.c")]
                           + [os.path.join(ROOT, "src", f) for f in HASH_SRC]
-                          + ["-lz"] + lzma_flags(),
+                          + ["-lz"] + lzma_flags() + ["-lpthread"],
                           capture_output=True).returncode == 0
 
 
@@ -301,6 +301,17 @@ def containers(rac):
     ]
     asan = os.path.join(ROOT, "build-native", "rahash-check-asan")
     binary = asan if asan_build(asan) else BIN
+    # A first play's hash on its own thread (src/rahashjob.h): the same
+    # hash, for the set it was started for; and a file with none says so
+    for path, want in ((os.path.join(fixdir, "psp-dvd.chd"), H["psp"]),
+                       (os.path.join(tmp, "v2.cso"), "none")):
+        out = subprocess.run([binary, "--job", "PSP", path, "the.set"], capture_output=True, text=True)
+        if out.returncode or out.stdout.strip() != f"{want}\tthe.set":
+            bad += 1
+            print(f"    --job {os.path.basename(path)}: want {want}, exit {out.returncode}: "
+                  f"{out.stdout.strip()} {out.stderr[-500:]}")
+        else:
+            print(f"  ok  job  {os.path.basename(path):<16} {want}, on its own thread")
     for tag in ("PS1", "PSP"):
         mine = [c for c in cases if c[0] == tag]
         out = subprocess.run([binary, tag] + [c[1] for c in mine], capture_output=True, text=True)
