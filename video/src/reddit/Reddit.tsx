@@ -64,7 +64,7 @@ export const Reddit: React.FC<RedditProps> = ({ footage, device }) => {
   const endAt = REDDIT.starts[REDDIT.scenes.length - 1];
   const cornerIn = pop(frame, HOOK_BEATS * BEAT - 2, 200, 18) * (1 - ease(frame, endAt - 6, endAt));
 
-  // The shader on screen, for its name
+  // The shader on screen, for its name, until the in-game menu takes over
   let shader = "";
   if (sc.id === "shaders") {
     let at = start;
@@ -72,6 +72,7 @@ export const Reddit: React.FC<RedditProps> = ({ footage, device }) => {
       if (frame >= at) shader = s.name;
       at += Math.round(s.beats * BEAT);
     }
+    if (frame >= at) shader = "";
   }
 
   return (

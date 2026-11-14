@@ -26,8 +26,16 @@ const SHOT_PRESSES: Record<string, [number, string][]> = {
   portmenu: [[0, "accept"]],
   scraper: [[600, "accept"], [3600, "accept"]],
   quicksave: [[0, "accept"], [1400, "accept"]],
-  cable: [[450, "move"], [950, "accept"], [2900, "move"], [3350, "move"], [3900, "accept"]],
-  player2: [[0, "accept"], [200, "move"], [400, "move"], [600, "move"], [800, "move"], [1000, "move"], [1200, "move"], [1400, "accept"]],
+  cable: [[450, "move"], [900, "accept"], [3400, "move"], [3800, "move"], [4300, "accept"]],
+  phone: [[350, "move"], [700, "move"], [1400, "accept"]],
+  "scraper-page": [[1000, "accept"], [1900, "accept"]],
+  // The in-game menu's tabs (footage/takes.py: a motion is a sixtieth of a second a frame)
+  "gm-disc": [[0, "accept"], [450, "move"], [650, "move"], [850, "move"], [1050, "move"], [2050, "move"]],
+  "gm-strength": [[0, "move"], ...[516.7, 756.7, 996.7, 1236.7, 1736.7, 2186.7, 2386.7, 2586.7, 2786.7, 2986.7, 3186.7]
+    .map((ms): [number, string] => [ms, "move"])],
+  "gm-remap": [[0, "move"], ...[716.7, 1066.7, 1416.7, 1766.7, 2116.7, 2466.7, 3133.3, 3900].map((ms): [number, string] => [ms, "move"])],
+  "gm-cheevos": [[0, "move"], [616.7, "move"], [916.7, "move"], [1216.7, "move"], [1516.7, "move"]],
+  player2: [[0, "accept"], [200, "move"], [400, "move"], [600, "move"], [800, "move"], [1000, "accept"]],
   ds: [[500, "move"], [1000, "move"], [1500, "accept"]],
   cheer: [[300, "reward"]],
   controls_ps1: [],

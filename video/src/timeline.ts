@@ -62,10 +62,11 @@ export const POWER_MS = { off: B, on: 12 * B - 2000, back: 12 * B };
 /* The order follows Leap's sections (LICENSES.md): the full band for bars 0 to
  * 15, from the start to the new systems and the folders, the break at 16 to 19
  * for the power off and on, back on the downbeat of bar 19 and the band at 20,
- * the video snap turning on bar 21, the calm of 24 to 27 for the in-game menu,
- * Player 2 on the band from 28, File Transfer from 32, MENU's tabs and the
- * theme whipping in on bar 52 where the theme returns, and the end on bar 68,
- * the phrase end before the next break. */
+ * the video snap turning on bar 21 and the Scraper's run, the calm of 24 to 27
+ * for the in-game menu's tabs (a disc swapped, a shader's strength), the
+ * buttons remapped as the band comes back at 28, Player 2 to the bridge, File
+ * Transfer from 34, MENU's tabs and the theme whipping in on bar 52 where the
+ * theme returns, and the end on bar 68, the phrase end before the next break. */
 export const SCENES: Scene[] = [
   { id: "open", bars: 3, pose: "main", enter: "whip", screen: [{ take: "fast-shelf", from: 3400, to: "fill", rate: 1.2 }],
     label: "Your whole retro library.", sub: "Fast, light firmware for the GKD Pixel 2", labelAt: 1 },
@@ -95,26 +96,31 @@ export const SCENES: Scene[] = [
   // video snap on the next downbeat (the take holds 600 ms before the bar)
   { id: "snap", bars: 2, pose: "main", enter: "whip", screen: [{ take: "snap", from: Math.max(0, 600 - (4 * B - 1000)), to: "fill" }],
     label: "Video snaps", sub: "Rest on a game, and its cover turns into the game", punch: [{ at: 0, x: 0.5, y: 0.42, zoom: 1.45 }] },
-  { id: "art", bars: 2, pose: "main", screen: [{ take: "n64", from: 0, to: 1000 }, { take: "scraper", from: 0, to: "fill", rate: 1.35 }],
-    label: "Box art it finds itself", sub: "libretro, ScreenScraper, SteamGridDB" },
-  { id: "quicksave", bars: 2, pose: "main", screen: [{ take: "quicksave", from: 0, to: "fill", rate: 0.9 }],
-    label: "Quick save, quick load", sub: "SELECT + R1, SELECT + L1", punch: [{ at: 0, x: 0.5, y: 0.86, zoom: 1.9 }] },
-  { id: "controls", bars: 2, pose: "main", screen: [{ take: "ingame", from: 0, to: 2000, rate: 1.6 }, { take: "controls-ps1", from: 0, to: "fill", rate: 0.75 }],
-    label: "Every control, in the game" },
+  // MENU > Scraper: the plan, then a run, the covers landing as it finds them
+  { id: "scraper", bars: 2, pose: "main", screen: [{ take: "scraper-page", from: 0, to: 900, rate: 1.5 }, { take: "scraper-page", from: 1900, to: "fill", rate: 2.3 }],
+    label: "Box art it finds itself", sub: "MENU > Scraper, for the whole library" },
+  // The in-game menu over Metal Gear Solid, in its tabs: the Game tab down to
+  // Disc and the second disc in; R1 to Display, Scanlines and its Strength
+  { id: "disc", bars: 2, pose: "main", enter: "whip", screen: [{ take: "gm-disc", from: 0, to: "fill", rate: 1.15 }],
+    label: "Swap discs in the game", sub: "The in-game menu, in four tabs" },
+  { id: "strength", bars: 2, pose: "main", enter: "cut", screen: [{ take: "gm-strength", from: 0, to: "fill", rate: 1.4 }],
+    label: "Sharp pixels, or an old TV", sub: "As strong as you like, 10% to 100%" },
+  // R1 to Controls, the handheld coming in beside its rows and leaning toward
+  // each button, Y given another button, then in on the handheld as L1 tilts it back
+  { id: "remap", bars: 3, pose: "main", enter: "cut", screen: [{ take: "gm-remap", from: 0, to: "fill", rate: 1.25 }],
+    label: "Change a button, in the game", sub: "For one game or a whole system", punch: [{ at: 7.5, x: 0.22, y: 0.62, zoom: 1.5 }] },
   // NES: MENU down to Player 2, its code; the friend's phone comes in with the
-  // game over its touch pad as the panel says connected (beat 9)
-  { id: "player2", bars: 4, pose: "split", enter: "whip",
-    screen: [{ image: "img/smb3.png", beats: 1 }, { take: "player2", from: 0, to: "fill", rate: 1.13 }],
+  // game over its touch pad as the panel says connected (beat 5.8)
+  { id: "player2", bars: 3, pose: "split", enter: "whip",
+    screen: [{ image: "img/smb3.png", beats: 1 }, { take: "player2", from: 600, to: "fill", rate: 1.39 }],
     label: "Player 2 on a friend's phone", sub: "NES in a browser. No app, no account.",
-    browser: { phone: "img/play-phone.png", phonePic: "img/smb3.png", phoneAt: 9 } },
+    browser: { phone: "img/play-phone.png", phonePic: "img/smb3.png", phoneAt: 5.8 } },
   // The way in (the address, zyperos.local, the PIN) for six beats, then a
   // browser signed in and the files moving
   { id: "wifi", bars: 4, pose: "split", enter: "whip", screen: [{ take: "wifi-way", from: 0, to: "fill" }],
     label: "Wi-Fi File Transfer", sub: "Any browser, behind a PIN", browser: { laptop: "img/portal.png", phone: "img/portal-phone.png", laptopAt: 6, phoneAt: 10 } },
   { id: "cable", bars: 4, pose: "main", screen: [{ take: "cable", from: 0, to: "fill" }],
-    label: "Or over the USB cable", sub: "File Transfer, a flash drive, or your phone" },
-  { id: "hotspot", bars: 2, pose: "split", screen: [{ take: "hotspot", from: 0, to: "fill", rate: 0.9 }],
-    label: "No Wi-Fi around?", sub: "It makes its own network for your phone", browser: { phone: "img/portal-pin.png", phoneAt: 1 } },
+    label: "Or over the USB cable", sub: "A computer, a flash drive, or a phone and its internet" },
   // An empty card, the way in, the games arriving: a little story after File Transfer
   { id: "empty", bars: 2, pose: "main", enter: "whip", screen: [{ take: "empty", from: 0, to: "fill" }],
     label: "An empty card shows you how", punch: [{ at: 2, x: 0.5, y: 0.6, zoom: 1.08 }] },
@@ -132,8 +138,9 @@ export const SCENES: Scene[] = [
     label: "A menu in six tabs", sub: "L1 and R1 go round them" },
   { id: "look", bars: 2, pose: "main", enter: "cut", screen: [{ take: "look", from: 6760, to: "fill", rate: 1.5 }],
     label: "A theme of your own", sub: "Light or dark, in the accent you pick" },
-  { id: "cheevos", bars: 2, pose: "main", screen: [{ take: "cheevos", from: 700, to: "fill", rate: 0.96 }],
-    label: "RetroAchievements", sub: "Earned offline, sent later", punch: [{ at: 2, x: 0.5, y: 0.86, zoom: 1.7 }] },
+  // The in-game menu's Achievements tab: two unlocks waiting to be sent
+  { id: "cheevos", bars: 2, pose: "main", screen: [{ take: "gm-cheevos", from: 0, to: "fill", rate: 1.08 }],
+    label: "Achievements, right in the game", sub: "Earned offline. PSP and PS1 .chd too." },
   { id: "mp4", bars: 2, pose: "main", screen: [{ take: "mp4", from: 1500, to: 3900, rate: 1.2 }, { take: "lock", from: 0, to: "fill", rate: 0.85 }],
     label: "MP4", sub: "Music, books and videos. X locks the screen." },
   { id: "ports", bars: 2, pose: "main", enter: "whip", screen: [{ take: "ports", from: 0, to: 3200, rate: 1.6 }, { take: "portmenu", from: 0, to: "fill" }],
