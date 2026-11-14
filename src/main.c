@@ -3863,8 +3863,15 @@ static int       g_snap_vol;              /* and the sound it was asked with */
 static int       g_snap_force_vol = -1;
 /* `es_wait`: the game's folder had no EmulationStation index yet when its
  * file was worked out (src/esmedia.h), so it is worked out again once there
- * is one - the covers' worker builds it, a moment after the shelf asks */
-static struct { int sys, cursor; char file[LIB_PATH], path[LIB_PATH * 2]; bool es_wait; } g_snap_focus;
+ * is one - the covers' worker builds it, a moment after the shelf asks.
+ * `gen`: the card's media then (snapshelf_media_gen), so a run that brought
+ * this game's snap has it worked out again (snapshelf_refocus) */
+static struct {
+	int sys, cursor;
+	char file[LIB_PATH], path[LIB_PATH * 2];
+	bool es_wait;
+	unsigned gen;
+} g_snap_focus;
 
 /* Its sound as set, and none while Muse plays somebody's music. Read when a
  * snap is asked for: on every frame it was two settings reads from the
@@ -3930,8 +3937,9 @@ static void shelf_snap(app *a, sysview *v, const game_entry *g, int owner, bool 
 	if (!g) {
 		g_snap_focus.sys = -1;
 		g_snap_focus.path[0] = '\0';
-	} else if (g_snap_focus.sys != a->sys_cursor || g_snap_focus.cursor != v->cursor ||
-	           strcmp(g_snap_focus.file, g->file) ||
+	} else if (snapshelf_refocus((snapshelf_at){ g_snap_focus.sys, g_snap_focus.cursor, g_snap_focus.file,
+	                                            g_snap_focus.gen },
+	                             (snapshelf_at){ a->sys_cursor, v->cursor, g->file, snapshelf_media_gen() }) ||
 	           (g_snap_focus.es_wait && es_ready(a->sys.systems[owner].folder))) {
 		const char *folder = a->sys.systems[owner].folder;
 		struct stat st;
@@ -3939,6 +3947,7 @@ static void shelf_snap(app *a, sysview *v, const game_entry *g, int owner, bool 
 
 		g_snap_focus.sys = a->sys_cursor;
 		g_snap_focus.cursor = v->cursor;
+		g_snap_focus.gen = snapshelf_media_gen();
 		snprintf(g_snap_focus.file, sizeof g_snap_focus.file, "%s", g->file);
 		g_snap_focus.path[0] = '\0';
 		g_snap_focus.es_wait = false;
@@ -4004,6 +4013,7 @@ typedef struct {
 	char folder[CFG_STR];
 	time_t mtime;
 	unsigned looked;
+	unsigned gen;                    /* snapshelf_media_gen() when listed */
 	bool on;
 	char **stems;
 	int n;
@@ -4031,7 +4041,9 @@ static const snap_names *snap_names_for(const char *folder)
 			s = &g_snap_names[i];
 			break;
 		}
-	if (s && now - s->looked < 2000) return s;
+	/* A run's snaps listed at once, whatever the folder's time says: a FAT
+	 * card keeps it to 2 s (snapshelf_media_changed) */
+	if (s && now - s->looked < 2000 && s->gen == snapshelf_media_gen()) return s;
 	snprintf(dir, sizeof dir, "%s/%s/.media", P_ROMS, folder);
 	if (stat(dir, &st) != 0) st.st_mtime = 0;
 	if (!s) {
@@ -4045,7 +4057,8 @@ static const snap_names *snap_names_for(const char *folder)
 	}
 	s->looked = now;
 	s->on = snaps_play() && snaps_console_on(folder);
-	if (s->mtime == st.st_mtime) return s;
+	if (s->mtime == st.st_mtime && s->gen == snapshelf_media_gen()) return s;
+	s->gen = snapshelf_media_gen();
 	for (i = 0; i < s->n; i++) free(s->stems[i]);
 	free(s->stems);
 	s->stems = NULL;
@@ -14446,6 +14459,9 @@ static void scraper_page(app *a, const char *only)
 {
 	scp_page(a, only);
 	refresh_game_titles(a);
+	/* and the focused game's snap looked for again: the run may have
+	 * brought it, under the shelf's own focus */
+	snapshelf_media_changed();
 }
 
 static menu_result scraper_screen(app *a)
@@ -19213,8 +19229,12 @@ static void media_screen(app *a, int owner, const game_entry *g)
 	g_base_page = NULL;
 	g_base_ctx = NULL;
 	media_close(v);
-	/* The shelf's cards were made from the art there was */
-	if (v->changed) free_all_textures(a);
+	/* The shelf's cards were made from the art there was, and its focused
+	 * game's snap worked out before this page got or deleted one */
+	if (v->changed) {
+		free_all_textures(a);
+		snapshelf_media_changed();
+	}
 	refresh_game_titles(a);
 	free(v);
 }
