@@ -13,15 +13,21 @@
 
 ## What it does
 - Animated pixel-art consoles on a Spotlight or Gallery home; games as a row of covers or a list, in the folders you made on the card; search and Random Game.
+- An EmulationStation library as it is: roms folders copied over from Knulli, ROCKNIX, ArkOS or ROGUE OS (nds, psx, megadrive and the rest) are read as their systems, with the covers, video snaps, names and details their scrapers left.
+- Rename a game on the handheld: its saves, save states, cover, video snap, achievements, favorite and play time follow it.
 - A first-start tutorial that teaches each button and asks for the theme, home screen, button sounds and menu music.
 - Box art fetched on the handheld from libretro, ScreenScraper and SteamGridDB, and video previews on the shelf.
+- A screensaver: after a minute with nothing pressed on the shelf, random games' video snaps play over the whole screen, and START starts the one on screen.
 - RetroAchievements, signed in on the device, working offline after the first download.
 - PortMaster ports, Nintendo DS with DSperate, OpenBOR, ScummVM.
 - MP4: music, audiobooks and videos, opened with SELECT from anywhere.
-- Wi-Fi and USB File Transfer: a web page on any computer or phone, behind a PIN, with the handheld's own network when there is no Wi-Fi.
+- Menu music: ten free 8-bit tracks behind the menus, and your own MP3 or Ogg files from the Menu Music folder at the top of the card; ZyperOS Tracks turns the ten off.
+- Wi-Fi and USB File Transfer: a web page on any computer or phone, behind a PIN, with the handheld's own network when there is no Wi-Fi. On the cable, an Android phone with USB tethering opens it in its own browser.
+- An Android phone's USB tethering, on the cable, gives the handheld the phone's internet: box art, achievements, System Update and PortMaster's install work over it with no Wi-Fi adapter, and it sets the clock.
 - Player 2 on the GKD Pixel 2: in an NES game, a friend plays the second controller in a phone's or computer's browser, over the handheld's own Wi-Fi (with a USB Wi-Fi adapter) or the USB cable, with a touch pad or the keyboard. A game controller paired with the phone comes with a later update.
-- Battery care (charge limit, charging screen when off, low battery and heat warnings), rumble, side lights, per-system clocks, quick save and quick load on SELECT+R1/L1 into a slot picked per system, faster and slower on SELECT+R2/L2, and turbo.
-- Light and dark themes. System Update over Wi-Fi, or over the USB cable from the File Transfer page: signed, only what changed, with roll back.
+- Battery care (charge limit, charging screen when off, low battery and heat warnings), rumble, side lights, per-system clocks, quick save and quick load on SELECT+R1/L1 into a slot picked per system, faster and slower on SELECT+R2/L2, and turbo. Save states are a fraction of the size they were: a Nintendo 64 game's takes about 1.5 MB, where it took 16.
+- Shaders: Sharp-Shimmerless, CRT (flat or curved), Scanlines and LCD Grid, for one system or every system.
+- Light and dark themes, and a Theme page (MENU > Display > Theme) for the accent, a background for each theme, rounded or square corners, and Zyper on or off. System Update over Wi-Fi, or over the USB cable from the File Transfer page: signed, only what changed, with roll back.
 
 ## Hardware notes
-- The GKD Pixel 2 has no Wi-Fi or Bluetooth of its own. A USB Wi-Fi adapter with a supported Realtek chip (for example the TP-Link TL-WN725N on a USB-C adapter) gives it Wi-Fi while plugged in.
+- The GKD Pixel 2 has no Wi-Fi or Bluetooth of its own. A USB Wi-Fi adapter with a supported Realtek chip (for example the TP-Link TL-WN725N on a USB-C adapter) gives it Wi-Fi while plugged in. Without one, an Android phone with USB tethering, on a USB-C to USB-C cable, gives it the phone's internet for box art, achievements and System Update; an iPhone shares its network over USB only with a computer it trusts, so it uses Wi-Fi File Transfer.

@@ -4,7 +4,7 @@ summary: Install the official PortMaster from the Ports shelf with one press, ad
 crumb: PortMaster
 topic: guide
 published: 2026-11-07
-updated: 2026-11-08
+updated: 2026-11-13
 image: ports
 image_alt: The ZyperOS Ports shelf with PortMaster's entry, not installed yet, and A to install it
 related: add-games-gkd-pixel-2, nintendo-ds-gkd-pixel-2, best-custom-firmware-gkd-pixel-2
@@ -20,7 +20,7 @@ weight: 50
 <p>A port is a script, <code>Something.sh</code>, with the port's folder beside it, and PortMaster keeps its own folder, <code>PortMaster/</code>, next to them, all in <code>Roms/Ports</code>. The Ports shelf lists each script there. Until PortMaster is on the card, the shelf holds its entry, which says <kbd>A</kbd> Install.</p>
 <img src="/img/ports.png" alt="The Ports shelf with PortMaster's entry: Not installed, and A Install">
 <ol>
-  <li>Connect to Wi-Fi. The Pixel 2 has no radio of its own, so this needs a USB Wi-Fi adapter (see <a href="/blog/gkd-pixel-2-wifi-adapter/">the Wi-Fi guide</a>).</li>
+  <li>Get the handheld online. The Pixel 2 has no radio of its own, so this needs a USB Wi-Fi adapter, or an Android phone on the cable with its USB tethering on (see <a href="/blog/gkd-pixel-2-wifi-adapter/">the Wi-Fi guide</a>). Over a phone, the install works as it does over Wi-Fi.</li>
   <li>Open the Ports shelf, press <kbd>A</kbd> on PortMaster, then <kbd>A</kbd> Install. ZyperOS downloads PortMaster's latest stable release from its GitHub, about 24 MB, checks it against the size and checksums PortMaster and GitHub publish, and unpacks it into <code>Roms/Ports</code>. Nothing goes in place until all of it checks out.</li>
   <li>Press <kbd>A</kbd> Open PortMaster. Its first start unpacks its own files and downloads its catalog of ports, which takes a few minutes.</li>
   <li>Pick the ports you want, and add each one's game files where its instructions say, if it needs them. When you leave PortMaster, they are on the Ports shelf.</li>
@@ -52,6 +52,10 @@ weight: 50
   <li><strong><kbd>POWER</kbd> ends the port</strong> and then turns the handheld off, as does a battery at 2%. The port is asked to close first, so a game that saves on exit gets the chance.</li>
 </ul>
 <p>When the port ends, ZyperOS comes back.</p>
+
+<h2>PortMaster won't start</h2>
+<p>If PortMaster closes with an error, ZyperOS says so when it comes back, with the line of PortMaster's log that tells what went wrong, and offers <strong>Reinstall</strong>. <strong>Reinstall PortMaster</strong> is also on PortMaster's details: press <kbd>X</kbd> on its entry on the Ports shelf. It puts a fresh copy of PortMaster's latest stable release on the card. Your ports, their saves, the runtimes and the themes you downloaded stay; only PortMaster's own settings start over.</p>
+<p>A common cause is the handheld turning off while PortMaster was writing one of its own files, which left it cut off. Before each start, ZyperOS now removes a PortMaster list or settings file that a cut-off write left half-written, so PortMaster makes it again instead of closing as it starts.</p>
 
 <h2>Sources</h2>
 <ol class="sources">

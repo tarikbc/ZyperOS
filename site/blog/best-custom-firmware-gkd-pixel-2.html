@@ -4,7 +4,7 @@ summary: Every system that runs on the Pixel 2 in one table, from each project's
 crumb: Best custom firmware
 topic: compare
 published: 2026-11-07
-updated: 2026-11-12
+updated: 2026-11-13
 image: systems
 image_alt: The ZyperOS Spotlight home, with animated pixel-art consoles
 related: install-custom-firmware-gkd-pixel-2, zyperos-vs-rocknix, gkd-pixel-2-stock-firmware
@@ -30,7 +30,7 @@ weight: 10
   <tbody>
     <tr><th scope="row">License</th><td class="us">GPL-3.0, free</td><td>[unk]</td><td>GPL-2.0 for its own code</td><td>Its changed files, no license named</td><td>GPL-3.0</td><td>MIT for its own code</td></tr>
     <tr><th scope="row">Latest</th><td class="us">v1.0.5 (Nov 2026)</td><td>On the card it comes with</td><td>20261101 (Nov 2026)</td><td>1.22 (Aug 2025)</td><td>v2.1.1 (Oct 2026)</td><td>v0.1.4 (Aug 2026), in testing</td></tr>
-    <tr><th scope="row">Systems</th><td class="us">40, and Ports</td><td>Over 100 folders</td><td>120</td><td>117</td><td>11</td><td>86</td></tr>
+    <tr><th scope="row">Systems</th><td class="us">44, and Ports</td><td>Over 100 folders</td><td>120</td><td>117</td><td>11</td><td>86</td></tr>
     <tr><th scope="row">Games without taking the card out</th><td class="us">[yes: A web page over Wi-Fi or the USB cable, its own hotspot, and SSH] Web page, Wi-Fi or USB</td><td>[yes: Samba file sharing over Wi-Fi] Samba</td><td>[yes: A web server, Samba, SFTP and the USB cable] Samba, SFTP, USB</td><td>[yes: The USB cable, and SSH] USB, SSH</td><td>[yes: A web page over Wi-Fi or the USB cable] Web page, Wi-Fi or USB</td><td>[yes: Samba, SFTP and FTP] Samba, SFTP, FTP</td></tr>
     <tr><th scope="row">Box art on the device</th><td class="us">[yes: libretro, ScreenScraper, SteamGridDB] Yes</td><td>[no: Not on the handheld: covers are scraped on a computer, with Skraper] No</td><td>[yes: ScreenScraper] Yes</td><td>[yes: ScreenScraper, with your account] Yes</td><td>[yes: libretro and ScreenScraper] Yes</td><td>[yes: libretro's thumbnails] Yes</td></tr>
     <tr><th scope="row">RetroAchievements</th><td class="us">[yes: Sign in on the handheld] Yes</td><td>[unk]</td><td>[yes: Built in] Yes</td><td>[unk]</td><td>[yes: Sign in on the handheld] Yes</td><td>[unk]</td></tr>
@@ -88,10 +88,11 @@ weight: 10
 <h2>How to choose</h2>
 <ul>
   <li><strong>Do you need a system ZyperOS lacks?</strong> Check <a href="https://github.com/tarikbc/ZyperOS#supported-systems">its forty-four</a>. If yours is missing, ROCKNIX, ROGUE OS and plumOS cover more.</li>
+  <li><strong>Moving from Knulli, ROCKNIX, ArkOS or ROGUE OS?</strong> Copy your <code>roms</code> folders onto a ZyperOS card as they are. EmulationStation's folder names, such as <code>nds</code> and <code>psx</code>, are read as ZyperOS's own, with the covers and video snaps their scrapers left.</li>
   <li><strong>Do you want to add games without a card reader?</strong> ZyperOS and TortOS open a web page in any browser, over Wi-Fi or the cable. ROCKNIX uses Samba, SFTP and USB modes.</li>
   <li><strong>Do you play the DS?</strong> Every system here but TortOS and MinUI runs it.</li>
   <li><strong>Do you want something released today?</strong> ZyperOS, ROCKNIX, ROGUE OS, TortOS, Knulli, muOS, twigUI and MinUI are. plumOS is in testing.</li>
-  <li><strong>Do you want Wi-Fi?</strong> Every system needs a USB adapter on the Pixel 2. <a href="/blog/gkd-pixel-2-wifi-adapter/">The Wi-Fi guide</a> explains which chips ZyperOS drives; plumOS and twigUI publish lists of their own.</li>
+  <li><strong>Do you want Wi-Fi?</strong> Every system needs a USB adapter on the Pixel 2. On ZyperOS, an Android phone's USB tethering can stand in for box art, achievements and System Update. <a href="/blog/gkd-pixel-2-wifi-adapter/">The Wi-Fi guide</a> explains which chips ZyperOS drives; plumOS and twigUI publish lists of their own.</li>
 </ul>
 <p>Whatever you pick, <a href="/blog/install-custom-firmware-gkd-pixel-2/">the install guide</a> shows how, and the stock card stays your way back.</p>
 

@@ -1,16 +1,16 @@
 title: How to Add Games to the GKD Pixel 2 (Wi-Fi or USB)
-description: Where games go on a GKD Pixel 2 card, which file types each system takes, and three ways to send them: the card reader, Wi-Fi, or the USB cable.
-summary: Folder names and file types, then three ways in: the card in a computer, Wi-Fi File Transfer and the USB cable.
+description: Where games go on a GKD Pixel 2 card, which file types each system takes, and the ways to send them: the card reader, Wi-Fi, the USB cable or a phone.
+summary: Folder names and file types, then the ways in: the card in a computer, Wi-Fi File Transfer, the USB cable, Flash Drive and a phone.
 crumb: Adding games
 topic: guide
 published: 2026-11-07
-updated: 2026-11-12
+updated: 2026-11-13
 image: portal
 image_alt: The File Transfer page on a computer, with an NES folder open and an upload going
 related: gkd-pixel-2-wifi-adapter, box-art-gkd-pixel-2, gkd-pixel-2-bios-files
 weight: 20
 ---
-<p>On ZyperOS, a game is a file in its console's folder on the microSD card. You can put it there three ways: with the card in a computer, over Wi-Fi from any browser, or over the USB cable with no Wi-Fi at all. This guide covers the folders first, then each way in.</p>
+<p>On ZyperOS, a game is a file in its console's folder on the microSD card. You can put it there with the card in a computer, over Wi-Fi from any browser, or over the USB cable with no Wi-Fi at all: from a computer's browser, with the card as a plain flash drive, or from an Android phone's own browser. This guide covers the folders first, then each way in.</p>
 
 <h2>The folders</h2>
 <p>At the first boot, ZyperOS turns the rest of the card into a partition named <strong>ZYPEROS</strong>, which a computer can read. Games go in <code>Roms/</code>, in a folder named after the console the way people say it:</p>
@@ -31,12 +31,17 @@ weight: 20
 </table>
 </div>
 <p>That is nine of the forty-four. <a href="https://github.com/tarikbc/ZyperOS#supported-systems">The README's table</a> lists every folder, its file types and the emulator that runs it. Spell the folder exactly: a game in a folder ZyperOS does not know, or a file type it does not take for that console, does not show up.</p>
+<p>Coming from Knulli, ROCKNIX, ArkOS or ROGUE OS? Their short folder names work as they are: <code>nds</code> is read as Nintendo DS, <code>psx</code> as PlayStation, <code>megadrive</code> as Genesis, and so on for every system. Copy their <code>roms</code> folders into <code>Roms/</code> unchanged, and the covers, video snaps and names their scrapers left show on the shelf too.</p>
 <p>Some systems need a BIOS file in <code>Bios/</code> as well, such as the PlayStation and the Dreamcast. <a href="/blog/gkd-pixel-2-bios-files/">The BIOS guide</a> lists each one.</p>
 <p>A console with nothing in its folder stays hidden on the home screen, so the home only shows what you can play.</p>
 
+<h3>Folders of your own</h3>
+<p>Inside a console's folder, make folders of your own, as deep as you like: <code>Roms/Game Boy Advance/Rom Hacks/Translations/</code>. The shelf shows them as you made them, folders first, each a pixel-art folder in the system's color with how many games it holds. <kbd>A</kbd> opens one and <kbd>B</kbd> goes back up. A folder that holds one game's discs is still that one game. On the File Transfer page, drag games onto a folder to move them into it.</p>
+<figure class="shot small"><img src="/img/folders.png" alt="The Game Boy Advance shelf: the folder Commercial Owned as a pixel folder with 4 on its label, 4 games under its name"><figcaption>A folder on the shelf, with how many games it holds.</figcaption></figure>
+
 <h2>A card with no games yet</h2>
 <p>A card with no games opens on <strong>No games yet</strong>, with the two ways to send them, one button each: <kbd>A</kbd> for USB File Transfer and <kbd>Y</kbd> for Wi-Fi File Transfer. The Pixel 2 has one USB-C port, and the cable and a Wi-Fi adapter both need it. So the way that cannot start now is dimmed, says why, and lights up when you plug in or unplug. When the first games arrive, the home shows them and Zyper cheers.</p>
-<figure class="shot small"><img src="/img/empty.png" alt="No games yet: USB File Transfer on A, Wi-Fi File Transfer on Y, dimmed until the Wi-Fi adapter is in"><figcaption>An empty card shows both ways in.</figcaption></figure>
+<figure class="shot small"><img src="/img/empty.png" alt="No games yet: USB File Transfer on A, with Flash Drive as the other choice, and Wi-Fi File Transfer on Y, dimmed until the Wi-Fi adapter is in"><figcaption>An empty card shows both ways in.</figcaption></figure>
 
 <h2>Way 1: the card in a computer</h2>
 <ol>
@@ -65,22 +70,36 @@ weight: 20
 <h2>Way 3: USB File Transfer</h2>
 <p>The same page, over the USB cable, with no Wi-Fi. It works with a Mac, Linux or Windows 11. Windows 10 has no driver for this kind of connection.</p>
 <ol>
-  <li>Plug the Pixel 2 into the computer. The port only charges until you say otherwise, so the handheld asks: <strong>Charge Only</strong> or <strong>File Transfer</strong>. Choose File Transfer.</li>
+  <li>Plug the Pixel 2 into the computer. The port only charges until you say otherwise, so the handheld asks: <strong>Charge Only</strong>, <strong>File Transfer</strong> or <strong>Flash Drive</strong>. Choose File Transfer.</li>
   <li>Open <code>http://zyperos.local</code> in a browser on that computer, or <code>http://10.42.0.1</code>, and type the PIN from the screen.</li>
   <li>Drag games into their console's folders.</li>
 </ol>
 <figure class="shot small"><img src="/img/usb-ask.png" alt="Computer Connected: Charge Only, File Transfer or Developer (SSH)"><figcaption>A computer on the cable gets a question first. A wall charger never does.</figcaption></figure>
 <figure class="shot small"><img src="/img/usb-steps.png" alt="USB File Transfer when the computer takes no address: Address waiting, and a hint to check Network adapters in Device Manager"><figcaption>When a step waits too long, the handheld says what to check.</figcaption></figure>
 <p>If the page does not open, look at the handheld. It shows a bar while the computer connects, then the address and the PIN, and under them where the connection is. When a step before the browser waits too long, it shows three steps, <strong>Cable</strong> (the computer took the handheld and opened its network), <strong>Address</strong> (the computer took <code>10.42.0.2</code>) and <strong>Browser</strong>, with a hint under the one that waits: try another cable or port, or check Device Manager on Windows. If the browser still does not get there, turn off a VPN or proxy that sends the address somewhere else.</p>
+<p class="note">The cable that connects every time is a USB-A to USB-C cable, with USB-A at the computer. On a USB-C to USB-C cable, the two ports settle which side gives power at each plug, and some computers' USB-C ports never connect that way. If the handheld says your computer didn't connect, unplug the cable and plug it back in, or use that cable; a computer with only USB-C ports can use it through a USB-C to USB-A adapter or a hub.</p>
 <p>While USB File Transfer is open, the computer can also open a shell on the handheld with <code>ssh root@10.42.0.1</code>, the PIN as the password. To copy with <code>scp</code>, add its <code>-O</code> flag, because the handheld has no SFTP server: <code>scp -O game.zip root@10.42.0.1:/roms/SNES/</code>.</p>
 
+<h2>Way 4: Flash Drive</h2>
+<p>No browser and no driver: choose <strong>Flash Drive</strong> when the handheld asks about the computer, and the card becomes a plain flash drive that any computer opens, Windows 10 included. ZyperOS steps aside, and its screen shows how much the computer copies to the card and reads from it. Copy games into <code>Roms/</code> as you would with the card in a reader, then eject the drive on the computer, or pull the cable. The card is checked if it needs it, and ZyperOS comes back where it was.</p>
+
+<h2>Way 5: a phone on the cable</h2>
+<p>On the Pixel 2, an Android phone with USB tethering opens USB File Transfer over a USB-C to USB-C cable, with no adapter and no Wi-Fi:</p>
+<ol>
+  <li>Plug the phone into the handheld. When it asks <strong>What did you plug in?</strong>, choose <strong>Phone</strong>. The handheld powers the phone and asks you to turn on USB tethering.</li>
+  <li>On the phone, turn on <strong>USB tethering</strong> (Settings, then Hotspot and tethering).</li>
+  <li>USB File Transfer opens by itself, with the address the phone gave the handheld and a PIN. Open that address in the phone's browser, and type the PIN.</li>
+</ol>
+<p>While tethering is on, the handheld also has the phone's internet, for box art, achievements and System Update (<a href="/blog/gkd-pixel-2-wifi-adapter/#no-adapter-a-phone-on-the-cable">more on that</a>). An iPhone shares its network over USB only with a computer it trusts, and some Android devices have no USB tethering. With those, use Wi-Fi File Transfer, or Flash Drive with a USB-C to USB-A adapter on the phone and a USB-A to USB-C cable.</p>
+
 <h2>The File Transfer page</h2>
-<p>Wi-Fi File Transfer, the handheld's own network and USB File Transfer all open the same page. It shows the card's seven folders: ROMs, Music, Audiobooks, Videos, BIOS, Saves and Save States, each console's folder with its own pixel art.</p>
+<p>Wi-Fi File Transfer, the handheld's own network and USB File Transfer all open the same page. It shows the card's eight folders: ROMs, Music, Audiobooks, Videos, Menu Music, BIOS, Saves and Save States, each console's folder with its own pixel art.</p>
 <figure class="shot browser"><img src="/img/portal.png" alt="The File Transfer page on a computer: the card's folders down the left with their pixel art, an NES folder open, and an upload under the folders with the time left"><figcaption>On a computer: the folders on the left, an upload under them.</figcaption></figure>
 <ul>
   <li><strong>Upload</strong> by dropping files anywhere on the page, or onto a folder's row. A dropped folder keeps the folders inside it.</li>
   <li><strong>Free space</strong> shows under the folders. Files that do not fit are caught before anything is sent.</li>
-  <li><strong>Each file has a ⋯ menu</strong> for Download, Rename and Delete. Delete always asks first.</li>
+  <li><strong>Drag to move</strong>: drag a file or a folder onto a folder's row and it moves there on the card. On a phone, hold a row still for a moment to lift it.</li>
+  <li><strong>Each file has a ⋯ menu</strong> for Download, Rename and Delete. Delete always asks first. <strong>New folder</strong> makes one.</li>
   <li><strong>On a phone</strong> the folders are a row of chips and Upload is a button under your thumb.</li>
 </ul>
 
@@ -89,13 +108,13 @@ weight: 20
 
 <h2>My games do not show up</h2>
 <ul>
-  <li>Check the folder name against <a href="https://github.com/tarikbc/ZyperOS#supported-systems">the table</a>, spelled exactly, and the file type.</li>
+  <li>Check the folder name against <a href="https://github.com/tarikbc/ZyperOS#supported-systems">the table</a>, spelled exactly, or an EmulationStation name such as <code>gba</code>, and the file type.</li>
   <li>Games sent with File Transfer show up when you leave its screen. Games copied any other way while the handheld is on show up after <strong>Rescan Folder</strong> in that console's menu, or after a restart.</li>
   <li>Arcade and Neo Geo games are ROM sets: keep each <code>.zip</code> whole and named the way FinalBurn Neo names it, and put <code>neogeo.zip</code> in <code>Bios/</code> for Neo Geo games.</li>
 </ul>
 
 <h2>Sources</h2>
 <ol class="sources">
-  <li><a href="https://github.com/tarikbc/ZyperOS#supported-systems">ZyperOS README, Supported systems</a> and <a href="https://github.com/tarikbc/ZyperOS#install">Install</a>: folders, file types, Wi-Fi and USB File Transfer, the File Transfer page, the FAQ.</li>
+  <li><a href="https://github.com/tarikbc/ZyperOS#supported-systems">ZyperOS README, Supported systems</a>, <a href="https://github.com/tarikbc/ZyperOS#coming-from-emulationstation">Coming from EmulationStation</a> and <a href="https://github.com/tarikbc/ZyperOS#install">Install</a>: folders, file types, Wi-Fi and USB File Transfer, Flash Drive, a phone on the cable, the File Transfer page, the FAQ.</li>
   <li><a href="https://github.com/tarikbc/ZyperOS/blob/main/docs/guide.md#file-transfer">The ZyperOS user guide, File transfer</a>: the PIN, SSH over the cable, plugging into a computer.</li>
 </ol>

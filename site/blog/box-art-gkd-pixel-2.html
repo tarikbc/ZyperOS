@@ -14,7 +14,7 @@ weight: 30
 
 <h2>The short answer</h2>
 <ol>
-  <li>Plug in a USB Wi-Fi adapter and join a network.</li>
+  <li>Get the handheld online: plug in a USB Wi-Fi adapter and join a network, or plug in an Android phone, choose <strong>Phone</strong> and turn on its USB tethering.</li>
   <li>Open <strong>MENU &gt; Scraper</strong>. The page says how many covers a run will look for.</li>
   <li>Press <kbd>A</kbd> and watch the covers come in. <kbd>B</kbd> stops it at any time. The shelf has the covers when you leave the page.</li>
 </ol>
@@ -33,7 +33,7 @@ weight: 30
   </tbody>
 </table>
 </div>
-<p class="note">ScreenScraper also needs a developer pair that each ZyperOS build is made with. A build without it says <code>not in this build</code> on ScreenScraper's tile, and the fetch uses libretro and SteamGridDB.</p>
+<p class="note">ScreenScraper also needs a developer pair that each ZyperOS build is made with. A build without it says <code>not in this build</code> in Scraper's Settings, and the fetch uses libretro and SteamGridDB.</p>
 
 <h3>libretro: matching by checksum</h3>
 <p>libretro files its covers under the game's name in No-Intro's catalog. A zip records its ROM's checksum, so when the file name does not match, ZyperOS looks the game up by that checksum instead, and a file with an old or odd name still finds its box.</p>
@@ -65,10 +65,13 @@ weight: 30
 
 <h2>Covers that went missing after a transfer</h2>
 <p>A console's folder sent with the File Transfer page arrives without its covers, because a browser leaves the hidden <code>.media</code> folder behind. Send the covers on their own: drop the PNG files into the console's <code>.media</code> folder on the page, or drag the <code>.media</code> folder itself onto the console's folder. On a Mac, Cmd-Shift-. shows hidden folders in Finder.</p>
-<p>No Wi-Fi adapter? Over the USB cable, the File Transfer page's Settings can fetch missing box art with the computer's own internet, and the handheld matches each cover to its game.</p>
+<p>No Wi-Fi adapter? Plug in an Android phone, choose <strong>Phone</strong> and turn on its USB tethering: MENU &gt; Scraper, a console's Box Art and a game's Cover and Video then use the phone's internet, as over Wi-Fi (<a href="/blog/gkd-pixel-2-wifi-adapter/#no-adapter-a-phone-on-the-cable">a phone on the cable</a>). Or, over the USB cable from a computer, the File Transfer page's Settings can fetch missing box art with the computer's own internet, and the handheld matches each cover to its game.</p>
+
+<h2>Covers from an EmulationStation system</h2>
+<p>Coming from Knulli, ROCKNIX, ArkOS or ROGUE OS? Copy their <code>roms</code> folders into <code>Roms/</code> as they are. The covers, video snaps, names and details their scrapers left (<code>gamelist.xml</code>, <code>images/</code>, <code>videos/</code>, <code>media/</code>) show on the shelf as they are, with no new scrape. A cover ZyperOS fetched or you picked comes first, and a Scraper run only fetches for games with no cover at all.</p>
 
 <h2>Sources</h2>
 <ol class="sources">
-  <li><a href="https://github.com/tarikbc/ZyperOS#faq">ZyperOS README, FAQ: A game has no box art</a>, and <a href="https://github.com/tarikbc/ZyperOS#the-file-transfer-page">The File Transfer page</a>.</li>
+  <li><a href="https://github.com/tarikbc/ZyperOS#faq">ZyperOS README, FAQ: A game has no box art</a>, <a href="https://github.com/tarikbc/ZyperOS#the-file-transfer-page">The File Transfer page</a>, <a href="https://github.com/tarikbc/ZyperOS#from-a-phone-on-the-usb-cable">From a phone on the USB cable</a> and <a href="https://github.com/tarikbc/ZyperOS#coming-from-emulationstation">Coming from EmulationStation</a>.</li>
   <li><a href="https://github.com/tarikbc/ZyperOS/blob/main/docs/guide.md#scraper">The ZyperOS user guide, Scraper</a> and <a href="https://github.com/tarikbc/ZyperOS/blob/main/docs/guide.md#the-shelf">The shelf</a>: the sources' order, video snaps, checksum matching, covers added by hand.</li>
 </ol>
