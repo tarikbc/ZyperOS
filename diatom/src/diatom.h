@@ -253,6 +253,8 @@ typedef enum {
 	DIATOM_MSG_SETSCREENS, /* set it: `layout`, `swap` = 1 | 0 */
 	DIATOM_MSG_STYLUS,     /* report whether stylus mode is on */
 	DIATOM_MSG_SETSTYLUS,  /* turn it on or off: `on` = 1 | 0 */
+	DIATOM_MSG_SETSTICK,   /* the d-pad as the stick: `dmode` (sent as `mode=`)
+	 * = dpad | plain | toggle | toggle-stick | off; answered STICK on=1|0 */
 	/* Guest players, NES player 2 first (player2.h): the frames out and
 	 * the guests' buttons in, through a file p2d maps too. Only while a
 	 * game is loaded. */

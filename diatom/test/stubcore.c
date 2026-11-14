@@ -406,7 +406,14 @@ static void input_log(void)
 	for (port = 0; port < 4; port++)
 		for (id = 0; id <= RETRO_DEVICE_ID_JOYPAD_R3; id++)
 			if (input_cb(port, RETRO_DEVICE_JOYPAD, 0, id)) bits[port] |= 1u << id;
-	fprintf(f, "%u %u %u %u %u\n", (unsigned)frame, bits[0], bits[1], bits[2], bits[3]);
+	fprintf(f, "%u %u %u %u %u", (unsigned)frame, bits[0], bits[1], bits[2], bits[3]);
+	/* STUBCORE_INPUT_ANALOG=1 adds a sixth column, port 0's left stick x as
+	 * the core read it (test/hotkeys.py: the d-pad as the stick). Off by
+	 * default so the readers of the other columns stay as they were. */
+	if (getenv("STUBCORE_INPUT_ANALOG"))
+		fprintf(f, " %d", (int)input_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT,
+		                                RETRO_DEVICE_ID_ANALOG_X));
+	fprintf(f, "\n");
 	fflush(f);
 }
 

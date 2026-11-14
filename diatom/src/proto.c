@@ -209,6 +209,7 @@ static void parse_line(char *line, diatom_msg *out)
 	else if (!strcmp(field, "SETSCREENS")) out->kind = DIATOM_MSG_SETSCREENS;
 	else if (!strcmp(field, "STYLUS"))     out->kind = DIATOM_MSG_STYLUS;
 	else if (!strcmp(field, "SETSTYLUS"))  out->kind = DIATOM_MSG_SETSTYLUS;
+	else if (!strcmp(field, "SETSTICK"))   out->kind = DIATOM_MSG_SETSTICK;
 	else if (!strcmp(field, "PLAYER2"))    out->kind = DIATOM_MSG_PLAYER2;
 	else if (!strcmp(field, "SETPLAYER2")) out->kind = DIATOM_MSG_SETPLAYER2;
 	else {
@@ -417,6 +418,14 @@ diatom_msg_kind diatom_proto_poll(diatom_msg *out, int timeout_ms, bool running)
 		 * Additive: an old Diatom ignores all of it and shows a DS frame as
 		 * one tall picture with no stylus, and a launcher that sees proto=11
 		 * knows not to offer a Screens or Stylus row that would do nothing. */
+		/* SETSTICK mode=dpad|plain|toggle|toggle-stick|off, on the state
+		 * plane, sets how the d-pad is the stick while a game runs or is
+		 * paused, as RUN stick= does at the start (plain is RUN-only until
+		 * now: no SELECT rule, no R2 turn). It answers STICK on=1 when the
+		 * d-pad is now the stick, on=0 otherwise, and an unknown mode is
+		 * an ERROR with the stick as it was. Additive, so proto stays 14:
+		 * an old Diatom ignores the verb, and the launcher never waits
+		 * for the answer. */
 		/* proto=13 moves the speed and adds the quick slot: SELECT+R2 and
 		 * SELECT+L2 step it in halves, so SPEED's x may be "1.5", and MENU+R1
 		 * does nothing; SELECT+R1 and SELECT+L1 send HOTKEY key=save|load,
