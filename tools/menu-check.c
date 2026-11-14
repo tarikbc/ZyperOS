@@ -2248,6 +2248,27 @@ static void ctl_tab(void)
 	ck(ct_lit(&m, CT_BUTTON + RM_Y) == 1u << TD_Y, "once the cursor comes back, Y alone");
 	ck(ct_lit(&m, CT_RESET) == (1u << TD_Y | 1u << TD_B), "Reset Buttons lights every changed button");
 
+	/* ct_lean: the handheld turns toward the side the focused row lights */
+	ct_ps1(&m);
+	ck(ct_lean(1u << TD_Y) == 1 && ct_lean(1u << TD_A | 1u << TD_R2) == 1, "ct_lean: right keys, +1");
+	ck(ct_lean(1u << TD_DPAD) == -1 && ct_lean(1u << TD_L2) == -1, "ct_lean: left keys, -1");
+	ck(ct_lean(1u << TD_SELECT) == 0 && ct_lean(1u << TD_START) == 0 && ct_lean(0) == 0,
+	   "ct_lean: the middle keys and none, front");
+	ck(ct_lean(1u << TD_DPAD | 1u << TD_SELECT) == -1, "ct_lean: left and centre is left");
+	ck(ct_lean(1u << TD_L1 | 1u << TD_R1) == 0, "ct_lean: both sides, front");
+	ck(ct_lean(ct_lit(&m, CT_BUTTON + RM_Y)) == 1, "ct_lean: the Y row leans right");
+	ck(ct_lean(ct_lit(&m, CT_BUTTON + RM_L2)) == -1, "ct_lean: the L2 row leans left");
+	ck(ct_lean(ct_lit(&m, CT_BUTTON + RM_SELECT)) == 0, "ct_lean: the SELECT row, front");
+	ck(ct_lean(ct_lit(&m, CT_STICK)) == -1, "ct_lean: D-pad as Stick leans left on the PlayStation");
+	ck(ct_lean(ct_lit(&m, CT_SCOPE)) == 0 && ct_lean(ct_lit(&m, CT_HOTKEYS)) == 0, "ct_lean: Applies To and Hotkeys, front");
+	rm_set(&m.cur, &m.base, RM_B, (rm_choice){ RT_L1, 0 });
+	ck(ct_lean(ct_lit(&m, CT_RESET)) == 0, "ct_lean: Reset Buttons with B and L1 changed, front");
+	ct_ps1(&m);
+	m.stick_on = true;
+	m.select_held_c = true;
+	ck(ct_lean(ct_lit(&m, CT_STICK)) == -1, "ct_lean: the stick on the N64 (d-pad and SELECT) leans left");
+	ct_ps1(&m);
+
 	/* The steps, round the choices, and Nothing */
 	ct_ps1(&m);
 	nch = ctl_remap_choices("PS1", "chd", "", ch, 32);

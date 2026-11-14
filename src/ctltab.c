@@ -295,6 +295,15 @@ unsigned ct_lit(const ct_model *m, ct_row id)
 	}
 }
 
+int ct_lean(unsigned keys)
+{
+	const unsigned left = 1u << TD_DPAD | 1u << TD_L1 | 1u << TD_L2;
+	const unsigned right = 1u << TD_A | 1u << TD_B | 1u << TD_X | 1u << TD_Y | 1u << TD_R1 | 1u << TD_R2;
+	const bool l = (keys & left) != 0, r = (keys & right) != 0;
+
+	return r && !l ? 1 : l && !r ? -1 : 0;
+}
+
 /* ---- the steps ------------------------------------------------------------- */
 
 int ct_choice_at(const ct_model *m, const rm_choice *ch, int n, rm_choice c)

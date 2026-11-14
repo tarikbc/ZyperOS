@@ -118,6 +118,12 @@ int ct_rows(const ct_model *m, ct_row *ids, menu_row *out, unsigned *vcol, ct_bu
  * sets; Reset Buttons every changed button; the rest none. */
 unsigned ct_lit(const ct_model *m, ct_row id);
 
+/* Which way the handheld leans for the keys a row lights (a ct_lit mask):
+ * +1 toward its right side (A, B, X, Y, R1, R2), -1 toward its left (the
+ * d-pad, L1, L2), 0 for the front: SELECT and START alone, no keys, or keys
+ * on both sides. A side key with a centre key leans to its side. */
+int ct_lean(unsigned keys);
+
 /* The button a button row is about (RM_*), -1 for another row */
 int ct_button_of(ct_row id);
 

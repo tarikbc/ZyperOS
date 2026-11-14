@@ -349,6 +349,12 @@ row's pages, which are at their own width (section 2).
   button.
 - **Turn:** it faces front (the tutorial's front pose, 10 degrees). A lit
   shoulder stands up out of the top edge, as in the tutorial.
+- **Lean:** it turns a little toward the side of the keys the row lights,
+  12 degrees either way of the front pose: A, B, X, Y, R1 and R2 show its
+  right side (22 degrees), the d-pad, L1 and L2 its left (-2); SELECT, START,
+  keys on both sides (Reset Buttons) and no keys (Applies To, Pak, Hotkeys)
+  bring it back to front. A side key with a centre key (the N64's d-pad and
+  SELECT) leans to its side.
 
 ### 8. Motion
 
@@ -356,9 +362,9 @@ DESIGN.md 8's tokens and curves only; nothing overshoots.
 
 | What | How |
 |---|---|
-| R1 or L1 into Controls | the handheld comes with the rows: 64 units in the press's way, faded up, in **move** (160 ms, out), and turns from 40 to 10 degrees in **turn** (300 ms) |
+| R1 or L1 into Controls | the handheld comes with the rows: 64 units in the press's way, faded up, in **move** (160 ms, out), and turns from 40 to 10 degrees, plus the lean of its first row, in **turn** (300 ms) |
 | Out of Controls | it leaves with the old tab's name: 96 units the press's way, gone in the first two fifths of **move** |
-| Up or Down | the fill glides in **quick** (as today); the old key's light goes out and the new key's comes in, in **quick** (as the tutorial does) |
+| Up or Down | the fill glides in **quick** (as today); the old key's light goes out and the new key's comes in, in **quick** (as the tutorial does); the lean eases to the new row's side in **turn**, retargeted from where it is, never queued |
 | Left or Right on a button | the key presses in **press** (80 ms in, 80 out); a swapped partner lights in **quick** |
 | A shoulder row | the shoulder stands up in **quick** |
 | A to a button's choices, and back | the handheld holds still while the list beside it changes |
