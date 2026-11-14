@@ -4,7 +4,7 @@ summary: ROCKNIX's 120 systems and updates over the air, beside ZyperOS's quick 
 crumb: ZyperOS vs ROCKNIX
 topic: compare
 published: 2026-11-07
-updated: 2026-11-07
+updated: 2026-11-13
 image: shelf
 image_alt: A system's games as a row of covers on the ZyperOS shelf
 related: best-custom-firmware-gkd-pixel-2, zyperos-vs-rogue-os, install-custom-firmware-gkd-pixel-2
@@ -25,7 +25,7 @@ weight: 20
   <tbody>
     <tr><th scope="row">License</th><td class="us">GPL-3.0, free</td><td>GPL-2.0 for its own code</td></tr>
     <tr><th scope="row">Latest for the Pixel 2</th><td class="us">v1.0.5 (November 2026)</td><td>20261101 (November 2026)</td></tr>
-    <tr><th scope="row">Systems</th><td class="us">40, and Ports</td><td>120 in its RK3326 list</td></tr>
+    <tr><th scope="row">Systems</th><td class="us">44, and Ports</td><td>120 in its RK3326 list</td></tr>
     <tr><th scope="row">Card a Mac or PC reads</th><td class="us">[yes: exFAT games partition] exFAT</td><td>[no: The whole card is ext4, which Windows and macOS do not read] ext4</td></tr>
     <tr><th scope="row">Games over the network</th><td class="us">[yes: A web page over Wi-Fi, the handheld's own network, or the USB cable] Web page, Wi-Fi or USB cable</td><td>[yes: A web server, Samba, SFTP, and USB network or file-transfer modes] Web server, Samba, SFTP, USB</td></tr>
     <tr><th scope="row">Box art on the device</th><td class="us">[yes: libretro with no account, ScreenScraper, SteamGridDB] libretro, ScreenScraper, SteamGridDB</td><td>[yes: ScreenScraper, with an account] ScreenScraper</td></tr>
@@ -50,6 +50,7 @@ weight: 20
 <h2>Adding games</h2>
 <p>This is the biggest practical difference. ROCKNIX expands the whole card as ext4, a Linux file system, and its docs say Windows cannot reach it; only Linux reads the card in a computer. Instead it offers many ways over the network: a simple web server, Samba, SFTP and scp, and over the Pixel 2's USB-C port a network mode or a file-transfer mode. Its FAQ notes that SSH and Samba are off by default in release builds.</p>
 <p>ZyperOS formats its games space as exFAT, so the card opens on a Mac or PC. Over Wi-Fi or the USB cable it opens one web page in any browser, behind a PIN, with no app; with no network around, the handheld makes its own for your phone. <a href="/blog/add-games-gkd-pixel-2/">The adding games guide</a> shows it.</p>
+<p>Moving over from ROCKNIX? Copy its <code>roms</code> folders onto the ZyperOS card as they are. Its folder names, such as <code>nds</code>, <code>psx</code> and <code>megadrive</code>, are read as ZyperOS's own systems, and the covers, video snaps, names and details its scraper left show on the shelf with no new scrape. The folders still work in ROCKNIX.</p>
 
 <h2>Box art and achievements</h2>
 <p>ROCKNIX's scraper is built in and uses ScreenScraper, which needs an account. ZyperOS asks libretro's collection with no account, ScreenScraper with one, and SteamGridDB with your key for homebrew and hacks, and it can turn a cover into a few seconds of video. Both sign in to RetroAchievements on the handheld. ZyperOS keeps a game's achievements on the card after its first start, so it works offline and sends unlocks later.</p>
