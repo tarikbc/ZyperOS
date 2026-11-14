@@ -626,9 +626,15 @@ void gd_plan_run(const gd_plan *p, gd_done *out)
 
 int gd_forget(const char *folder, const char *tag, const char *file)
 {
+	char key[LIB_PATH * 2 + 64];
 	int n = 0;
 
 	if (db_game_del(db_lib(), folder, file)) n++;
+	/* The game's own buttons and its D-pad as Stick go with it */
+	snprintf(key, sizeof key, "map.%s.%s", tag, file);
+	if (db_del(db_lib(), key)) n++;
+	snprintf(key, sizeof key, "stick.%s.%s", tag, file);
+	if (db_del(db_lib(), key)) n++;
 	if (fav_forget(tag, file)) n++;
 	n += stats_forget(tag, file);
 	return n;

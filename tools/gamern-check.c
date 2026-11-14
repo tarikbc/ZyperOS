@@ -183,6 +183,9 @@ int main(void)
 	session("GBC", "Tetris (World).gbc", 300);
 	db_set_str(db_lib(), "pak.GB.Tetris (World).gb", "memory");
 	db_set_str(db_lib(), "artsrc.Game Boy/Tetris (World)", "lr");
+	db_set_str(db_lib(), "map.GB.Tetris (World).gb", "a:b,b:a");
+	db_set_str(db_lib(), "stick.GB.Tetris (World).gb", "1");
+	db_set_str(db_lib(), "map.GB.Tetris (World) (Rev 1).gb", "x:y");
 
 	printf("names:\n");
 	{
@@ -238,6 +241,11 @@ int main(void)
 	CHECK(fav_is("GB", "Tetris DX Test.gb") && !fav_is("GB", "Tetris (World).gb"));
 	CHECK(db_get_str(db_lib(), "pak.GB.Tetris DX Test.gb", t, sizeof t, NULL) && !strcmp(t, "memory"));
 	CHECK(!db_has(db_lib(), "pak.GB.Tetris (World).gb"));
+	/* rename_moves_map_and_stick */
+	CHECK(db_get_str(db_lib(), "map.GB.Tetris DX Test.gb", t, sizeof t, NULL) && !strcmp(t, "a:b,b:a"));
+	CHECK(db_get_str(db_lib(), "stick.GB.Tetris DX Test.gb", t, sizeof t, NULL) && !strcmp(t, "1"));
+	CHECK(!db_has(db_lib(), "map.GB.Tetris (World).gb") && !db_has(db_lib(), "stick.GB.Tetris (World).gb"));
+	CHECK(db_has(db_lib(), "map.GB.Tetris (World) (Rev 1).gb"));            /* the neighbour's */
 	CHECK(db_has(db_lib(), "artsrc.Game Boy/Tetris DX Test") && !db_has(db_lib(), "artsrc.Game Boy/Tetris (World)"));
 	CHECK(db_has(db_lib(), "sess.100.100.GB\tTetris DX Test.gb") && db_has(db_lib(), "sess.200.200.GB\tTetris DX Test.gb"));
 	CHECK(!db_has(db_lib(), "sess.100.100.GB\tTetris (World).gb"));
