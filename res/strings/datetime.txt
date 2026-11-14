@@ -22,3 +22,14 @@ fr = Le Wi-Fi règle l'horloge une fois connecté
 de = Mit WLAN wird die Uhr automatisch gestellt
 ja = Wi-Fi 接続時に時計を自動で合わせます
 it = Il Wi-Fi imposta l'ora quando è connesso
+
+[datetime.auto_note]
+note = The message as Time Zone is set to Auto: to find the zone, the handheld asks an internet service (ipwho.is), which sees its public address. One short sentence, on up to two lines
+en = Auto asks an online service where you are
+zh-Hans = 自动模式会在线查询你所在的位置
+es = Automática pregunta en línea dónde estás
+pt-BR = Automático pergunta online onde você está
+fr = Auto demande en ligne où vous êtes
+de = Automatisch fragt online, wo du bist
+ja = 自動は現在地をオンラインで調べます
+it = Automatico chiede online dove ti trovi

@@ -26,8 +26,9 @@
 bool pkset_text(sqlite3 *d, const char *key, char *out, size_t n);
 
 /* The handheld's time zone from the library database at `path`, into `out`:
- * true when the library names a zone on src/clock.c's list (CLOCK_ZONES),
- * and otherwise false with PKSET_ZONE_DEFAULT. Waits up to 200 ms for a lock
+ * true when the library names a zone this system has (clock_zone_have: on
+ * src/clock.c's list, or a zone database name Date & Time's Auto set), and
+ * otherwise false with PKSET_ZONE_DEFAULT. Waits up to 200 ms for a lock
  * held by another connection, as the device database's does. */
 bool pkset_zone_read(const char *path, char *out, size_t n);
 

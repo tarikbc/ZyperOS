@@ -82,4 +82,42 @@ int clock_zone_find(const char *id);
  * steps onto it from New York, the shipped default. */
 int clock_zone_step(const char *id, int d);
 
+/* Auto (src/autozone.h) is the row's first choice, before the list's west
+ * end, as Game Language's Auto is before its languages: left from Honolulu
+ * is Auto, right from Auto is Honolulu, and left from Auto stays. The choice
+ * `d` steps to from `id`'s, or from Auto when `autoz`: CLOCK_ZONE_AUTO or an
+ * entry of the list. An id not on the list steps onto it from New York, as
+ * clock_zone_step has it. */
+#define CLOCK_ZONE_AUTO (-1)
+int clock_zone_step_auto(const char *id, bool autoz, int d);
+
+/* A name the zone database could have: its letters, digits and _ + - /, in
+ * parts that each start with a letter, 63 bytes at most. Never a path (no
+ * dot, no leading slash) nor one of TZ's other forms (":file", "<-03>3"):
+ * TZ is read by the C library as the name of a file under its zone
+ * directory, and a name from a reply or a card is not passed there
+ * unchecked. */
+bool clock_zone_name_ok(const char *id);
+
+/* Where the zone files are, on the devices (plastron's tzdata, every zone)
+ * and on a Mac or a Linux host */
+#define CLOCK_ZONEINFO "/usr/share/zoneinfo"
+
+/* This system has zone `id`: on the list, or a name clock_zone_name_ok takes
+ * whose file is in CLOCK_ZONEINFO */
+bool clock_zone_have(const char *id);
+
+/* The words for zone `id`, for a row: the list's city ("New York", "India"),
+ * else the name's last part with spaces ("Asia/Ho_Chi_Minh" is "Ho Chi
+ * Minh"), and "UTC+3" for the zone database's Etc/GMT-3, whose sign is
+ * the other way round. */
+void clock_zone_city(const char *id, char *out, size_t n);
+
+/* The Time Zone row's value. Auto off: the zone's city, or an id not on the
+ * list as it is. Auto on: "Auto" until it has found a zone, then "Auto
+ * (Sao Paulo)", the city of the zone it found, while that is the zone in use
+ * (`found`, the last Auto set, is `id`). */
+void clock_zone_value(const char *id, bool autoz, const char *found, char *out,
+                      size_t n);
+
 #endif

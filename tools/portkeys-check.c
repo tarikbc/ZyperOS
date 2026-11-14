@@ -14,10 +14,11 @@
  *
  *   a setting read, missing, empty, from a database that is not one, from
  *   none, and from one locked past the busy timeout;
- *   the zone: one on Date & Time's list taken, and New York for a missing
- *   key, an empty one, one off the list, a path, an unreadable library, a
- *   locked one and none given; a WAL library being written by another
- *   connection still read; TZ set to the answer;
+ *   the zone: one on Date & Time's list taken, and one off it that the
+ *   system has (Date & Time's Auto sets those), and New York for a missing
+ *   key, an empty one, one the system does not have, a path, a folder, an
+ *   unreadable library, a locked one and none given; a WAL library being
+ *   written by another connection still read; TZ set to the answer;
  *   the bar's theme: the word over the file, the file only with no word, a
  *   hand edit of the file not reaching a bar that has a word, and Auto at
  *   its edges in the zone the library names.
@@ -199,11 +200,26 @@ static void zone(void)
 	   "no zone saved is New York, as the launcher has it");
 	make_db("emptyzone.db", "WAL", "timezone", "");
 	ck(!zone_of("emptyzone.db", tz, sizeof tz) && !strcmp(tz, PKSET_ZONE_DEFAULT), "an empty one is New York");
-	make_db("offlist.db", "WAL", "timezone", "Europe/Rome");
-	ck(!zone_of("offlist.db", tz, sizeof tz) && !strcmp(tz, PKSET_ZONE_DEFAULT), "one off the list is New York");
+	/* Date & Time's Auto sets the zone the service names, on the list or
+	 * not (src/autozone.h): one the system has is taken */
+	make_db("autozone.db", "WAL", "timezone", "Asia/Ho_Chi_Minh");
+	ck(zone_of("autozone.db", tz, sizeof tz) && !strcmp(tz, "Asia/Ho_Chi_Minh"),
+	   "a zone off the list that the system has, as Auto sets, is taken");
+	make_db("offlist.db", "WAL", "timezone", "Mars/Olympus_Mons");
+	ck(!zone_of("offlist.db", tz, sizeof tz) && !strcmp(tz, PKSET_ZONE_DEFAULT),
+	   "one the system does not have is New York");
 	make_db("pathzone.db", "WAL", "timezone", ":/etc/passwd");
 	ck(!zone_of("pathzone.db", tz, sizeof tz) && !strcmp(tz, PKSET_ZONE_DEFAULT),
 	   "a path is New York, and never reaches TZ");
+	make_db("upzone.db", "WAL", "timezone", "../../../../etc/passwd");
+	ck(!zone_of("upzone.db", tz, sizeof tz) && !strcmp(tz, PKSET_ZONE_DEFAULT),
+	   "and so is one that climbs out of the zone files");
+	make_db("rootzone.db", "WAL", "timezone", "/etc/localtime");
+	ck(!zone_of("rootzone.db", tz, sizeof tz) && !strcmp(tz, PKSET_ZONE_DEFAULT),
+	   "or starts at the root");
+	make_db("dirzone.db", "WAL", "timezone", "America");
+	ck(!zone_of("dirzone.db", tz, sizeof tz) && !strcmp(tz, PKSET_ZONE_DEFAULT),
+	   "and a folder of zones is no zone");
 	ck(!zone_of("missing.db", tz, sizeof tz) && !strcmp(tz, PKSET_ZONE_DEFAULT), "no library is New York");
 	ck(!zone_of("notadb.db", tz, sizeof tz) && !strcmp(tz, PKSET_ZONE_DEFAULT),
 	   "a library that is not a database is New York");
@@ -239,7 +255,7 @@ static void zone(void)
 	path_of(p, sizeof p, "lib.db");
 	pkset_zone_load(p);
 	ck(getenv("TZ") && !strcmp(getenv("TZ"), "Asia/Tokyo"), "loading the zone sets TZ to it");
-	printf("  (the line below, for a zone off the list, is expected)\n");
+	printf("  (the line below, for a zone the system does not have, is expected)\n");
 	path_of(p, sizeof p, "offlist.db");
 	pkset_zone_load(p);
 	ck(getenv("TZ") && !strcmp(getenv("TZ"), PKSET_ZONE_DEFAULT), "and to New York when it falls back");
@@ -291,6 +307,7 @@ static void cleanup(void)
 	static const char *names[] = {
 		"dev.db", "empty.db", "notadb.db", "other.db", "locked.db", "lib.db", "nokey.db",
 		"emptyzone.db", "offlist.db", "pathzone.db", "locked-lib.db", "dev-auto.db",
+		"autozone.db", "upzone.db", "rootzone.db", "dirzone.db",
 	};
 	static const char *tails[] = { "", "-wal", "-shm", "-journal" };
 	char p[160];

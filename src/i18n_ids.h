@@ -168,6 +168,8 @@ typedef enum {
 	S_CHEEVOS_SENT_WHERE,
 	/* res/strings/clock.txt */
 	S_CLOCK_TIME_ZONE,
+	S_CLOCK_ZONE_AUTO,
+	S_CLOCK_ZONE_AUTO_FOUND,
 	S_CLOCK_YEAR,
 	S_CLOCK_MONTH,
 	S_CLOCK_DAY,
@@ -359,6 +361,7 @@ typedef enum {
 	/* res/strings/datetime.txt */
 	S_DATETIME_TITLE,
 	S_DATETIME_WIFI_SETS,
+	S_DATETIME_AUTO_NOTE,
 	/* res/strings/devmode.txt */
 	S_DEVMODE_IS_ON,
 	S_DEVMODE_WHERE,

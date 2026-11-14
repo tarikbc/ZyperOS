@@ -124,11 +124,6 @@ cheevos.ra_user
 cheevos.unchecked_said
 
 # clock: no shot draws it yet
-clock.time_zone
-clock.month
-clock.day
-clock.hour
-clock.minute
 clock.month_jan
 clock.month_feb
 clock.month_mar
@@ -138,7 +133,6 @@ clock.month_jun
 clock.month_jul
 clock.month_aug
 clock.month_sep
-clock.month_oct
 clock.month_nov
 clock.month_dec
 clock.short_jan
@@ -187,7 +181,6 @@ corner.held
 corner.full
 
 # datetime: no shot draws it yet
-datetime.change
 datetime.wifi_sets
 
 # emptyhome: no shot draws it yet
