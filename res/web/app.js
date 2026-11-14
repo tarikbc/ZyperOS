@@ -351,7 +351,7 @@ function crumbs() {
 		b.type = 'button';
 		b.textContent = label;
 		b.dataset.path = path;      /* a folder above, to drop onto (moving) */
-		b.onclick = () => go(path);
+		b.onclick = () => open(path);
 		const sep = document.createElement('span');
 		sep.className = 'sep';
 		sep.textContent = '›';
@@ -382,7 +382,7 @@ function places() {
 				} else b.classList.add('i', 'i-' + mark);
 			}
 			if (r.path === here) { b.classList.add('on'); b.setAttribute('aria-current', 'page'); }
-			b.onclick = () => go(r.path);
+			b.onclick = () => open(r.path);
 			nav.append(b);
 		}
 	}
@@ -402,6 +402,14 @@ function places() {
  * link can be sent to another device on the LAN. There is no page of the
  * roots: the sidebar is that page, and the first folder, ROMs, is the reason
  * anyone opened this. */
+/* A folder opened from a click: what the handheld said when it could not be
+ * listed, in the toast, rather than a click that did nothing (a 1,772-game
+ * SNES folder past the listing's cap, 2026-11-13). A session that ended
+ * raises the gate itself. */
+function open(path) {
+	go(path).catch(err => { if (err.message !== 'unauthorized') toast(err.message, true); });
+}
+
 async function go(path, hist) {
 	if (path === SETTINGS) return openSettings(hist);
 	if (!path) path = roots.length ? roots[0].path : 'roms';
@@ -570,7 +578,7 @@ function draw() {
 		name.type = 'button';
 		name.className = 'name';
 		name.textContent = e.name;
-		name.onclick = e.dir ? () => go(e.path) : () => openRowMenu(e, name, li);
+		name.onclick = e.dir ? () => open(e.path) : () => openRowMenu(e, name, li);
 		li.append(name);
 
 		if (!e.dir) {
@@ -721,7 +729,7 @@ function openRowMenu(e, at, row) {
 	who.className = 'who';
 	who.textContent = e.dir ? e.name : e.name + ' · ' + human(e.size);
 	const nodes = [who];
-	if (e.dir) nodes.push(item(t('act.open'), 'folder', () => go(e.path)));
+	if (e.dir) nodes.push(item(t('act.open'), 'folder', () => open(e.path)));
 	else nodes.push(item(t('act.download'), 'down', '/api/file?p=' + enc(e.path)));
 	nodes.push(item(t('act.rename'), 'pen', () => rename(e)));
 	/* Picked rows go together when one of them is dragged: on a phone, this

@@ -31,9 +31,14 @@
 #define MAX_TRIES      5
 #define LOCKOUT_MS 30000u
 
-/* One page of listing. A ROM folder of 500 entries is ordinary and the whole
- * thing has to fit in one reply, because there is no paging in the client. */
-#define JSON_MAX (256 * 1024)
+/* One page of listing: the whole folder in one reply, because there is no
+ * paging in the client. A cap, not a size: the buffer grows as it fills, so a
+ * small folder costs what it always did. Each game with a cover is about 250
+ * bytes (its name, its path and its cover's path), and a player's SNES folder
+ * of 1,772 games with their art came to some 450 KB, past the 256 KB this
+ * was: the folder would not open (2026-11-13). 8 MB holds some 25,000 such
+ * games. */
+#define JSON_MAX (8 * 1024 * 1024)
 
 static char     g_web[XFER_PATH_MAX];
 static char     g_captive[32];   /* the hotspot's address: hare_set_captive */
