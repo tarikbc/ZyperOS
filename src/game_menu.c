@@ -230,6 +230,8 @@ int gm_tab_rows(const gm_ui *u, gm_tab t, gm_row *ids)
 	} else if (t == GT_DISPLAY) {
 		ids[n++] = GM_DISPLAY;
 		ids[n++] = GM_SHADER;
+		/* Under its shader, and only while that is an old screen */
+		if (u->strength) ids[n++] = GM_STRENGTH;
 		/* A DS game's three belong with the picture */
 		if (u->screens) {
 			ids[n++] = GM_SCREENS;
@@ -284,7 +286,7 @@ int gm_rows(const gm_ui *u, gm_tab t, menu_row *out, gm_bufs *b)
 		S_GAMEMENU_DISPLAY, S_GAMEMENU_SHADER, S_SYSMENU_CONTROLS, S_SYSMENU_CHEEVOS,
 		S_GAMEMENU_RESET,
 		S_GAMEMENU_QUIT, S_GAMEMENU_SCREENS, S_GAMEMENU_SWAP, S_GAMEMENU_STYLUS,
-		S_GAMEMENU_PAK, S_PLAYER2_ROW, S_GAMEMENU_DISC
+		S_GAMEMENU_PAK, S_PLAYER2_ROW, S_GAMEMENU_DISC, S_GAMEMENU_STRENGTH
 	};
 	menu_row full[GM_MAX_ROWS];
 	gm_row ids[GM_MAX_ROWS];
@@ -293,6 +295,7 @@ int gm_rows(const gm_ui *u, gm_tab t, menu_row *out, gm_bufs *b)
 	for (i = 0; i < GM_MAX_ROWS; i++) full[i] = (menu_row){ T(label[i]), NULL, true };
 	full[GM_DISPLAY].value = u->dmode;
 	full[GM_SHADER].value  = u->shader ? u->shader : T(S_MENU_OFF_TITLE);
+	full[GM_STRENGTH].value = u->strength;
 	/* The slot's number alone: the row says what it is */
 	snprintf(b->quick, sizeof b->quick, "%d", u->quick);
 	full[GM_QUICK].value = b->quick;
@@ -333,12 +336,15 @@ int gm_rows(const gm_ui *u, gm_tab t, menu_row *out, gm_bufs *b)
 	for (i = 0; i < n; i++) {
 		out[i] = full[ids[i]];
 		/* Display steps round on left and right and on A; so do Shader,
-		 * the quick slot and the three for two screens. Every other row is
-		 * plain. */
+		 * the quick slot and the three for two screens. Strength steps
+		 * on left and right alone. Every other row is plain. */
 		b->sound[i] = ids[i] == GM_DISPLAY || ids[i] == GM_SHADER || ids[i] == GM_QUICK ||
 		              ids[i] == GM_SCREENS || ids[i] == GM_DISC ||
 		              ids[i] == GM_SWAP || ids[i] == GM_STYLUS || ids[i] == GM_PAK
-		              ? MENU_SND_RING : 0;
+		              ? MENU_SND_RING
+		              /* Strength stops at 10% and 100%, heard by whether it
+		               * moved, and A does nothing on it */
+		              : ids[i] == GM_STRENGTH ? MENU_SND_NO_A : 0;
 	}
 	return n;
 }

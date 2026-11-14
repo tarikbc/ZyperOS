@@ -469,6 +469,16 @@ for _s in ("shimmerless", "crt", "crt-curved", "scanlines", "lcd"):
     EXTRA.setdefault("gamemenu-shader-" + _s, ("demo", "PS1", ["--screen", "games", "--gamemenu", "1", "--gm-tab", "1"]))
     SHOT_SETTINGS["gamemenu-shader-" + _s] = {"shader.PS1": _s}
 
+# The Strength row under each Shader row while the shader is an old screen
+# (src/strength.h): in the game on it, in the system menu, and MENU's saying
+# "per system" when one system has its own
+EXTRA.setdefault("gamemenu-strength", ("demo", "PS1", ["--screen", "games", "--gamemenu", "2", "--gm-tab", "1"]))
+SHOT_SETTINGS["gamemenu-strength"] = {"shader.PS1": "lcd", "shader_strength.PS1": "50"}
+EXTRA.setdefault("system-menu-strength", ("demo", "PS1", ["--screen", "games", "--menu", "Strength"]))
+SHOT_SETTINGS["system-menu-strength"] = {"shader.PS1": "scanlines", "shader_strength.PS1": "20"}
+EXTRA.setdefault("menu-strength", ("demo", "PS1", ["--menu", "Strength"]))
+SHOT_SETTINGS["menu-strength"] = {"shader": "crt", "shader_strength.PS1": "60"}
+
 # The in-game menu's Controls tab (src/ctltab.c), beside the handheld: its
 # end (Reset Buttons, Hotkeys), a button's choices, the system over a game
 # with buttons of its own and the note under it, a game button left with

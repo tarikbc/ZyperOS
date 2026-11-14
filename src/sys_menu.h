@@ -104,6 +104,7 @@ typedef enum {
 	PM_SEARCH, PM_STATS, PM_RANDOM, PM_ACHIEVEMENTS, PM_SCRAPER,
 	/* Display */
 	PM_APPEARANCE, PM_AUTOHOURS, PM_THEME, PM_HOME, PM_ORDER, PM_BATTERY, PM_SAVER, PM_SHADER,
+	PM_STRENGTH,
 	/* Sound */
 	PM_AUDIO, PM_CHANNELS, PM_SOUNDS, PM_MUSIC,
 	/* Connections: USB Device first, while a plug waits for its answer */
@@ -134,7 +135,7 @@ typedef enum { PT_GAMES, PT_DISPLAY, PT_SOUND, PT_CONNECTIONS, PT_SYSTEM,
  * row, or its games as a list, this shelf's own choice as Sort By is. */
 typedef enum {
 	SM_GAMES, SM_RANDOM, SM_CORE, SM_DSLANG, SM_SORT, SM_VIEW,
-	SM_DISPLAY, SM_SHADER, /* SM_BUTTONS, */ SM_BOXART, SM_RESCAN, SM_ROWS
+	SM_DISPLAY, SM_SHADER, SM_STRENGTH, /* SM_BUTTONS, */ SM_BOXART, SM_RESCAN, SM_ROWS
 } sm_row;
 
 /* What the Favorites shelf's menu is, which is two of those rows.
@@ -327,6 +328,13 @@ typedef struct {
 	 * "per system" when systems differ. NULL reads Off. A label, for the
 	 * reason appearance is one. */
 	const char *shader_all;
+	/* Strength, under it (src/strength.h): "50%", or "per system" when
+	 * systems differ. NULL reads 100%. */
+	const char *strength_all;
+	/* No Strength row, in MENU nor in the system menu: no system's shader
+	 * is an old screen (MENU), or this system's is not. False means present,
+	 * as no_lights does, so a check that says nothing gets every row. */
+	bool        no_strength;
 	const char *home;       /* Spotlight (default) or Gallery */
 	/* System Order, under Home Screen: "A to Z" (default, NULL reads it) or
 	 * "Release Date", systems.cfg's order (2026-11-06) */
@@ -380,6 +388,9 @@ typedef struct {
 	const char *dmode;
 	/* This system's shader's label, after Display Mode; NULL reads Off */
 	const char *shader;
+	/* Its strength, "50%", when it is an old screen (no_strength says
+	 * when); NULL reads 100% */
+	const char *strength;
 	/* The label of the shelf's sort order. A label rather than an index for
 	 * the same reason dmode is one: this file must not know the table, or a
 	 * check that links it would have to link the table too. */

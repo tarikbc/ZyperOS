@@ -17,6 +17,7 @@
  * Links src/db.c and NOT SDL. If it ever needs SDL, the split has failed.
  */
 #include "../src/db.h"
+#include "../src/strength.h"
 
 #include <pthread.h>
 #include <stdio.h>
@@ -371,6 +372,53 @@ static void prefix_scan(void)
 	db_close(d);
 }
 
+/* The old screens' strength (src/strength.h): shader_strength.<TAG> beside
+ * shader.<TAG>, and shader_strength for every system. A system's own beats
+ * MENU's, MENU's beats 100%, a value off the 10% steps is put on one, junk
+ * reads 100%, and MENU's row takes every system's own - but not a shader. */
+static void shader_strength(void)
+{
+	db *d;
+	char got[512] = { 0 };
+
+	printf("the shaders' strength, per system and for all of them:\n");
+	scrub();
+	d = db_open(DEV, DB_DEVICE);
+	if (!d) { ck(0, "device opens"); return; }
+	ck(strength_read(d, "GB") == 100 && strength_read_all(d) == 100,
+	   "100% when nothing is kept, today's picture");
+	strength_write(d, "GB", 30);
+	ck(db_get_int(d, "shader_strength.GB", 0) == 30, "a system's own is shader_strength.<TAG>");
+	ck(strength_read(d, "GB") == 30 && strength_read(d, "GBA") == 100,
+	   "and is that system's alone");
+	db_set_str(d, "shader.GB", "lcd");
+	db_set_str(d, "shader.GBA", "scanlines");
+	strength_write_all(d, 50);
+	ck(db_get_int(d, "shader_strength", 0) == 50, "MENU's is shader_strength");
+	ck(!db_has(d, "shader_strength.GB") && strength_read(d, "GB") == 50 && strength_read(d, "GBA") == 50,
+	   "MENU's row takes every system's own, and they read MENU's");
+	db_each_prefix(d, "shader.", collect, got);
+	ck(!strcmp(got, "shader.GB=lcd;shader.GBA=scanlines;"),
+	   "and leaves the shaders as they were");
+	got[0] = '\0';
+	strength_write(d, "GBA", 20);
+	db_each_prefix(d, "shader_strength.", collect, got);
+	ck(!strcmp(got, "shader_strength.GBA=20;"), "a key MENU's Shader row (shader.) never walks");
+	db_set_str(d, "shader_strength.GB", "57");
+	ck(strength_read(d, "GB") == 60, "a value off the steps is put on the nearest");
+	db_set_str(d, "shader_strength.GB", "strong");
+	ck(strength_read(d, "GB") == 50, "junk is not a zero: MENU's is read");
+	db_set_str(d, "shader_strength.GB", "0");
+	ck(strength_read(d, "GB") == 100, "nor is 0, which reads 100%");
+	ck(strength_step(10, -1) == 10 && strength_step(100, 1) == 100 &&
+	   strength_step(50, 1) == 60 && strength_step(50, -1) == 40 && strength_step(0, -1) == 90,
+	   "a step is 10%, stopping at 10% and 100%");
+	got[0] = '\0';
+	strength_label(20, got, sizeof got);
+	ck(!strcmp(got, "20%"), "and says itself as 20%");
+	db_close(d);
+}
+
 /* A settings failure must not take the launcher down: launch.sh restarts it,
  * and five exits inside five seconds each makes it call poweroff. So every
  * getter has to survive there being no database at all. */
@@ -606,6 +654,7 @@ int main(void)
 	the_scopes_stay_apart();
 	boot_env_says_what_the_shell_needs();
 	prefix_scan();
+	shader_strength();
 	no_database_is_survivable();
 	every_default_is_readable();
 	fast_forward_frameskip();
