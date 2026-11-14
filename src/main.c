@@ -124,6 +124,8 @@
 #include "corestate.h"
 #include "dsresume.h"
 #include "ui.h"
+#include "ds/mark.h"    /* badges, switch marks, the progress bar */
+#include "ds/page.h"    /* a page: its frame, heading, line over the keys, foot */
 #include "ds/tiles.h"   /* a question in tiles, or a list */
 #include "wifi_menu.h"
 #include "zyperrig.h"
@@ -9809,12 +9811,12 @@ enum { UD_CONNECTED, UD_FINISHING, UD_FAILED, UD_CONFIRM, UD_FRAMES };
 /* The pages' geometry, in the launcher's 1024 x 768. The saved pictures are
  * 640 x 480 (5/8 of it), so every edge a slot or a glyph's cell starts on is
  * a multiple of 8 and lands on a whole pixel there. */
-#define UD_TILE_Y    256
-#define UD_TILE_H    280
-#define UD_TILE_W    472
+#define UD_TILE_Y    DS_PAGE_BODY_Y                             /* 256: the page's body (src/ds/page.h) */
+#define UD_TILE_H    DS_PAGE_TILE_H                             /* 280 */
+#define UD_TILE_W    DS_PAGE_TILE_W                             /* 472 */
 #define UD_TILE_X0   DS_INSET                                   /* 24 */
 #define UD_TILE_X1   (ZYPEROS_SCREEN_W - DS_INSET - UD_TILE_W)  /* 528 */
-#define UD_PAD       32
+#define UD_PAD       DS_PAGE_TILE_PAD                           /* 32 */
 #define UD_MARK      64          /* the mark's slot, square */
 #define UD_MARK_CY   312
 #define UD_SPEED_CY  416
@@ -9986,14 +9988,8 @@ static void ud_tile(SDL_Renderer *r, const SDL_Rect *q, const ud_rows *at, bool 
 	ui_text(r, fm, fit, left + UD_MARK + 16, ui_cap_y(fm, mark_cy), -1, UI_TEXT);
 	if (speed) ud_draw_tokens(r, ft, speed, ns, left, speed_cy, UI_TEXT);
 	if (total) ud_draw_tokens(r, fs, total, nt, left, total_cy, UI_TEXT_SOFT);
-	if (bar >= 0.0f) {
-		SDL_Rect b = { left, q->y + at->bar, room, UI_BAR_H };
-		int fill = (int)(room * (bar > 1.0f ? 1.0f : bar) + 0.5f);
-
-		ui_round_rect(r, &b, UI_BAR_H / 2, ui_col(t->track, 255));
-		if (fill > 0)
-			ui_round_rect(r, &(SDL_Rect){ b.x, b.y, fill, UI_BAR_H }, UI_BAR_H / 2, ui_col(t->accent_ink, 255));
-	}
+	if (bar >= 0.0f)
+		ds_bar(r, left, q->y + at->bar, room, (int)(room * (bar > 1.0f ? 1.0f : bar) + 0.5f));
 	ud_fit_widest(ft, true, room);
 	ud_fit_widest(fs, false, room);
 	if (slot) {
@@ -10084,65 +10080,11 @@ static int xs_page_rows(menu_row *out, const char *who, const char *ssh, const c
 	return n;
 }
 
-/* A heading's line beside Zyper: **title** where it fits whole, **label**
- * where not, and sliding past that, never cut */
-static void xs_page_line(app *a, const char *s, int x, int cy, int room, SDL_Color c)
-{
-	TTF_Font *f = ui_font(UI_F_TITLE);
-
-	if (ui_text_width(f, s) > room) f = ui_font(UI_F_LABEL);
-	if (ui_text_width(f, s) <= room) ui_text(a->r, f, s, x, ui_cap_y(f, cy), -1, c);
-	else ui_text_marquee(a->r, f, s, x, ui_cap_y(f, cy), room, plat_now_ms(), c);
-}
-
-/* Rows as one line of **meta** across the page, centered: a note in
- * **text-soft**, or label and value pairs, the label **text-dim** and the
- * value **text-soft**, a dot between pairs; sliding where too long */
-#define XS_PAGE_SEP "   ·   "
-static void xs_page_meta(app *a, const menu_row *rows, int n, int cy)
-{
-	TTF_Font *f = ui_font(UI_F_META);
-	const int room = ZYPEROS_SCREEN_W - 2 * DS_INSET, y = ui_cap_y(f, cy);
-	char line[512];
-	size_t at = 0;
-	int k, w = 0, x;
-
-	/* the whole, for its width and for the check that it fits */
-	line[0] = '\0';
-	for (k = 0; k < n && at < sizeof line; k++) {
-		bool note = ROW_IS_NOTE(rows[k]);
-
-		at += (size_t)snprintf(line + at, sizeof line - at, "%s%s%s%s", k ? XS_PAGE_SEP : "", rows[k].label,
-		                       note ? "" : "  ", note ? "" : rows[k].value);
-	}
-	w = ui_text_width(f, line);
-	if (w > room) {
-		ui_text_marquee(a->r, f, line, DS_INSET, y, room, plat_now_ms(), UI_TEXT_SOFT);
-		return;
-	}
-	x = (ZYPEROS_SCREEN_W - w) / 2;
-	for (k = 0; k < n; k++) {
-		if (k) {
-			ui_text(a->r, f, XS_PAGE_SEP, x, y, -1, UI_TEXT_DIM);
-			x += ui_text_width(f, XS_PAGE_SEP);
-		}
-		if (ROW_IS_NOTE(rows[k])) {
-			ui_text(a->r, f, rows[k].label, x, y, -1, UI_TEXT_SOFT);
-			x += ui_text_width(f, rows[k].label);
-			continue;
-		}
-		ui_text(a->r, f, rows[k].label, x, y, -1, UI_TEXT_DIM);
-		x += ui_text_width(f, rows[k].label) + ui_text_width(f, "  ");
-		ui_text(a->r, f, rows[k].value, x, y, -1, UI_TEXT_SOFT);
-		x += ui_text_width(f, rows[k].value);
-	}
-}
-
-static int ud_page_top(app *a, float smile);
+static ds_page_frame page_top(app *a, float smile);
 static void ud_page_foot(SDL_Renderer *r, const char *k1, const char *l1, const char *k2, const char *l2);
 
 /* FILE TRANSFER'S NEWS ON FLASH DRIVE'S PAGE. Its top as Flash Drive's
- * (ud_page_top): Zyper, and beside him what to type, the heading's first
+ * (page_top): Zyper, and beside him what to type, the heading's first
  * line in **text** and its second in **text-soft**; the two tiles where
  * Flash Drive has them, the upload's bar at Download's foot; under them the
  * news in **meta** **text-soft** where Flash Drive's eject line is, and
@@ -10150,14 +10092,10 @@ static void ud_page_foot(SDL_Renderer *r, const char *k1, const char *l1, const 
  * key's hint at the foot. */
 static void xs_page_draw(app *a, const char *heading, const menu_row *rows, int n)
 {
-	const char *nl = heading ? strchr(heading, '\n') : NULL;
-	char first[192];
-	int hx = ud_page_top(a, 1.0f), room = ZYPEROS_SCREEN_W - DS_INSET - hx, k;
+	ds_page_frame pf = page_top(a, 1.0f);
+	int k;
 
-	snprintf(first, sizeof first, "%.*s", nl ? (int)(nl - heading) : (int)strlen(heading ? heading : ""),
-	         heading ? heading : "");
-	xs_page_line(a, first, hx, nl ? 168 - 34 : 168, room, UI_TEXT);
-	if (nl) xs_page_line(a, nl + 1, hx, 168 + 34, room, UI_TEXT_SOFT);
+	ds_page_head(a->r, &pf, DS_HEAD_TWO, heading, NULL, UI_GLYPH_COUNT, plat_now_ms());
 	for (k = 0; k < 2; k++) {
 		SDL_Rect q = ud_page_tile(k == 0);
 
@@ -10165,8 +10103,8 @@ static void xs_page_draw(app *a, const char *heading, const menu_row *rows, int 
 		        g_move.total[k], g_move.nt[k], k == 0 ? g_move.bar : -1.0f, NULL);
 	}
 	/* where Flash Drive's eject line is, the news, and under it the rest */
-	if (n > 1) xs_page_meta(a, rows, 1, 592);
-	if (n > 2) xs_page_meta(a, rows + 1, n - 2, 640);
+	if (n > 1) ds_page_meta(a->r, &pf, rows, 1, DS_PAGE_NEWS_Y, plat_now_ms());
+	if (n > 2) ds_page_meta(a->r, &pf, rows + 1, n - 2, DS_PAGE_NEWS2_Y, plat_now_ms());
 	if (n > 0) ud_page_foot(a->r, rows[n - 1].value, rows[n - 1].label, NULL, NULL);
 }
 
@@ -10217,26 +10155,26 @@ static unsigned xs_move_key(unsigned key)
 	return pace_int(key, (int)(g_move.bar * 1000.0f));
 }
 
-/* Two button hints at the foot, the shelves' size, centered as a pair; or
- * one, centered, with `k2` NULL */
+/* Two button hints at the foot (ds_page_foot), the shelves' size, centered as
+ * a pair; or one, centered, with `k2` NULL */
 static void ud_page_foot(SDL_Renderer *r, const char *k1, const char *l1, const char *k2, const char *l2)
 {
-	int w1 = page_hint_width(k1, l1, false), w2 = k2 ? page_hint_width(k2, l2, false) : 0;
-	int gap = k2 ? 48 : 0, x = (ZYPEROS_SCREEN_W - w1 - gap - w2) / 2;
+	const char *keys[2] = { k1, k2 }, *words[2] = { l1, l2 };
+	const ds_page_frame f = ds_page_frame_of(true);
 
-	page_hint(r, k1, l1, x, 704, false, false);
-	if (k2) page_hint(r, k2, l2, x + w1 + gap, 704, false, false);
+	ds_page_foot(r, &f, keys, words, k2 ? 2 : 1, DS_PAGE_FOOT_GAP_PAIR, DS_PAGE_FOOT_GAP_PAIR);
 }
 #define ud_foot ud_page_foot
 
-/* A page's top: the ground, and Zyper as on the empty home, unless the look
- * has him off. Where the heading beside him starts: with Zyper off,
- * where the tiles do. */
-static int ud_page_top(app *a, float smile)
+/* A page's top (src/ds/page.h): the ground, and Zyper beside the heading,
+ * unless the look has him off; and the page's frame, its heading beside him,
+ * or with him off where the tiles start */
+static ds_page_frame page_top(app *a, float smile)
 {
 	draw_background(a);
-	if (!look_zyper_off()) draw_zyper(a->r, 123.0f, 168.0f, 124.0f, ZYPER_TILT_DEG, smile, 0.0f, 255);
-	return look_zyper_off() ? UD_TILE_X0 : 208;
+	if (!look_zyper_off())
+		draw_zyper(a->r, DS_PAGE_ZYPER_X, DS_PAGE_ZYPER_Y, DS_PAGE_ZYPER_H, ZYPER_TILT_DEG, smile, 0.0f, 255);
+	return ds_page_frame_of(!look_zyper_off());
 }
 
 /* What a shot shows in the tiles (--usb-drive 0 [in|out|both|wide]): 0 the
@@ -10257,17 +10195,14 @@ static void usb_drive_draw(app *a, int which)
 	static const str_id BODY[UD_FRAMES] = { S_USBDRIVE_EJECT, S_USBDRIVE_FINISHING_BODY, S_USBDRIVE_FAILED_BODY,
 	                                        S_USBDRIVE_CONFIRM_BODY };
 	const ds_theme *t = theme();
-	TTF_Font *ft = ui_font(UI_F_TITLE), *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
+	TTF_Font *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
 	char lines[3][LB_LINE];
 	/* With Zyper off (Theme), the heading starts where the tiles do */
-	int hx = ud_page_top(a, which == UD_FAILED ? 0.0f : 1.0f);
+	ds_page_frame pf = page_top(a, which == UD_FAILED ? 0.0f : 1.0f);
 	int n, k;
 
 	/* The heading on one line, or two balanced beside him */
-	n = ui_balance_lines(ft, T(HEAD[which]), ZYPEROS_SCREEN_W - DS_INSET - hx, 2, lines);
-	if (n > 1) ui_fit_drawn(T(HEAD[which]));
-	for (k = 0; k < n; k++)
-		ui_text(a->r, ft, lines[k], hx, ui_cap_y(ft, 168 + (2 * k - (n - 1)) * 34), -1, UI_TEXT);
+	ds_page_head(a->r, &pf, DS_HEAD_BALANCED, T(HEAD[which]), NULL, UI_GLYPH_COUNT, 0);
 	if (which != UD_CONNECTED) {
 		/* The words in one tile, balanced, in the middle of it */
 		SDL_Rect q = { UD_TILE_X0, UD_TILE_Y, UD_TILE_X1 + UD_TILE_W - UD_TILE_X0, UD_TILE_H };
@@ -10308,7 +10243,7 @@ static void usb_drive_draw(app *a, int which)
 	n = ui_balance_lines(fs, T(S_USBDRIVE_EJECT), ZYPEROS_SCREEN_W - 2 * DS_INSET, 2, lines);
 	if (n > 1) ui_fit_drawn(T(S_USBDRIVE_EJECT));
 	for (k = 0; k < n; k++)
-		ui_text(a->r, fs, lines[k], ZYPEROS_SCREEN_W / 2, ui_cap_y(fs, 592 + k * 40), 0, UI_TEXT_SOFT);
+		ui_text(a->r, fs, lines[k], ZYPEROS_SCREEN_W / 2, ui_cap_y(fs, DS_PAGE_NEWS_Y + k * 40), 0, UI_TEXT_SOFT);
 	ud_foot(a->r, "B", T(S_USBDRIVE_EJECT_KEY), "POWER", T(S_USBDRIVE_STOP));
 	/* A shot of FUNCTION and volume on the page (--usb-drive 0 bright): the
 	 * bar usbdrive shows, at a rung, where it shows it */
@@ -12744,8 +12679,8 @@ static menu_result snaps_screen(app *a);
  * over the keys, and the keys at 704 */
 #define SCP_X0    DS_INSET                        /* 24 */
 #define SCP_X1    (ZYPEROS_SCREEN_W - DS_INSET)   /* 1000 */
-#define SCP_TOP   UD_TILE_Y                       /* 256 */
-#define SCP_LINE  648
+#define SCP_TOP   DS_PAGE_BODY_Y                  /* 256 */
+#define SCP_LINE  DS_PAGE_LINE_Y                  /* 648 */
 /* What a run leaves free on the card, and when one stops for room */
 #define SCP_RESERVE (200ULL * 1000 * 1000)
 #define SCP_FLOOR   (100ULL * 1000 * 1000)
@@ -13039,40 +12974,9 @@ static void scp_time(double secs, bool round, char *out, size_t n)
 
 static float scp_ease(float t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return 1.0f - (1.0f - t) * (1.0f - t) * (1.0f - t); }
 
-/* A disc with a mark in it: lime with ink on it (on, a video), or the
- * panel's own (a source) */
-static void scp_badge(app *a, int cx, int cy, int d, ui_glyph g, bool lime, Uint8 al)
-{
-	const ds_theme *t = theme();
-
-	ui_round_rect(a->r, &(SDL_Rect){ cx - d / 2 - 2, cy - d / 2 - 2, d + 4, d + 4 }, d / 2 + 2, ui_col(t->edge, al));
-	ui_round_rect(a->r, &(SDL_Rect){ cx - d / 2, cy - d / 2, d, d }, d / 2, ui_col(lime ? t->accent : t->surface, al));
-	ui_glyph_draw(a->r, g, cx, cy, d * 64 / 100, ui_col(lime ? t->on_accent : t->accent_ink, al));
-}
-
-/* A switch as a mark: on, the lime disc; off, a quiet ring */
-static void scp_mark(app *a, int cx, int cy, int d, ui_glyph g, bool on)
-{
-	const ds_theme *t = theme();
-
-	if (on) { scp_badge(a, cx, cy, d, g, true, 255); return; }
-	ui_round_rect(a->r, &(SDL_Rect){ cx - d / 2, cy - d / 2, d, d }, d / 2, ui_col(t->edge, 255));
-	ui_round_rect(a->r, &(SDL_Rect){ cx - d / 2 + 2, cy - d / 2 + 2, d - 4, d - 4 }, d / 2 - 2, ui_col(t->raised, 255));
-	ui_glyph_draw(a->r, g, cx, cy, d * 60 / 100, UI_TEXT_DIM);
-}
-
 static ui_glyph scp_src_glyph(int src)
 {
 	return src == ART_SRC_SG ? UI_GLYPH_GRID : src == ART_SRC_LR ? UI_GLYPH_BOOK : UI_GLYPH_CLOUD;
-}
-
-static void scp_bar(app *a, int x, int y, int w, int num, int den)
-{
-	int fill = den > 0 ? (int)((long long)w * (num > den ? den : num) / den) : 0;
-
-	ui_round_rect(a->r, &(SDL_Rect){ x, y, w, UI_BAR_H }, UI_BAR_H / 2, ui_col(theme()->track, 255));
-	if (fill > 0)
-		ui_round_rect(a->r, &(SDL_Rect){ x, y, fill, UI_BAR_H }, UI_BAR_H / 2, ui_col(theme()->accent_ink, 255));
 }
 
 /* A cover arrived, whole in `box` (never cut, never stretched), in its
@@ -13113,8 +13017,8 @@ static void scp_cover_draw(app *a, const scp_cover *c, SDL_FRect box, Uint8 al, 
 		              ui_col(t->accent_ink, al));
 	}
 	d = q.w > 120 ? 40 : 30;
-	scp_badge(a, q.x + q.w - d / 3, q.y + q.h - d / 3, d, scp_src_glyph(c->src), false, al);
-	if (c->video) scp_badge(a, q.x + d / 3, q.y + q.h - d / 3, d, UI_GLYPH_PLAY, true, al);
+	ds_badge(a->r, q.x + q.w - d / 3, q.y + q.h - d / 3, d, scp_src_glyph(c->src), false, al);
+	if (c->video) ds_badge(a->r, q.x + d / 3, q.y + q.h - d / 3, d, UI_GLYPH_PLAY, true, al);
 }
 
 /* The counts as marks, centered on `cx`: covers, videos, games not found
@@ -13148,80 +13052,6 @@ static void scp_stats(app *a, int cx, int cy, int covers, int videos, int miss, 
 	}
 }
 
-/* The heading beside Zyper, as Flash Drive's pages: one line at 168, or a
- * second in **meta** **text-soft** under it (the system in focus, a
- * problem, "needs Wi-Fi", the plan's time beside a clock `g`) with the
- * first at 150 and it at 208; each cut to the page's right side. `g`
- * UI_GLYPH_COUNT: no mark. */
-static void scp_head(app *a, int hx, const char *title, const char *sub, ui_glyph g)
-{
-	TTF_Font *ft = ui_font(UI_F_TITLE), *fs = ui_font(UI_F_META);
-	bool two = sub && *sub;
-	int sx = hx;
-	char fit[192];
-
-	ui_fit_text(ft, title, fit, sizeof fit, SCP_X1 - hx);
-	ui_text(a->r, ft, fit, hx, ui_cap_y(ft, two ? 150 : 168), -1, UI_TEXT);
-	if (two) {
-		if (g != UI_GLYPH_COUNT) {
-			ui_glyph_draw(a->r, g, hx + 16, 208, 32, ui_col(theme()->accent_ink, 255));
-			sx = hx + 44;
-		}
-		ui_fit_text(fs, sub, fit, sizeof fit, SCP_X1 - sx);
-		ui_text(a->r, fs, fit, sx, ui_cap_y(fs, 208), -1, UI_TEXT_SOFT);
-	}
-}
-
-/* The line over the keys (SCP_LINE): marks and their words, centered. A
- * switch's mark (scp_mark) on or off, a plain mark in **accent-ink** beside
- * words in **text-soft**, or both in **warning** */
-enum { SCP_ON, SCP_OFF, SCP_INFO, SCP_WARN };
-typedef struct {
-	ui_glyph g;
-	const char *text;
-	int tone;
-} scp_item;
-
-static void scp_line(app *a, const scp_item *it, int n)
-{
-	const ds_theme *t = theme();
-	TTF_Font *fs = ui_font(UI_F_META);
-	const int d = 36, pad = 14;
-	int w[4], i, sum = 0, gap = 48, x;
-
-	for (i = 0; i < n && i < 4; i++) sum += (w[i] = d + pad + ui_text_width(fs, it[i].text));
-	if (sum + gap * (n - 1) > SCP_X1 - SCP_X0) gap = 24;
-	x = (ZYPEROS_SCREEN_W - sum - gap * (n - 1)) / 2;
-	for (i = 0; i < n && i < 4; i++) {
-		SDL_Color c = it[i].tone == SCP_WARN ? ui_col(t->warning, 255)
-		            : it[i].tone == SCP_OFF ? UI_TEXT_DIM : it[i].tone == SCP_INFO ? UI_TEXT_SOFT : UI_TEXT;
-
-		if (it[i].tone == SCP_ON || it[i].tone == SCP_OFF)
-			scp_mark(a, x + d / 2, SCP_LINE, d, it[i].g, it[i].tone == SCP_ON);
-		else
-			ui_glyph_draw(a->r, it[i].g, x + d / 2, SCP_LINE, d,
-			              it[i].tone == SCP_WARN ? c : ui_col(t->accent_ink, 255));
-		ui_text(a->r, fs, it[i].text, x + d + pad, ui_cap_y(fs, SCP_LINE), -1, c);
-		ui_fit_drawn(it[i].text);
-		x += w[i] + gap;
-	}
-}
-
-/* Up to four hints at the foot, centered as a row, the gap narrower when
- * they are wide */
-static void scp_foot(app *a, const char *const *k, const char *const *l, int n)
-{
-	int w[4], i, sum = 0, x, gap = 40;
-
-	for (i = 0; i < n; i++) sum += (w[i] = page_hint_width(k[i], l[i], false));
-	if (sum + gap * (n - 1) > ZYPEROS_SCREEN_W - 2 * DS_INSET) gap = 20;
-	x = (ZYPEROS_SCREEN_W - sum - gap * (n - 1)) / 2;
-	for (i = 0; i < n; i++) {
-		page_hint(a->r, k[i], l[i], x, 704, false, false);
-		x += w[i] + gap;
-	}
-}
-
 /* The heading beside Zyper: the page's, or a system's for its Box Art */
 static const char *scp_title(const scp_view *v)
 {
@@ -13237,7 +13067,8 @@ static void scp_plan_draw(scp_view *v)
 	app *a = v->a;
 	const ds_theme *t = theme();
 	TTF_Font *ft = ui_font(UI_F_TITLE), *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
-	int hx = ud_page_top(a, 1.0f), i, ncov, covers, nvid, videos, shown, more;
+	ds_page_frame pf = page_top(a, 1.0f);
+	int i, ncov, covers, nvid, videos, shown, more;
 	/* nine across, the first's marks at the page's left side (31: half
 	 * the two marks' width) and the ninth's at its right */
 	const int cell = (SCP_X1 - SCP_X0 - 62) / 8, x1 = SCP_X0 + 31;
@@ -13250,13 +13081,13 @@ static void scp_plan_draw(scp_view *v)
 	scp_totals(v, &ncov, &covers, &nvid, &videos);
 	scp_needs(v, &need);
 	/* The heading's second line: "needs Wi-Fi", else about how long */
-	if (!v->net) scp_head(a, hx, scp_title(v), T(S_MENU_NEEDS_WIFI), UI_GLYPH_COUNT);
+	if (!v->net) ds_page_head(a->r, &pf, DS_HEAD_SUB, scp_title(v), T(S_MENU_NEEDS_WIFI), UI_GLYPH_COUNT, 0);
 	else if (need.covers + need.videos + need.looks > 0) {
 		scp_time(need.secs, true, sz, sizeof sz);
 		snprintf(eta, sizeof eta, T(S_SCRAPER_ABOUT_TIME), sz);
-		scp_head(a, hx, scp_title(v), eta, UI_GLYPH_CLOCK);
+		ds_page_head(a->r, &pf, DS_HEAD_SUB, scp_title(v), eta, UI_GLYPH_CLOCK, 0);
 	} else {
-		scp_head(a, hx, scp_title(v), NULL, UI_GLYPH_COUNT);
+		ds_page_head(a->r, &pf, DS_HEAD_SUB, scp_title(v), NULL, UI_GLYPH_COUNT, 0);
 	}
 	/* The systems, as icons with their two marks: nine at most, and how
 	 * many more, from the page's left side */
@@ -13266,8 +13097,8 @@ static void scp_plan_draw(scp_view *v)
 		int cx = x1 + i * cell;
 
 		scp_icon_draw(v, i, cx, iy, 60, v->s[i].cov || v->s[i].vid ? 255 : 110);
-		scp_mark(a, cx - 17, my, 28, UI_GLYPH_COVER, v->s[i].cov);
-		scp_mark(a, cx + 17, my, 28, UI_GLYPH_FILM, v->s[i].vid);
+		ds_switch(a->r, cx - 17, my, 28, UI_GLYPH_COVER, v->s[i].cov);
+		ds_switch(a->r, cx + 17, my, 28, UI_GLYPH_FILM, v->s[i].vid);
 	}
 	if (more > 0) {
 		char m[16];
@@ -13318,7 +13149,7 @@ static void scp_plan_draw(scp_view *v)
 	}
 	/* The room: the two tiles' figures added up, and the card's */
 	if (need.covers + need.videos + need.looks > 0) {
-		scp_item it[1];
+		ds_line_item it[1];
 		char tf[64];
 
 		sys_menu_bytes((unsigned long long)need.bytes, sz, sizeof sz);
@@ -13332,16 +13163,16 @@ static void scp_plan_draw(scp_view *v)
 		} else {
 			snprintf(room, sizeof room, "%s", tf);
 		}
-		it[0] = (scp_item){ UI_GLYPH_TO_CARD, room, scp_fits(v, &need) ? SCP_INFO : SCP_WARN };
-		scp_line(a, it, 1);
+		it[0] = (ds_line_item){ UI_GLYPH_TO_CARD, room, scp_fits(v, &need) ? DS_TONE_INFO : DS_TONE_WARN };
+		ds_page_line(a->r, &pf, it, 1);
 	}
 	if (v->only[0]) {
 		const char *K1[3] = { "A", "START", "B" };
 		const char *L1[3] = { T(S_SCRAPER_KEY_FETCH), T(S_HOME_SETTINGS), T(S_SCRAPER_KEY_CLOSE) };
 
-		scp_foot(a, K1, L1, 3);
+		ds_page_foot(a->r, &pf, K1, L1, 3, DS_PAGE_FOOT_GAP, DS_PAGE_FOOT_GAP_TIGHT);
 	} else {
-		scp_foot(a, K, L, 4);
+		ds_page_foot(a->r, &pf, K, L, 4, DS_PAGE_FOOT_GAP, DS_PAGE_FOOT_GAP_TIGHT);
 	}
 }
 
@@ -13358,22 +13189,23 @@ static void scp_systems_draw(scp_view *v)
 {
 	app *a = v->a;
 	const ds_theme *t = theme();
-	int hx = ud_page_top(a, 1.0f), i, top;
+	ds_page_frame pf = page_top(a, 1.0f);
+	int i, top;
 	const int w = SCP_GRID_W, h = SCP_GRID_H, x0 = SCP_X0 + SCP_GRID_RING, y0 = SCP_TOP + SCP_GRID_RING;
 	char cov[64], vid[64], sz[32];
 	const char *K[4] = { "A", "X", "Y", "B" };
 	const char *L[4] = { T(S_SCRAPER_PAGE_COVERS), T(S_SCRAPER_PAGE_VIDEOS), T(S_SCRAPER_VIDEOS_FOR), T(S_SCRAPER_DONE) };
 	const scp_sys *f;
-	scp_item it[2];
+	ds_line_item it[2];
 	int need;
 
 	if (!v->n) {
-		scp_head(a, hx, T(S_SCRAPER_SYSTEMS), NULL, UI_GLYPH_COUNT);
-		scp_foot(a, K + 3, L + 3, 1);
+		ds_page_head(a->r, &pf, DS_HEAD_SUB, T(S_SCRAPER_SYSTEMS), NULL, UI_GLYPH_COUNT, 0);
+		ds_page_foot(a->r, &pf, K + 3, L + 3, 1, DS_PAGE_FOOT_GAP, DS_PAGE_FOOT_GAP_TIGHT);
 		return;
 	}
 	f = &v->s[v->focus];
-	scp_head(a, hx, T(S_SCRAPER_SYSTEMS), f->name, UI_GLYPH_COUNT);
+	ds_page_head(a->r, &pf, DS_HEAD_SUB, T(S_SCRAPER_SYSTEMS), f->name, UI_GLYPH_COUNT, 0);
 	/* Three rows on the screen, the focus's among them */
 	top = v->focus / SCP_COLS - (SCP_ROWS - 1);
 	if (top < 0) top = 0;
@@ -13389,8 +13221,8 @@ static void scp_systems_draw(scp_view *v)
 			              ui_col(t->accent, 255));
 		ui_round_rect(a->r, &q, DS_RADIUS_CARD, ui_col(t->raised, 255));
 		scp_icon_draw(v, i, q.x + 20 + 44, q.y + h / 2, 88, any ? 255 : 110);
-		scp_mark(a, q.x + w - 20 - 18, q.y + 28, 36, UI_GLYPH_COVER, v->s[i].cov);
-		scp_mark(a, q.x + w - 20 - 18, q.y + h - 28, 36, UI_GLYPH_FILM, v->s[i].vid);
+		ds_switch(a->r, q.x + w - 20 - 18, q.y + 28, 36, UI_GLYPH_COVER, v->s[i].cov);
+		ds_switch(a->r, q.x + w - 20 - 18, q.y + h - 28, 36, UI_GLYPH_FILM, v->s[i].vid);
 	}
 	/* The system in focus: the covers it misses, and its videos still to
 	 * fetch - the same figures the plan adds up */
@@ -13404,10 +13236,10 @@ static void scp_systems_draw(scp_view *v)
 		scp_mb(need * v->mb_video, sz, sizeof sz);
 		snprintf(vid, sizeof vid, T(S_SCRAPER_TO_FETCH), sz);
 	}
-	it[0] = (scp_item){ UI_GLYPH_COVER, cov, f->cov ? SCP_ON : SCP_OFF };
-	it[1] = (scp_item){ UI_GLYPH_FILM, vid, f->vid ? SCP_ON : SCP_OFF };
-	scp_line(a, it, 2);
-	scp_foot(a, K, L, 4);
+	it[0] = (ds_line_item){ UI_GLYPH_COVER, cov, f->cov ? DS_TONE_ON : DS_TONE_OFF };
+	it[1] = (ds_line_item){ UI_GLYPH_FILM, vid, f->vid ? DS_TONE_ON : DS_TONE_OFF };
+	ds_page_line(a->r, &pf, it, 2);
+	ds_page_foot(a->r, &pf, K, L, 4, DS_PAGE_FOOT_GAP, DS_PAGE_FOOT_GAP_TIGHT);
 }
 
 static SDL_FRect scp_lerp(SDL_FRect p, SDL_FRect q, float e)
@@ -13446,7 +13278,8 @@ static void scp_run_draw(scp_view *v, unsigned now)
 {
 	app *a = v->a;
 	TTF_Font *ft = ui_font(UI_F_TITLE), *fs = ui_font(UI_F_META);
-	int hx = ud_page_top(a, 1.0f), m, looked, total, si;
+	ds_page_frame pf = page_top(a, 1.0f);
+	int hx = pf.head_x, m, looked, total, si;
 	float e = v->nring && v->ring[0].tex ? scp_ease((float)(now - v->land_at) / SCP_LAND) : 1.0f;
 	char fit[160], cnt[48], eta[48];
 	/* the newest inside its square by its lit frame's width */
@@ -13467,13 +13300,18 @@ static void scp_run_draw(scp_view *v, unsigned now)
 	}
 	if (total < looked) total = looked;
 	ui_fit_text(ft, v->p.now, fit, sizeof fit, SCP_X1 - hx);
-	ui_text(a->r, ft, fit, hx, ui_cap_y(ft, 150), -1, UI_TEXT);
+	ui_text(a->r, ft, fit, hx, ui_cap_y(ft, DS_PAGE_TITLE_Y), -1, UI_TEXT);
 	si = scp_find(v, v->p.folder_now);
-	scp_icon_draw(v, si, hx + 26, 208, 52, 255);
-	if (v->p.src != ART_SRC_NONE) scp_badge(a, hx + 80, 208, 40, scp_src_glyph(v->p.src), false, 255);
+	scp_icon_draw(v, si, hx + 26, DS_PAGE_SUB_Y, 52, 255);
+	if (v->p.src != ART_SRC_NONE) ds_badge(a->r, hx + 80, DS_PAGE_SUB_Y, DS_BADGE, scp_src_glyph(v->p.src), false, 255);
 	snprintf(cnt, sizeof cnt, "%d / %d", looked, total);
-	scp_bar(a, hx + 120, 205, SCP_X1 - hx - 120 - ui_text_width(fs, cnt) - 24, looked, total);
-	ui_text(a->r, fs, cnt, SCP_X1, ui_cap_y(fs, 208), 1, UI_TEXT_DIM);
+	{
+		int w = SCP_X1 - hx - 120 - ui_text_width(fs, cnt) - 24;
+
+		ds_bar(a->r, hx + 120, DS_PAGE_SUB_Y - UI_BAR_H / 2, w,
+		       total > 0 ? (int)((long long)w * (looked > total ? total : looked) / total) : 0);
+	}
+	ui_text(a->r, fs, cnt, SCP_X1, ui_cap_y(fs, DS_PAGE_SUB_Y), 1, UI_TEXT_DIM);
 	/* The six before the newest, three by two; the one that was big comes
 	 * in first */
 	for (m = 6; m >= 0; m--) {
@@ -13494,7 +13332,7 @@ static void scp_run_draw(scp_view *v, unsigned now)
 	}
 	scp_time(scp_eta(v, now, looked, total), false, eta, sizeof eta);
 	scp_stats(a, ZYPEROS_SCREEN_W / 2, SCP_LINE, v->p.found, v->p.snaps, -1, eta);
-	scp_foot(a, K, L, 1);
+	ds_page_foot(a->r, &pf, K, L, 1, DS_PAGE_FOOT_GAP, DS_PAGE_FOOT_GAP_TIGHT);
 }
 
 /* Done: what came, as a wall across the page; the counts as marks; the room
@@ -13503,13 +13341,14 @@ static void scp_done_draw(scp_view *v)
 {
 	app *a = v->a;
 	TTF_Font *fs = ui_font(UI_F_META);
-	int hx = ud_page_top(a, 1.0f), m, i, nv = 0, n;
+	ds_page_frame pf = page_top(a, 1.0f);
+	int m, i, nv = 0, n;
 	unsigned long long room = 0;
 	char line[160], sz[32];
 	const float gap = 20, cw = (SCP_X1 - SCP_X0 - 6 * gap) / 7, ch = 140;
 	const char *K[2] = { "A", "B" }, *L[2] = { T(S_SCRAPER_KEY_AGAIN), T(S_SCRAPER_KEY_CLOSE) };
 
-	scp_head(a, hx, T(S_SCRAPER_ALL_DONE), v->problem, UI_GLYPH_COUNT);
+	ds_page_head(a->r, &pf, DS_HEAD_SUB, T(S_SCRAPER_ALL_DONE), v->problem, UI_GLYPH_COUNT, 0);
 	n = v->nring > 14 ? 14 : v->nring;
 	for (m = 0; m < n; m++) {
 		int k = n - 1 - m;     /* oldest first */
@@ -13528,7 +13367,7 @@ static void scp_done_draw(scp_view *v)
 		}
 		ui_text(a->r, fs, line, ZYPEROS_SCREEN_W / 2, ui_cap_y(fs, SCP_LINE), 0, UI_TEXT_SOFT);
 	}
-	scp_foot(a, K, L, 2);
+	ds_page_foot(a->r, &pf, K, L, 2, DS_PAGE_FOOT_GAP, DS_PAGE_FOOT_GAP_TIGHT);
 }
 
 static void scp_draw(scp_view *v, unsigned now)

@@ -237,7 +237,12 @@ LAYOUT = [
     ("page-news-y",     592, "the first line of words under a page's two tiles"),
     ("page-news2-y",    640, "the second"),
     ("page-line-y",     648, "the line of marks and words over the keys"),
+    ("page-line-gap",   48,  "between the line's marks and words"),
+    ("page-line-gap-tight", 24, "...where they are wider than the page"),
     ("page-foot-y",     704, "the keys' middle at a page's foot"),
+    ("page-foot-gap",   40,  "between the hints at a page's foot"),
+    ("page-foot-gap-tight", 20, "...where they are wider than the page"),
+    ("page-foot-gap-pair", 48, "between Flash Drive's two hints"),
     ("page-tile-w",     472, "a page's tile, two side by side from the insets"),
     ("page-tile-h",     280, "its height"),
     ("page-tile-pad",   32,  "its words from its sides"),
@@ -257,7 +262,9 @@ LAYOUT = [
     # marks (src/ds/mark.h)
     ("badge",           40,  "a disc with a mark on a cover: its source, a video"),
     ("badge-small",     30,  "the same on a small cover"),
+    ("badge-ring",      2,   "the edge round a badge, and a switch mark's ring"),
     ("mark-line",       36,  "a mark beside its words over the keys"),
+    ("mark-line-pad",   14,  "that mark to its words"),
     ("mark-stat",       44,  "a count's mark"),
     # button hints (src/keyhints.h, page_hint)
     ("hint-glyph",      32,  "a hint's button glyph"),
