@@ -345,6 +345,9 @@ void diatom_input_set_stick(bool dpad);
 /* RUN stick=toggle: the d-pad is the d-pad, or the stick when `as_stick`,
  * until diatom_input_stick_flip turns it; SELECT's rule is not used */
 void diatom_input_set_stick_toggle(bool as_stick);
+/* RUN stick=plain: the d-pad is the left stick and the joypad's d-pad both,
+ * always: no SELECT rule, and nothing turns it (main.c gives R2 no turn) */
+void diatom_input_set_stick_plain(void);
 /* R2 under stick=toggle: the d-pad goes to the other side. True when it is
  * the stick now. Nothing turns outside stick=toggle. */
 bool diatom_input_stick_flip(void);

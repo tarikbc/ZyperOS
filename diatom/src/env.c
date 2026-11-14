@@ -782,6 +782,10 @@ static uint32_t g_stick_was;
  * from one to the other (main.c), never SELECT's rule. g_stick_dpad is then
  * the side it is on. */
 static bool     g_stick_toggle;
+/* RUN stick=plain: the toggle's stick side for good, and the d-pad stays the
+ * joypad's d-pad too, so a game that reads only the d-pad still moves (a
+ * PlayStation game whose DualShock stays digital): the d-pad is both */
+static bool     g_stick_both;
 
 /* Labels the core gave us, indexed by canonical button after resolving the
  * active map - so they track a remap for free and a launcher never has to. */
@@ -877,6 +881,7 @@ void diatom_input_set_stick(bool dpad)
 	g_stick_on = dpad;
 	g_stick_dpad = false;
 	g_stick_toggle = false;
+	g_stick_both = false;
 	g_stick_was = 0;
 	stick_reset(&g_stick);
 }
@@ -886,6 +891,12 @@ void diatom_input_set_stick_toggle(bool as_stick)
 	diatom_input_set_stick(true);
 	g_stick_toggle = true;
 	g_stick_dpad = !as_stick;
+}
+
+void diatom_input_set_stick_plain(void)
+{
+	diatom_input_set_stick_toggle(true);
+	g_stick_both = true;
 }
 
 bool diatom_input_stick_flip(void)
@@ -1101,7 +1112,8 @@ static int16_t cb_input_state(unsigned port, unsigned device,
 
 	/* The left stick, from the d-pad (RUN stick=dpad), with the same buttons
 	 * hidden and given as the joypad's below. Centered while the SELECT rule
-	 * gives the d-pad to the game's D-pad, and always for any other stick. */
+	 * gives the d-pad to the game's D-pad, and always for any other stick.
+	 * Under stick=plain the joypad keeps the d-pad as well (below). */
 	if (port == 0 && device == RETRO_DEVICE_ANALOG) {
 		int16_t x, y;
 
@@ -1126,8 +1138,9 @@ static int16_t cb_input_state(unsigned port, unsigned device,
 	if (port != 0 || device != RETRO_DEVICE_JOYPAD) return 0;
 
 	state = (diatom_port_input_state() & ~(g_suppress | g_hook_hide)) | g_hook_give;
-	/* The d-pad is the stick, and only the stick, unless SELECT says */
-	if (g_stick_on && !g_stick_dpad) state &= ~STICK_DPAD;
+	/* The d-pad is the stick, and only the stick, unless SELECT says; or
+	 * both, under stick=plain */
+	if (g_stick_on && !g_stick_dpad && !g_stick_both) state &= ~STICK_DPAD;
 
 	/* OR, not first-match. Under an identity map no two canonical buttons
 	 * share a target so returning the first was always correct; remapping

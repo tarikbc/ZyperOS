@@ -68,8 +68,8 @@ typedef struct diatom_session {
 	/* RUN stick=toggle (1) or toggle-stick (2): R2 turns the d-pad into the
 	 * left stick and back, from the d-pad (1) or the stick (2). 0: no R2 */
 	int           stick_toggle;
-	/* RUN stick=plain: the d-pad is the left stick always. No SELECT rule
-	 * (SELECT is the system's own) and no R2 turn */
+	/* RUN stick=plain: the d-pad is the left stick always, and the joypad's
+	 * d-pad too. No SELECT rule (SELECT is the system's own) and no R2 turn */
 	bool          stick_plain;
 } diatom_session;
 
@@ -790,7 +790,7 @@ static void usage(void)
 		"              [--stick dpad]      the d-pad as the left analog stick (N64)\n"
 		"              [--stick toggle]    R2 turns the d-pad into the left stick and back (PSP)\n"
 		"              [--stick toggle-stick]  the same, starting as the stick\n"
-		"              [--stick plain]     the d-pad is always the left stick; no SELECT rule, no R2 (PlayStation)\n"
+		"              [--stick plain]     the d-pad is always the left stick and the d-pad; no SELECT rule, no R2 (PlayStation)\n"
 		"\n--firmware names a file the content needs, e.g. syscard3.pce for a PC\n"
 		"Engine CD. Diatom does not know which content needs what and will not\n"
 		"learn - it has no core list - so whoever launches it says.\n"
@@ -1585,13 +1585,14 @@ static void stick_emit(bool on)
  * stick and on=0 when it is the d-pad (the SELECT rule's dpad counts as the
  * stick, as it is until SELECT says otherwise). Plain is the toggle's
  * machinery with main.c's R2 turn left off: env.c's toggle mode has no SELECT
- * rule, and nothing here flips it. */
+ * rule, and nothing here flips it; and the d-pad stays the joypad's d-pad as
+ * well, so a PlayStation game whose DualShock stays digital still moves. */
 static bool stick_set(const char *mode, bool say)
 {
 	bool on;
 
 	if (!strcmp(mode, "dpad"))              { diatom_input_set_stick(true); g_stick_toggle = false; on = true; }
-	else if (!strcmp(mode, "plain"))        { diatom_input_set_stick_toggle(true); g_stick_toggle = false; on = true; }
+	else if (!strcmp(mode, "plain"))        { diatom_input_set_stick_plain(); g_stick_toggle = false; on = true; }
 	else if (!strcmp(mode, "toggle"))       { diatom_input_set_stick_toggle(false); g_stick_toggle = true; on = false; }
 	else if (!strcmp(mode, "toggle-stick")) { diatom_input_set_stick_toggle(true); g_stick_toggle = true; on = true; }
 	else if (!strcmp(mode, "off"))          { diatom_input_set_stick(false); g_stick_toggle = false; on = false; }
@@ -2066,7 +2067,7 @@ static int run_session_inner(const diatom_session *sn)
 		       sn->stick_toggle == 2 ? "d-pad" : "left stick");
 	} else if (!sn->dpad_stick && sn->stick_plain) {
 		stick_set("plain", false);
-		printf("diatom: the d-pad is the left stick, always\n");
+		printf("diatom: the d-pad is the left stick and the d-pad, always\n");
 	}
 	levels_forget();
 	audio_forget();

@@ -15,7 +15,8 @@ slot's round trip as the launcher drives it.
     and a LOAD of it is answered LOADED.
   - SETSTICK mode=plain|off|dpad|toggle|toggle-stick turns the d-pad into
     the left stick or back while a game runs, and an unknown mode is an ERROR
-    that leaves the stick as it was. Plain has no SELECT rule and no R2 turn.
+    that leaves the stick as it was. Plain has no SELECT rule and no R2 turn,
+    and keeps the d-pad on the joypad too: the d-pad is both.
   - SETMAP select:start does not touch SELECT's chords: SELECT+R1 still says
     HOTKEY key=save, and the core never reads START.
   - RUN stick=toggle (the PSP's): R2 turns the d-pad into the left stick and
@@ -278,22 +279,33 @@ HOLD_RIGHT = "40:right;46:"
 bits, ax = live_run("plain", HOLD_RIGHT + ";60:select+right;66:;80:r2;86:", "SETSTICK\tmode=plain\n", 100)
 check("SETSTICK plain answers STICK on=1", "STICK\ton=1" in got, got)
 check("plain: a held RIGHT is the stick at full, x = 0x7fff", any(ax[i] == FULL for i in range(41, 46)), ax[38:48])
-check("plain: and no joypad RIGHT", not any(bits[i] & RIGHT for i in range(38, 48)), bits[38:48])
-check("plain: SELECT then RIGHT is still the stick (no SELECT rule)",
-      any(ax[i] == FULL for i in range(61, 66)) and not any(bits[i] & RIGHT for i in range(58, 68)),
+check("plain: and the joypad's RIGHT still, so a game that keeps its pad digital moves",
+      any(bits[i] & RIGHT for i in range(41, 46)), bits[38:48])
+check("plain: SELECT then RIGHT is still the stick (no SELECT rule), and the joypad's RIGHT",
+      any(ax[i] == FULL for i in range(61, 66)) and any(bits[i] & RIGHT for i in range(61, 66)),
       (ax[58:68], bits[58:68]))
 check("plain: R2 reaches the game, and turns nothing",
       any(bits[i] & R2 for i in range(80, 86)) and not any(l.startswith("STICK") and l != "STICK\ton=1" for l in got), got)
 
 bits, ax = live_run("runplain", HOLD_RIGHT, "", 60, "\tstick=plain")
-check("RUN stick=plain: a held RIGHT is the stick, no joypad RIGHT",
-      any(ax[i] == FULL for i in range(41, 46)) and not any(bits[i] & RIGHT for i in range(38, 48)),
+check("RUN stick=plain: a held RIGHT is the stick, and the joypad's RIGHT",
+      any(ax[i] == FULL for i in range(41, 46)) and any(bits[i] & RIGHT for i in range(41, 46)),
       (ax[38:48], bits[38:48]))
 
 bits, ax = live_run("off", HOLD_RIGHT, "SETSTICK\tmode=plain\nSETSTICK\tmode=off\n", 60)
 check("SETSTICK off answers STICK on=0 last", [l for l in got if l.startswith("STICK")][-1:] == ["STICK\ton=0"], got)
 check("off: RIGHT is the joypad's again", any(bits[i] & RIGHT for i in range(41, 46)), bits[38:48])
 check("off: and the stick is centered", not any(ax[i] for i in range(38, 48)), ax[38:48])
+
+# ...and the modes after it have the d-pad the stick alone, as before
+bits, ax = live_run("plainthendpad", HOLD_RIGHT, "SETSTICK\tmode=plain\nSETSTICK\tmode=dpad\n", 60)
+check("plain then dpad: RIGHT is the stick alone again, no joypad RIGHT",
+      any(ax[i] == FULL for i in range(41, 46)) and not any(bits[i] & RIGHT for i in range(38, 48)),
+      (ax[38:48], bits[38:48]))
+bits, ax = live_run("plainthentoggle", HOLD_RIGHT, "SETSTICK\tmode=plain\nSETSTICK\tmode=toggle-stick\n", 60)
+check("plain then toggle-stick: RIGHT is the stick alone, no joypad RIGHT",
+      any(ax[i] == FULL for i in range(41, 46)) and not any(bits[i] & RIGHT for i in range(38, 48)),
+      (ax[38:48], bits[38:48]))
 
 bits, ax = live_run("dpad", HOLD_RIGHT + ";60:select;64:select+right;70:select;72:", "SETSTICK\tmode=dpad\n", 90)
 check("SETSTICK dpad answers STICK on=1", "STICK\ton=1" in got, got)
@@ -311,8 +323,9 @@ check("toggle-stick: RIGHT is the stick", any(ax[i] == FULL for i in range(41, 4
 
 bits, ax = live_run("badmode", HOLD_RIGHT, "SETSTICK\tmode=plain\nSETSTICK\tmode=sideways\n", 60)
 check("an unknown mode is an ERROR", any(l.startswith("ERROR\tcode=bad_stick") for l in got), got)
-check("and leaves the stick as it was", any(ax[i] == FULL for i in range(41, 46)) and
-      not any(bits[i] & RIGHT for i in range(38, 48)), (ax[38:48], bits[38:48]))
+check("and leaves the stick as it was (plain: the stick and the joypad's RIGHT)",
+      any(ax[i] == FULL for i in range(41, 46)) and any(bits[i] & RIGHT for i in range(41, 46)),
+      (ax[38:48], bits[38:48]))
 
 # A remapped SELECT (select:start): the chords go by the SELECT key, not by
 # what it is mapped to, so SELECT+R1 still saves and the core never reads START.

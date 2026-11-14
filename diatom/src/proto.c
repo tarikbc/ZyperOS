@@ -421,7 +421,8 @@ diatom_msg_kind diatom_proto_poll(diatom_msg *out, int timeout_ms, bool running)
 		/* SETSTICK mode=dpad|plain|toggle|toggle-stick|off, on the state
 		 * plane, sets how the d-pad is the stick while a game runs or is
 		 * paused, as RUN stick= does at the start (plain is RUN-only until
-		 * now: no SELECT rule, no R2 turn). It answers STICK on=1 when the
+		 * now: no SELECT rule, no R2 turn, and the d-pad is the joypad's
+		 * d-pad as well as the stick). It answers STICK on=1 when the
 		 * d-pad is now the stick, on=0 otherwise, and an unknown mode is
 		 * an ERROR with the stick as it was. Additive, so proto stays 14:
 		 * an old Diatom ignores the verb, and the launcher never waits
