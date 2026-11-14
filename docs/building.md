@@ -144,7 +144,7 @@ something once broke in a way nothing noticed:
 | `check-battery` | a charger change reaches the shared battery cache within 250 ms at the shelf's poll rate |
 | `check-battery-eta` | the time left on the battery: the estimate from how long a percent takes to fall, against a simulated gauge at several loads, across the clock's wrap, a change of load, a stall, the cable and a gauge that corrects itself; and the corner's rounding |
 | `check-dslang` | the Nintendo DS's language: each language MENU > Language has maps, in Auto, to the DS's own or to English (Português (Brasil) and 简体中文 have none), the Game Language row's eight choices round trip through the database and go round both ways, the core's option and its values are the patch's, and the launcher sends it first with every DS game and with no other; the row is on the DS shelf's menu in every language with nothing cut, and Left, Right and A go round it, saved (builds the host launcher for the second half; skips without SDL2) |
-| `check-corestate` | a game's resume when its auto state was left by the shelf's other core (the N64's ParallelN64 and Mupen64Plus-Next): Diatom's state header read back, and the start fresh or resume (src/corestate.h) |
+| `check-corestate` | a game's resume when its auto state was left by the shelf's other core (the N64's ParallelN64 and Mupen64Plus-Next): Diatom's state header read back, version 1 and the packed version 2, and the start fresh or resume (src/corestate.h) |
 | `check-dsresume` | a Nintendo DS game's resume by its language: the firmware's language as DSperate's direct boot takes it, the language a game starts in for each option, the `.lang` beside its auto state, and a game left in another language started fresh (src/dsresume.h) |
 | `check-core-stamp` | the patched cores' stamps (mk/core-stamp.sh): a stamped core passes; a core built before a patch changed, one changed after its stamp, one with no stamp and a patch no core claims each fail, with what to run |
 | `check-core-room` | the libretro cores systems.cfg names against the resident Diatom's room for them (`DIATOM_MAX_RESIDENT`): more cores than that, and the last in folder order would start every game in the one-off Diatom (1.0.5 had 34 for 32) |
@@ -174,7 +174,7 @@ something once broke in a way nothing noticed:
 | `check-sysmark` | a system's color as a mark, for every shipped system in both themes: no color is text-dim and lime is accent-ink |
 | `check-menushots` | a menu's open, close and swap at their ends as the launcher draws them, byte for byte, and a picture halfway through each (builds the host launcher; skips without SDL2) |
 | `check-uisound` | the interface sounds' rule: which press plays what, never on a Bluetooth headset, the setting's four positions, the WAVs the launcher reads, and the mix |
-| `check-bgm` | menu music's rules: the tracks, the settings, the shuffle, the history L2 goes back along, the gain, the Menu Music rows, a track's name from its tags and Zyper's pop-up |
+| `check-bgm` | menu music's rules: the tracks, from the card's Menu Music folder and its folders and ZyperOS's own, the settings, the shuffle, the history L2 goes back along, the gain, the Menu Music rows, a track's name from its tags and Zyper's pop-up |
 | `check-bgm-tracks` | the menu music a fresh card plays: every file in res/bgm/ is the one res/bgm/tracks.json records, under a license a card may ship, credited, Ogg Vorbis at 48 kHz |
 | `check-sounds` | every WAV in res/sounds/ is what tools/gensounds.py synthesizes from tools/designdef.py's tones, and there is no other |
 | `check-messages` | result holds and the real input loop with a fake clock, and the source guard that keeps every result site off blocking delays |
@@ -216,7 +216,7 @@ something once broke in a way nothing noticed:
 | `check-installer` | ZyperOS Installer's version is ZyperOS's, and its page wears this repository's colors, fonts and Zyper (its Rust tests run in CI) |
 | `check-from-rogue` | tools/from-rogue.sh's table against systems.cfg and against the folders on a ROGUE OS card |
 | `check-importers` | the computer-side importers (--meta, --titles) on a scratch card: a title written over a game's details keeps them (builds the host launcher) |
-| `check-diatom` | Diatom's own suite (diatom/Makefile's check) on its desktop port with the stub core: the port seam, core facts, achievements, screens, the protocol, the state plane, resident cores; then the launcher's own Diatom link against it (tools/gamezone-check.c): the zone chosen in Date & Time reaches a game's clock, a new zone the next game with no restart, and a Diatom started again its first game (skips without SDL2) |
+| `check-diatom` | Diatom's own suite (diatom/Makefile's check) on its desktop port with the stub core: the port seam, core facts, achievements, screens, the protocol, the state plane, resident cores, save states packed and read back (old ones too); then the launcher's own Diatom link against it (tools/gamezone-check.c): the zone chosen in Date & Time reaches a game's clock, a new zone the next game with no restart, and a Diatom started again its first game (skips without SDL2) |
 | `check-simulator` | the simulator's Swift tests: its VNC client, the px2sim link, the state lines and the control socket's commands (skips without Swift) |
 | `check-px2sim` | px2sim's choice of the keyboard it takes in the QEMU image: QEMU's virtio or USB one, never a uinput one such as gptokeyb's Fake Keyboard (host compiler, no VM) |
 | `check-sidelights` | what the launcher tells the side lights' gauge: the lines as plastron's gauge reads them, the FIFO writer that never waits and never dies of SIGPIPE, when a File Transfer batch is over, and files moving on its page: a line at most every 500 ms with the speed over that time, a pause between two files kept, `move 0 0` a second after the last bytes and at once when the page closes, across the clock's wrap; and MENU > Side Lights' preview lines, said again each second, another row at once, `preview off` as the page closes |
@@ -261,8 +261,12 @@ battery capacity data those fields show "unknown".
 `pt-BR`, `fr`, `de`, `ja`, `it`, or `xx`, the pseudo-locale: every string
 accented, 40% longer and in brackets), whatever MENU > Language saved;
 `--menu` still finds a row by its English name. `--language [ROW]` draws MENU >
-Language's panel, the cursor on ROW. `python3 tools/i18n-shots.py --keep DIR`
-writes the main screens in every language (`make check-i18n-shots`).
+Language's panel, the cursor on ROW. `--music-page [ROW [STEPS]]` draws MENU >
+Menu Music's page, the cursor on ROW and then STEPS presses of Down, a frame
+each, so the list goes round (`foot`: no cursor, the note pinned under the
+rows).
+`python3 tools/i18n-shots.py --keep DIR` writes the main screens in every
+language (`make check-i18n-shots`).
 
 `--tour STEP [MS [DONE]]` draws a frame of the tutorial in place of the shelf:
 STEP is `lang` (the language step: its cursor steps a language a second,

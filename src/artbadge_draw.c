@@ -22,19 +22,26 @@ static struct {
 	SDL_Texture *tex;
 	SDL_Renderer *r;
 	int kind, theme, d;
+	/* ...in these colors: MENU > Display > Theme changes the accent the
+	 * badges are drawn in, and a badge kept from before would not follow */
+	uint32_t glyph, disc;
 	unsigned used;
 } cache[AB_CACHE];
+
+static uint32_t rgb_of(ds_rgb c) { return (uint32_t)c.r << 16 | (uint32_t)c.g << 8 | c.b; }
 static unsigned clock_;
 
 static SDL_Texture *badge_tex(SDL_Renderer *r, ab_kind kind, int theme, int d)
 {
 	static uint32_t px[AB_MAX_SIDE * AB_MAX_SIDE];
 	int i, slot = -1, side = ab_buf_side(d);
+	uint32_t glyph = rgb_of(ab_glyph_color(kind, theme)), disc = rgb_of(ab_disc_color(theme));
 
 	if (side > AB_MAX_SIDE) return NULL;
 	for (i = 0; i < AB_CACHE; i++) {
 		if (cache[i].tex && cache[i].r == r && cache[i].kind == (int)kind &&
-		    cache[i].theme == theme && cache[i].d == d) {
+		    cache[i].theme == theme && cache[i].d == d &&
+		    cache[i].glyph == glyph && cache[i].disc == disc) {
 			cache[i].used = ++clock_;
 			return cache[i].tex;
 		}
@@ -54,6 +61,8 @@ static SDL_Texture *badge_tex(SDL_Renderer *r, ab_kind kind, int theme, int d)
 	cache[slot].kind = (int)kind;
 	cache[slot].theme = theme;
 	cache[slot].d = d;
+	cache[slot].glyph = glyph;
+	cache[slot].disc = disc;
 	cache[slot].used = ++clock_;
 	return cache[slot].tex;
 }

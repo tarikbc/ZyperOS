@@ -4915,7 +4915,7 @@ static void mp4_song_step(app *a, int dir)
 static void song_keys(app *a)
 {
 	int dir = a->in.pressed[IN_R2] ? 1 : a->in.pressed[IN_L2] ? -1 : 0;
-	char track[256];
+	char track[512];
 
 	if (!dir) return;
 	if (musec_heard()) { mp4_song_step(a, dir); return; }
@@ -9384,8 +9384,7 @@ static bool xfer_wants_hotspot(void)
 /* The consoles as the transfer page sees their folders: every system the card
  * knows, from systems.cfg itself and not the launcher's shelves, which leave
  * out a system with no games - so an empty Atomiswave folder had no color on
- * the page, and BGM, no system at all, had nothing (2026-11-06). Read
- * when File Transfer opens. */
+ * the page (2026-11-06). Read when File Transfer opens. */
 static systems_cfg g_xfer_sys;
 static bool        g_xfer_sys_ok;
 
@@ -9407,15 +9406,13 @@ static unsigned xfer_folder_color(const char *folder)
 }
 
 /* And its pixel art, as hare_set_folder_icon asks: the shelf's own for the
- * tag (home_art_key), or the cassette for the menu music's Roms/BGM
- * (src/bgm.h) */
+ * tag (home_art_key). Roms/BGM wore the cassette while it was menu music's;
+ * the cassette is Menu Music's now, the card's folder in the sidebar */
 static const char *xfer_folder_icon(const char *folder)
 {
 	const system_cfg *s = xfer_sys_of(folder);
 
-	if (s) return home_art_key(s->tag);
-	if (!strcmp(folder, "BGM")) return "BGM";
-	return NULL;
+	return s ? home_art_key(s->tag) : NULL;
 }
 
 /* The server, and over the cable SSH with it: both end with the screen, and
@@ -12264,6 +12261,9 @@ static void xs_stop(app *a, bool panels)
 	}
 	media_tidy();
 	up_cable_tidy();
+	/* Menu music read again, for what came into Menu Music: on its own
+	 * thread, and quick, so whatever the session changed */
+	bgm_rescan();
 	/* The point of the whole feature is getting ROMs onto the card, and the
 	 * shelf is scanned once at startup - so without this the file lands,
 	 * the screen says it landed, and the game is not there. */
@@ -15248,11 +15248,27 @@ static void clock_screen(app *a)
  * and kept in the device database beside UI Sounds. The folder is read here
  * as the screen opens, and the player told to read it again, so tracks
  * copied over Wi-Fi or USB since the launcher started are in the list. */
+/* The two folders menu music plays from (src/bgm.h): Menu Music at the top
+ * of the card, and ZyperOS's own */
+static void bgm_dirs(char *dir, char *builtin, size_t n)
+{
+	snprintf(dir, n, "%s/%s", P_CARD, BGM_CARD_DIR);
+	snprintf(builtin, n, "%s/%s", P_ROOT, BGM_BUILTIN_DIR);
+}
+
+/* What plays, for the Menu Music page: as the player reads it */
+static void bgm_scan_now(bgm_list *l)
+{
+	char dir[CFG_STR * 2], builtin[CFG_STR * 2];
+
+	bgm_dirs(dir, builtin, sizeof dir);
+	bgm_scan_all(&(bgm_sources){ dir, builtin, bgm_builtin() }, l);
+}
+
 typedef struct {
 	bgm_bufs b;
 	bgm_list list;
-	bool     builtin;      /* list is ZyperOS's own tracks */
-	char     now[256];
+	char     now[512];
 	char     now_name[BGM_TAG_MAX];   /* ...as the song pop-up names it */
 } bgm_view;
 
@@ -15273,12 +15289,12 @@ static int bgm_build(void *ctx, menu_row *rows, int max, const char **heading)
 		if (v->now[0] && !strcmp(s.file, v->now))
 			bgm_song_label(&s.tags, s.file, head, sizeof head, v->now_name, sizeof v->now_name);
 	}
-	/* A track set from the other folder - one of ZyperOS's, before the
-	 * card had its own - is not what plays: the player shuffles instead
-	 * (src/bgm_out.c, wanted_file), so the row says so */
+	/* A track set that is not in the list - one of ZyperOS's, with ZyperOS
+	 * Tracks turned off, or one gone from the card - is not what plays: the
+	 * player shuffles instead (src/bgm_out.c, wanted_file), so the row says so */
 	u = (bgm_ui){ bgm_on(), bgm_volume(),
 	              bgm_find(&v->list, bgm_track()) >= 0 ? bgm_track() : "",
-	              v->now, v->list.n, v->builtin, g_song_popup, v->now_name };
+	              v->now, v->list.n, v->list.own, bgm_builtin(), g_song_popup, v->now_name };
 	return bgm_menu_build(&u, rows, max, &v->b, heading);
 }
 
@@ -15286,26 +15302,33 @@ static menu_result bgm_key(app *a, void *ctx, in_button key, int sel)
 {
 	bgm_view *v = ctx;
 	int d = key == IN_RIGHT ? 1 : key == IN_LEFT ? -1 : 0;
+	/* Which row: ZyperOS Tracks is there only with tracks of the card's own */
+	int row = sel >= 0 && sel < (int)sizeof v->b.id ? v->b.id[sel] : BGM_ROWS;
 	char num[8];
 
 	(void)a;
-	if (sel == BGM_ROW_ON && (d || key == IN_ACCEPT)) {
+	if (row == BGM_ROW_ON && (d || key == IN_ACCEPT)) {
 		bgm_set_on(!bgm_on());
 		db_set_str(db_dev(), "bgm", bgm_on_id(bgm_on()));
-	} else if (sel == BGM_ROW_VOLUME && d) {
+	} else if (row == BGM_ROW_VOLUME && d) {
 		bgm_set_volume(bgm_volume_step(bgm_volume(), d));
 		snprintf(num, sizeof num, "%d", bgm_volume());
 		db_set_str(db_dev(), "bgm.volume", num);
-	} else if (sel == BGM_ROW_TRACK && d) {
+	} else if (row == BGM_ROW_BUILTIN && (d || key == IN_ACCEPT)) {
+		bgm_set_builtin(!bgm_builtin());
+		db_set_str(db_dev(), "bgm.builtin", bgm_on_id(bgm_builtin()));
+		/* The Track row steps through what plays now */
+		bgm_scan_now(&v->list);
+	} else if (row == BGM_ROW_TRACK && d) {
 		int at = bgm_track_step(bgm_find(&v->list, bgm_track()), v->list.n, d);
 		const char *t = at < 0 ? "" : v->list.names[at];
 
 		bgm_set_track(t);
 		db_set_str(db_dev(), "bgm.track", t);
-	} else if (sel == BGM_ROW_POPUP && (d || key == IN_ACCEPT)) {
+	} else if (row == BGM_ROW_POPUP && (d || key == IN_ACCEPT)) {
 		g_song_popup = !g_song_popup;
 		db_set_str(db_dev(), "bgm.popup", bgm_on_id(g_song_popup));
-	} else if (sel == BGM_ROW_NOW && key == IN_ACCEPT) {
+	} else if (row == BGM_ROW_NOW && key == IN_ACCEPT) {
 		bgm_skip();
 	}
 	return MENU_STAY;
@@ -15313,7 +15336,6 @@ static menu_result bgm_key(app *a, void *ctx, in_button key, int sel)
 
 static void bgm_screen(app *a)
 {
-	char dir[CFG_STR * 2], builtin[CFG_STR * 2];
 	bgm_view v;
 	menu_style st = {
 		/* Fixed, so the panel does not change size as one track's name
@@ -15323,9 +15345,7 @@ static void bgm_screen(app *a)
 	};
 
 	memset(&v, 0, sizeof v);
-	snprintf(dir, sizeof dir, "%s/%s", P_ROMS, BGM_DIR);
-	snprintf(builtin, sizeof builtin, "%s/%s", P_ROOT, BGM_BUILTIN_DIR);
-	v.builtin = bgm_scan_either(dir, builtin, &v.list) == builtin;
+	bgm_scan_now(&v.list);
 	bgm_rescan();
 	st.sound = v.b.sound;
 	menu_run(a, &st, bgm_build, bgm_key, &v);
@@ -16140,7 +16160,7 @@ static int store_fixture_media(int kind, st_media **out)
 }
 
 /* A media page's whole: its folder, and Music's the menu's own tracks too
- * (Roms/BGM), as the card's Music row counts them */
+ * (Menu Music), as the card's Music row counts them */
 static unsigned long long store_media_bytes(const st_card *c, int kind)
 {
 	return kind == STM_MUSIC ? c->music + c->bgm : kind == STM_VIDEOS ? c->videos : c->books;
@@ -16265,7 +16285,7 @@ static void store_caption(store_view *v, sp_row *r)
 	case SR_BGM:
 		/* The menu's own tracks, where they are and how many */
 		snprintf(part, sizeof part, TN(S_STORAGE_SONGS, c->nbgm), c->nbgm);
-		snprintf(r->caption, sizeof r->caption, "Roms/BGM \xc2\xb7 %s", part);
+		snprintf(r->caption, sizeof r->caption, "%s \xc2\xb7 %s", BGM_CARD_DIR, part);
 		break;
 	case SR_REST:
 		snprintf(r->caption, sizeof r->caption, "%s",
@@ -24526,6 +24546,12 @@ static float shot_about_scroll = -1;
 /* --language [ROW]: MENU > Language's panel over the shelf, the cursor on
  * ROW (the language that is on when none is given) */
 static int shot_language = -2;
+/* --music-page [ROW [STEPS]]: MENU > Menu Music's page, the cursor on ROW,
+ * then STEPS presses of Down, a frame each, so the list goes round and the
+ * note under it comes into the window; `--music-page foot` draws it with no
+ * cursor, the note pinned under the rows as a card's footer is, so a check
+ * can measure it whatever the window shows */
+static int shot_music_page = -2, shot_music_steps;
 /* --update: MENU > System Update's page as the status file in
  * ZYPEROS_USERDATA/update says (the update lab's states) */
 static int shot_update = -1;
@@ -25234,6 +25260,27 @@ static void shot_compose(app *a)
 		}
 	}
 	draw_shelf(a);
+	if (shot_music_page > -2) {
+		bgm_view v;
+		menu_row rows[BGM_ROWS + 3];
+		const char *heading;
+		int n, k, sel = shot_music_page;
+
+		memset(&v, 0, sizeof v);
+		bgm_scan_now(&v.list);
+		n = bgm_build(&v, rows, BGM_ROWS + 3, &heading);
+		/* Each step a frame, the window following the cursor as it does
+		 * on the device; the last one is the shot, drawn over the shelf
+		 * again */
+		for (k = 0; k <= shot_music_steps; k++) {
+			if (k) draw_shelf(a);
+			ui_scrim(a->r, 0);
+			menu_draw(a, heading, rows, n, sel, menu_std_width(a), MENU_ZYPEROS);
+			if (sel >= 0) sel = menu_step_round(rows, n, sel, 1);
+		}
+		bgm_free(&v.list);
+		return;
+	}
 	if (shot_language > -2) {
 		static unsigned char snd[LANG_COUNT];
 		menu_row rows[LANG_COUNT];
@@ -27563,6 +27610,16 @@ int main(int argc, char *argv[])
 			if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '9')
 				shot_update = atoi(argv[++i]);
 		}
+		else if (!strcmp(argv[i], "--music-page")) {
+			shot_music_page = 0;
+			if (i + 1 < argc && !strcmp(argv[i + 1], "foot")) {
+				shot_music_page = -1;
+				i++;
+			} else if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '9')
+				shot_music_page = atoi(argv[++i]);
+			if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '9')
+				shot_music_steps = atoi(argv[++i]);
+		}
 		else if (!strcmp(argv[i], "--language")) {
 			shot_language = -1;
 			if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '9')
@@ -28468,7 +28525,7 @@ int main(int argc, char *argv[])
 	/* Menu music, the same way: settings now, the folder read on its own
 	 * thread, and nothing heard until the shelf's first pass (src/bgm.h) */
 	{
-		char v[16], track[256], dir[CFG_STR * 2], builtin[CFG_STR * 2];
+		char v[16], track[512], dir[CFG_STR * 2], builtin[CFG_STR * 2];
 
 		db_get_str(db_dev(), "bgm", v, sizeof v, "on");
 		bgm_set_on(bgm_on_parse(v));
@@ -28478,8 +28535,13 @@ int main(int argc, char *argv[])
 		bgm_set_track(track);
 		db_get_str(db_dev(), "bgm.popup", v, sizeof v, "on");
 		g_song_popup = bgm_on_parse(v);
-		snprintf(dir, sizeof dir, "%s/%s", P_ROMS, BGM_DIR);
-		snprintf(builtin, sizeof builtin, "%s/%s", P_ROOT, BGM_BUILTIN_DIR);
+		db_get_str(db_dev(), "bgm.builtin", v, sizeof v, "on");
+		bgm_set_builtin(bgm_on_parse(v));
+		bgm_dirs(dir, builtin, sizeof dir);
+		/* The card's own folder, there to be filled from a computer or File
+		 * Transfer's page, on a card older than it too (mk/payload.sh makes
+		 * it on a new one) */
+		if (!shot_path) mkdir(dir, 0755);
 		if (!shot_path && !getenv("ZYPEROS_HEADLESS")) bgm_init(dir, builtin);
 	}
 

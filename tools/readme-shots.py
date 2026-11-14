@@ -631,8 +631,8 @@ def portal_card(card):
     shutil.copyfile(ROOT/'config/systems.cfg',card/'ZyperOS/systems.cfg')
     # The pictures every folder wears on the page, as the card has them
     shutil.copytree(ROOT/'res/system-icons',card/'ZyperOS/system-icons')
-    # The menu music's folder, which is no system and has its own picture
-    (card/'Roms/BGM').mkdir(exist_ok=True)
+    # The menu music's folder, at the top of the card with the cassette
+    (card/'Menu Music').mkdir(exist_ok=True)
 
 def web_dir(web):
     """res/web as mk/payload.sh lays it out on the card"""

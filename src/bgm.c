@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <sys/stat.h>
 
 /* ---- the settings ----------------------------------------------------------- */
 
@@ -76,46 +77,125 @@ void bgm_free(bgm_list *l)
 {
 	int i;
 
-	for (i = 0; i < l->n; i++) free(l->names[i]);
+	for (i = 0; i < l->n; i++) {
+		free(l->names[i]);
+		free(l->paths[i]);
+	}
 	free(l->names);
-	l->names = NULL;
-	l->n = 0;
+	free(l->paths);
+	free(l->from);
+	memset(l, 0, sizeof *l);
+}
+
+/* One more track at the list's end, its name and path copied. False out of
+ * memory, the list as it was. */
+static bool list_add(bgm_list *l, int *cap, const char *name, const char *path, int from)
+{
+	char *nm, *pt;
+
+	if (l->n == *cap) {
+		int nc = *cap ? *cap * 2 : 64;
+		char **nn = realloc(l->names, (size_t)nc * sizeof *nn);
+		char **np;
+		unsigned char *nf;
+
+		if (!nn) return false;
+		l->names = nn;
+		if (!(np = realloc(l->paths, (size_t)nc * sizeof *np))) return false;
+		l->paths = np;
+		if (!(nf = realloc(l->from, (size_t)nc))) return false;
+		l->from = nf;
+		*cap = nc;
+	}
+	nm = strdup(name);
+	pt = strdup(path);
+	if (!nm || !pt) { free(nm); free(pt); return false; }
+	l->names[l->n] = nm;
+	l->paths[l->n] = pt;
+	l->from[l->n++] = (unsigned char)from;
+	return true;
+}
+
+/* The tracks in `dir` and in its folders to BGM_DEPTH below, as paths in
+ * it ("Pixel Quest/02 Green Fields.mp3"), onto got[]. Folders starting with a
+ * dot are left alone: .media, and macOS's own. */
+static void collect(const char *dir, const char *rel, int depth, char ***got, int *n, int *gc)
+{
+	DIR *d;
+	struct dirent *e;
+
+	if (!(d = opendir(dir))) return;
+	while ((e = readdir(d))) {
+		char r[1024], sub[1024];
+		struct stat st;
+
+		if (e->d_name[0] == '.') continue;
+		if (snprintf(r, sizeof r, "%s%s", rel, e->d_name) >= (int)sizeof r) continue;
+		if (bgm_is_track(e->d_name)) {
+			char *copy;
+
+			if (*n == *gc) {
+				int nc = *gc ? *gc * 2 : 64;
+				char **nn = realloc(*got, (size_t)nc * sizeof *nn);
+
+				if (!nn) break;
+				*got = nn;
+				*gc = nc;
+			}
+			if (!(copy = strdup(r))) break;
+			(*got)[(*n)++] = copy;
+		} else if (depth < BGM_DEPTH &&
+		           snprintf(sub, sizeof sub, "%s/%s", dir, e->d_name) < (int)sizeof sub &&
+		           stat(sub, &st) == 0 && S_ISDIR(st.st_mode)) {
+			size_t len = strlen(r);
+
+			if (len + 1 >= sizeof r) continue;
+			r[len] = '/';
+			r[len + 1] = '\0';
+			collect(sub, r, depth + 1, got, n, gc);
+		}
+	}
+	closedir(d);
+}
+
+/* A folder's tracks, sorted, onto the list's end, each named by its path in
+ * the folder; one of a name the list has already is left out */
+static void add_folder(bgm_list *l, int *cap, const char *dir, int from)
+{
+	char **got = NULL;
+	int n = 0, gc = 0, i;
+
+	if (!dir) return;
+	collect(dir, "", 0, &got, &n, &gc);
+	bgm_sort(got, n);
+	for (i = 0; i < n; i++) {
+		char path[2048];
+
+		snprintf(path, sizeof path, "%s/%s", dir, got[i]);
+		if (bgm_find(l, got[i]) < 0) list_add(l, cap, got[i], path, from);
+		free(got[i]);
+	}
+	free(got);
 }
 
 void bgm_scan(const char *dir, bgm_list *l)
 {
-	DIR *d;
-	struct dirent *e;
 	int cap = 0;
 
 	bgm_free(l);
-	if (!dir || !(d = opendir(dir))) return;
-	while ((e = readdir(d))) {
-		char *copy;
-
-		if (!bgm_is_track(e->d_name)) continue;
-		if (l->n == cap) {
-			int nc = cap ? cap * 2 : 64;
-			char **nn = realloc(l->names, (size_t)nc * sizeof *nn);
-
-			if (!nn) break;
-			l->names = nn;
-			cap = nc;
-		}
-		if (!(copy = strdup(e->d_name))) break;
-		l->names[l->n++] = copy;
-	}
-	closedir(d);
-	bgm_sort(l->names, l->n);
+	add_folder(l, &cap, dir, BGM_FROM_FOLDER);
+	l->own = l->n;
 }
 
-const char *bgm_scan_either(const char *own, const char *builtin, bgm_list *l)
+void bgm_scan_all(const bgm_sources *s, bgm_list *l)
 {
-	bgm_scan(own, l);
-	if (l->n > 0) return own;
-	if (!builtin) return NULL;
-	bgm_scan(builtin, l);
-	return l->n > 0 ? builtin : NULL;
+	int cap = 0;
+
+	bgm_free(l);
+	add_folder(l, &cap, s->dir, BGM_FROM_FOLDER);
+	l->own = l->n;
+	if (s->builtin && (s->with_builtin || l->own == 0))
+		add_folder(l, &cap, s->builtin, BGM_FROM_BUILTIN);
 }
 
 int bgm_find(const bgm_list *l, const char *name)
@@ -130,7 +210,10 @@ int bgm_find(const bgm_list *l, const char *name)
 
 void bgm_title(const char *file, char *out, size_t n)
 {
-	const char *dot = strrchr(file, '.');
+	const char *dot;
+
+	if (strrchr(file, '/')) file = strrchr(file, '/') + 1;
+	dot = strrchr(file, '.');
 	size_t len = dot && dot != file ? (size_t)(dot - file) : strlen(file);
 
 	if (!n) return;

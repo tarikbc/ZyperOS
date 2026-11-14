@@ -1,6 +1,6 @@
 # MENU > Menu Music (src/bgm_menu.c): its rows, their values and its notes.
 # The heading is sysmenu.menu_music; On and Off are menu.on_title and
-# menu.off_title. Roms/BGM is a folder on the card: %s, never translated.
+# menu.off_title. Menu Music is a folder on the card: %s, never translated.
 
 [music.music]
 note = Menu Music's first row: the music on or off
@@ -23,6 +23,17 @@ fr = Volume
 de = Lautstärke
 ja = 音量
 it = Volume
+
+[music.builtin]
+note = Menu Music's row: whether ZyperOS's own tracks play along with yours. On or Off.
+en = ZyperOS Tracks
+zh-Hans = ZyperOS 曲目
+es = Pistas de ZyperOS
+pt-BR = Faixas do ZyperOS
+fr = Pistes ZyperOS
+de = ZyperOS-Titel
+ja = ZyperOS の曲
+it = Tracce di ZyperOS
 
 [music.track]
 note = Menu Music's row: Shuffle, or one track over and over
@@ -90,58 +101,47 @@ de = keine Titel
 ja = 曲なし
 it = nessuna traccia
 
-[music.builtin_count]
-note = A note under the rows: how many of ZyperOS's own tracks there are
-en.one = %d ZyperOS track
-en.other = %d ZyperOS tracks
-zh-Hans = %d 首 ZyperOS 曲目
-es.one = %d pista de ZyperOS
-es.other = %d pistas de ZyperOS
-pt-BR.one = %d faixa do ZyperOS
-pt-BR.other = %d faixas do ZyperOS
-fr.one = %d piste ZyperOS
-fr.other = %d pistes ZyperOS
-de.one = %d ZyperOS-Titel
-de.other = %d ZyperOS-Titel
-ja = ZyperOS の曲 %d 曲
-it.one = %d traccia di ZyperOS
-it.other = %d tracce di ZyperOS
+[music.mine_and_builtin]
+note = A note under the rows: how many of the card's own tracks play (those in its Menu Music folder), then how many of ZyperOS's. Plural by the first number.
+en.one = %d of yours, %d ZyperOS
+en.other = %d of yours, %d ZyperOS
+zh-Hans = 你的 %d 首，ZyperOS %d 首
+es.one = %d tuya, %d de ZyperOS
+es.other = %d tuyas, %d de ZyperOS
+pt-BR.one = %d sua, %d do ZyperOS
+pt-BR.other = %d suas, %d do ZyperOS
+fr.one = %d des vôtres, %d de ZyperOS
+fr.other = %d des vôtres, %d de ZyperOS
+de.one = %d eigener, %d von ZyperOS
+de.other = %d eigene, %d von ZyperOS
+ja = 自分の曲 %d 曲、ZyperOS %d 曲
+it.one = %d tua, %d di ZyperOS
+it.other = %d tue, %d di ZyperOS
 
-[music.put_yours]
-note = The note under it: your own tracks go in this folder and play instead; %s is BGM
-en = Put yours in Roms/%s
-zh-Hans = 你的音乐请放入 Roms/%s
-es = Pon las tuyas en Roms/%s
-pt-BR = Coloque as suas em Roms/%s
-fr = Mettez les vôtres dans Roms/%s
-de = Leg eigene Titel in Roms/%s
-ja = 自分の曲は Roms/%s へ
-it = Metti le tue in Roms/%s
-
-[music.count_in]
-note = A note: how many tracks the card's folder has; %s is BGM
-en.one = %d track in Roms/%s
-en.other = %d tracks in Roms/%s
-zh-Hans = Roms/%2$s 中有 %1$d 首曲目
-es.one = %d pista en Roms/%s
-es.other = %d pistas en Roms/%s
-pt-BR.one = %d faixa em Roms/%s
-pt-BR.other = %d faixas em Roms/%s
-fr.one = %d piste dans Roms/%s
-fr.other = %d pistes dans Roms/%s
-de.one = %d Titel in Roms/%s
-de.other = %d Titel in Roms/%s
-ja = Roms/%2$s に %1$d 曲あります
-it.one = %d traccia in Roms/%s
-it.other = %d tracce in Roms/%s
+[music.mine_count]
+note = A note under the rows: how many of the card's own tracks play, ZyperOS's left out
+en.one = %d track of yours
+en.other = %d tracks of yours
+zh-Hans = 你的 %d 首曲目
+es.one = %d pista tuya
+es.other = %d pistas tuyas
+pt-BR.one = %d faixa sua
+pt-BR.other = %d faixas suas
+fr.one = %d piste à vous
+fr.other = %d pistes à vous
+de.one = %d eigener Titel
+de.other = %d eigene Titel
+ja = 自分の曲 %d 曲
+it.one = %d traccia tua
+it.other = %d tracce tue
 
 [music.put_files]
-note = A note when there is no track: what to put where; %s is BGM
-en = Put MP3 or OGG files in Roms/%s
-zh-Hans = 请将 MP3 或 OGG 文件放入 Roms/%s
-es = Pon archivos MP3 u OGG en Roms/%s
-pt-BR = Coloque arquivos MP3 ou OGG em Roms/%s
-fr = Fichiers MP3 ou OGG dans Roms/%s
-de = Leg MP3- oder OGG-Dateien in Roms/%s
-ja = MP3 か OGG を Roms/%s へ
-it = Metti file MP3 o OGG in Roms/%s
+note = The note under the rows while none of the card's own tracks play: what to put where. %s is Menu Music, the folder at the top of the card: its name on the card, never translated. Short: the note sits in one line of the panel.
+en = Add MP3 or OGG to %s
+zh-Hans = MP3、OGG 放入 %s
+es = Agrega MP3 u OGG a %s
+pt-BR = Ponha MP3 ou OGG em %s
+fr = MP3 ou OGG dans %s
+de = MP3 oder OGG nach %s
+ja = MP3 か OGG を %s へ
+it = Metti MP3 o OGG in %s
