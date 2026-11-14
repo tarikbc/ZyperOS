@@ -574,7 +574,7 @@ The page is light or dark as the phone or computer is. When File Transfer closes
 
 On the Pixel 2, a friend can play an NES game with you as player 2, on their phone or a computer, with nothing to install. Your buttons stay player 1, and the sound stays on the handheld.
 
-1. In an NES game, press **MENU** and choose **Player 2**, under Shader.
+1. In an NES game, press **MENU** and choose **Player 2**, on the Game tab under Quick Slot.
 2. **With a USB Wi-Fi adapter in,** press **A**. The handheld makes a Wi-Fi network just for this game and shows its QR code, its name and its password. Your friend scans the code with the phone's camera, and the game opens on the phone. If it doesn't open by itself, `10.42.1.1/play` in the phone's browser does it.
 
    **With a computer on the USB cable,** press **A** and open `zyperos.local/play` in the computer's browser.
@@ -647,7 +647,7 @@ Everything ZyperOS keeps is on the card, Wi-Fi passwords and Bluetooth pairings 
 | **L2 / R2** | The previous and next song on the home and a shelf: MP4's while it plays, else the menu music's |
 | **SELECT + R1 / L1** | In a game, quick save and quick load, to the in-game menu's Quick Slot |
 | **SELECT + R2 / L2** | In a game, faster (1.5x, 2x, 3x) and slower, back to normal speed |
-| **X / Y** | In a game, turbo A and B to start with (**MENU > Controls** tab in the in-game menu changes any button). On the shelf, X opens a game's details (Favorite, with Y, and Delete Game) and Y starts a game from the start |
+| **X / Y** | In a game, turbo A and B to start with (the in-game menu's Controls tab changes any button). On the shelf, X opens a game's details (Favorite, with Y, and Delete Game) and Y starts a game from the start |
 | **START** on a shelf | Covers or a list: turns the row of covers into a list of names and back, as MENU > View does |
 | **POWER** | Save and turn off. Over a port, it ends the port first. The next start continues the game; after a crash or a power cut it starts on the home |
 | **MENU + START**, held a second | The way out: ends whatever runs, a stuck game or port included, and brings back the home |

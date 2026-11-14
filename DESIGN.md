@@ -3448,7 +3448,7 @@ system table below: the NES's FCEUmm today. *(The design, approved 2026-11-12:
 docs/superpowers/specs/2026-11-12-nes-multiplayer-design.md. This section is
 what is built: plain HTTP, the touch pad and the keyboard.)*
 
-**On the handheld.** The in-game menu has a **Player 2** row after Shader,
+**On the handheld.** The in-game menu has a **Player 2** row on its Game tab, after Quick Slot,
 its value `off`, `waiting` or `connected`. A opens its page over the paused
 game, a panel as the in-game menu's (11.3): **Player 2** in **label**
 **text-soft** over a rule in the system's color, a line that says what to do,
