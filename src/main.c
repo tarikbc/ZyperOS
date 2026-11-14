@@ -122,6 +122,8 @@
 #include "mediatex.h"
 #include "controls.h"
 #include "ctltab_screen.h"
+#include "achtab_screen.h"
+#include "rahashjob.h"
 #include "remapstore.h"
 #include "tour.h"
 #include "tourdraw.h"
@@ -2218,6 +2220,8 @@ void sync_abandon(void)
  * only way anyone can be told during a game - over Diatom's overlay. */
 static char g_pending_set[LIB_PATH * 2];
 static char g_pending_active[LIB_PATH * 2];
+/* ...whose hash is still being made, on its own thread (src/rahashjob.h) */
+static bool g_pending_hashing;
 /* Auto crossed 7:00 or 19:00 while a game ran, and the file was rewritten
  * for Diatom's bar but nobody has told the shelf: theme() is the new theme
  * and the cards kept are the old one's. tick_theme takes it as a change like
@@ -2387,6 +2391,25 @@ static void on_game_tick(void)
 		fprintf(stderr, "cheevos: the account held some already; watching the rest\n");
 	}
 
+	/* A first play's hash, made on its own thread (src/rahashjob.h): the
+	 * set is asked for when it lands, for the set the job was started for.
+	 * No hash: the file could not be read, or an .m3u's first disc has no
+	 * reader, and its rows say "none" (chv_none_mark), as before. */
+	if (g_pending_hashing) {
+		char h[33], set[sizeof g_pending_set];
+		int r = rhj_poll(h, set, sizeof set);
+
+		if (r == 0) return;
+		g_pending_hashing = false;
+		if (r == 1) {
+			snprintf(g_pending_set, sizeof g_pending_set, "%s", set);
+			ra_fetch_begin(h, g_pending_set);
+		} else {
+			if (r == -1) chv_none_mark(set, true);
+			g_pending_set[0] = '\0';
+		}
+		return;
+	}
 	if (!g_pending_set[0]) return;
 
 	/* Once. Calling it twice advances the state machine twice, which is a
@@ -5519,8 +5542,10 @@ void menu_draw_styled(app *a, const menu_style *st, const char *heading,
 	g_menu_header_h = st->header_h;
 	g_menu_side = st->side;
 	g_menu_side_w = st->side_w;
+	if (st->row_icon) g_row_icon = st->row_icon;
 	menu_draw_ex(a, heading, rows, n, sel, st->fixed_w,
-	             st->follow_tint ? a->tint : st->accent, st->vcolors, false, 0);
+	             st->follow_tint ? a->tint : st->accent, st->vcolors, st->visits_all, 0);
+	if (st->row_icon) g_row_icon = NULL;
 	g_menu_side = NULL;
 	g_menu_side_w = 0;
 	g_menu_header = NULL;
@@ -6541,7 +6566,9 @@ bool confirm_panel(app *a, const char *heading, const char *msg,
  * note. Distinct from MENU_MAX_ROWS, which is the system menu's own count and
  * is much smaller. */
 /* And the Video Snaps page, a row a console (sys_menu_snaps_rows). */
-#define MENU_RUN_ROWS (WIFI_MAX_NETS + 8 > SN_ROWS ? WIFI_MAX_NETS + 8 : SN_ROWS)
+#define MENU_RUN_ROWS_ (WIFI_MAX_NETS + 8 > SN_ROWS ? WIFI_MAX_NETS + 8 : SN_ROWS)
+/* And the Achievements tab, a row an achievement: a set's whole list */
+#define MENU_RUN_ROWS (MENU_RUN_ROWS_ > CHV_MAX ? MENU_RUN_ROWS_ : CHV_MAX)
 /* Every ZyperOS menu row has to fit through the runner too, or the bottom of
  * the menu is cut off with no sign of it. */
 _Static_assert(MENU_RUN_ROWS >= MENU_MAX_ROWS, "MENU_RUN_ROWS < MENU_MAX_ROWS");
@@ -6749,7 +6776,7 @@ static menu_exit menu_run_body(app *a, const menu_style *st,
 		 * then land on something live. */
 		if (sel >= n) sel = n - 1;
 		if (sel < 0) sel = 0;
-		if (!rows[sel].live) {
+		if (!rows[sel].live && !st->visits_all) {
 			sel = menu_step_sel(rows, n, sel, +1);
 			if (!rows[sel].live) sel = menu_step_sel(rows, n, sel, -1);
 		}
@@ -6801,12 +6828,16 @@ static menu_exit menu_run_body(app *a, const menu_style *st,
 		}
 
 		/* A move is a press too: it drops what Zyper had booked */
+		/* Every row a stop where the screen says so (visits_all): stepped
+		 * as a plain list, round on a press */
 		if (in_repeat(&a->in, IN_UP)) {
-			sel = menu_step_heard(a, rows, n, sel, -1, IN_UP);
+			sel = st->visits_all ? list_step_heard(a, IN_UP, n, sel)
+			                     : menu_step_heard(a, rows, n, sel, -1, IN_UP);
 			if (z) zr_press(z, plat_now_ms());
 		}
 		if (in_repeat(&a->in, IN_DOWN)) {
-			sel = menu_step_heard(a, rows, n, sel, +1, IN_DOWN);
+			sel = st->visits_all ? list_step_heard(a, IN_DOWN, n, sel)
+			                     : menu_step_heard(a, rows, n, sel, +1, IN_DOWN);
 			if (z) zr_press(z, plat_now_ms());
 		}
 
@@ -6856,7 +6887,7 @@ static menu_exit menu_run_body(app *a, const menu_style *st,
 			 * nothing, or nothing with A; a row that plays its own is
 			 * left to its screen. */
 			if (b == IN_ACCEPT && !(menu_sound_at(st->sound, n, sel) & MENU_SND_OWN))
-				uisound_play(on_key && rows[sel].live &&
+				uisound_play(on_key && (rows[sel].live || st->visits_all) &&
 				             !(menu_sound_at(st->sound, n, sel) & MENU_SND_NO_A)
 				             ? DS_SOUND_ACCEPT : DS_SOUND_DENY);
 			if (on_key && menu_send(a, z, on_key, ctx, (in_button)b, sel) == MENU_DONE)
@@ -17285,27 +17316,11 @@ static void cheevos_screen(app *a, SDL_Texture *bg, bool over_shelf)
 	vcols = calloc((size_t)n, sizeof *vcols);
 	if (!rows || !vals || !vcols) { free(rows); free(vals); free(vcols); return; }
 
-	for (i = 0; i < n; i++) {
-		const cheevo *c = chv_at(i);
-
-		/* A count moving, "74 / 100", where the points are, until it is
-		 * earned (on_cheevo_progress) */
-		if (!c->earned && !c->earned_now && c->progress[0] && strchr(c->progress, '/'))
-			snprintf(vals[i], sizeof vals[i], "%.*s / %s",
-			         (int)(strchr(c->progress, '/') - c->progress), c->progress,
-			         strchr(c->progress, '/') + 1);
-		else if (!c->earned && !c->earned_now && c->progress[0])
-			snprintf(vals[i], sizeof vals[i], "%s", c->progress);
-		else
-			snprintf(vals[i], sizeof vals[i], "%d", c->points);
-		rows[i].label = c->title;
-		rows[i].value = vals[i];
-		rows[i].live  = c->earned || c->earned_now;
-		/* Said by color on EVERY earned row, not only the one under the
-		 * cursor. live already lifts the label one step, which alone was too
-		 * little to scan a hundred-entry set by. */
-		vcols[i] = rows[i].live ? VCOL_EARNED : 0u;
-	}
+	/* Each row as the in-game menu's Achievements tab makes it
+	 * (src/achtab.h): the title, the points or the count moving, earned in
+	 * the earned color, so the two lists cannot disagree */
+	for (i = 0; i < n; i++)
+		at_row(chv_at(i), &rows[i], &vcols[i], vals[i], sizeof vals[i]);
 	/* Two lines: the game on one, the counts on the other.
 	 *
 	 * On one line this was "Hagane: The Final Conflict   0/36   0/415 points",
@@ -17658,9 +17673,66 @@ typedef struct {
 	 * more than gm_bufs holds (src/ctltab_screen.h) */
 	unsigned      ct_vcol[CT_MAX_ROWS];
 	unsigned char ct_sound[CT_MAX_ROWS];
+	/* The Achievements tab's rows' values, colors and sounds
+	 * (src/achtab_screen.h) */
+	achtab_bufs   ach;
 } gm_ctx;
 
 static const char *shot_path;   /* --shot, with main's other shot flags */
+
+/* A row of any tab by identity: gm_row, ct_row, or an achievement, which is
+ * AT_ID0 and its place in the set - apart from GM_MAX_ROWS, the kept row's
+ * "none" (g_gm_mem) */
+#define AT_ID0 1000
+#define GM_IDS_MAX (CHV_MAX > CT_MAX_ROWS ? CHV_MAX : CT_MAX_ROWS)
+
+static int shot_cheevos_waiting;  /* --cheevos-waiting, with the other shot flags */
+static int shot_achtab = -1;      /* --achtab STATE: the tab's state in a shot */
+
+/* What the Achievements tab needs to know about the game running
+ * (src/achtab.h): its set, the account, the fetch behind it, its hash. A
+ * shot says it with --achtab. */
+static void gm_at_facts(at_facts *f)
+{
+	memset(f, 0, sizeof *f);
+	if (shot_path && shot_achtab >= 0) {
+		f->signed_in = shot_achtab != AT_SIGNED_OUT;
+		f->set = shot_achtab == AT_UNCHECKED ? CHV_UNCHECKED : CHV_NONE;
+		f->fetching = shot_achtab == AT_WAITING;
+		f->no_hash = shot_achtab == AT_NOT_SYSTEM ? RA_HASH_NO_SYSTEM
+		             : shot_achtab == AT_NOT_FILE ? RA_HASH_NO_FILE : RA_HASH_OK;
+		if (shot_achtab == AT_LIST || shot_achtab == AT_STATES) {
+			int i;
+
+			/* AT_STATES stands for every one earned (--achtab all) */
+			achtab_shot_earned(shot_achtab == AT_STATES ? 8 : 3);
+			f->count = achtab_shot_count();
+			for (i = 0; i < f->count; i++) {
+				const cheevo *c = achtab_shot_at(i);
+
+				f->points_total += c->points;
+				if (c->earned) { f->earned++; f->points += c->points; }
+			}
+			f->pending = shot_cheevos_waiting;
+		}
+		return;
+	}
+	f->count = chv_count();
+	f->earned = chv_earned();
+	f->points = chv_points_earned();
+	f->points_total = chv_points_total();
+	f->pending = f->count > 0 ? chv_pending_for(chv_game()) : 0;
+	f->signed_in = ra_signed_in();
+	f->fetching = g_pending_set[0] && !strcmp(g_pending_set, g_game_set);
+	f->set = chv_state_of(g_game_set, f->signed_in);
+	f->no_hash = g_port_menu ? RA_HASH_OK : g_game_no_hash;
+}
+
+static at_source gm_at_source(void)
+{
+	return shot_path && shot_achtab >= 0 ? achtab_shot_at : chv_at;
+}
+
 
 /* The game the Controls tab is about (src/ctltab_screen.h): the one on the
  * shelf's cursor, which is the one running, its own system (Favorites too),
@@ -17685,8 +17757,9 @@ static void gm_ctl_game(app *a, gm_ctx *c, ctlscr_game *g)
 }
 
 /* A tab's rows by identity, each tab's own kind: gm_row for Game and
- * Display, ct_row for Controls; at most CT_MAX_ROWS. The count. */
-static int gm_ids(app *a, gm_ctx *c, const gm_ui *u, int tab, int *ids)
+ * Display, ct_row for Controls, AT_ID0 and a place for Achievements; at
+ * most `max` (GM_IDS_MAX holds any tab's). The count. */
+static int gm_ids(app *a, gm_ctx *c, const gm_ui *u, int tab, int *ids, int max)
 {
 	gm_row r[GM_MAX_ROWS];
 	int n, i;
@@ -17695,11 +17768,28 @@ static int gm_ids(app *a, gm_ctx *c, const gm_ui *u, int tab, int *ids)
 		ctlscr_game g;
 		menu_row rows[CT_MAX_ROWS];
 		unsigned vcol[CT_MAX_ROWS];
+		int ct[CT_MAX_ROWS];
 
 		gm_ctl_game(a, c, &g);
-		return ctlscr_rows(a, &g, rows, vcol, NULL, ids);
+		n = ctlscr_rows(a, &g, rows, vcol, NULL, ct);
+		if (n > max) n = max;
+		for (i = 0; i < n; i++) ids[i] = ct[i];
+		return n;
+	}
+	/* The Achievements tab: an achievement's place, or the one row of a
+	 * sentence, which the cursor cannot leave. A set can be CHV_MAX long,
+	 * far more than any other tab's rows */
+	if (!u->port && tab == GT_ACHIEVEMENTS) {
+		at_facts f;
+
+		gm_at_facts(&f);
+		n = at_state_of(&f) == AT_LIST ? (f.count < CHV_MAX ? f.count : CHV_MAX) : 1;
+		if (n > max) n = max;
+		for (i = 0; i < n; i++) ids[i] = AT_ID0 + i;
+		return n;
 	}
 	n = gm_tab_rows(u, (gm_tab)tab, r);
+	if (n > max) n = max;
 	for (i = 0; i < n; i++) ids[i] = (int)r[i];
 	return n;
 }
@@ -17711,7 +17801,6 @@ static int gm_menu_build(void *ctx, menu_row *rows, int max,
 	gm_ui u;
 	int n;
 
-	(void)max;
 	gm_gather(c->a, &u);
 	/* A game's menu names its tab in the heading's place (menu_draw draws the
 	 * tab row there, which MENU's does the same); a port's has no title: the
@@ -17728,8 +17817,25 @@ static int gm_menu_build(void *ctx, menu_row *rows, int max,
 		c->st.sound = c->ct_sound;
 		c->st.vcolors = c->ct_vcol;
 		c->st.side_w = CTLSCR_SIDE_W;
+		c->st.header = NULL;
+		c->st.header_h = 0;
+		c->st.row_icon = NULL;
+		c->st.visits_all = false;
 		return n;
 	}
+	/* The Achievements tab's: the game's list, or why it has none
+	 * (src/achtab_screen.h), which sets the style its rows want */
+	if (!u.port && c->tabs.at == GT_ACHIEVEMENTS) {
+		at_facts f;
+
+		gm_at_facts(&f);
+		return achtab_rows(c->a, &f, gm_at_source(), &c->ach, rows, max,
+		                   c->st.fixed_w, &c->st);
+	}
+	c->st.header = NULL;
+	c->st.header_h = 0;
+	c->st.row_icon = NULL;
+	c->st.visits_all = false;
 	c->st.sound = c->bufs.sound;
 	c->st.vcolors = NULL;
 	c->st.side_w = 0;
@@ -17780,11 +17886,11 @@ static menu_result gm_key(app *a, void *ctx, in_button key, int sel)
 	 * same list the build used says which is which. */
 	{
 		gm_ui u;
-		int ids[CT_MAX_ROWS];
+		int ids[GM_IDS_MAX];
 		int n;
 
 		gm_gather(a, &u);
-		n = gm_ids(a, c, &u, c->tabs.at, ids);
+		n = gm_ids(a, c, &u, c->tabs.at, ids, GM_IDS_MAX);
 		/* The row this tab is on is kept, for MENU's next press */
 		if (!u.port && sel >= 0 && sel < n) g_gm_mem.row[c->tabs.at] = ids[sel];
 		/* L1 and R1 go round the tabs, as MENU's do: the row each tab was
@@ -17795,12 +17901,21 @@ static menu_result gm_key(app *a, void *ctx, in_button key, int sel)
 			tabs_turn(&c->tabs, key == IN_R1 ? +1 : -1);
 			g_gm_mem.tab = c->tabs.at;
 			if (c->tabs.at == GT_CONTROLS) ctlscr_enter();
-			n = gm_ids(a, c, &u, c->tabs.at, ids);
+			n = gm_ids(a, c, &u, c->tabs.at, ids, GM_IDS_MAX);
 			for (k = 0; k < n && ids[k] != g_gm_mem.row[c->tabs.at]; k++) ;
 			g_menu_sel_to = k < n ? k : 0;
 			moved_sound(a, key);
 			redraw_now();
 			return MENU_STAY;
+		}
+		/* The Achievements tab: A on an achievement opens it, as the list
+		 * over the shelf does; nothing else but X, which quits from any tab */
+		if (!u.port && c->tabs.at == GT_ACHIEVEMENTS && key != IN_X) {
+			const cheevo *ch = key == IN_ACCEPT ? achtab_pick(&c->ach, gm_at_source(), sel)
+			                                    : NULL;
+
+			if (ch) cheevo_detail_screen(a, c->bg, false, ch);
+			return plat_run_power_pressed() ? MENU_DONE : MENU_STAY;
 		}
 		/* The Controls tab's rows, but X, which quits from any tab, and the
 		 * Pak, below as before */
@@ -17944,10 +18059,22 @@ static menu_result gm_key(app *a, void *ctx, in_button key, int sel)
 	case GM_PLAYER2:
 		player2_page(a, c->bg);
 		break;
-	case GM_CHEEVOS:
-		if (chv_count() > 0) cheevos_screen(a, c->bg, false);
-		else cheevos_unchecked_message(a);
-		break;
+	/* The Achievements tab, one L1 away: the row turns to it, the list
+		 * or the sentence that says why there is none (1.0.5). It opened the
+		 * list as a screen of its own before the tab. */
+	case GM_CHEEVOS: {
+		gm_ui u;
+		int ids[GM_IDS_MAX], n, k;
+
+		gm_gather(a, &u);
+		tabs_turn(&c->tabs, -1);
+		g_gm_mem.tab = c->tabs.at;
+		n = gm_ids(a, c, &u, c->tabs.at, ids, GM_IDS_MAX);
+		for (k = 0; k < n && ids[k] != g_gm_mem.row[c->tabs.at]; k++) ;
+		g_menu_sel_to = k < n ? k : 0;
+		redraw_now();
+		return MENU_STAY;
+	}
 	case GM_RESET:
 		plat_resident_line("RESET");
 		c->resume = true;
@@ -18002,7 +18129,7 @@ static void game_menu(app *a)
 	c.tabs.at = c.tabs.from = g_gm_mem.tab;
 	if (!g_port_menu) {
 		gm_ui u;
-		int ids[CT_MAX_ROWS];
+		int ids[GM_IDS_MAX];
 		int n, k;
 
 		c.st.tabs = &c.tabs;
@@ -18011,7 +18138,7 @@ static void game_menu(app *a)
 		c.st.side = ctlscr_side;
 		ctlscr_open();
 		gm_gather(a, &u);
-		n = gm_ids(a, &c, &u, c.tabs.at, ids);
+		n = gm_ids(a, &c, &u, c.tabs.at, ids, GM_IDS_MAX);
 		for (k = 0; k < n && ids[k] != g_gm_mem.row[c.tabs.at]; k++) ;
 		c.st.start_sel = k < n ? k : 0;
 		g_menu_epoch++;
@@ -18032,11 +18159,11 @@ static void game_menu(app *a)
 	 * moves without asking gm_key, so it is read from the runner here */
 	if (c.st.tabs) {
 		gm_ui u;
-		int ids[CT_MAX_ROWS];
+		int ids[GM_IDS_MAX];
 		int n;
 
 		gm_gather(a, &u);
-		n = gm_ids(a, &c, &u, c.tabs.at, ids);
+		n = gm_ids(a, &c, &u, c.tabs.at, ids, GM_IDS_MAX);
 		g_gm_mem.tab = c.tabs.at;
 		if (c.seen >= 0 && c.seen < n) g_gm_mem.row[c.tabs.at] = ids[c.seen];
 	}
@@ -18056,8 +18183,10 @@ static void game_menu(app *a)
 		if (how != LEAVE_GONE) c.resume = false;
 	}
 	mm_leaving_cut();
-	/* The handheld's kept texture, which the game has no use for */
+	/* The handheld's kept texture, which the game has no use for, and the
+	 * Achievements tab's badges */
 	ctlscr_close();
+	achtab_close();
 
 	if (c.bg) SDL_DestroyTexture(c.bg);
 
@@ -19027,23 +19156,19 @@ static void launch(app *a)
 			 * branch is precisely the one a first play does not take.
 			 *
 			 * Hashing is local work and happens after RUN, so it overlaps the
-			 * game's own startup rather than delaying it. The two requests
-			 * then run behind the game and on_game_tick hands the set over
-			 * when they land. */
+			 * game's own startup rather than delaying it - on a thread of its
+			 * own since 1.0.5 (src/rahashjob.h), because a PSP disc's hash
+			 * can take seconds and this loop is the power button's watchdog.
+			 * The two requests then run behind the game and on_game_tick
+			 * hands the set over when they land. A file the launcher cannot
+			 * read gets the "none" marker there; a kind it has no hash for at
+			 * all never gets here (first_play) and needs no marker: its rows
+			 * say so by its name. */
 			if (first_play) {
-				char h[33];
-
-				if (ra_hash_rom(rom, s->tag, h)) {
-					chv_active_path(g_pending_active, sizeof g_pending_active);
+				chv_active_path(g_pending_active, sizeof g_pending_active);
+				if (rhj_begin(rom, s->tag, set)) {
 					snprintf(g_pending_set, sizeof g_pending_set, "%s", set);
-					ra_fetch_begin(h, set);
-				} else {
-					/* A file the launcher could not read, or an .m3u whose
-					 * first disc it has no reader for: nothing will be asked
-					 * about it. A kind it has no hash for at all never gets
-					 * here (first_play) and needs no marker: its rows say
-					 * so by its name. */
-					chv_none_mark(set, true);
+					g_pending_hashing = true;
 				}
 			}
 			/* Coming back from a shutdown: the game loads and the menu is
@@ -20070,6 +20195,27 @@ static void shot_draw_gamemenu(app *a)
 	gm_backdrop(a, &(gm_ctx){ .a = a, .bg = bg }, 1.0f);
 	if (!u.port && tabs.at == GT_CONTROLS) {
 		shot_draw_ctltab(a, &tabs);
+		if (bg) SDL_DestroyTexture(bg);
+		return;
+	}
+	/* The Achievements tab, as gm_menu_build makes it and menu_run draws it:
+	 * the set on the card's game, or --achtab's state with a made-up set */
+	if (!u.port && tabs.at == GT_ACHIEVEMENTS) {
+		static achtab_bufs ab;
+		static menu_row arows[MENU_RUN_ROWS];
+		menu_style st = { 0 };
+		at_facts f;
+		int an, asel;
+
+		if (shot_badge_set) achtab_shot_badges(shot_badge_set, shot_badge_name);
+		gm_at_facts(&f);
+		st.fixed_w = gm_width(a);
+		st.follow_tint = true;
+		st.tabs = &tabs;
+		an = achtab_rows(a, &f, gm_at_source(), &ab, arows, MENU_RUN_ROWS, st.fixed_w, &st);
+		asel = shot_gamemenu_sel < an ? shot_gamemenu_sel : an - 1;
+		if (!st.visits_all && !arows[asel].live) asel = -1;
+		menu_draw_styled(a, &st, gm_tab_name(tabs.at), arows, an, asel);
 		if (bg) SDL_DestroyTexture(bg);
 		return;
 	}
@@ -22759,6 +22905,25 @@ int main(int argc, char *argv[])
 		else if (!strcmp(argv[i], "--ranews") && i + 1 < argc) {
 			shot_ranews = atoi(argv[++i]);
 			if (shot_heatpop < 0) shot_heatpop = 3000;
+		}
+		/* --achtab STATE: the in-game menu's Achievements tab (--gm-tab 3) in
+		 * one state, a made-up set for list and all: list, all (every one
+		 * earned), not-system, not-file, signed-out, waiting, unchecked,
+		 * none */
+		else if (!strcmp(argv[i], "--achtab") && i + 1 < argc) {
+			static const char *const names[] = {
+				"list", "not-system", "not-file", "signed-out", "waiting",
+				"unchecked", "none", "all"
+			};
+			const char *v = argv[++i];
+			int k;
+
+			for (k = 0; k < (int)(sizeof names / sizeof names[0]); k++)
+				if (!strcmp(v, names[k])) shot_achtab = k;
+			if (shot_achtab < 0) {
+				fprintf(stderr, "--achtab: no state %s\n", v);
+				return 2;
+			}
 		}
 		else if (!strcmp(argv[i], "--cheevos-waiting") && i + 1 < argc)
 			shot_cheevos_waiting = atoi(argv[++i]);

@@ -14,7 +14,9 @@ CFLAGS := -DZYPEROS_VERSION='"$(VERSION)"' -O2 -mcpu=cortex-a53 -Wall -Wextra -W
 # SYSROOT has SDL and everything SDL needs, so the link checks that ZyperOS uses
 # no function the system's libraries lack, and that those libraries resolve.
 LDFLAGS := -L$(SYSROOT)/usr/lib -Wl,-rpath-link,$(SYSROOT)/usr/lib
-LDLIBS := -lSDL2 -lSDL2_image -lSDL2_ttf -lsqlite3 -lz -lasound -lpthread -lm
+# liblzma for a CHD's LZMA hunks (src/chd.c): the system's, which FFmpeg
+# already needs, so it costs the image nothing
+LDLIBS := -lSDL2 -lSDL2_image -lSDL2_ttf -lsqlite3 -lz -llzma -lasound -lpthread -lm
 
 # The ScreenScraper developer pair, from the environment into a GENERATED
 # HEADER rather than onto the compile line.

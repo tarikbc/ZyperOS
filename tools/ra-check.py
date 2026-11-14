@@ -83,10 +83,14 @@ def ra_body(tag, d):
 # SYSTEM.CNF names (PSX.EXE without one), prefixed with that name. rcheevos's
 # rc_hash_psx and its ISO 9660 walk, restated - and restated again in C in
 # src/rahash.c, which check-rahash holds to this one. It reads sectors, not the
-# whole image. .cue, a bare .bin/.iso/.img and the first disc of an .m3u; .chd
-# needs a CHD decoder, and RA does not hash PlayStation .pbp files at all
-# (rcheevos files the extension under the PSP), so both give None.
-DISC_TAGS = ("PS1",)
+# whole image. .cue, a bare .bin/.iso/.img, the first disc of an .m3u and a
+# PSone Classics .pbp (its first disc: the disc's hash, as DuckStation makes
+# it). A PSP disc is hashed by PARAM.SFO then EBOOT.BIN (rc_hash_psp), from an
+# .iso or a .cso; a PSP .pbp is hashed whole.
+#
+# .chd needs a CHD reader, which the C side has (src/chd.c) and this one does
+# not: a .chd gives None here, and check-rahash knows it.
+DISC_TAGS = ("PS1", "PSP")
 SYNC = b"\x00" + b"\xff" * 10 + b"\x00"
 
 
@@ -94,8 +98,126 @@ def _sibling(path, name):
     return name if os.path.isabs(name) else os.path.join(os.path.dirname(path), name)
 
 
+class _File:
+    """An image read as it is"""
+    def __init__(self, path):
+        self.f = open(path, "rb")
+
+    def read_at(self, off, n):
+        self.f.seek(off)
+        return self.f.read(n)
+
+    def close(self):
+        self.f.close()
+
+
+class _Blocks:
+    """A container of zlib blocks, read as the image they hold: a .cso
+    (src/discimg.c, PPSSPP's CISO reader) or a PSone .pbp (PCSX ReARMed's)"""
+    def __init__(self, path):
+        self.f = open(path, "rb")
+        self.f.seek(0, 2)
+        self.fsize = self.f.tell()
+        self.at, self.buf = -1, b""
+
+    def raw(self, off, n):
+        self.f.seek(off)
+        return self.f.read(n)
+
+    def read_at(self, off, n):
+        out = bytearray()
+        while n > 0 and off < self.size:
+            b, inside = divmod(off, self.block)
+            if b != self.at:
+                d = self.load(b)
+                if d is None:
+                    break
+                self.at, self.buf = b, d
+            take = min(n, self.block - inside, self.size - off)
+            out += self.buf[inside:inside + take]
+            off, n = off + take, n - take
+        return bytes(out)
+
+    def close(self):
+        self.f.close()
+
+
+class _Cso(_Blocks):
+    def __init__(self, path):
+        super().__init__(path)
+        h = self.raw(0, 24)
+        if len(h) < 24 or h[:4] != b"CISO" or h[20] > 1:
+            raise ValueError("not a CISO this reads")
+        self.size = int.from_bytes(h[8:16], "little")
+        self.block, self.align = int.from_bytes(h[16:20], "little"), h[21]
+        if (self.block < 2048 or self.block > 16 << 20 or self.block & (self.block - 1)
+                or self.align > 20):
+            raise ValueError("bad CISO header")
+        self.nblocks = -(-self.size // self.block)
+
+    def load(self, b):
+        import zlib
+        if b >= self.nblocks:
+            return None
+        e = self.raw(24 + 4 * b, 8)
+        if len(e) < 8:
+            return None
+        i0, i1 = int.from_bytes(e[:4], "little"), int.from_bytes(e[4:], "little")
+        pos, end = (i0 & 0x7fffffff) << self.align, (i1 & 0x7fffffff) << self.align
+        if i0 & 0x80000000:
+            return self.raw(pos, self.block).ljust(self.block, b"\0")
+        z = zlib.decompressobj(-15)
+        try:
+            d = z.decompress(self.raw(pos, min(end - pos, self.block + (1 << self.align))))
+        except zlib.error:
+            return None
+        return d if len(d) == self.block and z.eof else None
+
+
+class _PbpPsx(_Blocks):
+    BLOCK = 16 * 2352
+
+    def __init__(self, path):
+        super().__init__(path)
+        h = self.raw(0, 40)
+        if len(h) < 40 or h[:4] != b"\0PBP":
+            raise ValueError("not a PBP")
+        psar = int.from_bytes(h[36:40], "little")
+        img, sig = psar, self.raw(psar, 16)
+        if sig[:10] == b"PSTITLEIMG":
+            first = int.from_bytes(self.raw(psar + 0x200, 4), "little")
+            if not first:
+                raise ValueError("no disc")
+            img = psar + first
+            sig = self.raw(img, 16)
+        if sig[:10] != b"PSISOIMG00":
+            raise ValueError("no PSone disc")
+        self.index, self.base = img + 0x4000, img + 0x100000
+        self.block = self.BLOCK
+        self.nblocks = (0x100000 - 0x4000) // 32
+        self.size = self.nblocks * self.BLOCK
+
+    def load(self, b):
+        import zlib
+        e = self.raw(self.index + 32 * b, 8)
+        if len(e) < 8:
+            return None
+        pos, ln = self.base + int.from_bytes(e[:4], "little"), int.from_bytes(e[4:6], "little")
+        if not ln or ln > self.BLOCK:
+            return None
+        data = self.raw(pos, ln)
+        z = zlib.decompressobj(-15)
+        try:
+            d = z.decompress(data)
+            if z.eof:
+                return d.ljust(self.BLOCK, b"\0")
+        except zlib.error:
+            pass
+        return data if ln == self.BLOCK else None
+
+
 def _psx_track1(path):
-    """(file, byte offset of track 1) for a disc, or None."""
+    """(reader, byte offset of track 1) for a disc, or None."""
     ext = os.path.splitext(path)[1].lower()
     if ext == ".m3u":
         for line in open(path, encoding="utf-8", errors="replace"):
@@ -120,10 +242,16 @@ def _psx_track1(path):
                     ss = 2048 if "/2048" in t else 2336 if "/2336" in t else 2352
             elif in1 and u.startswith("INDEX 01") and cur:
                 mm, sec, fr = (int(x) for x in t[8:].strip().split(":")[:3])
-                return _sibling(path, cur), ((mm * 60 + sec) * 75 + fr) * ss
+                f = _sibling(path, cur)
+                return (_File(f), ((mm * 60 + sec) * 75 + fr) * ss) if os.path.isfile(f) else None
         return None
-    if ext in (".bin", ".iso", ".img"):
-        return path, 0
+    try:
+        if ext in (".bin", ".iso", ".img"):
+            return _File(path), 0
+        if ext == ".pbp":
+            return _PbpPsx(path), 0
+    except (OSError, ValueError):
+        return None
     return None
 
 
@@ -132,23 +260,20 @@ class _Track:
         self.f, self.offset = f, offset
         self.ss = None
         for ss in (2352, 2336):
-            f.seek(16 * ss + offset)
-            h = f.read(32)
+            h = f.read_at(16 * ss + offset, 32)
             if len(h) == 32 and h[:12] == SYNC:
                 bcd = lambda b: (b >> 4) * 10 + (b & 15)
                 self.ss, self.hdr = ss, (24 if h[25:30] == b"CD001" else 16)
                 self.first = (bcd(h[12]) * 60 + bcd(h[13])) * 75 + bcd(h[14]) - 150 - 16
                 return
-        f.seek(16 * 2048 + offset)
-        h = f.read(32)
+        h = f.read_at(16 * 2048 + offset, 32)
         if h[1:6] == b"CD001":
             self.ss, self.hdr, self.first = 2048, 0, 0
 
     def read(self, sector, n=2048):
         if sector < self.first:
             return b""
-        self.f.seek((sector - self.first) * self.ss + self.hdr + self.offset)
-        return self.f.read(min(n, 2048))
+        return self.f.read_at((sector - self.first) * self.ss + self.hdr + self.offset, min(n, 2048))
 
     def find(self, path):
         """(sector, size) of a file by backslashed path, or (0, 0). The root's
@@ -192,13 +317,32 @@ class _Track:
             sector = hit[0]
         return 0, 0
 
+    def file(self, sector, size):
+        """A file's bytes as rc_hash_cd_file reads them: its first sector
+        whole or nothing, then up to its size, capped at 64 MB"""
+        first = self.read(sector)
+        if len(first) < 2048:
+            return None
+        size = min(size, 64 * 1024 * 1024)
+        out = [first[:size]]
+        size -= min(size, 2048)
+        while size > 0:
+            sector += 1
+            d = self.read(sector, min(size, 2048))
+            if not d:
+                break
+            out.append(d)
+            size -= len(d)
+        return b"".join(out)
+
 
 def psx_hash_input(path):
     """The bytes RA's PlayStation hash is the MD5 of, or None."""
     t1 = _psx_track1(path)
-    if not t1 or not os.path.isfile(t1[0]):
+    if not t1:
         return None
-    with open(t1[0], "rb") as f:
+    f = t1[0]
+    try:
         t = _Track(f, t1[1])
         if not t.ss:
             return None
@@ -240,6 +384,40 @@ def psx_hash_input(path):
             size -= len(d)
             sector += 1
         return b"".join(out)
+    finally:
+        f.close()
+
+
+def psp_md5(path):
+    """RA's PSP hash (rc_hash_psp), or None: a .pbp whole, else PARAM.SFO
+    then EBOOT.BIN off the disc an .iso or a .cso holds"""
+    ext = os.path.splitext(path)[1].lower()
+    if ext == ".pbp":
+        m = hashlib.md5()
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                m.update(chunk)
+        return m.hexdigest()
+    try:
+        f = _File(path) if ext == ".iso" else _Cso(path) if ext == ".cso" else None
+    except (OSError, ValueError):
+        return None
+    if f is None:
+        return None
+    try:
+        t = _Track(f, 0)
+        if not t.ss:
+            return None
+        m = hashlib.md5()
+        for name in ("PSP_GAME\\PARAM.SFO", "PSP_GAME\\SYSDIR\\EBOOT.BIN"):
+            sector, size = t.find(name)
+            body = t.file(sector, size) if sector else None
+            if body is None:
+                return None
+            m.update(body)
+        return m.hexdigest()
+    finally:
+        f.close()
 
 
 # Disc containers with no walk here, refused unread as src/rahash.c refuses
@@ -250,6 +428,8 @@ DISC_EXTS = ("chd", "cue", "ccd", "toc", "iso", "cso", "img", "m3u", "pbp", "mdf
 
 def ra_md5(tag, path):
     """RA's hash of one game, or None when there is none to make."""
+    if tag == "PSP":
+        return psp_md5(path)
     if tag in DISC_TAGS:
         body = psx_hash_input(path)
         return hashlib.md5(body).hexdigest() if body is not None else None

@@ -1,0 +1,60 @@
+{
+ "chd": {
+  "ps1-cd.chd": {
+   "codecs": "cdlz (CD LZMA), cdzl (CD Deflate), cdfl (CD FLAC)",
+   "hash": "50d0eb3f638681bc112b1be5dc1c50d1",
+   "md5": "ef5f69b513d2be5f340d812b84176c26",
+   "system": "PS1"
+  },
+  "ps1-cdfl.chd": {
+   "codecs": "cdfl (CD FLAC)",
+   "hash": "50d0eb3f638681bc112b1be5dc1c50d1",
+   "md5": "5606de9eee24304f5b40d999ee8aec90",
+   "system": "PS1"
+  },
+  "ps1-cdzl.chd": {
+   "codecs": "cdzl (CD Deflate)",
+   "hash": "50d0eb3f638681bc112b1be5dc1c50d1",
+   "md5": "9bfe570b36327a651176adedf2a10187",
+   "system": "PS1"
+  },
+  "ps1sub-cd.chd": {
+   "codecs": "cdlz (CD LZMA), cdzl (CD Deflate), cdfl (CD FLAC)",
+   "hash": "d45afc23a37ad4f82b01e51ca8aa2143",
+   "md5": "e28da68b604f99ceb1b3de45ce97a9b4",
+   "system": "PS1"
+  },
+  "psp-cd.chd": {
+   "codecs": "cdlz (CD LZMA), cdzl (CD Deflate), cdfl (CD FLAC)",
+   "hash": "9ac4b137f1eedfd34705319a8a2d5f31",
+   "md5": "87b29e308973295848dfb9915cbe0046",
+   "system": "PSP"
+  },
+  "psp-dvd.chd": {
+   "codecs": "lzma (LZMA), zlib (Deflate), huff (Huffman), flac (FLAC)",
+   "hash": "9ac4b137f1eedfd34705319a8a2d5f31",
+   "md5": "f315a8ec59502c82e1a5cab556809803",
+   "system": "PSP"
+  },
+  "psp-huff.chd": {
+   "codecs": "huff (Huffman)",
+   "hash": "9ac4b137f1eedfd34705319a8a2d5f31",
+   "md5": "ac2f8bc470906caa50916c1138140fca",
+   "system": "PSP"
+  }
+ },
+ "hashes": {
+  "ps1": "50d0eb3f638681bc112b1be5dc1c50d1",
+  "ps1sub": "d45afc23a37ad4f82b01e51ca8aa2143",
+  "psn": "8a36415c56c375f890b837a4402b854b",
+  "psp": "9ac4b137f1eedfd34705319a8a2d5f31"
+ },
+ "made_with": "chdman - MAME Compressed Hunks of Data (CHD) manager 0.289 (unknown)",
+ "reference": "upstream rcheevos rc_hash_generate_from_file, default cdreader",
+ "sources": {
+  "ps1.bin": "26eb225519d9f1359a4dff8cbe2febab",
+  "ps1sub.bin": "4f02f67a382af40e31d105925f94d78b",
+  "psn.pbp": "8a36415c56c375f890b837a4402b854b",
+  "psp.iso": "65349bd89f42603b7bc65bb4a9488ff1"
+ }
+}

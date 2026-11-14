@@ -260,10 +260,14 @@ int gm_disc_step(int disc, int discs, int d);
  *   Display   Display, Shader, Strength (an old screen's shader), and a DS
  *             game's Screens, Swap Screens, Stylus
  *   Controls  none from here: its rows are src/ctltab.c's
+ *   Achievements  none from here either: the game's list, or the sentence
+ *             that says why there is none, are src/achtab.c's (1.0.5).
+ *             The Game tab's Achievements row stays, its count at a
+ *             glance, and A on it turns to this tab, the one L1 would
  * GM_CONTROLS and GM_PAK are in no tab: Controls is a tab now and Pak is one
  * of its rows. A port's menu (u->port) has no tabs and is Continue, Controls
  * and Quit whichever tab is asked for. */
-typedef enum { GT_GAME, GT_DISPLAY, GT_CONTROLS, GT_TABS } gm_tab;
+typedef enum { GT_GAME, GT_DISPLAY, GT_CONTROLS, GT_ACHIEVEMENTS, GT_TABS } gm_tab;
 const char *gm_tab_name(int t);
 int gm_tab_rows(const gm_ui *u, gm_tab t, gm_row *ids);
 /* Where row `id` is in tab `t`'s list, or -1 when that tab has none */

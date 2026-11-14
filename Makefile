@@ -6,7 +6,7 @@
 # docs/building.md says how to work on a device.
 
 .PHONY: all clean native px2-payload vendor boot system-art checkmark \
-        check check-cheevos check-hare check-portal check-httpd check-idle check-taskhold check-saver check-rahash check-signin check-search \
+        check check-cheevos check-hare check-portal check-httpd check-idle check-taskhold check-saver check-rahash check-flacdec check-achtab check-signin check-search \
         check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-status check-battery check-corner check-artscrape check-artrun check-sgdb check-snapshelf check-snaps check-audioout \
         check-db check-gamedel check-gamern check-esmedia check-corepins check-targets yuvtarget check-storage check-stats check-sort check-bt check-ss check-titles check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-randgame check-shelfdir \
         check-sysmark check-flip check-menushots check-controls-shots check-design check-systemart check-linebreak check-portload \
@@ -28,7 +28,7 @@ NATIVE_J = $(if $(filter -j%,$(MAKEFLAGS))$(findstring j,$(filter-out -%,$(first
 # had to be remembered by name, which is a suite in the same sense that a list
 # of good intentions is a plan. A check nobody runs is a check that does not
 # exist, and check-menus was about to join eight others in that state.
-CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-taskhold check-saver check-rahash check-rasubmit check-raoffline check-signin check-noticeq check-badges check-badge-shots \
+CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-taskhold check-saver check-rahash check-flacdec check-achtab check-rasubmit check-raoffline check-signin check-noticeq check-badges check-badge-shots \
          check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-snaps check-audioout \
          check-db check-gamedel check-gamern check-esmedia check-media check-snapsize check-corepins check-targets check-storage check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
          check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-p2share check-webtheme check-p2ws check-p2codec check-p2d check-play check-p2 check-resident check-controls check-remap check-controls-shots check-logpack \
@@ -981,6 +981,13 @@ strings:
 # strings and their tables (src/i18n.h). English, as the launcher is before
 # the setting is read, unless the check sets another.
 I18N_SRC := src/i18n.c src/i18n_tables.c
+# The RetroAchievements hasher and the disc readers under it (src/rahash.h,
+# src/discimg.h): every check that links one links them all, and liblzma
+# for a CHD's LZMA hunks (Homebrew's xz on a Mac; the device has the
+# system's, which FFmpeg already needs)
+RAHASH_SRC := src/rahash.c src/discimg.c src/chd.c src/flacdec.c
+LZMA_CFLAGS := $(shell pkg-config --cflags liblzma 2>/dev/null)
+LZMA_LIBS := $(shell pkg-config --libs liblzma 2>/dev/null || echo -llzma)
 
 check-strings:
 	@python3 tools/i18n.py --check
@@ -1372,10 +1379,28 @@ build-native/snapshelf-check: tools/snapshelf-check.c src/snapshelf.c src/snapsh
 check-rahash: build-native/rahash-check
 	@python3 tools/rahash-check.py
 
-build-native/rahash-check: tools/rahash-check.c src/rahash.c src/rahash.h FORCE
+# The in-game menu's Achievements tab, as words and rows (src/achtab.h): each
+# state its own sentence, in the order that decides it, the counts line, and
+# an achievement's row as both lists draw it
+check-achtab: build-native/achtab-check
+	@./build-native/achtab-check
+
+build-native/achtab-check: tools/achtab-check.c src/achtab.c src/achtab.h src/cheevos.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
-	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/rahash-check.c src/rahash.c -lz
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Isrc \
+	      -o $@ tools/achtab-check.c src/achtab.c $(I18N_SRC)
+
+# The FLAC frame decoder a CHD's FLAC hunks go through (src/flacdec.h), held
+# to libFLAC's own encoder at every setting it has. Needs the flac tool
+# (Homebrew's flac); skips cleanly without it.
+check-flacdec:
+	@python3 tools/flacdec-check.py
+
+build-native/rahash-check: tools/rahash-check.c $(RAHASH_SRC) src/rahashjob.c src/rahash.h src/rahashjob.h \
+                          src/discimg.h src/chd.h src/flacdec.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g $(LZMA_CFLAGS) \
+	      -o $@ tools/rahash-check.c $(RAHASH_SRC) src/rahashjob.c -lz $(LZMA_LIBS) -lpthread
 
 .PHONY: check-noticeq check-badges check-badge-shots check-rasubmit check-lowbatt check-heat check-charging
 
@@ -1429,21 +1454,21 @@ check-badge-shots:
 check-signin: build-native/signin-check
 	@./build-native/signin-check
 
-build-native/signin-check: tools/signin-check.c src/rafetch.c src/rafetch.h src/net.c src/net.h src/rajson.c src/rahash.c src/atomic.c src/db.c $(I18N_SRC) FORCE
+build-native/signin-check: tools/signin-check.c src/rafetch.c src/rafetch.h src/net.c src/net.h src/rajson.c $(RAHASH_SRC) src/atomic.c src/db.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -DZYPEROS_VERSION='"check"' \
 	      -DNET_TMP='"$(CURDIR)/build-native/signin-check-tmp"' \
-	      -o $@ tools/signin-check.c src/rafetch.c src/rajson.c src/rahash.c src/atomic.c src/db.c $(I18N_SRC) -lsqlite3 -lz
+	      $(LZMA_CFLAGS) -o $@ tools/signin-check.c src/rafetch.c src/rajson.c $(RAHASH_SRC) src/atomic.c src/db.c $(I18N_SRC) -lsqlite3 -lz $(LZMA_LIBS)
 
 # What a refused unlock means for the queue (ra_refusal): settled, the
 # account's, or that one row's. No request is made.
 check-rasubmit: build-native/rasubmit-check
 	@./build-native/rasubmit-check
 
-build-native/rasubmit-check: tools/rasubmit-check.c src/rafetch.c src/rafetch.h src/rajson.c src/rahash.c src/net.c src/atomic.c src/db.c $(I18N_SRC) FORCE
+build-native/rasubmit-check: tools/rasubmit-check.c src/rafetch.c src/rafetch.h src/rajson.c $(RAHASH_SRC) src/net.c src/atomic.c src/db.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -DZYPEROS_VERSION='"check"' \
-	      -o $@ tools/rasubmit-check.c src/rafetch.c src/rajson.c src/rahash.c src/net.c src/atomic.c src/db.c $(I18N_SRC) -lsqlite3 -lz
+	      $(LZMA_CFLAGS) -o $@ tools/rasubmit-check.c src/rafetch.c src/rajson.c $(RAHASH_SRC) src/net.c src/atomic.c src/db.c $(I18N_SRC) -lsqlite3 -lz $(LZMA_LIBS)
 
 # Achievements earned offline, sent when a network is back: the store, the
 # unlock queue's worker and the request, with this check's own binary for curl
@@ -1457,8 +1482,8 @@ check-raoffline:
 		  -DNET_TMP='"$(CURDIR)/build-native/raoffline-check-tmp"' \
 		  -DZYPEROS_VERSION='"check"' \
 		  -o build-native/raoffline-check tools/raoffline-check.c src/raqueue.c \
-		  src/cheevos.c src/rafetch.c src/rajson.c src/rahash.c src/atomic.c src/db.c \
-		  $(I18N_SRC) $$(pkg-config --libs sdl2) -lsqlite3 -lz -lpthread && \
+		  src/cheevos.c src/rafetch.c src/rajson.c $(RAHASH_SRC) src/atomic.c src/db.c \
+		  $(I18N_SRC) $(LZMA_CFLAGS) $$(pkg-config --libs sdl2) -lsqlite3 -lz $(LZMA_LIBS) -lpthread && \
 		./build-native/raoffline-check; \
 	else echo "skipped: no SDL2 for the offline achievements check"; fi
 
@@ -1468,10 +1493,10 @@ check-raoffline:
 check-raset: build-native/raset-check
 	@python3 tools/raset-check.py
 
-build-native/raset-check: tools/raset-check.c src/rafetch.c src/rajson.c src/rahash.c src/net.c src/atomic.c src/db.c $(I18N_SRC) FORCE
+build-native/raset-check: tools/raset-check.c src/rafetch.c src/rajson.c $(RAHASH_SRC) src/net.c src/atomic.c src/db.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -DZYPEROS_VERSION='"check"' \
-	      -o $@ tools/raset-check.c src/rafetch.c src/rajson.c src/rahash.c src/net.c src/atomic.c src/db.c $(I18N_SRC) -lsqlite3 -lz
+	      $(LZMA_CFLAGS) -o $@ tools/raset-check.c src/rafetch.c src/rajson.c $(RAHASH_SRC) src/net.c src/atomic.c src/db.c $(I18N_SRC) -lsqlite3 -lz $(LZMA_LIBS)
 
 # Whether this build can reach ScreenScraper, and whether an account survives
 # a restart. The live half needs a network and .screenscraper.env, and skips

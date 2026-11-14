@@ -8,7 +8,9 @@
 #include <string.h>
 #include <strings.h>
 #include <zlib.h>
+#include <fcntl.h>
 
+#include "discimg.h"
 #include "rahash.h"
 
 /* ---------------------------------------------------------------- MD5 ---- */
@@ -327,19 +329,20 @@ static bool n64_to_z64(unsigned char *d, size_t n)
  * fail or, worse, push the running game out of memory.
  *
  * WHAT THIS READS: .cue (its first FILE, which holds track 1), a bare .bin,
- * .iso or .img, and .m3u (its first disc, as rcheevos does). WHAT IT DOES NOT:
+ * .iso or .img, .m3u (its first disc, as rcheevos does), and, through
+ * src/discimg.c, a .chd (its first track) and a PSone Classics .pbp (its
+ * first disc). For those two RetroAchievements has no rule of its own: the
+ * hash is the disc's, whatever holds it, which is what RetroArch's CHD reader
+ * gives rcheevos and what DuckStation, which reads a .pbp, hashes too. So a
+ * game converted from .cue/.bin to .chd or .pbp keeps its hash, which RA
+ * knows, rather than one of the container, which it would not.
  *
- *   .chd  compressed hunks, which need libchdr's LZMA, FLAC, zlib and zstd.
- *         rcheevos itself only reads CHD when the frontend lends it a reader.
- *   .pbp  RetroAchievements does not hash PlayStation PBPs at all: rcheevos
- *         files the extension under the PSP. A PBP has no hash to find.
- *
- * Both answer false, unread (refused_by_name), which the launcher reads as "no
- * set to fetch", and its Achievements rows as "not for this file"
- * (ra_hash_support). Converting a .chd to .cue/.bin is how such a game gets
- * its achievements. */
+ * A PlayStation .pbp read with no system known (RetroArch's way: rcheevos
+ * files the extension under the PSP) is hashed whole, and RA knows no
+ * PlayStation game by that. ZyperOS always knows the shelf, so it never asks
+ * that way. */
 typedef struct {
-	FILE *f;
+	disc *f;
 	long  ss;        /* bytes a sector takes in the file: 2352, 2336 or 2048 */
 	long  hdr;       /* bytes before the 2048 of data: 24, 16, 8 or 0 */
 	long  first;     /* the disc sector the file's first sector is */
@@ -357,10 +360,8 @@ static size_t psx_read(psx_track *t, long sector, void *buf, size_t n)
 {
 	if (sector < t->first) return 0;
 	if (n > 2048) n = 2048;
-	if (fseeko(t->f, (off_t)(sector - t->first) * t->ss + t->hdr + t->offset,
-	           SEEK_SET) != 0)
-		return 0;
-	return fread(buf, 1, n, t->f);
+	return disc_read(t->f, (uint64_t)(sector - t->first) * (uint64_t)t->ss +
+	                 (uint64_t)t->hdr + (uint64_t)t->offset, buf, n);
 }
 
 /* rcheevos's cdreader_determine_sector_size: look for the sync pattern at
@@ -376,8 +377,8 @@ static bool psx_sense(psx_track *t)
 	int i;
 
 	for (i = 0; i < 2; i++) {
-		if (fseeko(t->f, (off_t)16 * sizes[i] + t->offset, SEEK_SET) != 0 ||
-		    fread(h, 1, sizeof h, t->f) != sizeof h)
+		if (disc_read(t->f, (uint64_t)16 * (uint64_t)sizes[i] + (uint64_t)t->offset,
+		              h, sizeof h) != sizeof h)
 			continue;
 		if (memcmp(h, sync, 12)) continue;
 		t->ss  = sizes[i];
@@ -385,8 +386,8 @@ static bool psx_sense(psx_track *t)
 		t->first = (bcd(h[12]) * 60 + bcd(h[13])) * 75 + bcd(h[14]) - 150 - 16;
 		return true;
 	}
-	if (fseeko(t->f, (off_t)16 * 2048 + t->offset, SEEK_SET) == 0 &&
-	    fread(h, 1, sizeof h, t->f) == sizeof h && !memcmp(h + 1, "CD001", 5)) {
+	if (disc_read(t->f, (uint64_t)16 * 2048 + (uint64_t)t->offset, h, sizeof h) == sizeof h &&
+	    !memcmp(h + 1, "CD001", 5)) {
 		t->ss = 2048;
 		t->hdr = 0;
 		t->first = 0;
@@ -551,15 +552,18 @@ static bool ra_hash_psx(const char *path, char *out)
 	}
 	if (has_ext(path, "cue")) {
 		if (!cue_track1(path, file, sizeof file, &t.offset)) return false;
+		t.f = disc_open_file(file);
 	} else if (has_ext(path, "bin") || has_ext(path, "iso") || has_ext(path, "img")) {
-		snprintf(file, sizeof file, "%s", path);
+		t.f = disc_open_file(path);
+	} else if (has_ext(path, "chd")) {
+		t.f = disc_open_chd_cd(path);
+	} else if (has_ext(path, "pbp")) {
+		t.f = disc_open_pbp_psx(path);
 	} else {
-		return false;          /* .chd, .pbp: see above */
+		return false;
 	}
-
-	t.f = fopen(file, "rb");
 	if (!t.f) return false;
-	if (!psx_sense(&t)) { fclose(t.f); return false; }
+	if (!psx_sense(&t)) { disc_close(t.f); return false; }
 
 	/* SYSTEM.CNF's BOOT line, exactly as rc_hash_find_playstation_executable
 	 * reads it: the first sector only, "cdrom:" and leading backslashes off,
@@ -600,7 +604,7 @@ static bool ra_hash_psx(const char *path, char *out)
 		sector = psx_find(&t, "PSX.EXE", &size);
 		if (sector) snprintf(name, sizeof name, "PSX.EXE");
 	}
-	if (!sector || psx_read(&t, sector, buf, 32) < 32) { fclose(t.f); return false; }
+	if (!sector || psx_read(&t, sector, buf, 32) < 32) { disc_close(t.f); return false; }
 	if (!memcmp(buf, "PS-X EXE", 7))
 		size = rd32(buf + 28) + 2048;
 	if (size > 64u * 1024 * 1024) size = 64u * 1024 * 1024;
@@ -615,9 +619,93 @@ static bool ra_hash_psx(const char *path, char *out)
 		md5_update(&m, buf, got);
 		size -= (uint32_t)got;
 	}
-	fclose(t.f);
+	disc_close(t.f);
 	md5_hex(&m, out);
 	return true;
+}
+
+/* ------------------------------------------------------------- PSP ---- */
+
+/* A PSP disc is hashed by two of its files, one after the other, with no
+ * names: PSP_GAME/PARAM.SFO (the game's title and serial) and
+ * PSP_GAME/SYSDIR/EBOOT.BIN (its executable), rcheevos's rc_hash_psp, each
+ * as long as its directory says, the second capped at 64 MB as theirs is.
+ * The walk is the PlayStation's (psx_find), over 2048-byte sectors.
+ *
+ * .iso is read as it is, .cso and .chd as the ISO they hold, the way PPSSPP
+ * reads them (src/discimg.c): its own RetroAchievements client hashes what
+ * its block device gives it, so the hash is the ISO's. A .pbp - a PSN game's
+ * EBOOT.PBP - is hashed whole, rc_hash_psp's first rule: it holds the
+ * PARAM.SFO and the executable and more besides, and RA hashes all of it.
+ * That is the one hash here that reads a file to its end; up to 1.8 GB, it
+ * goes through 64 KB at a time and, on Linux, tells the kernel to drop what
+ * it has read, so the game's own reads keep the page cache. */
+static bool psp_add_file(psx_track *t, md5_ctx *m, const char *name)
+{
+	unsigned char buf[2048];
+	uint32_t size = 0, sector = psx_find(t, name, &size);
+	size_t got;
+
+	if (!sector) return false;
+	/* rc_hash_cd_file: the file's first sector must read whole */
+	if (psx_read(t, (long)sector, buf, sizeof buf) < sizeof buf) return false;
+	if (size > 64u * 1024 * 1024) size = 64u * 1024 * 1024;
+	got = sizeof buf;
+	for (;;) {
+		size_t take = size < got ? size : got;
+
+		md5_update(m, buf, take);
+		if (size <= got) break;
+		size -= (uint32_t)got;
+		got = psx_read(t, (long)++sector, buf, size < sizeof buf ? size : sizeof buf);
+		if (!got) break;
+	}
+	return true;
+}
+
+static bool hash_whole_file(const char *path, char *out)
+{
+	/* Not static: the flush worker can hash while the main thread does */
+	unsigned char *buf = malloc(64 * 1024);
+	FILE *f = buf ? fopen(path, "rb") : NULL;
+	md5_ctx m;
+	size_t got;
+	off_t done = 0;
+
+	if (!f) { free(buf); return false; }
+	md5_init(&m);
+	while ((got = fread(buf, 1, 64 * 1024, f)) > 0) {
+		md5_update(&m, buf, got);
+		done += (off_t)got;
+#if defined(__linux__) && defined(POSIX_FADV_DONTNEED)
+		posix_fadvise(fileno(f), 0, done, POSIX_FADV_DONTNEED);
+#endif
+	}
+	free(buf);
+	if (ferror(f) || !done) { fclose(f); return false; }
+	fclose(f);
+	md5_hex(&m, out);
+	return true;
+}
+
+static bool ra_hash_psp(const char *path, char *out)
+{
+	psx_track t = { 0 };
+	md5_ctx m;
+	bool ok;
+
+	if (has_ext(path, "pbp")) return hash_whole_file(path, out);
+	if (has_ext(path, "iso")) t.f = disc_open_file(path);
+	else if (has_ext(path, "cso")) t.f = disc_open_cso(path);
+	else if (has_ext(path, "chd")) t.f = disc_open_chd_2048(path);
+	if (!t.f) return false;
+	if (!psx_sense(&t)) { disc_close(t.f); return false; }
+	md5_init(&m);
+	ok = psp_add_file(&t, &m, "PSP_GAME\\PARAM.SFO") &&
+	     psp_add_file(&t, &m, "PSP_GAME\\SYSDIR\\EBOOT.BIN");
+	disc_close(t.f);
+	if (ok) md5_hex(&m, out);
+	return ok;
 }
 
 void ra_md5_hex(const void *data, size_t len, char *out)
@@ -631,12 +719,13 @@ void ra_md5_hex(const void *data, size_t len, char *out)
 
 /* What ra_hash_rom refuses by the file's name, before it opens it: a disc it
  * has no walk for. The PlayStation's walk reads a .cue (and an .m3u's first
- * disc), a bare .bin, .iso or .img, and nothing else (ra_hash_psx); an arcade
- * set is hashed by its name, whatever the file is.
+ * disc), a bare .bin, .iso or .img, a .chd and a .pbp (ra_hash_psx); the
+ * PSP's an .iso, .cso, .chd or .pbp (ra_hash_psp); an arcade set is hashed by
+ * its name, whatever the file is.
  *
- * Any other system's disc is refused UNREAD. Only the PlayStation's has a
- * walk here, and the cartridge path reads a file whole: a Sega CD or Neo Geo
- * CD .chd is 100 to 430 MB, which on the Pixel 2's 1 GB, beside the game that
+ * Any other system's disc is refused UNREAD. Only those two have a walk
+ * here, and the cartridge path reads a file whole: a Sega CD or Neo Geo CD
+ * .chd is 100 to 430 MB, which on the Pixel 2's 1 GB, beside the game that
  * is running, is the whole problem, for a hash of the container that no game
  * has. .bin is not on the list, because it is also what a Genesis or 2600
  * cartridge is called. */
@@ -645,7 +734,11 @@ static bool refused_by_name(const char *tag, const char *path)
 	if (!strcmp(tag, "PS1"))
 		return !has_ext(path, "m3u") && !has_ext(path, "cue") &&
 		       !has_ext(path, "bin") && !has_ext(path, "iso") &&
-		       !has_ext(path, "img");
+		       !has_ext(path, "img") && !has_ext(path, "chd") &&
+		       !has_ext(path, "pbp");
+	if (!strcmp(tag, "PSP"))
+		return !has_ext(path, "iso") && !has_ext(path, "cso") &&
+		       !has_ext(path, "chd") && !has_ext(path, "pbp");
 	if (!strcmp(tag, "ARCADE") || !strcmp(tag, "NEOGEO") || !strcmp(tag, "MAME"))
 		return false;
 	return is_disc_image(path);
@@ -692,6 +785,7 @@ bool ra_hash_rom(const char *path, const char *tag, char *out)
 
 	/* Before anything reads the file: a disc is hashed by what is on it. */
 	if (!strcmp(tag, "PS1")) return ra_hash_psx(path, out);
+	if (!strcmp(tag, "PSP")) return ra_hash_psp(path, out);
 
 	/* An arcade set is hashed by its NAME, rcheevos's rc_hash_arcade: md5 of
 	 * "mslug" for mslug.zip. The chips inside are FinalBurn Neo's to check,

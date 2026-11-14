@@ -202,6 +202,8 @@ const char *gm_tab_name(int t)
 	switch (t) {
 	case GT_DISPLAY:  return T(S_GAMEMENU_TAB_DISPLAY);
 	case GT_CONTROLS: return T(S_GAMEMENU_TAB_CONTROLS);
+	/* The row's own word, the glossary's Achievements, in every language */
+	case GT_ACHIEVEMENTS: return T(S_SYSMENU_CHEEVOS);
 	default:          return T(S_GAMEMENU_TAB_GAME);
 	}
 }
@@ -302,8 +304,9 @@ int gm_rows(const gm_ui *u, gm_tab t, menu_row *out, gm_bufs *b)
 
 	/* Most of a library has no set, and a row that says so plainly is better
 	 * than one that is missing: "none" answers the question the player opened
-	 * the menu to ask. Drawn quiet, and does nothing when chosen - so the
-	 * cursor steps over it rather than resting on a row that ignores A. */
+	 * the menu to ask. Live whatever it says: A on it turns to the
+	 * Achievements tab (1.0.5), which says in a sentence why there is no
+	 * list, where it used to be quiet and do nothing. */
 	if (u->total > 0)
 		snprintf(b->cheevos, sizeof b->cheevos, "%d / %d", u->earned, u->total);
 	/* Never played with a network, so nobody has asked whether it has any:
@@ -316,10 +319,8 @@ int gm_rows(const gm_ui *u, gm_tab t, menu_row *out, gm_bufs *b)
 		snprintf(b->cheevos, sizeof b->cheevos, "%s",
 		         T(u->no_hash == RA_HASH_NO_SYSTEM ? S_CHEEVOS_NOT_SYSTEM
 		                                           : S_CHEEVOS_NOT_FILE));
-		full[GM_CHEEVOS].live = false;
 	} else {
 		snprintf(b->cheevos, sizeof b->cheevos, "%s", T(S_GAMEMENU_CHEEVOS_NONE));
-		full[GM_CHEEVOS].live = false;
 	}
 	full[GM_CHEEVOS].value = b->cheevos;
 	full[GM_SCREENS].value = gm_layout_label(u->layout);

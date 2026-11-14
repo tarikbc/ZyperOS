@@ -8,7 +8,7 @@ ZYPEROS_VERSION = local
 ZYPEROS_SITE = /zyperos
 ZYPEROS_SITE_METHOD = local
 # diatom too: its binary goes on the card with ZyperOS's (see the install)
-ZYPEROS_DEPENDENCIES = sdl2 sdl2_image sdl2_ttf ffmpeg sqlite alsa-lib zlib diatom
+ZYPEROS_DEPENDENCIES = sdl2 sdl2_image sdl2_ttf ffmpeg sqlite alsa-lib zlib xz diatom
 # System Update's program (zyperos-update): its download, its signature check
 ZYPEROS_DEPENDENCIES += libcurl openssl
 # libdbus for btplayer, built only for the Brick (below)

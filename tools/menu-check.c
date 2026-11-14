@@ -1819,9 +1819,14 @@ static void ingame_rows(void)
 	u.dmode = "Native"; u.earned = 12; u.total = 40; u.quick = 2;
 
 	printf("in-game menu, the tabs:\n");
-	ck(GT_TABS == 3 && GT_GAME == 0 && GT_DISPLAY == 1 && GT_CONTROLS == 2, "three tabs, Game first");
+	ck(GT_TABS == 4 && GT_GAME == 0 && GT_DISPLAY == 1 && GT_CONTROLS == 2 &&
+	   GT_ACHIEVEMENTS == 3, "four tabs, Game first, Achievements last (L1 from Game)");
 	ck(!strcmp(gm_tab_name(GT_GAME), "Game") && !strcmp(gm_tab_name(GT_DISPLAY), "Display") &&
-	   !strcmp(gm_tab_name(GT_CONTROLS), "Controls"), "named Game, Display and Controls");
+	   !strcmp(gm_tab_name(GT_CONTROLS), "Controls") &&
+	   !strcmp(gm_tab_name(GT_ACHIEVEMENTS), "Achievements"),
+	   "named Game, Display, Controls and Achievements");
+	ck(gm_tab_rows(&u, GT_ACHIEVEMENTS, ids) == 0,
+	   "the Achievements tab's rows are src/achtab.c's, none from here");
 	ck(!strcmp(gm_tab_name(-1), "Game") && !strcmp(gm_tab_name(GT_TABS), "Game"),
 	   "a tab past the ends reads as the first");
 
@@ -1855,16 +1860,16 @@ static void ingame_rows(void)
 	   "every Diatom system keeps states but ScummVM and J2ME");
 	u.quick = 2;
 
-	/* Achievements dead when the game has no set */
+	/* Achievements says none when the game has no set, and is still a stop:
+	 * A on it turns to the Achievements tab, which says why (1.0.5) */
 	u.earned = 0; u.total = 0;
 	n = gm_rows(&u, GT_GAME, rows, &b);
 	printf("in-game menu, a game with no set:\n");
 	ck(!strcmp(val(&rows[gm_row_at(&u, GT_GAME, GM_CHEEVOS)]), "none"), "Achievements says none");
-	ck(!rows[gm_row_at(&u, GT_GAME, GM_CHEEVOS)].live, "and does nothing");
+	ck(rows[gm_row_at(&u, GT_GAME, GM_CHEEVOS)].live, "and is a stop, A turning to its tab");
 	k = reachable(rows, n, got, GM_MAX_ROWS);
-	ck(k == n - 1 && !holds(got, k, gm_row_at(&u, GT_GAME, GM_CHEEVOS)),
-	   "so the cursor steps over it and never rests on it");
-	ck(holds(got, k, 6) && holds(got, k, 0), "the rows either side of it still work");
+	ck(k == n && holds(got, k, gm_row_at(&u, GT_GAME, GM_CHEEVOS)),
+	   "so the cursor rests on it");
 	u.earned = 12; u.total = 40;
 
 	/* Display: a DS game adds the screens' three, in this order */

@@ -118,7 +118,7 @@ ja = このゲームの実績は、Wi-Fi に接続して初めて遊んだとき
 it = Gli obiettivi di questo gioco arrivano la prima volta che ci giochi con il Wi-Fi. Poi restano sulla scheda e funzionano anche offline.
 
 [cheevos.not_system]
-note = The game info screen and the in-game menu: the Achievements row's value for a game of a system whose games ZyperOS cannot identify for RetroAchievements (the PSP, discs of systems with no reader here). It stays so whatever the network, and A on it does nothing. A lowercase value; it stands for the achievements (plural).
+note = The game info screen and the in-game menu: the Achievements row's value for a game of a system whose games ZyperOS cannot identify for RetroAchievements (the Sega CD, the Saturn: discs of systems with no reader here). It stays so whatever the network, and A on it does nothing. A lowercase value; it stands for the achievements (plural).
 en = not for this system
 zh-Hans = 此系统不支持
 es = no para este sistema
@@ -129,7 +129,7 @@ ja = このシステムは非対応
 it = non per questo sistema
 
 [cheevos.not_file]
-note = The same row for a game in a kind of file ZyperOS cannot identify, on a system where another kind works (a PlayStation .chd, which a .cue and .bin would not be). Lowercase, as the one above.
+note = The same row for a game in a kind of file ZyperOS cannot identify, on a system where another kind works (a PlayStation .ccd, which a .cue and .bin would not be). Lowercase, as the one above.
 en = not for this file
 zh-Hans = 此文件不支持
 es = no para este archivo

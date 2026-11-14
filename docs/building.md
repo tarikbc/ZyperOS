@@ -70,7 +70,9 @@ something once broke in a way nothing noticed:
 | `check-taskhold` | long tasks and Auto Off (src/taskhold.h): what a loop says holds the clock for 2 s and lets go by itself, across the counter's wrap, and the real clock does not fire during a task and starts a whole countdown after it |
 | `check-saver` | the screensaver's policy (src/saver.h): the delay's ladder, when it starts and what holds it back (a button, music, a long task, a low battery, time away), when it ends on its own (the cable-less cap, a low battery), a clip's fades and timing, which game is next (none of the last twelve), and that Auto Off fires at its own time with it up, down or off |
 | `check-cheevos` | the achievement half: parsing and filtering |
-| `check-rahash` | the C and Python ROM hashers agree, over the whole library |
+| `check-rahash` | the C and Python ROM hashers agree, over the whole library; PlayStation and PSP discs in `.chd`, `.cso` and `.pbp` give upstream rcheevos's hashes (`tools/fixtures/rahash`, made by `tools/rahash-fixtures.py`), and broken ones are refused |
+| `check-flacdec` | the FLAC decoder under a CHD's FLAC hunks matches libFLAC's encoder at every setting (needs Homebrew's `flac`) |
+| `check-achtab` | the in-game menu's Achievements tab: each state its sentence, the counts line, an achievement's row |
 | `check-raset` | the C and Python set converters agree (needs `RA_USER`/`RA_PASS`) |
 | `check-artscrape` | two name normalizers agree on every candidate |
 | `check-artrun` | whole Scraper runs against a fake network: Replace keeps a cover it cannot better, a checksum names the ROM in a zip, not the readme beside it, libretro comes right after a ScreenScraper miss, ten in a row leave a system to libretro, misses are kept 30 days, and a system with covers off gets none |

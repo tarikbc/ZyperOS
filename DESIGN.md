@@ -866,8 +866,8 @@ a start, and after that on the tab and row it was closed on, until the
 handheld powers off; on Connections' USB Device while a plug waits for its
 answer (11.36). A system's menu is one list.
 
-**The in-game menu has tabs too**, three of them, **Game**, **Display** and
-**Controls**, in the same tab row from the same code: the tab set (names,
+**The in-game menu has tabs too**, four of them, **Game**, **Display**,
+**Controls** and **Achievements** (11.46), in the same tab row from the same code: the tab set (names,
 count, the tab on, the move) is passed to `menu_tabs_draw`, `menu_tab_row` and
 `menu_tabs_bar` in `menu_style.tabs`, so MENU's six and the in-game menu's
 three are one component, and the neighbours shown either side are at most
@@ -2414,7 +2414,7 @@ word for it.
 My picks in the controls lab (docs/design/mock/controls-lab.html,
 2026-11-06), made over on 2026-11-13 for the in-game menu's tabs and button
 remapping (docs/superpowers/specs/2026-11-13-button-remap-design.md, 11.45).
-The in-game menu is MENU's tab row (11.3) over three tabs, in the order L1
+The in-game menu is MENU's tab row (11.3) over four tabs, in the order L1
 and R1 go round them, and the panel is the same size on every tab:
 
 | Tab | Rows |
@@ -2422,6 +2422,7 @@ and R1 go round them, and the panel is the same size on every tab:
 | **Game** | Continue, Save, Load, Quick Slot, Disc (a game on more than one disc), Player 2 (an NES game, 11.43), Achievements, Reset, Quit |
 | **Display** | Display, Shader; a DS game's Screens, Swap Screens, Stylus |
 | **Controls** | Applies To, D-pad as Stick, Pak, Face Buttons, one row a button, Reset Buttons, Hotkeys (11.45) |
+| **Achievements** | the game's achievements, or the sentence that says why it has none (11.46) |
 
 **Where it opens.** The first MENU of a game opens on Game, on Continue.
 After that it opens on the tab and the row it was left on, until the game
@@ -3880,6 +3881,33 @@ first, then ZyperOS's. The note under the rows counts them ("330 of yours,
 10 ZyperOS", "330 tracks of yours"), or with none of the owner's says where
 they go ("Add MP3 or OGG to Menu Music"); the panel's rows leave it in the
 window once the list goes round.
+
+### 11.46 The Achievements tab
+
+The in-game menu's fourth tab (1.0.5), one L1 from Game, after Controls. It
+shows the running game's set where it is wanted, without a screen of its own
+over the menu (src/achtab.h, src/achtab_screen.h).
+
+- **The counts**, in **meta** **text-soft**, centered under the tab row and
+  pinned there while the list scrolls: "3 / 36 · 25 / 415 points"; "3 / 36 ·
+  2 waiting to send" while unlocks earned offline wait; "Mastered · 415
+  points" in **accent-ink** when every one is earned and sent.
+- **The list**, a row an achievement, the list over the shelf's rows: its
+  badge (or the plain trophy until the card has it) at the left, its title,
+  its points at the right, or its count while one moves ("74 / 100"). Earned
+  rows lift their label and take the earned color (**accent-ink**) on their
+  value. Every row is a stop, earned or not (`visits_all`), and the list goes
+  round (11.3). L1 and R1 turn the tabs, so it has no paging of its own.
+- **A** on a row opens the achievement's card, as in the list over the
+  shelf. X quits from here too.
+- **No list**: a sentence where the list would be, **menu** **text-soft**,
+  balanced onto up to six lines, A doing nothing on it. In the order that
+  decides it: a set on the card is always the list; no hash for the system,
+  or for the kind of file; nobody signed in; the set on its way (a first play
+  with Wi-Fi); never played with Wi-Fi ("not checked yet"'s sentence); and
+  RetroAchievements has none for this copy. The tab never hides.
+- **The Game tab's Achievements row** stays, with its count or its state at a
+  glance, and A on it turns to this tab in every state.
 
 ### 11.45 Button remapping
 
