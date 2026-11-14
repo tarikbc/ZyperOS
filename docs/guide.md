@@ -264,10 +264,12 @@ page for that console alone.
 
 | On the page | What it is |
 |---|---|
-| **Covers** | the covers a run will look for, and on how many systems |
+| **Covers** | the covers a run will look for, the room they will add (`+131 MB`), and on how many systems |
 | **Videos** | the video snaps it will get, the room they will add (`+525 MB`) and on how many systems; `all off` to start, `needs ScreenScraper` with no account |
-| **A** Fetch | runs it over Wi-Fi: the game it is asking about, its system, the source it asks and how many games it has looked at (`31 / 142`). Each cover found lands big, beside the six before it. **B** stops. Then **All done**: the covers found, how many came, how many are still missing, and the room the videos take |
-| **Y** Systems | a tile for each system with two marks, covers and videos. **A** turns the system's covers on or off (on to start), **X** its videos (off to start: a snap is a megabyte or three), and **Y** picks **Videos for**: **All Games**, **Favorites** or **Played** |
+| under the heading | about how long the run will take (`about 35 min`), or `needs Wi-Fi` |
+| over the keys | the room: what the run will add and what the card has (`656 MB to fetch · 11.2 GB free`). In red when the run would leave less than 200 MB free; then **A** does not start it, and says `Not enough room on the card` |
+| **A** Fetch | runs it over Wi-Fi: the game it is asking about, its system, the source it asks and how many games it has looked at (`31 / 142`). Each cover found lands big, beside the six before it, and the time left is beside a clock. **B** stops, and so does a card down to its last 100 MB. Then **All done**: the covers found, how many came, how many are still missing, and the room the videos take |
+| **Y** Systems | a tile for each system with two marks, covers and videos, and under them the focused system's covers missing and videos to fetch. **A** turns the system's covers on or off (on to start), **X** its videos (off to start: a snap is a megabyte or three), and **Y** picks **Videos for**: **All Games**, **Favorites** or **Played**, for every system with videos on, each with how many videos and how much to fetch |
 | **START** Settings | **ScreenScraper**, **SteamGridDB** and **Videos**, below |
 
 A run gets every system's covers first, then the names, years and synopses

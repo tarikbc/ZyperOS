@@ -46,6 +46,9 @@ bool snaps_path(const char *roms, const char *folder, const char *stem,
  * .media folder. Delete answers the bytes it gave back. */
 unsigned long long snaps_bytes(const char *roms, const char *folder);
 unsigned long long snaps_delete(const char *roms, const char *folder);
+/* A system's covers (its .media's .png files): their bytes, and how many in
+ * *n; the first `limit` alone when it is above 0 (a sample of their size) */
+unsigned long long snaps_cover_bytes(const char *roms, const char *folder, int *n, int limit);
 
 /* ---- which systems get videos, and for which games (2026-11-13) ----------
  *
@@ -80,6 +83,8 @@ void snaps_set_covers(const char *folder, bool on);
  * stat a game: *n of them, freed with snaps_stems_free. NULL with *n 0 for
  * none. */
 char **snaps_stems(const char *roms, const char *folder, int *n);
+/* The same for its covers' (.png) */
+char **snaps_cover_stems(const char *roms, const char *folder, int *n);
 void snaps_stems_free(char **v, int n);
 
 #endif

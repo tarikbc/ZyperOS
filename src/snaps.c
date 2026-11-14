@@ -80,13 +80,18 @@ bool snaps_path(const char *roms, const char *folder, const char *stem,
 }
 
 /* Every snap in a console's .media folder, handed to `fn` with its size. */
-static unsigned long long each(const char *roms, const char *folder, bool del)
+/* Each file of `ext` (".mp4", ".png") in a system's .media: its bytes, and
+ * how many, deleted on the way with `del`; the first `limit` alone when it
+ * is above 0 */
+static unsigned long long each(const char *roms, const char *folder, const char *ext, bool del, int *count,
+                               int limit)
 {
 	char dir[1024], path[1400];
 	unsigned long long sum = 0;
 	struct dirent *e;
 	DIR *d;
 
+	if (count) *count = 0;
 	if (snprintf(dir, sizeof dir, "%s/%s/.media", roms, folder) >= (int)sizeof dir)
 		return 0;
 	if (!(d = opendir(dir))) return 0;
@@ -94,12 +99,14 @@ static unsigned long long each(const char *roms, const char *folder, bool del)
 		size_t len = strlen(e->d_name);
 		struct stat st;
 
-		if (e->d_name[0] == '.' || len < 5 || strcasecmp(e->d_name + len - 4, ".mp4"))
+		if (limit > 0 && count && *count >= limit) break;
+		if (e->d_name[0] == '.' || len < 5 || strcasecmp(e->d_name + len - 4, ext))
 			continue;
 		if (snprintf(path, sizeof path, "%s/%s", dir, e->d_name) >= (int)sizeof path) continue;
 		if (stat(path, &st) != 0 || !S_ISREG(st.st_mode)) continue;
 		if (del && unlink(path) != 0) continue;
 		sum += (unsigned long long)st.st_size;
+		if (count) (*count)++;
 	}
 	closedir(d);
 	return sum;
@@ -107,12 +114,17 @@ static unsigned long long each(const char *roms, const char *folder, bool del)
 
 unsigned long long snaps_bytes(const char *roms, const char *folder)
 {
-	return each(roms, folder, false);
+	return each(roms, folder, ".mp4", false, NULL, 0);
 }
 
 unsigned long long snaps_delete(const char *roms, const char *folder)
 {
-	return each(roms, folder, true);
+	return each(roms, folder, ".mp4", true, NULL, 0);
+}
+
+unsigned long long snaps_cover_bytes(const char *roms, const char *folder, int *n, int limit)
+{
+	return each(roms, folder, ".png", false, n, limit);
 }
 
 bool snaps_get(const char *folder)
@@ -182,7 +194,7 @@ static int stem_cmp(const void *a, const void *b)
 	return strcmp(*(char *const *)a, *(char *const *)b);
 }
 
-char **snaps_stems(const char *roms, const char *folder, int *n)
+static char **stems(const char *roms, const char *folder, const char *ext, int *n)
 {
 	char dir[1024], **v = NULL;
 	struct dirent *e;
@@ -196,7 +208,7 @@ char **snaps_stems(const char *roms, const char *folder, int *n)
 		size_t len = strlen(e->d_name);
 		char *stem;
 
-		if (e->d_name[0] == '.' || len < 5 || strcasecmp(e->d_name + len - 4, ".mp4")) continue;
+		if (e->d_name[0] == '.' || len < 5 || strcasecmp(e->d_name + len - 4, ext)) continue;
 		if (*n == cap) {
 			char **w = realloc(v, (size_t)(cap = cap ? cap * 2 : 64) * sizeof *v);
 
@@ -209,6 +221,16 @@ char **snaps_stems(const char *roms, const char *folder, int *n)
 	closedir(d);
 	if (*n > 1) qsort(v, (size_t)*n, sizeof *v, stem_cmp);
 	return v;
+}
+
+char **snaps_stems(const char *roms, const char *folder, int *n)
+{
+	return stems(roms, folder, ".mp4", n);
+}
+
+char **snaps_cover_stems(const char *roms, const char *folder, int *n)
+{
+	return stems(roms, folder, ".png", n);
 }
 
 void snaps_stems_free(char **v, int n)

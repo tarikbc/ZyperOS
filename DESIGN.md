@@ -1846,25 +1846,52 @@ still says what is missing (the count, "complete", "needs Wi-Fi"), counted
 as the page closes. The page says four things before anything runs: what a
 run will get, for which systems, which games get videos, and their room.
 
+Its frame is Flash Drive's page's: the sides at **DS_INSET** (24 and
+1000), the heading at 168, or at 150 with a second line in **meta**
+**text-soft** at 208, what the page holds from 256 (UD_TILE_Y), one line
+over the keys at 648, and the keys at 704. Every state keeps to it, the
+Systems grid's focus ring and the run's lit cover inside the sides
+(2026-11-14, on the Pixel 2: "Systems is not respecting the window
+padding ... Review the whole interface margin and spacing").
+
+A size is either still to fetch, "+525 MB" on a tile and "525 MB to fetch"
+in words, or on the card, "525 MB on the card"; the plan adds up its two
+tiles' figures in its line, Systems' line is the focus's own share, and
+Videos for's choices add up the systems with videos on, which the line
+under its heading says ("For 3 systems with videos on"). A video's size and
+a cover's are the card's own average once it has five (24 covers a system
+sampled), else 2.5 MB and 0.25 MB. (2026-11-14: "in the videos for popup
+it's saying 1.9gb for all games, when collapsed it says 883mb in the video
+part": the popup added up every system with videos on and Systems' line
+was the focus's alone, with its videos on the card added in.)
+
 - **The plan**, the page as it opens: each system's icon (nine at most, or
   eight and "+N") over two marks, a cover and a video, lit when the system
   gets them; then two **raised** tiles, **Covers** (the covers a run will
   look for, "on 7 systems") and **Videos** (the videos it will get, "+525
   MB" on the number's row, "on 3 systems", "all off" or "needs
-  ScreenScraper"). A fetches, Y opens Systems, START Settings, B closes;
-  with no network the heading's second line is "needs Wi-Fi". From a
-  console's Box Art there is no Y.
+  ScreenScraper"), each tile with what it adds to the card on its number's
+  row; the heading's second line is about how long the run takes beside a
+  clock ("about 35 min"), or "needs Wi-Fi"; the line over the keys the room,
+  "656 MB to fetch · 11.2 GB free", in **warning** when the run would leave
+  less than 200 MB free, and then A does not start it and says "Not
+  enough room on the card". A fetches, Y opens Systems, START Settings, B
+  closes. From a console's Box Art there is no Y.
 - **Systems**: a tile a system, three by three, the rows following the
   focus, each with the system's icon and its two marks. A switches the
   focus's covers, X its videos, Y asks Videos for, B is back on the plan.
-  The focus is named under the heading and again at the foot, as marks:
-  the covers it misses ("41 missing") and its videos' room, or "off".
+  The focus is named under the heading and again over the keys, as marks:
+  the covers it misses ("41 missing") and its videos to fetch ("883 MB to
+  fetch", "complete", "needs ScreenScraper"), or "off". Three tiles a row
+  fill the page between its sides with the focus ring inside them.
   Covers start on and videos off, as a video is ~2.5 MB and one
   ScreenScraper lookup (snaps_covers, snaps_get); a system with no switch of
   its own follows 1.0.4's Fetch with Box Art and console switch, so a card
   that was getting videos still does.
 - **Videos for**: tiles over the page, as Computer Connected's (11.18):
-  **All Games**, **Favorites**, **Played** (a game with play time).
+  **All Games**, **Favorites**, **Played** (a game with play time), each
+  with "210 · 525 MB to fetch" (no-break spaces keep a number with its
+  unit), and the systems they add up under the heading.
 - **Settings**: a list, as What did you plug in?'s (11.36), of
   **ScreenScraper**, **SteamGridDB** and **Videos**, each with its value
   under it: tiles left "ScreenScraper" no room, 264 wide in **meta** where a
@@ -1880,8 +1907,15 @@ run will get, for which systems, which games get videos, and their room.
   cover found lands big at the left over 520 ms while the six before it
   move one place along, three by two, each with its source's mark and a
   play mark when a video came with it; the pictures are decoded off the
-  frame (mediatex). The covers and videos found at the foot, as marks; B
-  stops.
+  frame (mediatex). The covers and videos found, and the time left beside
+  a clock, over the keys, as marks; B stops. The time left is the part it
+  is in at its own pace once it has one (six games and 15 s), else 2 s a
+  ScreenScraper lookup, 1 s a libretro try and 2 s a video's download, and
+  in the covers part the details part's games after it, counted as
+  details_count picks them. The newest lands in a 360 square at the page's
+  left side, the six before it in 168 squares to its right side. The card
+  is looked at every 2 s: under 100 MB free, the run stops and done says
+  "Not enough room on the card".
 - **Done**: "All done", the covers found as a wall (fourteen at most), the
   counts as marks (covers, videos, missing) and the room said plainly
   ("Videos: 3 systems, 525 MB on the card", or "Videos: needs

@@ -3517,6 +3517,13 @@ static void g_build(ui_glyph g, g_shape *s)
 		g_line(s, 0.79f, 0.48f, 0.50f, 0.84f, G_W);
 		return;
 	}
+	if (g == UI_GLYPH_CLOCK) {
+		/* A clock face and its two hands - how long a run takes */
+		g_arc(s, 0.50f, 0.50f, 0.38f, 0.0f, 2.0f * pi);
+		g_line(s, 0.50f, 0.50f, 0.50f, 0.26f, G_W);
+		g_line(s, 0.50f, 0.50f, 0.68f, 0.60f, G_W);
+		return;
+	}
 	if (g == UI_GLYPH_GRID) {
 		/* Four squares, two by two - SteamGridDB */
 		static const float o[4][2] = { { 0.14f, 0.14f }, { 0.56f, 0.14f }, { 0.14f, 0.56f }, { 0.56f, 0.56f } };
@@ -3652,13 +3659,14 @@ static SDL_Texture *g_render(SDL_Renderer *r, ui_glyph g, int size)
 }
 
 /* A handful of (mark, size) pairs is all a screen asks for. */
-static struct { ui_glyph g; int size; SDL_Texture *tex; } g_cache[24];
+#define G_CACHE 32   /* a glyph a size: MENU > Scraper's page draws ~20 at once */
+static struct { ui_glyph g; int size; SDL_Texture *tex; } g_cache[G_CACHE];
 
 static void glyphs_free(void)
 {
 	int i;
 
-	for (i = 0; i < 24; i++)
+	for (i = 0; i < G_CACHE; i++)
 		if (g_cache[i].tex) { SDL_DestroyTexture(g_cache[i].tex); g_cache[i].tex = NULL; }
 }
 
@@ -3669,7 +3677,7 @@ void ui_glyph_draw(SDL_Renderer *r, ui_glyph g, int cx, int cy, int size,
 	int i, free_slot = -1;
 
 	if (g < 0 || g >= UI_GLYPH_COUNT || size <= 0) return;
-	for (i = 0; i < 24; i++) {
+	for (i = 0; i < G_CACHE; i++) {
 		if (g_cache[i].tex && g_cache[i].g == g && g_cache[i].size == size) {
 			t = g_cache[i].tex;
 			break;

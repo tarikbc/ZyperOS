@@ -12932,11 +12932,30 @@ static menu_result snaps_screen(app *a);
 #define SCP_COLS  3
 #define SCP_ROWS  3       /* the Systems grid's rows on the screen */
 #define SCP_MB_PER_VIDEO 2.5   /* a ScreenScraper snap, until the card's own say */
+#define SCP_MB_PER_COVER 0.25  /* a cover, until the card's own say */
+/* The page's frame, as Flash Drive's pages (DESIGN.md 11.18): the sides at
+ * DS_INSET, what the page holds from under the heading and Zyper, a line
+ * over the keys, and the keys at 704 */
+#define SCP_X0    DS_INSET                        /* 24 */
+#define SCP_X1    (ZYPEROS_SCREEN_W - DS_INSET)   /* 1000 */
+#define SCP_TOP   UD_TILE_Y                       /* 256 */
+#define SCP_LINE  648
+/* What a run leaves free on the card, and when one stops for room */
+#define SCP_RESERVE (200ULL * 1000 * 1000)
+#define SCP_FLOOR   (100ULL * 1000 * 1000)
+/* A run's pace before its own says (the 2026-11-13 logs: about 2 s a
+ * ScreenScraper lookup, about 1 s a libretro try), and a video's download
+ * over the Pixel 2's Wi-Fi */
+#define SCP_S_SS    2.0
+#define SCP_S_LR    1.0
+#define SCP_S_VIDEO 2.0
 
 typedef struct {
 	char folder[CFG_STR], tag[8], name[CFG_STR], key[CFG_STR];
 	int  miss;                       /* games with no cover */
 	int  vneed[SNAPS_FOR_COUNT];     /* games with no video, by Videos for */
+	int  names;                      /* games with a cover and no name: the details part's */
+	int  both[SNAPS_FOR_COUNT];      /* of those, the ones with no video too */
 	unsigned long long vroom;        /* its videos on the card */
 	int  nvideos;
 	bool cov, vid;
@@ -12962,7 +12981,8 @@ typedef struct {
 	int n;
 	int where, focus;
 	bool net, ss_in;
-	double mb_video;
+	double mb_video, mb_cover;
+	unsigned long long free;         /* the card's room, 0 when it cannot tell */
 	/* the run */
 	systems_cfg cfg;
 	art_progress p;
@@ -12973,6 +12993,13 @@ typedef struct {
 	unsigned shot_now;               /* a shot's clock, else 0 */
 	int done_found, done_videos, done_missing;
 	char problem[160];
+	/* its pace, for the time left: per game in the part it is in, before
+	 * its own (s_cov, s_det), and the details part's games, guessed */
+	double s_cov, s_det;
+	int est_looks;
+	bool pace_det;
+	unsigned pace_t0, room_at;
+	int pace_n0;
 } scp_view;
 
 static scp_view *g_scp;                /* the page open, for the run's rule */
@@ -13039,19 +13066,24 @@ static int scp_bsearch_cmp(const void *k, const void *e)
 static void scp_count(scp_view *v)
 {
 	app *a = v->a;
-	unsigned long long all_bytes = 0;
-	int i, all_videos = 0;
+	unsigned long long all_bytes = 0, cover_bytes = 0;
+	int i, all_videos = 0, all_covers = 0;
+	long long now = (long long)time(NULL);
+	struct statvfs vfs;
 
 	v->n = 0;
 	v->net = net_online();
 	v->ss_in = ss_signed_in();
+	v->free = statvfs(P_ROMS, &vfs) == 0 ? (unsigned long long)vfs.f_bavail * vfs.f_frsize : 0;
 	stats_summarize(STATS_ALL, false, (long)time(NULL));
 	for (i = 0; i < a->sys.count && v->n < CFG_MAX_SYSTEMS; i++) {
 		const system_cfg *sc = &a->sys.systems[i];
 		const game_list *gl;
 		scp_sys *s;
-		char dir[LIB_PATH * 2], **mp4;
-		int k, nmp4;
+		char dir[LIB_PATH * 2], **mp4, **png;
+		int k, nmp4, npng, ncb;
+		db_titles titles = { 0 }, miss = { 0 };
+		bool named;
 
 		if (!sc->folder[0] || a->view[i].owner || is_muse(sc)) continue;
 		if (v->only[0] && strcmp(sc->folder, v->only)) continue;
@@ -13069,25 +13101,55 @@ static void scp_count(scp_view *v)
 		s->vid = snaps_get(sc->folder);
 		s->vroom = snaps_bytes(P_ROMS, sc->folder);
 		mp4 = snaps_stems(P_ROMS, sc->folder, &nmp4);
+		png = snaps_cover_stems(P_ROMS, sc->folder, &npng);
 		s->nvideos = nmp4;
 		all_bytes += s->vroom;
 		all_videos += nmp4;
+		cover_bytes += snaps_cover_bytes(P_ROMS, sc->folder, &ncb, 24);
+		all_covers += ncb;
+		/* The details part's games, as artscrape.c's details_count picks
+		 * them: a cover, no name, and no miss in its 30 days */
+		named = v->ss_in && ss_system_id(sc->folder);
+		if (named) {
+			db_titles_load(db_lib(), sc->folder, &titles);
+			db_ss_misses_load(db_lib(), sc->folder, now - 30 * 86400LL, now + 86400, &miss);
+		}
 		for (k = 0; k < gl->count; k++) {
 			const game_entry *g = &gl->items[k];
-			const char *stem = g->name;
+			const char *stem = g->name, *t;
 			long secs = 0, last = 0;
+			bool name = false;
+			int w;
 
+			if (named && ((npng && bsearch(&stem, png, (size_t)npng, sizeof *png, scp_bsearch_cmp)) ||
+			              es_art_cover(dir, g->file, g->name)) && !db_titles_find(&miss, g->file)) {
+				t = db_titles_find(&titles, g->file);
+				name = !t || !*t;
+			}
+			if (name) s->names++;
 			if (nmp4 && bsearch(&stem, mp4, (size_t)nmp4, sizeof *mp4, scp_bsearch_cmp)) continue;
 			if (es_art_video(dir, g->file, g->name)) continue;
-			s->vneed[SNAPS_FOR_ALL]++;
-			if (fav_is(sc->tag, g->file)) s->vneed[SNAPS_FOR_FAVORITES]++;
-			if (stats_lookup(sc->tag, g->file, &secs, &last) && (secs > 0 || last > 0))
-				s->vneed[SNAPS_FOR_PLAYED]++;
+			for (w = 0; w < SNAPS_FOR_COUNT; w++) {
+				bool in = w == SNAPS_FOR_ALL ||
+				          (w == SNAPS_FOR_FAVORITES && fav_is(sc->tag, g->file)) ||
+				          (w == SNAPS_FOR_PLAYED && stats_lookup(sc->tag, g->file, &secs, &last) &&
+				           (secs > 0 || last > 0));
+
+				if (!in) continue;
+				s->vneed[w]++;
+				if (name) s->both[w]++;
+			}
+		}
+		if (named) {
+			db_titles_free(&titles);
+			db_titles_free(&miss);
 		}
 		snaps_stems_free(mp4, nmp4);
+		snaps_stems_free(png, npng);
 	}
-	/* A video's size as the card's own say, once it has a few */
+	/* A video's size and a cover's as the card's own say, once it has a few */
 	v->mb_video = all_videos >= 5 ? (double)all_bytes / all_videos / 1e6 : SCP_MB_PER_VIDEO;
+	v->mb_cover = all_covers >= 5 ? (double)cover_bytes / all_covers / 1e6 : SCP_MB_PER_COVER;
 	if (v->focus >= v->n) v->focus = v->n ? v->n - 1 : 0;
 }
 
@@ -13106,6 +13168,65 @@ static void scp_totals(const scp_view *v, int *ncov, int *covers, int *nvid, int
 static void scp_mb(double mb, char *out, size_t n)
 {
 	sys_menu_bytes((unsigned long long)(mb * 1e6), out, n);
+}
+
+/* A size's spaces as no-break spaces, in place: "525 MB" stays on one line */
+static void scp_nbsp(char *s, size_t n)
+{
+	char out[64];
+	size_t o = 0, i;
+
+	for (i = 0; s[i] && o + 3 < sizeof out; i++) {
+		if (s[i] == ' ') { out[o++] = '\xc2'; out[o++] = '\xa0'; }
+		else out[o++] = s[i];
+	}
+	out[o] = '\0';
+	snprintf(s, n, "%s", out);
+}
+
+/* What a run will do with the switches as they are: covers to look for,
+ * videos to get (with an account), details lookups, the bytes all that
+ * adds to the card and about how long it takes. The plan's line, the
+ * room's check and the run's time left all read this. */
+typedef struct {
+	int covers, videos, looks;
+	double bytes, secs;
+} scp_need;
+
+static void scp_needs(const scp_view *v, scp_need *o)
+{
+	int i, k = snaps_for();
+
+	memset(o, 0, sizeof *o);
+	for (i = 0; i < v->n; i++) {
+		const scp_sys *s = &v->s[i];
+		bool vid = s->vid && v->ss_in;
+
+		if (s->cov) o->covers += s->miss;
+		if (vid) o->videos += s->vneed[k];
+		if (v->ss_in) o->looks += (s->cov ? s->names : 0) + (vid ? s->vneed[k] - (s->cov ? s->both[k] : 0) : 0);
+	}
+	o->bytes = (o->covers * v->mb_cover + o->videos * v->mb_video) * 1e6;
+	o->secs = o->covers * (v->ss_in ? SCP_S_SS : SCP_S_LR) + o->looks * SCP_S_SS + o->videos * SCP_S_VIDEO;
+}
+
+/* Will it fit, leaving SCP_RESERVE free? A card that cannot say: yes */
+static bool scp_fits(const scp_view *v, const scp_need *n)
+{
+	return !v->free || n->bytes + (double)SCP_RESERVE <= (double)v->free;
+}
+
+/* A time as the corner's battery says one: "12 min", "1 h 20 min";
+ * `round` takes a guess past 10 min to the nearest 5 */
+static void scp_time(double secs, bool round, char *out, size_t n)
+{
+	int m = (int)((secs + 59.0) / 60.0);
+
+	if (m < 1) m = 1;
+	if (round && m > 10) m = (m + 2) / 5 * 5;
+	if (m < 60) snprintf(out, n, T(S_CORNER_TIME_MIN), m);
+	else if (m % 60 == 0) snprintf(out, n, T(S_CORNER_TIME_H), m / 60);
+	else snprintf(out, n, T(S_CORNER_TIME_H_MIN), m / 60, m % 60);
 }
 
 /* ---- drawing ------------------------------------------------------------- */
@@ -13186,30 +13307,93 @@ static void scp_cover_draw(app *a, const scp_cover *c, SDL_FRect box, Uint8 al, 
 	if (c->video) scp_badge(a, q.x + d / 3, q.y + q.h - d / 3, d, UI_GLYPH_PLAY, true, al);
 }
 
-/* The counts as marks, centered on `cx`: covers, videos and, if `miss`
- * is not below 0, games not found */
-static void scp_stats(app *a, int cx, int cy, int covers, int videos, int miss)
+/* The counts as marks, centered on `cx`: covers, videos, games not found
+ * when `miss` is not below 0, and the time left beside a clock when `eta`
+ * is not NULL */
+typedef struct { ui_glyph g; const char *s; SDL_Color c, ink; } scp_stat;
+
+static void scp_stats(app *a, int cx, int cy, int covers, int videos, int miss, const char *eta)
 {
 	const ds_theme *t = theme();
 	TTF_Font *f = ui_font(UI_F_MENU);
-	struct { ui_glyph g; int n; SDL_Color c; } st[3] = {
-		{ UI_GLYPH_COVER, covers, ui_col(t->accent_ink, 255) },
-		{ UI_GLYPH_FILM, videos, ui_col(t->accent_ink, 255) },
-		{ UI_GLYPH_CANCEL, miss, UI_TEXT_DIM },
-	};
+	scp_stat st[4];
 	char num[3][16];
-	int i, w = 0, x, ns = miss < 0 ? 2 : 3;
+	int i, w = 0, x, ns = 0;
 
-	for (i = 0; i < ns; i++) {
-		snprintf(num[i], sizeof num[i], "%d", st[i].n);
-		w += 44 + 8 + ui_text_width(f, num[i]) + (i < ns - 1 ? 40 : 0);
-	}
+	snprintf(num[0], sizeof num[0], "%d", covers);
+	snprintf(num[1], sizeof num[1], "%d", videos);
+	snprintf(num[2], sizeof num[2], "%d", miss);
+	st[ns++] = (scp_stat){ UI_GLYPH_COVER, num[0], ui_col(t->accent_ink, 255), UI_TEXT };
+	st[ns++] = (scp_stat){ UI_GLYPH_FILM, num[1], ui_col(t->accent_ink, 255), UI_TEXT };
+	if (miss >= 0) st[ns++] = (scp_stat){ UI_GLYPH_CANCEL, num[2], UI_TEXT_DIM, UI_TEXT_DIM };
+	if (eta) st[ns++] = (scp_stat){ UI_GLYPH_CLOCK, eta, UI_TEXT_SOFT, UI_TEXT_SOFT };
+	for (i = 0; i < ns; i++) w += 44 + 8 + ui_text_width(f, st[i].s) + (i < ns - 1 ? 40 : 0);
 	x = cx - w / 2;
 	for (i = 0; i < ns; i++) {
 		ui_glyph_draw(a->r, st[i].g, x + 22, cy, 44, st[i].c);
 		x += 52;
-		ui_text(a->r, f, num[i], x, ui_cap_y(f, cy), -1, i == 2 ? UI_TEXT_DIM : UI_TEXT);
-		x += ui_text_width(f, num[i]) + 40;
+		ui_text(a->r, f, st[i].s, x, ui_cap_y(f, cy), -1, st[i].ink);
+		ui_fit_drawn(st[i].s);
+		x += ui_text_width(f, st[i].s) + 40;
+	}
+}
+
+/* The heading beside Zyper, as Flash Drive's pages: one line at 168, or a
+ * second in **meta** **text-soft** under it (the system in focus, a
+ * problem, "needs Wi-Fi", the plan's time beside a clock `g`) with the
+ * first at 150 and it at 208; each cut to the page's right side. `g`
+ * UI_GLYPH_COUNT: no mark. */
+static void scp_head(app *a, int hx, const char *title, const char *sub, ui_glyph g)
+{
+	TTF_Font *ft = ui_font(UI_F_TITLE), *fs = ui_font(UI_F_META);
+	bool two = sub && *sub;
+	int sx = hx;
+	char fit[192];
+
+	ui_fit_text(ft, title, fit, sizeof fit, SCP_X1 - hx);
+	ui_text(a->r, ft, fit, hx, ui_cap_y(ft, two ? 150 : 168), -1, UI_TEXT);
+	if (two) {
+		if (g != UI_GLYPH_COUNT) {
+			ui_glyph_draw(a->r, g, hx + 16, 208, 32, ui_col(theme()->accent_ink, 255));
+			sx = hx + 44;
+		}
+		ui_fit_text(fs, sub, fit, sizeof fit, SCP_X1 - sx);
+		ui_text(a->r, fs, fit, sx, ui_cap_y(fs, 208), -1, UI_TEXT_SOFT);
+	}
+}
+
+/* The line over the keys (SCP_LINE): marks and their words, centered. A
+ * switch's mark (scp_mark) on or off, a plain mark in **accent-ink** beside
+ * words in **text-soft**, or both in **warning** */
+enum { SCP_ON, SCP_OFF, SCP_INFO, SCP_WARN };
+typedef struct {
+	ui_glyph g;
+	const char *text;
+	int tone;
+} scp_item;
+
+static void scp_line(app *a, const scp_item *it, int n)
+{
+	const ds_theme *t = theme();
+	TTF_Font *fs = ui_font(UI_F_META);
+	const int d = 36, pad = 14;
+	int w[4], i, sum = 0, gap = 48, x;
+
+	for (i = 0; i < n && i < 4; i++) sum += (w[i] = d + pad + ui_text_width(fs, it[i].text));
+	if (sum + gap * (n - 1) > SCP_X1 - SCP_X0) gap = 24;
+	x = (ZYPEROS_SCREEN_W - sum - gap * (n - 1)) / 2;
+	for (i = 0; i < n && i < 4; i++) {
+		SDL_Color c = it[i].tone == SCP_WARN ? ui_col(t->warning, 255)
+		            : it[i].tone == SCP_OFF ? UI_TEXT_DIM : it[i].tone == SCP_INFO ? UI_TEXT_SOFT : UI_TEXT;
+
+		if (it[i].tone == SCP_ON || it[i].tone == SCP_OFF)
+			scp_mark(a, x + d / 2, SCP_LINE, d, it[i].g, it[i].tone == SCP_ON);
+		else
+			ui_glyph_draw(a->r, it[i].g, x + d / 2, SCP_LINE, d,
+			              it[i].tone == SCP_WARN ? c : ui_col(t->accent_ink, 255));
+		ui_text(a->r, fs, it[i].text, x + d + pad, ui_cap_y(fs, SCP_LINE), -1, c);
+		ui_fit_drawn(it[i].text);
+		x += w[i] + gap;
 	}
 }
 
@@ -13234,69 +13418,112 @@ static const char *scp_title(const scp_view *v)
 	return v->only[0] && v->n ? v->s[0].name : T(S_SCRAPER_HEADING);
 }
 
-/* The plan: what a run will do, before it starts */
+/* The plan: what a run will do, before it starts. Each system's icon over
+ * its two marks; Covers and Videos as Flash Drive's two tiles, each with
+ * what it will add to the card; and over the keys about how long it takes
+ * and the room, in **warning** when it will not fit */
 static void scp_plan_draw(scp_view *v)
 {
 	app *a = v->a;
 	const ds_theme *t = theme();
 	TTF_Font *ft = ui_font(UI_F_TITLE), *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
 	int hx = ud_page_top(a, 1.0f), i, ncov, covers, nvid, videos, shown, more;
-	const int w = 462, h = 220, x0 = 40, y0 = 372;
-	char cb[16], cl[96], vb[24], vl[128], sz[32] = "", plus[48] = "";
+	/* nine across, the first's marks at the page's left side (31: half
+	 * the two marks' width) and the ninth's at its right */
+	const int cell = (SCP_X1 - SCP_X0 - 62) / 8, x1 = SCP_X0 + 31;
+	const int iy = SCP_TOP + 28, my = SCP_TOP + 84, ty = 376, th = 220;
+	char cb[16], cl[96], vb[24], vl[128], cplus[48] = "", vplus[48] = "", sz[32], fr[32], eta[48], room[128];
 	const char *K[4] = { "A", "Y", "START", "B" };
 	const char *L[4] = { T(S_SCRAPER_KEY_FETCH), T(S_SCRAPER_SYSTEMS), T(S_HOME_SETTINGS), T(S_SCRAPER_KEY_CLOSE) };
+	scp_need need;
 
 	scp_totals(v, &ncov, &covers, &nvid, &videos);
-	ui_text(a->r, ft, scp_title(v), hx, ui_cap_y(ft, 168), -1, UI_TEXT);
-	if (!v->net) ui_text(a->r, fs, T(S_MENU_NEEDS_WIFI), hx, ui_cap_y(fs, 214), -1, UI_TEXT_SOFT);
+	scp_needs(v, &need);
+	/* The heading's second line: "needs Wi-Fi", else about how long */
+	if (!v->net) scp_head(a, hx, scp_title(v), T(S_MENU_NEEDS_WIFI), UI_GLYPH_COUNT);
+	else if (need.covers + need.videos + need.looks > 0) {
+		scp_time(need.secs, true, sz, sizeof sz);
+		snprintf(eta, sizeof eta, T(S_SCRAPER_ABOUT_TIME), sz);
+		scp_head(a, hx, scp_title(v), eta, UI_GLYPH_CLOCK);
+	} else {
+		scp_head(a, hx, scp_title(v), NULL, UI_GLYPH_COUNT);
+	}
 	/* The systems, as icons with their two marks: nine at most, and how
-	 * many more */
+	 * many more, from the page's left side */
 	shown = v->n > 9 ? 8 : v->n;
 	more = v->n - shown;
 	for (i = 0; i < shown; i++) {
-		int cx = (ZYPEROS_SCREEN_W - 9 * 100) / 2 + 50 + i * 100;
+		int cx = x1 + i * cell;
 
-		scp_icon_draw(v, i, cx, 262, 60, v->s[i].cov || v->s[i].vid ? 255 : 110);
-		scp_mark(a, cx - 17, 318, 28, UI_GLYPH_COVER, v->s[i].cov);
-		scp_mark(a, cx + 17, 318, 28, UI_GLYPH_FILM, v->s[i].vid);
+		scp_icon_draw(v, i, cx, iy, 60, v->s[i].cov || v->s[i].vid ? 255 : 110);
+		scp_mark(a, cx - 17, my, 28, UI_GLYPH_COVER, v->s[i].cov);
+		scp_mark(a, cx + 17, my, 28, UI_GLYPH_FILM, v->s[i].vid);
 	}
 	if (more > 0) {
 		char m[16];
 
 		snprintf(m, sizeof m, "+%d", more);
-		ui_text(a->r, fm, m, (ZYPEROS_SCREEN_W - 9 * 100) / 2 + 50 + 8 * 100, ui_cap_y(fm, 280), 0, UI_TEXT_SOFT);
+		ui_text(a->r, fm, m, x1 + 8 * cell, ui_cap_y(fm, iy), 0, UI_TEXT_SOFT);
 	}
 	snprintf(cb, sizeof cb, "%d", covers);
 	snprintf(cl, sizeof cl, TN(S_SCRAPER_ON_N_SYSTEMS, ncov), ncov);
+	if (covers) {
+		scp_mb(covers * v->mb_cover, sz, sizeof sz);
+		snprintf(cplus, sizeof cplus, "+%s", sz);
+	}
 	if (nvid) {
 		snprintf(vb, sizeof vb, "%d", videos);
 		if (!v->ss_in) snprintf(vl, sizeof vl, "%s", T(S_SYSMENU_SN_NEEDS_SS));
-		else snprintf(vl, sizeof vl, TN(S_SCRAPER_ON_N_SYSTEMS, nvid), nvid);
-		scp_mb(videos * v->mb_video, sz, sizeof sz);
-		snprintf(plus, sizeof plus, "+%s", sz);
+		else {
+			snprintf(vl, sizeof vl, TN(S_SCRAPER_ON_N_SYSTEMS, nvid), nvid);
+			if (videos) {
+				scp_mb(videos * v->mb_video, sz, sizeof sz);
+				snprintf(vplus, sizeof vplus, "+%s", sz);
+			}
+		}
 	} else {
 		snprintf(vb, sizeof vb, "%s", T(S_MENU_OFF_TITLE));
 		snprintf(vl, sizeof vl, "%s", T(S_SCRAPER_VIDEOS_OFF_ALL));
 	}
 	{
-		struct { ui_glyph g; const char *name, *big, *line; bool on; } TL[2] = {
-			{ UI_GLYPH_COVER, T(S_SCRAPER_PAGE_COVERS), cb, cl, ncov > 0 },
-			{ UI_GLYPH_FILM, T(S_SCRAPER_PAGE_VIDEOS), vb, vl, nvid > 0 },
+		struct { ui_glyph g; const char *name, *big, *plus, *line; bool on; } TL[2] = {
+			{ UI_GLYPH_COVER, T(S_SCRAPER_PAGE_COVERS), cb, cplus, cl, ncov > 0 },
+			{ UI_GLYPH_FILM, T(S_SCRAPER_PAGE_VIDEOS), vb, vplus, vl, nvid > 0 },
 		};
 
 		for (i = 0; i < 2; i++) {
-			SDL_Rect q = { x0 + i * (w + 20), y0, w, h };
+			SDL_Rect q = { i ? UD_TILE_X1 : UD_TILE_X0, ty, UD_TILE_W, th };
 
 			ui_round_rect(a->r, &q, DS_RADIUS_CARD, ui_col(t->raised, 255));
-			ui_glyph_draw(a->r, TL[i].g, q.x + 60, q.y + 50, 56, TL[i].on ? ui_col(t->accent_ink, 255) : UI_TEXT_DIM);
-			ui_text(a->r, fm, TL[i].name, q.x + 104, ui_cap_y(fm, q.y + 50), -1, UI_TEXT);
-			ui_text(a->r, ft, TL[i].big, q.x + 32, ui_cap_y(ft, q.y + 128), -1, TL[i].on ? UI_TEXT : UI_TEXT_DIM);
-			/* The room a run will add, on the number's row: a few figures
+			ui_glyph_draw(a->r, TL[i].g, q.x + UD_PAD + 28, q.y + 50, 56,
+			              TL[i].on ? ui_col(t->accent_ink, 255) : UI_TEXT_DIM);
+			ui_text(a->r, fm, TL[i].name, q.x + UD_PAD + 72, ui_cap_y(fm, q.y + 50), -1, UI_TEXT);
+			ui_text(a->r, ft, TL[i].big, q.x + UD_PAD, ui_cap_y(ft, q.y + 128), -1, TL[i].on ? UI_TEXT : UI_TEXT_DIM);
+			/* What it adds to the card, on the number's row: a few figures
 			 * leave the row room for it */
-			if (i == 1 && plus[0])
-				ui_text(a->r, fm, plus, q.x + q.w - 32, ui_cap_y(fm, q.y + 128), 1, UI_TEXT_SOFT);
-			ui_text(a->r, fs, TL[i].line, q.x + 32, ui_cap_y(fs, q.y + 180), -1, UI_TEXT_SOFT);
+			if (TL[i].plus[0])
+				ui_text(a->r, fm, TL[i].plus, q.x + q.w - UD_PAD, ui_cap_y(fm, q.y + 128), 1, UI_TEXT_SOFT);
+			ui_text(a->r, fs, TL[i].line, q.x + UD_PAD, ui_cap_y(fs, q.y + 180), -1, UI_TEXT_SOFT);
 		}
+	}
+	/* The room: the two tiles' figures added up, and the card's */
+	if (need.covers + need.videos + need.looks > 0) {
+		scp_item it[1];
+		char tf[64];
+
+		sys_menu_bytes((unsigned long long)need.bytes, sz, sizeof sz);
+		snprintf(tf, sizeof tf, T(S_SCRAPER_TO_FETCH), sz);
+		if (v->free) {
+			char f2[48];
+
+			sys_menu_bytes(v->free, fr, sizeof fr);
+			snprintf(f2, sizeof f2, T(S_STORAGE_FREE), fr);
+			snprintf(room, sizeof room, "%s \xc2\xb7 %s", tf, f2);
+		} else {
+			snprintf(room, sizeof room, "%s", tf);
+		}
+		it[0] = (scp_item){ UI_GLYPH_TO_CARD, room, scp_fits(v, &need) ? SCP_INFO : SCP_WARN };
+		scp_line(a, it, 1);
 	}
 	if (v->only[0]) {
 		const char *K1[3] = { "A", "START", "B" };
@@ -13308,54 +13535,68 @@ static void scp_plan_draw(scp_view *v)
 	}
 }
 
-/* Systems: a tile a system, its icon and two marks; the one in focus said
- * under the heading and at the foot */
+/* Systems: a tile a system, three to a row across the page, its icon and
+ * two marks; the one in focus ringed in **accent**, the ring inside the
+ * page's sides, and said under the heading and over the keys */
+#define SCP_GRID_RING 6
+#define SCP_GRID_GAP  24
+#define SCP_GRID_ROWG 18
+#define SCP_GRID_H    100
+#define SCP_GRID_W    ((SCP_X1 - SCP_X0 - 2 * SCP_GRID_RING - 2 * SCP_GRID_GAP) / SCP_COLS)   /* 305 */
+
 static void scp_systems_draw(scp_view *v)
 {
 	app *a = v->a;
 	const ds_theme *t = theme();
-	TTF_Font *ft = ui_font(UI_F_TITLE), *fs = ui_font(UI_F_META);
-	int hx = ud_page_top(a, 1.0f), i, top, wc, wv, x;
-	const int w = 286, h = 120, gx = 18, gy = 14, x0 = (ZYPEROS_SCREEN_W - (3 * w + 2 * gx)) / 2, y0 = 246;
-	char cov[64], vid[32];
+	int hx = ud_page_top(a, 1.0f), i, top;
+	const int w = SCP_GRID_W, h = SCP_GRID_H, x0 = SCP_X0 + SCP_GRID_RING, y0 = SCP_TOP + SCP_GRID_RING;
+	char cov[64], vid[64], sz[32];
 	const char *K[4] = { "A", "X", "Y", "B" };
 	const char *L[4] = { T(S_SCRAPER_PAGE_COVERS), T(S_SCRAPER_PAGE_VIDEOS), T(S_SCRAPER_VIDEOS_FOR), T(S_SCRAPER_DONE) };
 	const scp_sys *f;
+	scp_item it[2];
+	int need;
 
-	ui_text(a->r, ft, T(S_SCRAPER_SYSTEMS), hx, ui_cap_y(ft, 150), -1, UI_TEXT);
-	if (!v->n) { scp_foot(a, K + 3, L + 3, 1); return; }
+	if (!v->n) {
+		scp_head(a, hx, T(S_SCRAPER_SYSTEMS), NULL, UI_GLYPH_COUNT);
+		scp_foot(a, K + 3, L + 3, 1);
+		return;
+	}
 	f = &v->s[v->focus];
-	ui_text(a->r, fs, f->name, hx, ui_cap_y(fs, 202), -1, UI_TEXT_SOFT);
+	scp_head(a, hx, T(S_SCRAPER_SYSTEMS), f->name, UI_GLYPH_COUNT);
 	/* Three rows on the screen, the focus's among them */
 	top = v->focus / SCP_COLS - (SCP_ROWS - 1);
 	if (top < 0) top = 0;
 	if (top > v->focus / SCP_COLS) top = v->focus / SCP_COLS;
 	for (i = top * SCP_COLS; i < v->n && i < (top + SCP_ROWS) * SCP_COLS; i++) {
 		int r = i / SCP_COLS - top;
-		SDL_Rect q = { x0 + (i % SCP_COLS) * (w + gx), y0 + r * (h + gy), w, h };
+		SDL_Rect q = { x0 + (i % SCP_COLS) * (w + SCP_GRID_GAP), y0 + r * (h + SCP_GRID_ROWG), w, h };
 		bool any = v->s[i].cov || v->s[i].vid;
 
 		if (i == v->focus)
-			ui_round_rect(a->r, &(SDL_Rect){ q.x - 6, q.y - 6, q.w + 12, q.h + 12 }, DS_RADIUS_CARD + 4,
+			ui_round_rect(a->r, &(SDL_Rect){ q.x - SCP_GRID_RING, q.y - SCP_GRID_RING, q.w + 2 * SCP_GRID_RING,
+			                                q.h + 2 * SCP_GRID_RING }, DS_RADIUS_CARD + SCP_GRID_RING,
 			              ui_col(t->accent, 255));
 		ui_round_rect(a->r, &q, DS_RADIUS_CARD, ui_col(t->raised, 255));
-		scp_icon_draw(v, i, q.x + 96, q.y + h / 2, 104, any ? 255 : 110);
-		scp_mark(a, q.x + w - 48, q.y + 36, 42, UI_GLYPH_COVER, v->s[i].cov);
-		scp_mark(a, q.x + w - 48, q.y + h - 36, 42, UI_GLYPH_FILM, v->s[i].vid);
+		scp_icon_draw(v, i, q.x + 20 + 44, q.y + h / 2, 88, any ? 255 : 110);
+		scp_mark(a, q.x + w - 20 - 18, q.y + 28, 36, UI_GLYPH_COVER, v->s[i].cov);
+		scp_mark(a, q.x + w - 20 - 18, q.y + h - 28, 36, UI_GLYPH_FILM, v->s[i].vid);
 	}
-	/* The system in focus, as marks: the covers it misses, its videos' room */
+	/* The system in focus: the covers it misses, and its videos still to
+	 * fetch - the same figures the plan adds up */
 	if (f->cov) snprintf(cov, sizeof cov, TN(S_SYSMENU_SC_MISSING, f->miss), f->miss);
 	else snprintf(cov, sizeof cov, "%s", T(S_SCRAPER_OFF));
-	if (f->vid) scp_mb(f->vneed[snaps_for()] * v->mb_video + f->vroom / 1e6, vid, sizeof vid);
-	else snprintf(vid, sizeof vid, "%s", T(S_SCRAPER_OFF));
-	wc = 52 + ui_text_width(fs, cov);
-	wv = 52 + ui_text_width(fs, vid);
-	x = (ZYPEROS_SCREEN_W - wc - 48 - wv) / 2;
-	scp_mark(a, x + 20, 660, 36, UI_GLYPH_COVER, f->cov);
-	ui_text(a->r, fs, cov, x + 52, ui_cap_y(fs, 660), -1, f->cov ? UI_TEXT : UI_TEXT_DIM);
-	x += wc + 48;
-	scp_mark(a, x + 20, 660, 36, UI_GLYPH_FILM, f->vid);
-	ui_text(a->r, fs, vid, x + 52, ui_cap_y(fs, 660), -1, f->vid ? UI_TEXT : UI_TEXT_DIM);
+	need = f->vneed[snaps_for()];
+	if (!f->vid) snprintf(vid, sizeof vid, "%s", T(S_SCRAPER_OFF));
+	else if (!v->ss_in) snprintf(vid, sizeof vid, "%s", T(S_SYSMENU_SN_NEEDS_SS));
+	else if (!need) snprintf(vid, sizeof vid, "%s", T(S_SCRAPER_COMPLETE));
+	else {
+		scp_mb(need * v->mb_video, sz, sizeof sz);
+		snprintf(vid, sizeof vid, T(S_SCRAPER_TO_FETCH), sz);
+	}
+	it[0] = (scp_item){ UI_GLYPH_COVER, cov, f->cov ? SCP_ON : SCP_OFF };
+	it[1] = (scp_item){ UI_GLYPH_FILM, vid, f->vid ? SCP_ON : SCP_OFF };
+	scp_line(a, it, 2);
 	scp_foot(a, K, L, 4);
 }
 
@@ -13364,17 +13605,43 @@ static SDL_FRect scp_lerp(SDL_FRect p, SDL_FRect q, float e)
 	return (SDL_FRect){ p.x + (q.x - p.x) * e, p.y + (q.y - p.y) * e, p.w + (q.w - p.w) * e, p.h + (q.h - p.h) * e };
 }
 
+/* The time a run has left: the part it is in at its own pace, once it has
+ * one (six games and 15 s), else the guess (s_cov, s_det); and in the
+ * covers part, the details part's games after it at the guess */
+static double scp_eta(scp_view *v, unsigned now, int looked, int total)
+{
+	bool det = v->p.details;
+	double spg = det ? v->s_det : v->s_cov, left;
+
+	if (det != v->pace_det || looked < v->pace_n0) {
+		v->pace_det = det;
+		v->pace_t0 = now;
+		v->pace_n0 = looked;
+	}
+	if (looked - v->pace_n0 >= 6 && now - v->pace_t0 >= 15000)
+		spg = (now - v->pace_t0) / 1000.0 / (looked - v->pace_n0);
+	left = (total - looked) * spg;
+	if (!det) left += v->est_looks * v->s_det;
+	return left > 0 ? left : 0;
+}
+
 /* The run: the game beside Zyper; its system, its source and how far under
- * it; the newest cover landing big, the six before it moving one place
- * along as it does */
+ * it; the newest cover landing big at the page's left, the six before it
+ * moving one place along to its right; the counts and the time left over
+ * the keys */
+#define SCP_BIG   360   /* the newest's square, from the page's left side */
+#define SCP_CELL  168   /* the six before it, three by two to the right side */
+
 static void scp_run_draw(scp_view *v, unsigned now)
 {
 	app *a = v->a;
 	TTF_Font *ft = ui_font(UI_F_TITLE), *fs = ui_font(UI_F_META);
 	int hx = ud_page_top(a, 1.0f), m, looked, total, si;
 	float e = v->nring && v->ring[0].tex ? scp_ease((float)(now - v->land_at) / SCP_LAND) : 1.0f;
-	char fit[160], cnt[48];
-	const SDL_FRect big = { 64, 246, 300, 352 };
+	char fit[160], cnt[48], eta[48];
+	/* the newest inside its square by its lit frame's width */
+	const SDL_FRect big = { SCP_X0 + 8, SCP_TOP + 8, SCP_BIG - 16, SCP_BIG - 16 };
+	const float gx = SCP_X0 + SCP_BIG + 24, sx = (SCP_X1 - gx - SCP_CELL) / 2, sy = SCP_CELL + 24;
 	const char *K[1] = { "B" }, *L[1] = { T(S_SCRAPER_KEY_STOP) };
 
 	/* Which part: covers (the plan's count), then the details of games
@@ -13389,21 +13656,21 @@ static void scp_run_draw(scp_view *v, unsigned now)
 		for (total = 0, i = 0; i < v->n; i++) if (v->s[i].cov || v->only[0]) total += v->s[i].miss;
 	}
 	if (total < looked) total = looked;
-	ui_fit_text(ft, v->p.now, fit, sizeof fit, ZYPEROS_SCREEN_W - DS_INSET - hx - 24);
+	ui_fit_text(ft, v->p.now, fit, sizeof fit, SCP_X1 - hx);
 	ui_text(a->r, ft, fit, hx, ui_cap_y(ft, 150), -1, UI_TEXT);
 	si = scp_find(v, v->p.folder_now);
-	scp_icon_draw(v, si, hx + 28, 208, 52, 255);
-	if (v->p.src != ART_SRC_NONE) scp_badge(a, hx + 84, 208, 40, scp_src_glyph(v->p.src), false, 255);
+	scp_icon_draw(v, si, hx + 26, 208, 52, 255);
+	if (v->p.src != ART_SRC_NONE) scp_badge(a, hx + 80, 208, 40, scp_src_glyph(v->p.src), false, 255);
 	snprintf(cnt, sizeof cnt, "%d / %d", looked, total);
-	scp_bar(a, hx + 124, 205, ZYPEROS_SCREEN_W - 64 - hx - 124 - ui_text_width(fs, cnt) - 24, looked, total);
-	ui_text(a->r, fs, cnt, ZYPEROS_SCREEN_W - 64, ui_cap_y(fs, 208), 1, UI_TEXT_DIM);
+	scp_bar(a, hx + 120, 205, SCP_X1 - hx - 120 - ui_text_width(fs, cnt) - 24, looked, total);
+	ui_text(a->r, fs, cnt, SCP_X1, ui_cap_y(fs, 208), 1, UI_TEXT_DIM);
 	/* The six before the newest, three by two; the one that was big comes
 	 * in first */
 	for (m = 6; m >= 0; m--) {
-		const float cw = 164, ch = 164, gx = 404, gy = 246, sx = 188, sy = 188;
 		int k = m + 1;
-		SDL_FRect to = { gx + (m % 3) * sx, gy + (m / 3) * sy, cw, ch };
-		SDL_FRect from = m == 0 ? big : (SDL_FRect){ gx + ((m - 1) % 3) * sx, gy + ((m - 1) / 3) * sy, cw, ch };
+		SDL_FRect to = { gx + (m % 3) * sx, SCP_TOP + (m / 3) * sy, SCP_CELL, SCP_CELL };
+		SDL_FRect from = m == 0 ? big
+		               : (SDL_FRect){ gx + ((m - 1) % 3) * sx, SCP_TOP + ((m - 1) / 3) * sy, SCP_CELL, SCP_CELL };
 
 		if (k >= v->nring) continue;
 		if (m == 6) scp_cover_draw(a, &v->ring[k], from, (Uint8)(255 * (1.0f - e)), false, true);
@@ -13415,32 +13682,32 @@ static void scp_run_draw(scp_view *v, unsigned now)
 
 		scp_cover_draw(a, &v->ring[0], b, (Uint8)(255 * e), true, true);
 	}
-	scp_stats(a, ZYPEROS_SCREEN_W / 2, 640, v->p.found, v->p.snaps, -1);
+	scp_time(scp_eta(v, now, looked, total), false, eta, sizeof eta);
+	scp_stats(a, ZYPEROS_SCREEN_W / 2, SCP_LINE, v->p.found, v->p.snaps, -1, eta);
 	scp_foot(a, K, L, 1);
 }
 
-/* Done: what came, as a wall; the counts as marks; the room said plainly */
+/* Done: what came, as a wall across the page; the counts as marks; the room
+ * said plainly over the keys */
 static void scp_done_draw(scp_view *v)
 {
 	app *a = v->a;
-	TTF_Font *ft = ui_font(UI_F_TITLE), *fs = ui_font(UI_F_META);
+	TTF_Font *fs = ui_font(UI_F_META);
 	int hx = ud_page_top(a, 1.0f), m, i, nv = 0, n;
 	unsigned long long room = 0;
 	char line[160], sz[32];
-	const float cw = 118, ch = 150, gap = 22;
-	float x0 = (ZYPEROS_SCREEN_W - (7 * cw + 6 * gap)) / 2, y0 = 248;
+	const float gap = 20, cw = (SCP_X1 - SCP_X0 - 6 * gap) / 7, ch = 140;
 	const char *K[2] = { "A", "B" }, *L[2] = { T(S_SCRAPER_KEY_AGAIN), T(S_SCRAPER_KEY_CLOSE) };
 
-	ui_text(a->r, ft, T(S_SCRAPER_ALL_DONE), hx, ui_cap_y(ft, 168), -1, UI_TEXT);
-	if (v->problem[0]) ui_text(a->r, fs, v->problem, hx, ui_cap_y(fs, 214), -1, UI_TEXT_SOFT);
+	scp_head(a, hx, T(S_SCRAPER_ALL_DONE), v->problem, UI_GLYPH_COUNT);
 	n = v->nring > 14 ? 14 : v->nring;
 	for (m = 0; m < n; m++) {
 		int k = n - 1 - m;     /* oldest first */
 
-		scp_cover_draw(a, &v->ring[k], (SDL_FRect){ x0 + (m % 7) * (cw + gap), y0 + (m / 7) * (ch + 24), cw, ch },
-		              255, false, false);
+		scp_cover_draw(a, &v->ring[k], (SDL_FRect){ SCP_X0 + (m % 7) * (cw + gap), SCP_TOP + (m / 7) * (ch + gap),
+		                                            cw, ch }, 255, false, false);
 	}
-	scp_stats(a, ZYPEROS_SCREEN_W / 2, 618, v->done_found, v->done_videos, v->done_missing);
+	scp_stats(a, ZYPEROS_SCREEN_W / 2, 596, v->done_found, v->done_videos, v->done_missing, NULL);
 	for (i = 0; i < v->n; i++) if (v->s[i].vid) { nv++; room += v->s[i].vroom; }
 	if (nv) {
 		/* no account: no video came, so say why instead of "0 KB" */
@@ -13449,7 +13716,7 @@ static void scp_done_draw(scp_view *v)
 			scp_mb(room / 1e6, sz, sizeof sz);
 			snprintf(line, sizeof line, TN(S_SCRAPER_VIDEOS_ON_CARD, nv), nv, sz);
 		}
-		ui_text(a->r, fs, line, ZYPEROS_SCREEN_W / 2, ui_cap_y(fs, 662), 0, UI_TEXT_SOFT);
+		ui_text(a->r, fs, line, ZYPEROS_SCREEN_W / 2, ui_cap_y(fs, SCP_LINE), 0, UI_TEXT_SOFT);
 	}
 	scp_foot(a, K, L, 2);
 }
@@ -13477,7 +13744,7 @@ static void scp_test(scp_view *v, app *a);
 
 /* Tiles over the page, as Computer Connected's, or a list (tiles_are_list):
  * the one picked, or -1 */
-static int scp_ask(scp_view *v, const char *heading, menu_row *tiles, int n, int sel)
+static int scp_ask(scp_view *v, const char *heading, const char *sub, menu_row *tiles, int n, int sel)
 {
 	app *a = v->a;
 	key_hint hh[3] = { { KEYHINT_LEFT_RIGHT, T(S_KEYHINT_MOVE) }, { "A", T(S_KEYHINT_CHOOSE) },
@@ -13488,7 +13755,15 @@ static int scp_ask(scp_view *v, const char *heading, menu_row *tiles, int n, int
 
 	if (tiles_are_list(tiles, n)) snprintf(legend, sizeof legend, "%s", list_hints(T(S_KEYHINT_CLOSE)));
 	else keyhints_pack(hh, 3, legend, sizeof legend);
-	tiles[n] = MENU_NOTE(legend);
+	/* A line under the heading takes the panel's three notes: it, none
+	 * under the tiles, and the keys */
+	if (sub) {
+		tiles[n] = MENU_NOTE(sub);
+		tiles[n + 1] = MENU_NOTE(NULL);
+		tiles[n + 2] = MENU_NOTE(legend);
+	} else {
+		tiles[n] = MENU_NOTE(legend);
+	}
 	lv = panel_open();
 	while (choice == -2) {
 		plat_input_poll(&a->in);
@@ -13513,7 +13788,7 @@ static int scp_ask(scp_view *v, const char *heading, menu_row *tiles, int n, int
 		tick_theme(a);
 		scp_draw(v, anim_now());
 		ui_scrim_k(a->r, 0, k);
-		panel_show(a, PANEL_TILES, heading, tiles, n + 1, sel, 0, MENU_ZYPEROS, NULL, false, 0, NULL);
+		panel_show(a, PANEL_TILES, heading, tiles, n + (sub ? 3 : 1), sel, 0, MENU_ZYPEROS, NULL, false, 0, NULL);
 		plat_draw_osd(a->r);
 		plat_present();
 		ui_frame_rest(8);
@@ -13524,26 +13799,44 @@ static int scp_ask(scp_view *v, const char *heading, menu_row *tiles, int n, int
 	return choice;
 }
 
-/* Which games get videos */
-static void scp_videos_for(scp_view *v)
+/* Videos for's choices: for each, the videos still to fetch and their
+ * size, added up over the systems with videos on - which the line under
+ * the heading says, so a system's own figure (Systems' foot) is not taken
+ * for the whole (2026-11-14, on the Pixel 2: "in the videos for popup it's
+ * saying 1.9gb for all games, when collapsed it says 883mb") */
+static void scp_for_rows(const scp_view *v, menu_row *tiles, char *sub, size_t subn)
 {
-	static char val[SNAPS_FOR_COUNT][48];
-	menu_row tiles[SNAPS_FOR_COUNT + 1] = {
-		{ T(S_SCRAPER_ALL_GAMES), val[0], true },
-		{ T(S_LIBRARY_FAVORITES), val[1], true },
-		{ T(S_SCRAPER_PLAYED), val[2], true },
-	};
-	int i, k, c;
+	static char val[SNAPS_FOR_COUNT][96];
+	int i, k, nvid = 0;
 
+	tiles[0] = (menu_row){ T(S_SCRAPER_ALL_GAMES), val[0], true };
+	tiles[1] = (menu_row){ T(S_LIBRARY_FAVORITES), val[1], true };
+	tiles[2] = (menu_row){ T(S_SCRAPER_PLAYED), val[2], true };
+	for (i = 0; i < v->n; i++) if (v->s[i].vid) nvid++;
 	for (k = 0; k < SNAPS_FOR_COUNT; k++) {
 		int n = 0;
-		char sz[32];
+		char sz[32], tf[64];
 
 		for (i = 0; i < v->n; i++) if (v->s[i].vid) n += v->s[i].vneed[k];
 		scp_mb(n * v->mb_video, sz, sizeof sz);
-		snprintf(val[k], sizeof val[k], "%d \xc2\xb7 %s", n, sz);
+		scp_nbsp(sz, sizeof sz);
+		snprintf(tf, sizeof tf, T(S_SCRAPER_TO_FETCH), sz);
+		/* a number and its unit never apart on the tile's two lines */
+		snprintf(val[k], sizeof val[k], "%d\xc2\xa0\xc2\xb7\xc2\xa0%s", n, tf);
 	}
-	c = scp_ask(v, T(S_SCRAPER_VIDEOS_FOR), tiles, SNAPS_FOR_COUNT, snaps_for());
+	if (nvid) snprintf(sub, subn, TN(S_SCRAPER_VIDEOS_FOR_SYSTEMS, nvid), nvid);
+	else snprintf(sub, subn, "%s", T(S_SCRAPER_VIDEOS_OFF_ALL));
+}
+
+/* Which games get videos */
+static void scp_videos_for(scp_view *v)
+{
+	menu_row tiles[SNAPS_FOR_COUNT + 3];
+	char sub[128];
+	int c;
+
+	scp_for_rows(v, tiles, sub, sizeof sub);
+	c = scp_ask(v, T(S_SCRAPER_VIDEOS_FOR), sub, tiles, SNAPS_FOR_COUNT, snaps_for());
 	if (c >= 0) snaps_set_for(c);
 }
 
@@ -13569,7 +13862,7 @@ static void scp_settings(scp_view *v)
 	for (i = 0; i < v->n; i++) room += v->s[i].vroom;
 	sys_menu_bytes(room, sz, sizeof sz);
 	snprintf(vs, sizeof vs, "%s \xc2\xb7 %s", snaps_play() ? T(S_SCRAPER_ON) : T(S_SCRAPER_OFF), sz);
-	c = scp_ask(v, T(S_HOME_SETTINGS), tiles, 3, 0);
+	c = scp_ask(v, T(S_HOME_SETTINGS), NULL, tiles, 3, 0);
 	if (c == 0) ss_page(v->a);
 	else if (c == 1) sgdb_screen(v->a);
 	else if (c == 2) snaps_screen(v->a);
@@ -13599,6 +13892,19 @@ static void scp_start(scp_view *v)
 		k = scp_find(v, sc->folder);
 		if (k < 0 || !(v->s[k].cov || v->s[k].vid || v->only[0])) continue;
 		if (v->cfg.count < CFG_MAX_SYSTEMS) v->cfg.systems[v->cfg.count++] = *sc;
+	}
+	{
+		/* the time left's guesses, until the run's own pace says */
+		scp_need need;
+
+		scp_needs(v, &need);
+		v->s_cov = v->ss_in ? SCP_S_SS : SCP_S_LR;
+		v->s_det = SCP_S_SS + (need.looks ? (double)need.videos / need.looks : 0.0) * SCP_S_VIDEO;
+		v->est_looks = need.looks;
+		v->pace_det = false;
+		v->pace_t0 = anim_now();
+		v->pace_n0 = 0;
+		v->room_at = 0;
 	}
 	g_scp = v;
 	g_snap_sys = &v->cfg;
@@ -13780,8 +14086,25 @@ static void scp_page(app *a, const char *only)
 			    v->p.dlooked != last.dlooked || v->p.src != last.src || strcmp(v->p.now, last.now))
 				dirty = true;
 			last = v->p;
-			if (r != 1) { scp_finish(v, r == 0); dirty = true; }
-			else if (a->in.pressed[IN_BACK]) {
+			/* The card filling: a look every 2 s, and the run stops with
+			 * SCP_FLOOR still free, which done says */
+			bool full = false;
+
+			if (r == 1 && now - v->room_at >= 2000) {
+				struct statvfs vfs;
+
+				v->room_at = now;
+				full = statvfs(P_ROMS, &vfs) == 0 &&
+				       (unsigned long long)vfs.f_bavail * vfs.f_frsize < SCP_FLOOR;
+			}
+			if (full) {
+				scp_finish(v, false);
+				snprintf(v->problem, sizeof v->problem, "%s", T(S_SCRAPER_NO_ROOM));
+				dirty = true;
+			} else if (r != 1) {
+				scp_finish(v, r == 0);
+				dirty = true;
+			} else if (a->in.pressed[IN_BACK]) {
 				uisound_play(DS_SOUND_BACK);
 				scp_finish(v, false);
 				dirty = true;
@@ -13814,12 +14137,20 @@ static void scp_page(app *a, const char *only)
 			}
 		} else if (v->where == SCP_PLAN || v->where == SCP_DONE) {
 			if (a->in.pressed[IN_ACCEPT]) {
+				scp_need need;
+
+				if (v->where == SCP_DONE) scp_count(v);
+				scp_needs(v, &need);
 				if (!v->net) {
 					uisound_play(DS_SOUND_DENY);
 					result_message(a, scp_title(v), MSG_NEEDS_WIFI);
+				} else if (!scp_fits(v, &need)) {
+					/* not started: the plan's line says it in **warning**,
+					 * and Y's videos or Storage make the room */
+					uisound_play(DS_SOUND_DENY);
+					result_message(a, scp_title(v), T(S_SCRAPER_NO_ROOM));
 				} else {
 					uisound_play(DS_SOUND_ACCEPT);
-					if (v->where == SCP_DONE) scp_count(v);
 					scp_start(v);
 				}
 			} else if (a->in.pressed[IN_Y] && v->where == SCP_PLAN && !v->only[0]) {
@@ -13900,7 +14231,8 @@ static menu_result scraper_screen(app *a)
  * with videos off, 1 with three systems' on, 2 with one, 3 Systems, 4 a long
  * name in focus, 5 Videos for, 6 Settings, 7 the run at T ms, 8 done, 9
  * done with one system's videos, 10 offline, 11 a system's Box Art, 12
- * done with videos asked for and no ScreenScraper account. Covers
+ * done with videos asked for and no ScreenScraper account, 13 the plan
+ * with too little room on the card. Covers
  * from ZYPEROS_LOOK_COVERS (paths split by ':') and their systems'
  * indices from ZYPEROS_LOOK_SYS, when a shot has them. */
 static int shot_scraper_page = -1, shot_scraper_page_t = 7180;
@@ -13927,6 +14259,8 @@ static void scp_fixture(scp_view *v, app *a, int state, int t)
 	v->net = state != 10;
 	v->ss_in = state != 12;     /* videos asked for, no account */
 	v->mb_video = SCP_MB_PER_VIDEO;
+	v->mb_cover = SCP_MB_PER_COVER;
+	v->free = state == 13 ? 400000000ULL : 11200000000ULL;
 	for (i = 0; i < 9; i++) {
 		scp_sys *s = &v->s[v->n++];
 
@@ -13938,6 +14272,8 @@ static void scp_fixture(scp_view *v, app *a, int state, int t)
 		s->vneed[SNAPS_FOR_ALL] = SYS[i].vneed;
 		s->vneed[SNAPS_FOR_FAVORITES] = SYS[i].vneed / 8;
 		s->vneed[SNAPS_FOR_PLAYED] = SYS[i].vneed * 3 / 10;
+		s->names = SYS[i].vneed / 2;
+		for (int w = 0; w < SNAPS_FOR_COUNT; w++) s->both[w] = s->vneed[w] / 4;
 		s->vid = (vid >> i) & 1u;
 	}
 	if (state == 11) {
@@ -13993,6 +14329,17 @@ static void scp_fixture(scp_view *v, app *a, int state, int t)
 		v->p.found = 31 + L;
 		v->land_at = 1000000;
 		v->shot_now = v->land_at + (unsigned)(state == 7 ? t % 1100 : 2000);
+		{
+			/* the time left from the guesses, as a run's first seconds */
+			scp_need need;
+
+			scp_needs(v, &need);
+			v->s_cov = SCP_S_SS;
+			v->s_det = SCP_S_SS + (need.looks ? (double)need.videos / need.looks : 0.0) * SCP_S_VIDEO;
+			v->est_looks = need.looks;
+			v->pace_t0 = v->shot_now;
+			v->pace_n0 = v->p.looked;
+		}
 		v->done_found = 412;
 		v->done_videos = 38;
 		v->done_missing = 9;
@@ -14008,30 +14355,20 @@ static void scraper_page_shot(app *a)
 
 	scp_fixture(&v, a, st, shot_scraper_page_t);
 	if (st == 5) {
-		static char val[SNAPS_FOR_COUNT][48];
-		menu_row tiles[SNAPS_FOR_COUNT + 1] = {
-			{ T(S_SCRAPER_ALL_GAMES), val[0], true },
-			{ T(S_LIBRARY_FAVORITES), val[1], true },
-			{ T(S_SCRAPER_PLAYED), val[2], true },
-		};
+		/* As scp_videos_for asks it */
+		menu_row tiles[SNAPS_FOR_COUNT + 3];
 		key_hint hh[3] = { { KEYHINT_LEFT_RIGHT, T(S_KEYHINT_MOVE) }, { "A", T(S_KEYHINT_CHOOSE) },
 		                   { "B", T(S_KEYHINT_CLOSE) } };
-		static char legend[256];
-		int k, i;
+		static char legend[256], sub[128];
 
-		for (k = 0; k < SNAPS_FOR_COUNT; k++) {
-			int n = 0;
-			char sz[32];
-
-			for (i = 0; i < v.n; i++) if (v.s[i].vid) n += v.s[i].vneed[k];
-			scp_mb(n * v.mb_video, sz, sizeof sz);
-			snprintf(val[k], sizeof val[k], "%d \xc2\xb7 %s", n, sz);
-		}
+		scp_for_rows(&v, tiles, sub, sizeof sub);
 		keyhints_pack(hh, 3, legend, sizeof legend);
-		tiles[SNAPS_FOR_COUNT] = MENU_NOTE(legend);
+		tiles[SNAPS_FOR_COUNT] = MENU_NOTE(sub);
+		tiles[SNAPS_FOR_COUNT + 1] = MENU_NOTE(NULL);
+		tiles[SNAPS_FOR_COUNT + 2] = MENU_NOTE(legend);
 		scp_draw(&v, v.shot_now);
 		ui_scrim(a->r, 0);
-		tiles_panel(a, T(S_SCRAPER_VIDEOS_FOR), tiles, SNAPS_FOR_COUNT + 1, 1, PANEL_REST.panel);
+		tiles_panel(a, T(S_SCRAPER_VIDEOS_FOR), tiles, SNAPS_FOR_COUNT + 3, 1, PANEL_REST.panel);
 	} else if (st == 6) {
 		/* As scp_settings words them: a linked account, a key, videos on */
 		static char ss[64], vs[48];

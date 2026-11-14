@@ -393,3 +393,53 @@ fr = Joués
 de = Gespielte
 ja = プレイ済み
 it = Giocati
+
+[scraper.to_fetch]
+note = A size still to download, not on the card yet: %s is a size ("525 MB"). The Systems foot for the system in focus, the Videos for choices, and the plan's line over the keys. Lowercase, short
+en = %s to fetch
+zh-Hans = 待下载 %s
+es = %s por descargar
+pt-BR = %s a baixar
+fr = %s à télécharger
+de = %s zu laden
+ja = 取得予定 %s
+it = %s da scaricare
+
+[scraper.videos_for_systems]
+note = Under the Videos for question's heading: the choice is for every system with videos on, and its sizes add them up. Short
+en.one = For %d system with videos on
+en.other = For %d systems with videos on
+zh-Hans = 用于开启视频的 %d 个系统
+es.one = Para %d sistema con videos activados
+es.other = Para %d sistemas con videos activados
+pt-BR.one = Para %d sistema com vídeos ligados
+pt-BR.other = Para %d sistemas com vídeos ligados
+fr.one = Pour %d système aux vidéos activées
+fr.other = Pour %d systèmes aux vidéos activées
+de.one = Für %d System mit Videos an
+de.other = Für %d Systeme mit Videos an
+ja = 動画オンの %d システム
+it.one = Per %d sistema con i video attivi
+it.other = Per %d sistemi con i video attivi
+
+[scraper.no_room]
+note = A run would not fit on the card, or the card filled up during one: said when A is pressed, and under "All done" when a run stopped for it
+en = Not enough room on the card
+zh-Hans = 存储卡空间不足
+es = No hay espacio suficiente en la tarjeta
+pt-BR = Não há espaço suficiente no cartão
+fr = Pas assez d'espace sur la carte
+de = Nicht genug Platz auf der Karte
+ja = カードの空き容量が足りません
+it = Spazio insufficiente sulla scheda
+
+[scraper.about_time]
+note = The plan's second line under its heading, beside a clock: how long the run will take, roughly; %s is a time ("40 min", "1 h 20 min"). Lowercase, short
+en = about %s
+zh-Hans = 约 %s
+es = unos %s
+pt-BR = cerca de %s
+fr = environ %s
+de = etwa %s
+ja = 約 %s
+it = circa %s
