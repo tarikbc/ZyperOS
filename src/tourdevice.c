@@ -5,10 +5,12 @@
  * The GKD Pixel 2 in millimetres, as tools/build-pixel2-model.py builds the
  * landing page's model from its dimensioned drawing: x right, z up, y deep
  * (the front at -8.5, the back at 8.5), the body's middle at 0. A pose turns
- * it by `phi` about its upright axis - more than 0 shows the right side - and
- * draws it orthographic, `s` units a millimetre, so a key on a face is that
- * face's flat shape squashed across, and every shape stays a fan of
- * triangles from SDL_RenderGeometry.
+ * it by `phi` about its upright axis - more than 0 shows the right side -
+ * tilts it back by its pitch - more than 0 shows the top, as seen from a
+ * little above, its upright edges staying upright - and draws it
+ * orthographic, `s` units a millimetre, so a key on a face is that face's
+ * flat shape squashed, and every shape stays a fan of triangles from
+ * SDL_RenderGeometry.
  *
  * Every shape is filled and edged as a band that does not overlap its fill,
  * so the first lesson's fade-in shows no seam. */
@@ -71,6 +73,14 @@ static const struct { int k; float x, w; } SHOULDER[4] = {
 #define SH_Y       2.5f
 #define SH_BASE    36.0f
 #define SH_TOP     41.7f
+/* With the top showing they are blocks standing on it, from the front of
+ * their notch (the model's caps, -0.95) to the back the body's outline has
+ * (BODY_BACK less its 0.8 mm chamfer), their whole depth from SH_DEEP_DEG of
+ * pitch up; below it they are as deep as that much of it, so at 0 they are
+ * the plane above and the tilt starts without a jump */
+#define SH_FRONT    -0.95f
+#define SH_BACK     (BODY_BACK - 0.8f)
+#define SH_DEEP_DEG 12.0f
 
 /* ---- the poses ------------------------------------------------------------- */
 
@@ -136,6 +146,8 @@ bool tourdev_shown(const tour *t)
 typedef struct {
 	SDL_Renderer *r;
 	float cx, cy, s, cp, sp, op;
+	float cq, sq;                 /* the pitch's cosine and sine */
+	float deep;                   /* how much of their depth the shoulders show, 0 to 1 */
 	unsigned body, line, side, glass, screen, key, key_line, pocket, mark;
 	unsigned lit, lit_line, dot, ink, on_accent;
 	float on[TD_KEYS], press[TD_KEYS];
@@ -155,10 +167,14 @@ static SDL_Color col(const view *v, unsigned c, float a)
 	                    (Uint8)(255.0f * clampf(a * v->op, 0.0f, 1.0f) + 0.5f) };
 }
 
-/* A model point on the screen */
+/* A model point on the screen: turned about its upright axis, then seen
+ * from the pitch above, where a point further back is higher. At pitch 0
+ * the height is z exactly (z * 1 + 0), so the level poses are as they were. */
 static SDL_FPoint at(const view *v, float x, float y, float z)
 {
-	return (SDL_FPoint){ v->cx + v->s * (x * v->cp + y * v->sp), v->cy - v->s * z };
+	const float up = z * v->cq + (y * v->cp - x * v->sp) * v->sq;
+
+	return (SDL_FPoint){ v->cx + v->s * (x * v->cp + y * v->sp), v->cy - v->s * up };
 }
 
 /* ---- shapes ----------------------------------------------------------------------- */
@@ -368,6 +384,22 @@ static int oval(float cx, float cy, float rx, float ry, SDL_FPoint *p)
 	return N;
 }
 
+/* A circle of radius `r` about a model point, on the front's plane (`side`
+ * 0) or a side face's (`side` -1 or 1): its points on the screen. Level, the
+ * callers keep their oval, the ellipse it is then; tilted, it is slanted. */
+static int disc(const view *v, int side, float x, float y, float z, float r, SDL_FPoint *p)
+{
+	enum { N = 32 };
+	int i;
+
+	for (i = 0; i < N; i++) {
+		const float t = 2.0f * (float)M_PI * i / N, a = cosf(t) * r, b = sinf(t) * r;
+
+		p[i] = side ? at(v, x, y + a, z + b) : at(v, x + a, y, z + b);
+	}
+	return N;
+}
+
 /* ---- the lit key --------------------------------------------------------------- */
 
 /* A key's colors, `on` of the way lit */
@@ -423,7 +455,8 @@ static void face_key(const view *v, int k, float y)
 	SDL_FPoint p[MAXP];
 	const float q = 1.0f - (1.0f - 0.92f) * v->press[k];
 	const SDL_FPoint c = at(v, FACE[k].x, y, FACE[k].z);
-	const int n = oval(c.x, c.y, FACE[k].r * v->s * v->cp * q, FACE[k].r * v->s * q, p);
+	const int n = v->sq == 0.0f ? oval(c.x, c.y, FACE[k].r * v->s * v->cp * q, FACE[k].r * v->s * q, p)
+	                            : disc(v, 0, FACE[k].x, y, FACE[k].z, FACE[k].r * q, p);
 
 	shape(v, p, n, key_fill(v, k), key_edge(v, k), DS_FRAME);
 }
@@ -509,28 +542,106 @@ static void vol_sign(const view *v, int k, bool face, float a, float z, float l,
 	}
 }
 
-/* A shoulder, `k`, from under the top edge up to `top`: at rest the square
- * top the model's shows over the edge; lit, standing up out of it as a tab
- * does, its top corners rounded as a tab's */
-static void shoulder(const view *v, int k, float x, float w, float top)
+/* A shoulder's face toward the front, `k`, on the plane at depth `y`, from
+ * `base` up to `top`: square at rest; lit, its top corners rounded as a
+ * tab's. Its points, 12. */
+static int shoulder_face(const view *v, int k, float x, float w, float y, float base, float top,
+                         SDL_FPoint *p)
 {
-	SDL_FPoint p[MAXP];
 	const float rad = 1.2f * v->on[k];
 	int n = 0, i;
 
-	p[n++] = at(v, x - w / 2.0f, SH_Y, SH_BASE);
-	p[n++] = at(v, x + w / 2.0f, SH_Y, SH_BASE);
+	p[n++] = at(v, x - w / 2.0f, y, base);
+	p[n++] = at(v, x + w / 2.0f, y, base);
 	for (i = 0; i <= 4; i++) {
 		const float a = (float)M_PI / 2.0f * i / 4.0f;
 
-		p[n++] = at(v, x + w / 2.0f - rad + cosf(a) * rad, SH_Y, top - rad + sinf(a) * rad);
+		p[n++] = at(v, x + w / 2.0f - rad + cosf(a) * rad, y, top - rad + sinf(a) * rad);
 	}
 	for (i = 0; i <= 4; i++) {
 		const float a = (float)M_PI / 2.0f * (1.0f + i / 4.0f);
 
-		p[n++] = at(v, x - w / 2.0f + rad + cosf(a) * rad, SH_Y, top - rad + sinf(a) * rad);
+		p[n++] = at(v, x - w / 2.0f + rad + cosf(a) * rad, y, top - rad + sinf(a) * rad);
 	}
+	return n;
+}
+
+/* A shoulder, `k`, from under the top edge up to `top`, level: at rest the
+ * square top the model's shows over the edge; lit, standing up out of it as
+ * a tab does */
+static void shoulder(const view *v, int k, float x, float w, float top)
+{
+	SDL_FPoint p[MAXP];
+	const int n = shoulder_face(v, k, x, w, SH_Y, SH_BASE, top, p);
+
 	shape(v, p, n, key_fill(v, k), key_edge(v, k), DS_FRAME);
+}
+
+/* The convex hull of `p`'s `n` points (sorted in place) into `out`, MAXP at
+ * most: a monotone chain. Its count; `out` holds one more, the first again. */
+static int hull(SDL_FPoint *p, int n, SDL_FPoint *out)
+{
+	int a = 0, b, i, lo;
+
+	for (i = 1; i < n; i++) {
+		SDL_FPoint x = p[i];
+
+		for (b = i - 1; b >= 0 && (p[b].x > x.x || (p[b].x == x.x && p[b].y > x.y)); b--)
+			p[b + 1] = p[b];
+		p[b + 1] = x;
+	}
+#define CROSS(o, a_, b_) (((a_).x - (o).x) * ((b_).y - (o).y) - ((a_).y - (o).y) * ((b_).x - (o).x))
+	for (i = 0; i < n; i++) {
+		while (a >= 2 && CROSS(out[a - 2], out[a - 1], p[i]) <= 0.0f) a--;
+		if (a < MAXP) out[a++] = p[i];
+	}
+	for (i = n - 2, lo = a + 1; i >= 0; i--) {
+		while (a >= lo && CROSS(out[a - 2], out[a - 1], p[i]) <= 0.0f) a--;
+		if (a < MAXP) out[a++] = p[i];
+	}
+#undef CROSS
+	return a - 1;
+}
+
+/* The shoulders with the top showing (a pitch above 0), up to `top`: each a
+ * block standing on the top face, `deep` of its depth, its face toward the
+ * front over it so the edge between the two shows. The nearer side's last,
+ * so a lit one's side stands over its neighbor. A lit one's halo first, over
+ * the top face, and its ring kept in `spots` for over everything. */
+static void shoulders_tilted(const view *v, const float top[4], spot *spots, int *nspots)
+{
+	static const int RIGHTWARD[4] = { 0, 2, 3, 1 };   /* L1, L2, R2, R1 */
+	const float y0 = SH_Y + (SH_FRONT - SH_Y) * v->deep, y1 = SH_Y + (SH_BACK - SH_Y) * v->deep;
+	SDL_FPoint face[4][16], both[32], out[MAXP];
+	int nface[4], i, j, n;
+
+	for (i = 0; i < 4; i++) {
+		const int k = SHOULDER[i].k;
+		float x0 = 1e9f, x1 = -1e9f, ya = 1e9f, yb = -1e9f;
+
+		nface[i] = shoulder_face(v, k, SHOULDER[i].x, SHOULDER[i].w, y0, BODY_TOP, top[i], face[i]);
+		if (v->on[k] <= 0.0f) continue;
+		n = shoulder_face(v, k, SHOULDER[i].x, SHOULDER[i].w, y1, BODY_TOP, top[i], both);
+		for (j = 0; j < n; j++) both[n + j] = face[i][j];
+		for (j = 0; j < 2 * n; j++) {
+			x0 = fminf(x0, both[j].x); x1 = fmaxf(x1, both[j].x);
+			ya = fminf(ya, both[j].y); yb = fmaxf(yb, both[j].y);
+		}
+		spots[*nspots] = (spot){ v->on[k], v->press[k], (x0 + x1) / 2.0f, (ya + yb) / 2.0f,
+		                         (x1 - x0) / 2.0f, (yb - ya) / 2.0f, true, true };
+		halo(v, v->on[k], v->press[k], spots[*nspots].cx, spots[*nspots].cy,
+		     spots[*nspots].rx, spots[*nspots].ry);
+		(*nspots)++;
+	}
+	for (j = 0; j < 4; j++) {
+		const int s = RIGHTWARD[v->sp < 0.0f ? 3 - j : j], k = SHOULDER[s].k;
+
+		n = shoulder_face(v, k, SHOULDER[s].x, SHOULDER[s].w, y1, BODY_TOP, top[s], both);
+		for (i = 0; i < nface[s]; i++) both[n + i] = face[s][i];
+		n = hull(both, n + nface[s], out);
+		shape(v, out, n, key_fill(v, k), key_edge(v, k), DS_FRAME);
+		shape(v, face[s], nface[s], key_fill(v, k), key_edge(v, k), DS_FRAME);
+	}
 }
 
 /* The colors of the theme in force, into `v` */
@@ -577,6 +688,9 @@ static void view_of(view *v, const td_pose *p)
 	v->s = p->scale;
 	v->cp = cosf(phi);
 	v->sp = sinf(phi);
+	v->cq = cosf(p->pitch * (float)M_PI / 180.0f);
+	v->sq = sinf(p->pitch * (float)M_PI / 180.0f);
+	v->deep = clampf(p->pitch / SH_DEEP_DEG, 0.0f, 1.0f);
 	v->op = p->op;
 	td_colors(v);
 	memcpy(v->on, p->on, sizeof v->on);
@@ -658,22 +772,24 @@ static void draw_view(SDL_Renderer *r, view *vp)
 	spot spots[TD_KEYS + 2];
 	int nspots = 0, i, n;
 	SDL_FPoint pt[MAXP], p2[2 * MAXP];
+	float top[4];
 
 	v.r = r;
 
-	/* The shoulders, behind the body: only their tops show over it. A lit
-	 * one stands TAB_OUT_LIT out of the top edge, as MENU and VOL stand out
-	 * of theirs for Brightness, and goes back toward it as it presses. Its
-	 * halo first, so the body covers the halo's lower half and it glows from
-	 * behind the edge; its ring goes over everything with the others. */
+	/* The shoulders, level, behind the body: only their tops show over it. A
+	 * lit one stands TAB_OUT_LIT out of the top edge, as MENU and VOL stand
+	 * out of theirs for Brightness, and goes back toward it as it presses.
+	 * Its halo first, so the body covers the halo's lower half and it glows
+	 * from behind the edge; its ring goes over everything with the others.
+	 * Tilted, they stand on the top face, over the body (shoulders_tilted). */
 	{
-		float top[4];
+		const bool level = v.sq == 0.0f;
 
 		for (i = 0; i < 4; i++) {
 			const int k = SHOULDER[i].k;
 
 			top[i] = SH_TOP + (BODY_TOP + TAB_OUT_LIT - 1.2f * v.press[k] - SH_TOP) * v.on[k];
-			if (v.on[k] > 0.0f) {
+			if (level && v.on[k] > 0.0f) {
 				const SDL_FPoint c = at(&v, SHOULDER[i].x, SH_Y, (BODY_TOP + top[i]) / 2.0f);
 				const spot s = { v.on[k], v.press[k], c.x, c.y,
 				                 SHOULDER[i].w / 2.0f * v.s * v.cp,
@@ -683,7 +799,7 @@ static void draw_view(SDL_Renderer *r, view *vp)
 				spots[nspots++] = s;
 			}
 		}
-		for (i = 0; i < 4; i++) shoulder(&v, SHOULDER[i].k, SHOULDER[i].x, SHOULDER[i].w, top[i]);
+		for (i = 0; i < 4 && level; i++) shoulder(&v, SHOULDER[i].k, SHOULDER[i].x, SHOULDER[i].w, top[i]);
 	}
 	/* MENU and VOL as tabs out of the edges, behind the body, as it faces
 	 * front for Brightness */
@@ -715,36 +831,20 @@ static void draw_view(SDL_Renderer *r, view *vp)
 	}
 
 	/* The body: everything between its front and back outlines, its turned
-	 * side showing, then its front over it */
+	 * side (and, tilted, its top) showing, the shoulders standing on the top,
+	 * then its front over them */
 	{
 		float ab[MAXP * 2];
 		const int m = rrect(BODY_W, BODY_H, BODY_R, 0.0f, 8, ab);
-		int a = 0, b, lo;
 
 		for (i = 0; i < m; i++) {
 			p2[2 * i] = at(&v, ab[i * 2], BODY_FRONT + 0.8f, ab[i * 2 + 1]);
 			p2[2 * i + 1] = at(&v, ab[i * 2], BODY_BACK - 0.8f, ab[i * 2 + 1]);
 		}
-		/* Its outline on the screen: the hull of both, a monotone chain */
-		n = 2 * m;
-		for (i = 1; i < n; i++) {
-			SDL_FPoint x = p2[i];
-
-			for (b = i - 1; b >= 0 && (p2[b].x > x.x || (p2[b].x == x.x && p2[b].y > x.y)); b--)
-				p2[b + 1] = p2[b];
-			p2[b + 1] = x;
-		}
-#define CROSS(o, a_, b_) (((a_).x - (o).x) * ((b_).y - (o).y) - ((a_).y - (o).y) * ((b_).x - (o).x))
-		for (i = 0; i < n; i++) {
-			while (a >= 2 && CROSS(pt[a - 2], pt[a - 1], p2[i]) <= 0.0f) a--;
-			if (a < MAXP) pt[a++] = p2[i];
-		}
-		for (i = n - 2, lo = a + 1; i >= 0; i--) {
-			while (a >= lo && CROSS(pt[a - 2], pt[a - 1], p2[i]) <= 0.0f) a--;
-			if (a < MAXP) pt[a++] = p2[i];
-		}
-#undef CROSS
-		shape(&v, pt, a - 1, col(&v, v.side, 1.0f), col(&v, v.line, 1.0f), DS_FRAME);
+		/* Its outline on the screen: the hull of both */
+		n = hull(p2, 2 * m, pt);
+		shape(&v, pt, n, col(&v, v.side, 1.0f), col(&v, v.line, 1.0f), DS_FRAME);
+		if (v.sq != 0.0f) shoulders_tilted(&v, top, spots, &nspots);
 		for (i = 0; i < m; i++) pt[i] = at(&v, ab[i * 2] * 0.985f, BODY_FRONT, ab[i * 2 + 1] * 0.988f);
 		shape(&v, pt, m, col(&v, v.body, 1.0f), col(&v, v.line, 1.0f), DS_FRAME);
 	}
@@ -761,14 +861,14 @@ static void draw_view(SDL_Renderer *r, view *vp)
 	if (v.on[TD_DPAD] > 0.0f) {
 		const SDL_FPoint c = at(&v, DPAD_X, BODY_FRONT, DPAD_Z);
 
-		spots[nspots++] = (spot){ v.on[TD_DPAD], 0.0f, c.x, c.y, 9.0f * v.s * v.cp, 9.0f * v.s, true, false };
+		spots[nspots++] = (spot){ v.on[TD_DPAD], 0.0f, c.x, c.y, 9.0f * v.s * v.cp, 9.0f * v.s * v.cq, true, false };
 	}
 	for (i = TD_A; i <= TD_START; i++)
 		if (v.on[i] > 0.0f) {
 			const SDL_FPoint c = at(&v, FACE[i].x, BODY_FRONT, FACE[i].z);
 
 			spots[nspots++] = (spot){ v.on[i], v.press[i], c.x, c.y, FACE[i].r * v.s * v.cp,
-			                          FACE[i].r * v.s, true, false };
+			                          FACE[i].r * v.s * v.cq, true, false };
 		}
 	{
 		const float ss = fabsf(v.sp);
@@ -835,12 +935,14 @@ static void draw_view(SDL_Renderer *r, view *vp)
 			}
 			n = side_rr(&v, 1, 9.8f * qp, 2.3f * qp, 1.1f, -(float)M_PI / 4.0f, POWER_Y, POWER_Z, pt);
 			shape(&v, pt, n, key_fill(&v, TD_POWER), key_edge(&v, TD_POWER), DS_FRAME);
-			n = oval(m.x, m.y, MENU_R * q * v.s * ss, MENU_R * q * v.s, pt);
+			n = v.sq == 0.0f ? oval(m.x, m.y, MENU_R * q * v.s * ss, MENU_R * q * v.s, pt)
+			                 : disc(&v, 1, SIDE_X, MENU_Y, MENU_Z, MENU_R * q, pt);
 			shape(&v, pt, n, key_fill(&v, TD_MENU), key_edge(&v, TD_MENU), DS_FRAME);
 			for (d = -1; d <= 1; d++) {
 				const SDL_FPoint c = at(&v, SIDE_X, MENU_Y, MENU_Z + d * MENU_DOT_GAP * q);
 
-				n = oval(c.x, c.y, MENU_DOT_R * q * v.s * ss, MENU_DOT_R * q * v.s, pt);
+				n = v.sq == 0.0f ? oval(c.x, c.y, MENU_DOT_R * q * v.s * ss, MENU_DOT_R * q * v.s, pt)
+				                 : disc(&v, 1, SIDE_X, MENU_Y, MENU_Z + d * MENU_DOT_GAP * q, MENU_DOT_R * q, pt);
 				fill(r, pt, n, dot);
 			}
 		}

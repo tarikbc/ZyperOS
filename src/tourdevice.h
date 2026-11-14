@@ -22,12 +22,14 @@
 
 /* The handheld as anyone can draw it: where (the middle, in screen units),
  * how big (screen units a millimetre), how far turned (degrees, 0 front, 52
- * the side), at `op` of its opacity, with each key lit `on` and pressed
- * `press` from 0 to 1, the d-pad's arms pressed (up, down, left, right),
- * whether the side's tabs stand out of the edge, and their ring. Clear it
- * whole before filling it, so two poses compare as bytes. */
+ * the side), how far tilted back (degrees, 0 level, more than 0 shows its
+ * top: the view from a little above), at `op` of its opacity, with each key
+ * lit `on` and pressed `press` from 0 to 1, the d-pad's arms pressed (up,
+ * down, left, right), whether the side's tabs stand out of the edge, and
+ * their ring. Clear it whole before filling it, so two poses compare as
+ * bytes. */
 typedef struct {
-	float cx, cy, scale, deg, op;
+	float cx, cy, scale, deg, pitch, op;
 	float on[TD_KEYS], press[TD_KEYS];
 	float arm[4];
 	bool tabs;
