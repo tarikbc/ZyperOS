@@ -18,6 +18,11 @@ each one, and for the changed ones writes sheets of the base, this tree and the
 pixels that differ (build-native/pixel-gate/sheet-*.png): the before and after
 of a change that means to change something, for a review.
 
+What changed is shot twice again on each side, a second look: a frame that
+differs from its own side's first shot shows something that moves by itself
+(the time, a clock-driven Zyper's blink, the host's free disk space), and is
+listed as unsteady, not as changed.
+
 The base's frames are kept by its commit (build-native/pixel-gate/base-<sha>),
 so a second run against the same base shoots only this tree. A shot that only
 one side has is listed as new or gone, not as a change. Art in res/ is not
@@ -175,6 +180,8 @@ def main():
                 print("pixel gate: the base's shots", flush=True)
                 shoot(binary, base_out, langs, themes, args.only, args.jobs)
                 (base_out / "asked.txt").write_text("base %s\n%s\n" % (sha, asked))
+                # kept for the second look at what changed (below)
+                shutil.copy2(binary, base_out / "zyperos")
             finally:
                 run(["git", "worktree", "remove", "--force", str(tree)], ROOT)
     else:
@@ -189,13 +196,36 @@ def main():
     base, here = frames(base_out), frames(here_out)
     both = sorted(set(base) & set(here))
     changed = [n for n in both if not same(base[n], here[n])]
+    # A second look: what changed, shot again at the base. A frame that
+    # differs from its own base shot shows something that moves by itself -
+    # the time, a clock-driven Zyper, the host's free disk space - and is
+    # unsteady, not changed by this tree
+    unsteady = []
+    base_bin = base_out / "zyperos"
+    if changed and base_bin.is_file():
+        parts = [n[:-4].split("/") for n in changed]
+        # Each side twice: a clock-driven pose (a blink) can meet its first
+        # shot's by chance, on either side
+        for side, bin_, first in (("base", base_bin, base), ("here", binary, here)):
+            for look in (1, 2):
+                print("pixel gate: %s's changed shots again (%d)" % (side, look), flush=True)
+                again_out = OUT / ("again-%s-%d" % (side, look))
+                shutil.rmtree(again_out, ignore_errors=True)
+                shoot(bin_, again_out, sorted({l for _, l, _ in parts}), sorted({t for t, _, _ in parts}),
+                      sorted({s for _, _, s in parts}), args.jobs)
+                again = frames(again_out)
+                unsteady += [n for n in changed
+                             if n not in unsteady and n in again and not same(first[n], again[n])]
+        changed = [n for n in changed if n not in unsteady]
     new = sorted(set(here) - set(base))
     gone = sorted(set(base) - set(here))
     for old in OUT.glob("sheet-*.png"):
         old.unlink()
-    report = ["pixel gate: %d of %d frames changed (base %s, %s, %s)" % (
-        len(changed), len(both), sha[:12], " ".join(themes), " ".join(langs))]
+    report = ["pixel gate: %d of %d frames changed (base %s, %s, %s)%s" % (
+        len(changed), len(both), sha[:12], " ".join(themes), " ".join(langs),
+        "; %d more unsteady: each differs from its own side's shot again" % len(unsteady) if unsteady else "")]
     report += ["changed: " + n for n in changed]
+    report += ["unsteady: " + n for n in unsteady]
     report += ["new: " + n for n in new]
     report += ["gone: " + n for n in gone]
     made = sheets(changed, base, here, OUT) if changed else []
