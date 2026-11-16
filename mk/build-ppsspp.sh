@@ -28,7 +28,10 @@
 # the network. Eight patches of ours, and mk/core-stamp.sh holds the core to
 # them (each patch says why):
 #   mk/patches/ppsspp-serialize-size.patch  the emulation thread runs again
-#                                           after the core measures a state
+#                                           after the core measures a state,
+#                                           and is paused for the state that
+#                                           follows (no state written while a
+#                                           frame runs)
 #   mk/patches/ppsspp-audio-thread.patch    the sound the emulation thread
 #                                           mixes is no longer lost while
 #                                           retro_run hands it over

@@ -1,8 +1,45 @@
 diff --git a/libretro/libretro.cpp b/libretro/libretro.cpp
-index 3b2f10317e..96f4f57e17 100644
+index 3b2f10317e..02fe68969d 100644
 --- a/libretro/libretro.cpp
 +++ b/libretro/libretro.cpp
-@@ -1803,12 +1803,20 @@ size_t retro_serialize_size(void)
+@@ -1451,8 +1451,28 @@ namespace Libretro
+       }
+    }
+ 
++   // ZyperOS: a start asked for and not yet taken up, waited out. Pause and
++   // Stop act only on a RUNNING thread, and START_REQUESTED is not RUNNING,
++   // so in that window they returned and did nothing while the thread went
++   // on to run. retro_serialize_size, below, starts the thread again after
++   // its measure, and a frontend that asks the size right before
++   // retro_serialize or retro_unserialize, as Diatom does, came to Pause in
++   // that window: the state was measured and written while the emulation
++   // thread ran a frame. The two passes then disagreed ("state: serialize
++   // failed" on 3 of 12 PSP quits on a GKD Pixel 2, 2026-11-15, so no auto
++   // state), or agreed on a state torn mid-frame. retro_serialize starts the
++   // thread too, so a game unloaded right after its state came to Stop in
++   // the same window, kept only by a 4 ms sleep. The thread takes a start up
++   // within its 1 ms paused sleep.
++   static void EmuThreadSettle()
++   {
++      while (emuThreadState == EmuThreadState::START_REQUESTED)
++         sleep_ms(1, "libretro-start-poll");
++   }
++
+    void EmuThreadStop()
+    {
++      EmuThreadSettle();
+       if (emuThreadState != EmuThreadState::RUNNING)
+          return;
+ 
+@@ -1470,6 +1490,7 @@ namespace Libretro
+ 
+    void EmuThreadPause()
+    {
++      EmuThreadSettle();
+       if (emuThreadState != EmuThreadState::RUNNING)
+          return;
+ 
+@@ -1803,12 +1824,20 @@ size_t retro_serialize_size(void)
        return 134217728; // 128MB ought to be enough for anybody.
  
     SaveState::SaveStart state;
