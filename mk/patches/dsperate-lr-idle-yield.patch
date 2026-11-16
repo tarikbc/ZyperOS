@@ -1,0 +1,473 @@
+diff --git a/src/libretro.cpp b/src/libretro.cpp
+index 84ecc89..2b71474 100644
+--- a/src/libretro.cpp
++++ b/src/libretro.cpp
+@@ -11,6 +11,7 @@
+ 
+ #include "core/nds.h"
+ #include "core/host_cores.h"
++#include "core/cpu/idle_loop.h"
+ #include "core/state/state.h"
+ #if DSPERATE_JIT
+ #include "core/cpu/jit/jit.h"
+@@ -97,12 +98,33 @@ void read_language() {
+       if (!std::strcmp(lv.value, kLanguages[i])) ds_language = i;
+ }
+ 
++// Idle-loop yield (patches/0003-idle-yield.patch, cpu/idle_loop.h): a CPU
++// that only polls gives up the rest of its slice. On unless the frontend
++// turns it off, or the game is one listed here, by the four letters of its
++// game code, for a game that waits by polling at an exact time. None yet.
++bool idle_yield_on = true;
++const char* const kIdleYieldOff[] = { nullptr };
++
+ void read_options() {
+   retro_variable v{"dsperate_jit", nullptr};
+   jit_on = !(env_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &v) && v.value && !std::strcmp(v.value, "disabled"));
++  retro_variable y{"dsperate_idle_yield", nullptr};
++  idle_yield_on = !(env_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &y) && y.value && !std::strcmp(y.value, "disabled"));
+   read_language();
+ }
+ 
++// The switch for the game just booted: before the recompiler attaches, so
++// its blocks are translated with the yield's hooks or without them
++void set_idle_yield() {
++  const char* code = nds->cart ? nds->cart->header().game_code : nullptr;
++  bool listed = false;
++  for (const char* const* g = kIdleYieldOff; *g && code; ++g)
++    if (!std::strncmp(*g, code, 4)) listed = true;
++  ds::cpu::g_idle_yield = idle_yield_on && !listed;
++  log(RETRO_LOG_INFO, "dsperate: idle-loop yield %s%s\n", ds::cpu::g_idle_yield ? "on" : "off",
++      listed ? " (this game is listed off)" : !idle_yield_on ? " (the option)" : "");
++}
++
+ // Battery saves are the frontend's (RETRO_MEMORY_SAVE_RAM, a raw chip image,
+ // the same file format other DS cores use). A game DSperate's save list
+ // names has its chip sized at load; one it doesn't is sized from an existing
+@@ -366,6 +388,7 @@ RETRO_API void retro_set_environment(retro_environment_t cb) {
+   static const retro_variable vars[] = {
+     {"dsperate_jit", "JIT recompiler (restart); enabled|disabled"},
+     {"dsperate_language", "Game language (start and reset); firmware|japanese|english|french|german|italian|spanish|chinese"},
++    {"dsperate_idle_yield", "Idle loops give up the CPU (restart); enabled|disabled"},
+     {nullptr, nullptr},
+   };
+   cb(RETRO_ENVIRONMENT_SET_VARIABLES, const_cast<retro_variable*>(vars));
+@@ -559,6 +582,7 @@ RETRO_API bool retro_load_game(const retro_game_info* game) {
+   layout_begin();
+   nds = std::make_unique<ds::NDS>();
+   if (!boot()) { nds.reset(); layout_end(); return false; }
++  set_idle_yield();
+   load_unlisted_save();
+   register_memory_map();
+ #if DSPERATE_JIT
+diff --git a/patches/0003-idle-yield.patch b/patches/0003-idle-yield.patch
+new file mode 100644
+index 0000000..dc751b5
+--- /dev/null
++++ b/patches/0003-idle-yield.patch
+@@ -0,0 +1,405 @@
++diff --git a/src/core/cpu/idle_loop.cpp b/src/core/cpu/idle_loop.cpp
++index 81abcf9..d2e2e32 100644
++--- a/src/core/cpu/idle_loop.cpp
+++++ b/src/core/cpu/idle_loop.cpp
++@@ -3,7 +3,10 @@
++ #include "core/cpu/idle_loop.h"
++ #include "core/cpu/arm_decode.h"
++ #include "core/cpu/cpu.h"
+++#include "core/mem/bus.h"
+++#include "core/nds.h"
++ 
+++#include <cstdlib>
++ #include <cstring>
++ 
++ namespace ds::cpu {
++@@ -19,6 +22,7 @@ struct LoadSite {
++   u8  base;        // base register, or 0xFF when `addr` is already absolute
++   s32 offset;
++   u32 addr;        // resolved address for PC-relative loads
+++  u8  index = 0xFF;   // a second register added to the base (Thumb's ldr rd, [rn, rm])
++ };
++ 
++ struct Verdict {
++@@ -30,6 +34,7 @@ struct Verdict {
++   u32  checksum = 0;       // body words, re-verified per query (SMC / remap)
++   u32  load_count = 0;
++   LoadSite loads[MAX_LOADS];
+++  bool thumb = false;      // the yield cache keeps Thumb loops too
++ };
++ 
++ // Direct-mapped structural cache, one per CPU. A collision just re-analyses.
++@@ -234,8 +239,214 @@ void analyse(CpuContext& cpu, u32 pc, Verdict& v) {
++   for (u32 i = 0; i < s.load_count; ++i) v.loads[i] = s.loads[i];
++ }
++ 
+++// ---- idle-loop yield (idle_loop.h) ----
+++
+++inline bool fetch16(CpuContext& cpu, u32 addr, u16& out) {
+++  const u8* p = cpu.page_table.read_ptr(addr);
+++  if (!p) return false;
+++  std::memcpy(&out, p, 2);
+++  return true;
+++}
+++
+++// One Thumb instruction of a candidate body, as scan_instr is for ARM: the
+++// registers it reads and writes, its loads, and a rejection for anything
+++// observable or that leaves the loop by another way than its back edge.
+++bool scan_thumb(BodyScan& s, u32 at, u16 instr, u32 head, u32 tail) {
+++  using arm::TOp;
+++  const u32 rd = instr & 7, rs = (instr >> 3) & 7;
+++  auto load = [&](u8 base, s32 offset, u32 addr, u8 index) {
+++    if (s.load_count >= MAX_LOADS) return false;
+++    LoadSite& site = s.loads[s.load_count++];
+++    site.base = base; site.offset = offset; site.addr = addr; site.index = index;
+++    return true;
+++  };
+++  switch (arm::decode_thumb(instr)) {
+++  case TOp::ShiftImm:                       // LSL/LSR/ASR rd, rs, #imm5
+++    if (((instr >> 11) & 3) == 0 && ((instr >> 6) & 0x1F) == 0) do_read(s, FLAGS);   // LSL #0 keeps C
+++    do_read(s, rs); do_write(s, rd); do_write(s, FLAGS);
+++    break;
+++  case TOp::AddSubReg:                      // ADD/SUB rd, rs, rn
+++    do_read(s, rs); do_read(s, (instr >> 6) & 7); do_write(s, rd); do_write(s, FLAGS);
+++    break;
+++  case TOp::AddSubImm3:
+++    do_read(s, rs); do_write(s, rd); do_write(s, FLAGS);
+++    break;
+++  case TOp::MovCmpAddSubImm8: {
+++    const u32 op = (instr >> 11) & 3, r = (instr >> 8) & 7;
+++    if (op != 0) do_read(s, r);                     // MOV writes it fresh
+++    if (op != 1) do_write(s, r);                    // CMP only compares
+++    do_write(s, FLAGS);
+++    break;
+++  }
+++  case TOp::Alu: {
+++    const u32 op = (instr >> 6) & 0xF;
+++    if (op == 0x8 || op == 0xA || op == 0xB) { do_read(s, rd); do_read(s, rs); do_write(s, FLAGS); break; }   // TST CMP CMN
+++    if (op == 0x9 || op == 0xF) { do_read(s, rs); do_write(s, rd); do_write(s, FLAGS); break; }               // NEG MVN
+++    if (op == 0x5 || op == 0x6 || op == 0x2 || op == 0x3 || op == 0x4 || op == 0x7) do_read(s, FLAGS);      // ADC SBC; a shift by 0 keeps C
+++    do_read(s, rd); do_read(s, rs); do_write(s, rd); do_write(s, FLAGS);
+++    break;
+++  }
+++  case TOp::HiRegOp: {
+++    const u32 op = (instr >> 8) & 3, hd = (instr & 7) | ((instr >> 4) & 8), hs = (instr >> 3) & 0xF;
+++    if (op == 1) { do_read(s, hd); do_read(s, hs); do_write(s, FLAGS); break; }   // CMP
+++    if (hd == 15) return reject(IdleReject::PcWrite);
+++    if (op == 0) do_read(s, hd);                                                   // ADD; MOV only reads hs
+++    do_read(s, hs); do_write(s, hd);
+++    break;
+++  }
+++  case TOp::LdrPcRel:
+++    if (!load(0xFF, 0, ((at + 4) & ~2u) + (instr & 0xFFu) * 4u, 0xFF)) return false;
+++    do_write(s, (instr >> 8) & 7);
+++    break;
+++  case TOp::LdrStrReg: {                    // STR STRH STRB | LDRSB LDR LDRH LDRB LDRSH
+++    if (((instr >> 9) & 7) < 3) return reject(IdleReject::Store);
+++    const u32 rm = (instr >> 6) & 7;
+++    if (!load(static_cast<u8>(rs), 0, 0, static_cast<u8>(rm))) return false;
+++    do_read(s, rs); do_read(s, rm); do_write(s, rd);
+++    break;
+++  }
+++  case TOp::LdrStrImm5: {
+++    if (!(instr & (1u << 11))) return reject(IdleReject::Store);
+++    const s32 imm = static_cast<s32>((instr >> 6) & 0x1F) * ((instr & (1u << 12)) ? 1 : 4);
+++    if (!load(static_cast<u8>(rs), imm, 0, 0xFF)) return false;
+++    do_read(s, rs); do_write(s, rd);
+++    break;
+++  }
+++  case TOp::LdrStrHImm5:
+++    if (!(instr & (1u << 11))) return reject(IdleReject::Store);
+++    if (!load(static_cast<u8>(rs), static_cast<s32>((instr >> 6) & 0x1F) * 2, 0, 0xFF)) return false;
+++    do_read(s, rs); do_write(s, rd);
+++    break;
+++  case TOp::LdrStrSpRel:
+++    if (!(instr & (1u << 11))) return reject(IdleReject::Store);
+++    if (!load(13, static_cast<s32>(instr & 0xFF) * 4, 0, 0xFF)) return false;
+++    do_read(s, 13); do_write(s, (instr >> 8) & 7);
+++    break;
+++  case TOp::AddPcSp:
+++    if (instr & (1u << 11)) do_read(s, 13);
+++    do_write(s, (instr >> 8) & 7);
+++    break;
+++  case TOp::AdjustSp:
+++    do_read(s, 13); do_write(s, 13);   // a carried register: no poll
+++    break;
+++  case TOp::BCond: {
+++    do_read(s, FLAGS);
+++    const u32 target = at + 4 + static_cast<u32>(static_cast<s32>(static_cast<s8>(instr & 0xFF)) * 2);
+++    if (at != tail || target != head) return reject(IdleReject::BadInstr);
+++    break;
+++  }
+++  case TOp::B: {
+++    const u32 target = at + 4 + static_cast<u32>((static_cast<s32>(static_cast<u32>(instr) << 21) >> 21) * 2);
+++    if (at != tail || target != head) return reject(IdleReject::BadInstr);
+++    break;
+++  }
+++  case TOp::PushPop: case TOp::StmLdm:
+++    return reject(IdleReject::Store);   // a store, or a load that moves its base
+++  default:
+++    return reject(IdleReject::BadInstr);
+++  }
+++  return true;
+++}
+++
+++u32 body_checksum_mode(CpuContext& cpu, u32 head, u32 tail, bool thumb) {
+++  if (!thumb) return body_checksum(cpu, head, tail);
+++  u32 sum = 0x9E3779B9u;
+++  for (u32 at = head; at <= tail; at += 2) {
+++    u16 instr;
+++    if (!fetch16(cpu, at, instr)) return 0;
+++    sum = (sum ^ instr) * 16777619u;
+++  }
+++  return sum ? sum : 1u;
+++}
+++
+++// A load the yield may let a CPU poll: plain memory, or I/O that does not
+++// change by being read. The IPC receive FIFO and the gamecard's data port pop
+++// a word on every read, so a loop reading them consumes what it reads.
+++inline bool yield_safe_address(CpuContext& cpu, u32 addr) {
+++  if (cpu.page_table.read_ptr(addr)) return true;
+++  if ((addr & 0x0F000000u) != 0x04000000u) return false;
+++  const u32 port = addr & 0x0FFFFFFCu;
+++  return !(port >= 0x04100000u && port <= 0x0410001Cu);
+++}
+++
+++Verdict g_ycache[2][CACHE_SIZE];
+++IdleYieldStats g_ystats;
+++// The loop head a CPU met last, and its budget then: the same head again
+++// with less budget left is the loop's next iteration in the same slice.
+++u32 g_yhead[2] = {~0u, ~0u};
+++s32 g_ybudget[2];
+++
+++bool yield_analyse(CpuContext& cpu, u32 head, u32 tail, bool thumb, Verdict& v) {
+++  v.pc = head; v.thumb = thumb; v.valid = true; v.skippable = false; v.load_count = 0;
+++  const u32 step = thumb ? 2 : 4;
+++  if (tail < head || (tail - head) / step + 1 > MAX_BODY) return reject(IdleReject::TooLong);
+++  BodyScan s;
+++  for (u32 at = head; at <= tail; at += step) {
+++    if (thumb) {
+++      u16 instr;
+++      if (!fetch16(cpu, at, instr)) return reject(IdleReject::Fetch);
+++      if (!scan_thumb(s, at, instr, head, tail)) return false;
+++    } else {
+++      u32 instr;
+++      if (!fetch(cpu, at, instr)) return reject(IdleReject::Fetch);
+++      if (!scan_instr(s, at, instr, head, tail)) return false;
+++    }
+++  }
+++  // A register carried into the next iteration counts something: a delay
+++  // loop, not a poll. A loop with no load at all is fine here: `b .`, or a
+++  // spin on flags it does not change, waits for an interrupt.
+++  if (s.written & s.read_before_write) return reject(IdleReject::Carried);
+++  v.skippable = true;
+++  v.head = head; v.tail = tail;
+++  v.checksum = body_checksum_mode(cpu, head, tail, thumb);
+++  v.load_count = s.load_count;
+++  for (u32 i = 0; i < s.load_count; ++i) v.loads[i] = s.loads[i];
+++  return true;
+++}
+++
++ }  // namespace
++ 
+++bool g_idle_yield = [] {
+++  const char* e = std::getenv("DS_IDLE_YIELD");
+++  return !(e && e[0] == '0');
+++}();
+++
+++bool idle_yield_shape(CpuContext& cpu, u32 head, u32 tail, bool thumb) {
+++  if (!g_idle_yield) return false;
+++  Verdict& v = g_ycache[cpu.which == Cpu::ARM9 ? 0 : 1][cache_slot(head)];
+++  const bool ok = yield_analyse(cpu, head, tail, thumb, v);
+++  ++(ok ? g_ystats.shapes : g_ystats.rejects);
+++  return ok;
+++}
+++
+++void idle_yield_run(CpuContext& cpu, u32 head, bool thumb) {
+++  ++g_ystats.calls;
+++  const u32 c = cpu.which == Cpu::ARM9 ? 0 : 1;
+++  const s32 budget = cpu.hot.cycle_budget;
+++  const u32 key = head | (thumb ? 1u : 0u);
+++  // The first iteration in a slice runs: the loop may be about to leave.
+++  if (g_yhead[c] != key || budget >= g_ybudget[c]) { g_yhead[c] = key; g_ybudget[c] = budget; return; }
+++  g_yhead[c] = ~0u;
+++  if (!g_idle_yield || budget < 0) return;
+++  // An interrupt due now is taken at the next block; tracing and watchpoints
+++  // see every instruction (as wait_loop_run).
+++  if (cpu.hot.irq_pending && !(cpu.hot.cpsr & 0x80)) return;
+++  if (cpu.nds->trace || cpu.step_limit || mem::Bus::watch_active()) return;
+++  Verdict& v = g_ycache[c][cache_slot(head)];
+++  if (!v.valid || v.pc != head || v.thumb != thumb || !v.skippable ||
+++      body_checksum_mode(cpu, v.head, v.tail, thumb) != v.checksum) return;
+++  for (u32 i = 0; i < v.load_count; ++i) {
+++    const LoadSite& site = v.loads[i];
+++    u32 addr = site.base == 0xFF ? site.addr : cpu.hot.regs[site.base] + static_cast<u32>(site.offset);
+++    if (site.index != 0xFF) addr += cpu.hot.regs[site.index];
+++    if (!yield_safe_address(cpu, addr)) { ++g_ystats.unsafe; return; }
+++  }
+++  cpu.hot.cycle_budget = -1;   // the rest of the slice, spent waiting
+++  ++g_ystats.yields;
+++}
+++
+++const IdleYieldStats& idle_yield_stats() { return g_ystats; }
+++
++ bool in_idle_loop(CpuContext& cpu, IdlePorts ports) {
++   ++g_stats.queries;
++   g_reject = IdleReject::None;
++@@ -252,9 +463,10 @@ bool in_idle_loop(CpuContext& cpu, IdlePorts ports) {
++   bool gxstat = false;
++   for (u32 i = 0; i < v.load_count; ++i) {
++     const LoadSite& site = v.loads[i];
++-    const u32 addr = site.base == 0xFF
++-                       ? site.addr
++-                       : cpu.hot.regs[site.base] + static_cast<u32>(site.offset);
+++    u32 addr = site.base == 0xFF
+++                 ? site.addr
+++                 : cpu.hot.regs[site.base] + static_cast<u32>(site.offset);
+++    if (site.index != 0xFF) addr += cpu.hot.regs[site.index];
++     if (!safe_poll_address(cpu, addr, ports, gxstat)) return reject(IdleReject::Mmio);
++   }
++   // A RAM-only loop that happens to run during a pending swap doesn't count.
++@@ -266,6 +478,8 @@ bool in_idle_loop(CpuContext& cpu, IdlePorts ports) {
++ void invalidate_idle_loops() {
++   for (auto& per_cpu : g_cache)
++     for (auto& v : per_cpu) v.valid = false;
+++  for (auto& per_cpu : g_ycache)
+++    for (auto& v : per_cpu) v.valid = false;
++ }
++ 
++ const IdleLoopStats& idle_loop_stats() { return g_stats; }
++diff --git a/src/core/cpu/idle_loop.h b/src/core/cpu/idle_loop.h
++index 962c2ec..f012634 100644
++--- a/src/core/cpu/idle_loop.h
+++++ b/src/core/cpu/idle_loop.h
++@@ -39,4 +39,33 @@ struct IdleLoopStats {
++ };
++ const IdleLoopStats& idle_loop_stats();
++ 
+++// Idle-loop yield, one CPU at a time. A loop the recompiler translates as one
+++// block that branches back to its own start, whose body has no side effect
+++// (no store, no PSR write, no call, no load that pops) and carries no
+++// register into the next iteration, is a poll: nothing it reads can change
+++// until something outside this CPU acts, and outside changes come at slice
+++// boundaries and events. So from its second iteration in a slice, that CPU
+++// gives up the rest of the slice: its budget is spent, the other CPU runs its
+++// own slice, the events fire, and the next slice's iteration sees whatever
+++// changed. ARM and Thumb. Unlike in_idle_loop's skip, it needs neither the
+++// other CPU idle nor a pending 3D swap, and it decides the shape once, at
+++// translation.
+++//
+++// On by default; DS_IDLE_YIELD=0, or the frontend (a game that needs exact
+++// polling), turns it off.
+++extern bool g_idle_yield;
+++
+++// At translation: whether the block [head, tail], `tail` its back edge to
+++// `head`, is such a loop. Cached per (head, mode).
+++bool idle_yield_shape(CpuContext& cpu, u32 head, u32 tail, bool thumb);
+++// The translated loop's hook, at its head each iteration: the slice given up
+++// from the second iteration on, when every load reads plain memory or I/O
+++// that does not change by being read.
+++void idle_yield_run(CpuContext& cpu, u32 head, bool thumb);
+++
+++struct IdleYieldStats {
+++  u64 shapes, rejects, calls, yields, unsafe;
+++};
+++const IdleYieldStats& idle_yield_stats();
+++
++ }  // namespace ds::cpu
++diff --git a/src/core/cpu/jit/a64/translate.cpp b/src/core/cpu/jit/a64/translate.cpp
++index adf213a..a98613b 100644
++--- a/src/core/cpu/jit/a64/translate.cpp
+++++ b/src/core/cpu/jit/a64/translate.cpp
++@@ -13,6 +13,7 @@
++ //   w4-w7 temporaries; w7 = writeback value (preserved by the slow path)
++ #include "core/cpu/jit/jit_internal.h"
++ #include "core/cpu/wait_loop.h"
+++#include "core/cpu/idle_loop.h"
++ #include "core/cpu/jit/a64/convention.h"
++ #include "core/cpu/jit/a64/emit.h"
++ #include "core/cpu/jit/block_shape.h"
++@@ -482,6 +483,20 @@ private:
++     lo = nlo; hi = nhi;
++     return live | undecided;
++   }
+++  // Whether the block's last instruction is a branch (B or B<cond>, no link)
+++  // back to `start`.
+++  bool self_loop(u32 start) const {
+++    const Instr& last = instrs_.back();
+++    if (thumb_) {
+++      const u16 t = static_cast<u16>(last.raw);
+++      const TOp op = arm::decode_thumb(t);
+++      if (op == TOp::BCond) return last.addr + 4 + static_cast<u32>(static_cast<s32>(static_cast<s8>(t & 0xFF)) * 2) == start;
+++      if (op == TOp::B) return last.addr + 4 + static_cast<u32>((static_cast<s32>(static_cast<u32>(t) << 21) >> 21) * 2) == start;
+++      return false;
+++    }
+++    if ((last.raw >> 28) == 0xF || arm::decode_arm(last.raw) != AOp::B) return false;
+++    return last.addr + 8 + static_cast<u32>(static_cast<s32>(last.raw << 8) >> 6) == start;
+++  }
++   // `next`: the address after the block's last instruction.
++   u32 exit_flag_live(u32 next, u32& lo, u32& hi) {
++     const Instr& last = instrs_.back();
++@@ -2126,6 +2141,15 @@ bool Translator::run() {
++     e().word(WAIT_LOOP_MARKER);
++     e().word(make_key(start - 2, true));
++   }
+++  // A loop that is this one block, its last instruction a branch back to its
+++  // first: when it only polls (cpu/idle_loop.h), its CPU gives up the rest of
+++  // the slice from the second iteration on.
+++  if (cpu::g_idle_yield && self_loop(start) && cpu::idle_yield_shape(cpu_, start, instrs_.back().addr, thumb_)) {
+++    flush_pending();
+++    call_stub(jc_.fallback);
+++    e().word(IDLE_YIELD_MARKER);
+++    e().word(make_key(start - step(), thumb_));
+++  }
++ 
++   u32 end_addr = addr;
++   for (size_t i = 0; i < instrs_.size(); ++i) {
++diff --git a/src/core/cpu/jit/jit_internal.h b/src/core/cpu/jit/jit_internal.h
++index 1cfc911..3abea16 100644
++--- a/src/core/cpu/jit/jit_internal.h
+++++ b/src/core/cpu/jit/jit_internal.h
++@@ -254,6 +254,8 @@ bool bios_sha1_hook_wanted(CpuContext& cpu, u32 pc, bool thumb);
++ bool bios_sha1_run(CpuContext& cpu);
++ // ARM7 BIOS WaitByLoop head (cpu/wait_loop.h): the same shape of hook.
++ constexpr u32 WAIT_LOOP_MARKER = 0xE7F5A1F1;
+++// A polling loop's head (cpu/idle_loop.h, idle_yield_run): the same shape.
+++constexpr u32 IDLE_YIELD_MARKER = 0xE7F5A1F2;
++ const void* jit_h_lookup(CpuContext* cpu, u32 key);
++ const void* jit_h_link(CpuContext* cpu, u32 key, u8* patch_site);
++ void        jit_h_trace(CpuContext* cpu, u32 instr, u32 key);
++diff --git a/src/core/cpu/jit/runtime.cpp b/src/core/cpu/jit/runtime.cpp
++index 21df031..3e501d7 100644
++--- a/src/core/cpu/jit/runtime.cpp
+++++ b/src/core/cpu/jit/runtime.cpp
++@@ -5,6 +5,7 @@
++ // SMC tracking by host page. Host code emission is in backend::.
++ #include "core/cpu/jit/jit_internal.h"
++ #include "core/cpu/wait_loop.h"
+++#include "core/cpu/idle_loop.h"
++ #include "core/cpu/timing_mode.h"
++ #include "core/mem/fastmem_census.h"
++ #include "core/mem/fastmem.h"
++@@ -505,6 +506,12 @@ extern "C" u32 jit_h_fallback(CpuContext* cpu, u32 instr, u32 key) {
++     if (cpu::wait_loop_run(*cpu)) g_rt.stats.wait_loop_runs++;
++     return 0;
++   }
+++  if (instr == IDLE_YIELD_MARKER) {  // key is HEAD less one instruction: a poll resumes at HEAD
+++    const bool t = key_thumb(key);
+++    cpu->hot.regs[15] = key_r15(key) + (t ? 2 : 4);
+++    cpu::idle_yield_run(*cpu, key_pc(key) + (t ? 2 : 4), t);
+++    return 0;
+++  }
++   cpu->hot.regs[15] = key_r15(key);
++   cpu->data_cycles = 0;
++   cpu->jumped = false;
++@@ -855,6 +862,10 @@ void report(std::FILE* out) {
++                  static_cast<unsigned long long>(g_rt.fm_faults), g_rt.fm_slow.size() + g_rt.fm_ring_n, g_rt.fm_rels.size());
++   if (s.bios_sha1_blocks) std::fprintf(out, "[jit] DSi BIOS SHA-1 blocks run natively: %llu\n", (unsigned long long)s.bios_sha1_blocks);
++   if (s.slices_interpreted) std::fprintf(out, "[jit] cold code: %llu slices interpreted (DS_JIT_WARM)\n", (unsigned long long)s.slices_interpreted);
+++  if (const cpu::IdleYieldStats& y = cpu::idle_yield_stats(); y.shapes || y.rejects)
+++    std::fprintf(out, "[jit] idle-loop yield: %llu loops hooked, %llu not polls, %llu head calls, %llu slices given up, %llu on a load that pops\n",
+++                 (unsigned long long)y.shapes, (unsigned long long)y.rejects, (unsigned long long)y.calls,
+++                 (unsigned long long)y.yields, (unsigned long long)y.unsafe);
++   if (const cpu::WaitLoopStats& w = cpu::wait_loop_stats(); w.runs)
++     std::fprintf(out, "[jit] ARM7 WaitByLoop fast-forwarded %llu times: %llu iterations, %llu ARM7 cycles\n", (unsigned long long)w.runs, (unsigned long long)w.iterations, (unsigned long long)w.cycles);
++   std::fprintf(out, "[jit] code %llu KB (hot %llu KB): %.1f bytes per guest instruction, %.1f hot\n", (unsigned long long)(s.code_bytes >> 10), (unsigned long long)(s.hot_bytes >> 10),

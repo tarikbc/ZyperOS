@@ -8,7 +8,7 @@
 # pins DSperate as a submodule, so one commit of the wrapper pins both. This is
 # the wrapper plorpOS ships on its GKD and RG Rotate builds
 # (thwonp/plorpOS mk/build-dsperate.sh, MIT), at the same commit, built the same
-# way, plus four patches of ours (below).
+# way, plus five patches of ours (below).
 #
 # PGO: DSperate commits a GCC profile with each release, made with GCC 13.3 on
 # Ubuntu 24.04 (its CI), and the wrapper's build.sh applies it. A profile only
@@ -93,6 +93,27 @@
 # libretro.cpp changes, so the profile applies in full. mk/dsperate-rtc-check.sh
 # reads the clock out of the built core's states (below).
 #
+# The fifth, mk/patches/dsperate-lr-idle-yield.patch: a CPU that only polls
+# gives up the rest of its slice. It adds patches/0003-idle-yield.patch to
+# the wrapper's own folder of DSperate fixes, which its build.sh applies to
+# DSperate, and a core option. DSperate's recompiler cuts a block at every
+# branch, so a polling loop is one block that branches back to its own start;
+# when its body has no store, no load that pops a FIFO and no register
+# carried round (DSperate's own loop analysis, cpu/idle_loop.cpp, here taught
+# Thumb too), a hook at its head spends that CPU's budget from the second
+# iteration in a slice: the other CPU runs its slice, the events fire, and the
+# next slice's iteration sees whatever changed. Pokemon Black's ARM9 spent 58%
+# of its cycles in such loops on my Pixel 2, 3.9 ms of host time a frame
+# (DSperate's DS_PROFILE=2 counters, 2026-11-16). DSperate's own runtime
+# variants (DS_IDLE_SKIP, DS_IDLE_CUT) did not get that back there: the skip
+# needs both CPUs idle and the cut probes at run time; this is decided once,
+# at translation, and acted on by the loop itself.
+# dsperate_idle_yield disabled turns it off, and the wrapper lists games it
+# stays off for by game code (none yet). It changes four of DSperate's files,
+# so four functions lose their profile (the build log counts them).
+# mk/dsperate-yield-check.sh runs a ROM of polls in the built core with the
+# yield off and on (below).
+#
 # The result is checked before it is installed: no unversioned undefined
 # symbol (it would not dlopen), and nothing newer than plastron's glibc 2.42
 # and libstdc++ 6.0.34 (GLIBCXX_3.4.34). It needs GLIBC_2.38 and GLIBCXX_3.4.30
@@ -111,7 +132,7 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 SRC=${SRC:-/tmp/zyperos-dsperate-lr}
 REPO=${DSPERATE_LR:-https://github.com/thwonp/dsperate-lr.git}
 LR=093d50fcbd10531273e0cc22a23c6644a26b9b71   # DSperate v3.0.5 (ddf2910), plorpOS's pin
-SHA=35d65a0d01bd114fae6807528705def4854e6e274407a1bf275a3540911c36b7
+SHA=bf4edc52f1e0f523a35e30710ff9f97b7efb028f1e0a407524704947795c014b
 IMAGE=dsperate-lr-cross
 PLAT=linux/amd64
 
@@ -127,6 +148,7 @@ git -C "$SRC" apply "$ROOT/mk/patches/dsperate-lr-frameskip.patch"
 git -C "$SRC" apply "$ROOT/mk/patches/dsperate-lr-threads.patch"
 git -C "$SRC" apply "$ROOT/mk/patches/dsperate-lr-language.patch"
 git -C "$SRC" apply "$ROOT/mk/patches/dsperate-lr-rtc.patch"
+git -C "$SRC" apply "$ROOT/mk/patches/dsperate-lr-idle-yield.patch"
 docker image inspect $IMAGE >/dev/null 2>&1 ||
 	docker build --platform $PLAT -q -t $IMAGE "$SRC" >/dev/null
 
@@ -147,6 +169,8 @@ SO=$SRC/build/dsperate_libretro.so
 [ -f "$SO" ] || { echo "!! build failed (see $SRC/build/*.log)" >&2; exit 1; }
 # The clock a game reads, in the core just built (the fourth patch)
 sh "$ROOT/mk/dsperate-rtc-check.sh" "$SO"
+# Polls that still see every change, with the yield (the fifth)
+sh "$ROOT/mk/dsperate-yield-check.sh" "$SO"
 GOT=$(shasum -a 256 "$SO" | cut -d' ' -f1)
 if [ "$GOT" != "$SHA" ]; then
 	echo "!! dsperate sha256 $GOT, expected $SHA" >&2
@@ -156,7 +180,7 @@ if [ "$GOT" != "$SHA" ]; then
 fi
 mkdir -p "$ROOT/vendor/cores"
 cp "$SO" "$ROOT/vendor/cores/"
-echo "  built  dsperate (dsperate-lr ${LR%${LR#???????}}, DSperate v3.0.5) + PGO + frameskip + thread layout + language + clock, untuned ARMv8.0"
+echo "  built  dsperate (dsperate-lr ${LR%${LR#???????}}, DSperate v3.0.5) + PGO + frameskip + thread layout + language + clock + idle-loop yield, untuned ARMv8.0"
 echo "  sha256 $GOT"
 # Which patches are in it, for mk/payload.sh to hold it to: the 1.0.1 images
 # shipped a core built before the language patch (mk/core-stamp.sh)
