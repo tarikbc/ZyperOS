@@ -155,6 +155,7 @@ extern const char *shot_hud_shows; /* --hud-shows WORDS */
 extern bool shot_hud_alt;      /* --hud-alt */
 extern int shot_pick_at;       /* --pick-at K */
 extern int shot_rows_report;   /* --rows-report */
+extern int shot_hover_sweep;   /* --hover-sweep */
 extern const char *shot_menu_label;
 bool shot_status_parse(const char *spec);
 void shot_motion(app *a);

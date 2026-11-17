@@ -168,6 +168,15 @@ typedef struct {
 	/* A picture at each row's left, by place: the Achievements tab's
 	 * badges (main.c's g_row_icon while the panel is drawn). NULL: none. */
 	SDL_Texture *(*row_icon)(int row);
+	/* Told the cursor's row each pass, after the keys and before the
+	 * frame is drawn, so an option's list shows the choice under it
+	 * (src/ds/hover.h) in the frame the cursor reaches it, and a show that
+	 * waits for the cursor to rest is started on time. NULL: none. */
+	void   (*at)(app *a, void *ctx, int sel);
+	/* Up and Down make no move sound where the cursor moves: the screen's
+	 * `at` plays it once the choice is heard (UI Sounds' list, the click in
+	 * the voice under the cursor). An edge still sounds. */
+	bool     quiet_moves;
 } menu_style;
 
 /* ---- the menu runner (main.c's menu_run) ------------------------------------
@@ -414,6 +423,10 @@ void snap_record(menu_snap *s, int kind, const char *heading,
 void snap_draw(app *a, mm_pose pose);
 int snap_shown(void);
 int menu_step_heard(app *a, const menu_row *rows, int n, int sel,
+                    int dir, in_button b);
+/* The same step with no move sound (menu_style's quiet_moves): the edge's
+ * sound only, where the cursor stays */
+int menu_step_quiet(app *a, const menu_row *rows, int n, int sel,
                     int dir, in_button b);
 int panel_settle(int lv);
 void panel_close_at(app *a, int lv, bool cut, unsigned now);
@@ -703,6 +716,7 @@ bool pacing_row_shown(const app *a, int sys);
 bool dslang_row_shown(const app *a, int sys);
 const char *dslang_label(dsl_choice c, char *buf, size_t n);
 void view_turn(app *a, int sys, int dir);
+void view_set(app *a, int sys, int k, bool keep);
 float grid_shape_load(const app *a, int sys);
 void grid_shape_save(const app *a, int sys, float shape);
 void sort_save(app *a);
@@ -711,6 +725,8 @@ int muse_rows_kind(void);
 int muse_kinds(void);
 void free_view_textures(sysview *v);
 void muse_show(sysview *v, ml_kind kind);
+/* The same, shown and not saved: Show's list's cursor (src/ds/hover.h) */
+void muse_show_only(sysview *v, ml_kind kind);
 void auto_off_save(int seconds);
 void saver_save(int seconds);
 void charge_limit_apply(void);

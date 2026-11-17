@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
+#include "ds/hover.h"
 #include "shelf_draw.h"
 #include "homesys.h"
 
@@ -287,6 +288,11 @@ bool tick_theme(app *a)
 	p2_tick(plat_now_ms());
 	if (!g_ctl_shelf_pass) ctl_poll(a, CTL_AT_SCREEN);
 	tick_update_trial();
+	/* A list's cursor showing a language, a zone or a theme that is not
+	 * kept (src/ds/hover.h): what keeps the boot screen's words, the
+	 * night's hours and Auto's zone waits for it to be undone, so none of
+	 * them writes the shown one down */
+	if (ds_hover_showing()) return false;
 	tick_boot_theme();
 	tick_update_daily(false);
 	/* Night Mode's hour: the table, not the theme, so nothing to redraw */

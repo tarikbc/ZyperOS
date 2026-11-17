@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* See hudmenu_screen.h */
+#include "ds/hover.h"
+#include "hover_sweep.h"
 #include "hudmenu_screen.h"
 
 #include <stdio.h>
@@ -153,6 +155,31 @@ static void hm_band(app *a, const SDL_Rect *r)
 
 /* ---- the page ---- */
 
+/* The lists of the rows of more than two (Corner, Edge, Opacity, Color):
+ * the page's band kept over the list (keep_header), the stats in it where
+ * and as the choice under the cursor puts them, in memory (src/ds/hover.h);
+ * kept and sent to the game only as A takes one */
+static void hm_show_row(hm_row r, int k)
+{
+	if (k >= 0 && k < hm_count(r)) hm_set(&g_hm, r, k);
+}
+
+#define HM_HOVER(name, row) \
+	static void name##_show(void *app_, int k) { (void)app_; hm_show_row(row, k); } \
+	static void name##_undo(void *app_, int kept) { (void)app_; hm_show_row(row, kept); } \
+	static const ds_hover name = { .show = name##_show, .undo = name##_undo, .keep_header = true };
+HM_HOVER(HM_CORNER_HOVER, HM_CORNER)
+HM_HOVER(HM_EDGE_HOVER, HM_EDGE)
+HM_HOVER(HM_OPACITY_HOVER, HM_OPACITY)
+HM_HOVER(HM_COLOR_HOVER, HM_COLOR)
+#undef HM_HOVER
+
+static const ds_hover *hm_hover(hm_row r)
+{
+	return r == HM_CORNER ? &HM_CORNER_HOVER : r == HM_EDGE ? &HM_EDGE_HOVER
+	     : r == HM_OPACITY ? &HM_OPACITY_HOVER : r == HM_COLOR ? &HM_COLOR_HOVER : NULL;
+}
+
 static int hm_build(void *ctx, menu_row *rows, int max, const char **heading)
 {
 	static const char *lab[HM_ROWS][HUD_COLORS];
@@ -185,12 +212,14 @@ static int hm_build(void *ctx, menu_row *rows, int max, const char **heading)
 		g_hm_sound[n] = MENU_SND_RING;
 		g_hm_choice[n] = (menu_choice){ .n = (unsigned char)cnt,
 		                                .cur = (unsigned char)hm_get(&g_hm, (hm_row)r),
-		                                .labels = lab[r] };
+		                                .labels = lab[r], .hover = hm_hover((hm_row)r) };
 	}
 	return n;
 }
 
 static void hm_style(app *a, menu_style *st);
+
+
 
 /* ---- the items' list ---- */
 
@@ -322,18 +351,44 @@ void hud_page_shot(app *a, SDL_Texture *bg, int sel, bool items, int pick, const
 		/* A on an option row of more than two: its list, as menu_pick
 		 * draws it over the paused game, the one on ticked */
 		const menu_choice *ch = &g_hm_choice[pick];
+		const int kept = ch->cur, at = shot_pick_at >= 0 && shot_pick_at < ch->n ? shot_pick_at : kept;
 		static char pw[8][64];
 		menu_row pr[8];
+		menu_style ls;
 		int k;
 
 		for (k = 0; k < ch->n && k < 8; k++) {
 			menu_pick_word(ch->labels[k], pw[k], (int)sizeof pw[k]);
-			pr[k] = (menu_row){ pw[k], k == ch->cur ? MENU_TICK : NULL, true };
+			pr[k] = (menu_row){ pw[k], k == kept ? MENU_TICK : NULL, true };
 		}
+		/* The band kept over the list, the choice under the cursor in it
+		 * (keep_header, src/ds/hover.h) */
+		if (at != kept && ch->hover && ch->hover->show) ch->hover->show(a, at);
+		memset(&ls, 0, sizeof ls);
+		ls.fixed_w = gm_width(a);
+		ls.follow_tint = true;
+		ls.header = hm_band;
+		ls.header_h = st.header_h;
 		g_menu_epoch++;
-		menu_draw(a, rows[pick].label, pr, k, ch->cur, gm_width(a), a->tint);
+		menu_draw_styled(a, &ls, rows[pick].label, pr, k, at);
 	} else {
 		menu_draw_styled(a, &st, heading, rows, n, sel >= 0 && sel < n ? sel : 0);
 	}
 	g_hm_bg = NULL;
+}
+
+/* On-Screen Stats' lists through what their cursors show (src/hover_sweep.h) */
+static int sweep_hud(app *a, void *ctx, menu_row *rows, int max, const menu_choice **choices)
+{
+	const char *h;
+
+	(void)a; (void)ctx;
+	*choices = g_hm_choice;
+	return hm_build(NULL, rows, max < HM_ROWS ? max : HM_ROWS, &h);
+}
+
+void hud_hover_sweep(app *a)
+{
+	hm_load(&g_hm);
+	hover_sweep_page(a, "hud", sweep_hud, NULL);
 }

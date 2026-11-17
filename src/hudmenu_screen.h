@@ -34,4 +34,7 @@ void hud_page(app *a, SDL_Texture *bg);
  * kept ones) the items, "fps,speed,temp" */
 void hud_page_shot(app *a, SDL_Texture *bg, int sel, bool items, int pick, const char *shows);
 
+/* For check-hover-sweep (src/hover_sweep.h): On-Screen Stats' lists */
+void hud_hover_sweep(app *a);
+
 #endif

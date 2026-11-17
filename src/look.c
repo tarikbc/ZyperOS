@@ -203,6 +203,12 @@ unsigned look_gen(void)
 	return g_gen;
 }
 
+int look_id(void)
+{
+	return g_look.accent + DS_ACCENTS * (g_look.tone[DS_LIGHT] + DS_TONES * (g_look.tone[DS_DARK]
+	       + DS_TONES * (g_look.square ? 1 : 0)));
+}
+
 const look *look_now(void)
 {
 	return &g_look;

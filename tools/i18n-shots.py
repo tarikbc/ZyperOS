@@ -634,6 +634,7 @@ _MGS = "map.PS1." + R.FOCUS + ".chd"
 _SONIC = "Sonic Adventure (USA).chd"
 for _name, _tag, _flags in (
         ("end", "PS1", ["--gamemenu", "13"]), ("pick", "PS1", ["--gamemenu", "5", "--gm-pick"]),
+        ("pick-swap", "PS1", ["--gamemenu", "5", "--gm-pick", "--pick-at", "2"]),
         ("all", "PS1", ["--gamemenu", "0", "--gm-all"]), ("warn", "PS1", ["--gamemenu", "3"]),
         ("ask", "PS1", ["--gamemenu", "12", "--gm-ask"]),
         ("ask-all", "PS1", ["--gamemenu", "12", "--gm-ask", "--gm-all"]),
@@ -787,6 +788,29 @@ SHOT_SETTINGS["menu-night-12h"] = {"night.mode": "hours", "night.from": "1350", 
 SHOT_STATUS["menu-night-12h"] = "10:08 12h wifi=off batt=82"
 EXTRA.setdefault("menu-night-on", ("demo", "PS1", ["--menu", "Night Warmth"]))
 SHOT_SETTINGS["menu-night-on"] = {"night.mode": "on", "night.warmth": "10"}
+# What a list's cursor shows (src/ds/hover.h, DESIGN.md 11.3): each list
+# with its cursor off the choice kept, the screen showing the one under it
+# and the tick on the kept one
+EXTRA.setdefault("menu-battery-list-percentage", ("demo", "PS1", ["--menu-tab", "1", "--menu", "Battery Icon",
+                                                                   "--press", "a", "--pick-at", "1"]))
+EXTRA.setdefault("menu-home-list-gallery", ("demo", "PS1", ["--menu-tab", "1", "--menu", "Home Screen",
+                                                             "--press", "a", "--pick-at", "1"]))
+EXTRA.setdefault("system-menu-view-list-grid", ("demo", "NES", ["--screen", "games", "--menu", "View",
+                                                                 "--press", "a", "--pick-at", "1"]))
+EXTRA.setdefault("system-menu-sort-list", ("demo", "PS1", ["--screen", "games", "--menu", "Sort By",
+                                                            "--press", "a", "--pick-at", "2"]))
+EXTRA.setdefault("theme-accent-list-teal", ("demo", "PS1", ["--look-page", "theme-list", "0", "--pick-at", "2"]))
+EXTRA.setdefault("theme-light-list-cool", ("demo", "PS1", ["--look-page", "theme-list", "1", "--pick-at", "2"]))
+EXTRA.setdefault("theme-dark-list-deepblue", ("demo", "PS1", ["--look-page", "theme-list", "2", "--pick-at", "1"]))
+EXTRA.setdefault("language-list-deutsch", ("demo", "PS1", ["--language", "5"]))
+EXTRA.setdefault("gamemenu-quick-list", ("demo", "PS1", ["--gamemenu", "3", "--gm-tab", "0", "--gm-choose",
+                                                          "--pick-at", "1"]))
+EXTRA.setdefault("gamemenu-dual-screens-focus", ("demo", "PS1", ["--gamemenu", "2", "dual", "--gm-tab", "1",
+                                                                  "--gm-choose", "--pick-at", "1"]))
+EXTRA.setdefault("hud-pick-corner-bottom-right", ("demo", "PS1", ["--gamemenu", "0", "--gm-tab", "1", "--hud-page", "2",
+                                                                   "--hud-pick", "2", "--pick-at", "3",
+                                                                   "--hud-shows", "fps,speed,temp"]))
+SHOT_SETTINGS["hud-pick-corner-bottom-right"] = {"hud": "1"}
 EXTRA.setdefault("menu-night-list", ("demo", "PS1", ["--menu", "Night Mode", "--press", "a"]))
 SHOT_SETTINGS["menu-night-list"] = {"night.mode": "hours"}
 EXTRA.setdefault("menu-night-warmth-list", ("demo", "PS1", ["--menu", "Night Warmth", "--press", "a"]))

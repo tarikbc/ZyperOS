@@ -33,6 +33,14 @@ typedef struct {
 
 #define LOOK_DEFAULT ((look){ 0, { 0, 0 }, false, false })
 
+/* The look that is on as one number, 0 to LOOK_IDS - 1: its accent, both
+ * tones and its corners, what a card is painted with (src/ui.c's stamp on
+ * a card's texture). Not a count of changes: a list's cursor going through
+ * looks and back leaves a card of the kept look current and every other
+ * one stale, however many it went through. */
+#define LOOK_IDS (DS_ACCENTS * DS_TONES * DS_TONES * 2)
+int look_id(void);
+
 /* The colors as they ship: the first accent and both first tones (corners
  * and Zyper are not colors) */
 bool look_is_default(const look *l);

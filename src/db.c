@@ -441,6 +441,11 @@ bool db_del(db *d, const char *key)
 	return ok;
 }
 
+long db_changes(db *d)
+{
+	return d && d->h ? (long)sqlite3_total_changes(d->h) : 0;
+}
+
 /* --- the games table ------------------------------------------------------ */
 
 static void col_str(sqlite3_stmt *st, int i, char *out, size_t n)

@@ -30,6 +30,9 @@
 #include "nowplaying_screen.h"
 #include "osdbar.h"
 #include "panel.h"
+#include "hover_sweep.h"
+#include "lights_screen.h"   /* Language's page and what its cursor shows */
+#include "ds/hover.h"
 #include "nightkeep.h"
 #include "panelgamma.h"
 #include "powerhold.h"
@@ -135,7 +138,7 @@ static const char *night_hours_value(void);
 static int nm_mode(void);
 static int nm_warmth(void);
 static void nm_keep(void);
-static void nm_warmth_focus(void *app, int k);
+static const ds_hover NM_WARMTH_HOVER, NM_MODE_HOVER;
 
 /* ---------- option rows' choices (menu.h's menu_choice, DESIGN.md 9) ------ */
 
@@ -246,6 +249,196 @@ static void pm_strength_preview(void *app_, int k, int x, int y, int w, int h)
 	shader_demo_draw(app_, g_pm_demo_shader, STRENGTH_MIN + k * STRENGTH_STEP, x, y, w, h);
 }
 
+/* Battery Icon's list: the corner's battery as the choice under the
+ * cursor (src/ds/hover.h), in memory; saved only as A takes it */
+static void batt_show(void *app_, int k)
+{
+	(void)app_;
+	if (k >= 0 && k < BATT_MODES) g_batt_mode = k;
+	redraw_now();
+}
+
+static void batt_undo(void *app_, int kept)
+{
+	batt_show(app_, kept);
+}
+
+static const ds_hover PM_BATT_HOVER = { .show = batt_show, .undo = batt_undo };
+
+/* Home Screen's list: the shelf behind it in the layout under the cursor,
+ * in memory; saved only as A takes it */
+static void home_show(void *app_, int k)
+{
+	app *a = app_;
+
+	if (k < 0 || k >= HOME_LAYOUTS) return;
+	a->home_layout = (home_layout)k;
+	home_reset(&a->home, a->sys_cursor, a->sys.count, plat_now_ms());
+	redraw_now();
+}
+
+static void home_undo(void *app_, int kept)
+{
+	home_show(app_, kept);
+}
+
+static const ds_hover PM_HOME_HOVER = { .show = home_show, .undo = home_undo };
+
+/* Shelf `sys` in order `sort`, saved with `keep` or only shown (Sort By's
+ * list's cursor). The cursor follows the GAME, not its index. Re-sorting
+ * under a cursor left where it sat means closing the menu onto a different
+ * game than the one that was selected when it opened - the shelf would
+ * appear to have jumped on its own. Which game you were looking at is the
+ * thing that survives a reorder; where it happened to sit in the old order
+ * is not. On Muse's shelf the same goes for the album, whose folder is its
+ * `file`. */
+static void shelf_sort_to(app *a, int sys, int sort, bool keep)
+{
+	sysview *v = &a->view[sys];
+	char was[LIB_PATH];
+	int i, was_owner = -1;
+
+	was[0] = '\0';
+	if (v->cursor >= 0 && v->cursor < v->list.count) {
+		snprintf(was, sizeof was, "%s", v->list.items[v->cursor].file);
+		/* On Favorites a file name is not enough: the same one can be on
+		 * the shelf twice, from two systems. */
+		if (v->owner) was_owner = v->owner[v->cursor];
+	}
+	v->sort = sort;
+	sort_shelf(a, sys);
+	if (keep) sort_save(a);
+	/* The textures are indexed by position, so they moved with nothing.
+	 * Dropping them lets the next frame fetch each card's art for where it
+	 * now sits. */
+	free_view_textures(v);
+	v->cursor = 0;
+	for (i = 0; i < v->list.count; i++)
+		if (!strcmp(v->list.items[i].file, was) && (!v->owner || v->owner[i] == was_owner)) {
+			v->cursor = i;
+			break;
+		}
+	cf_reset(&v->cf, v->cursor);
+	games_reset(&v->row, v->cursor, v->list.count, plat_now_ms());
+}
+
+/* A system's Sort By and View lists, and Muse's Show: the shelf behind the
+ * list in the order, the view or the kind under the cursor, on the same
+ * game, in memory; saved only as A takes it. Sort By waits for the cursor
+ * to rest a moment: a big shelf's order is a sort and every card's art
+ * fetched again. */
+static void sort_show(void *app_, int k)
+{
+	app *a = app_;
+
+	if (k >= 0 && k < (is_muse(&a->sys.systems[a->sys_cursor]) ? ML_ORDERS : SORT_COUNT))
+		shelf_sort_to(a, a->sys_cursor, k, false);
+	redraw_now();
+}
+
+static void sort_undo(void *app_, int kept)
+{
+	sort_show(app_, kept);
+}
+
+static void view_show(void *app_, int k)
+{
+	app *a = app_;
+
+	if (k >= 0 && k < 3) view_set(a, a->sys_cursor, k, false);
+	redraw_now();
+}
+
+static void view_undo(void *app_, int kept)
+{
+	view_show(app_, kept);
+}
+
+/* Show's choices are the kinds the card has, then All (menu_choices):
+ * choice k is the k-th of them. The album the shelf was on, back on undo. */
+static int g_show_cursor = -1;
+
+static void show_kind_show(void *app_, int k)
+{
+	app *a = app_;
+	sysview *v = &a->view[a->sys_cursor];
+	int i, n = 0;
+
+	if (g_show_cursor < 0) g_show_cursor = v->cursor;
+	for (i = 0; i <= ML_ALL; i++) {
+		if (!ml_count_kind(&g_muse, (ml_kind)i)) continue;
+		if (n++ == k) {
+			muse_show_only(v, (ml_kind)i);
+			break;
+		}
+	}
+	redraw_now();
+}
+
+static void show_kind_undo(void *app_, int kept)
+{
+	app *a = app_;
+	sysview *v = &a->view[a->sys_cursor];
+
+	show_kind_show(app_, kept);
+	if (g_show_cursor >= 0 && g_show_cursor < v->list.count) {
+		v->cursor = g_show_cursor;
+		cf_reset(&v->cf, v->cursor);
+	}
+	g_show_cursor = -1;
+}
+
+/* UI Sounds' and Audio Channels' lists: the cursor's click in the voice,
+ * or through the channels, under it (own_sound: the list's moves are quiet
+ * and the show plays them); in memory, saved only as A takes it */
+static int ui_voice_at(int k)
+{
+	int s = 0, i;
+
+	for (i = 0; i < k; i++) s = uisound_setting_step(s, 1);
+	return s;
+}
+
+static void voice_show(void *app_, int k)
+{
+	uisound_set(ui_voice_at(k));
+	moved_sound(app_, IN_DOWN);
+}
+
+static void voice_undo(void *app_, int kept)
+{
+	(void)app_;
+	uisound_set(ui_voice_at(kept));
+}
+
+static void channels_show(void *app_, int k)
+{
+	if (k >= 0 && k < AOUT_CHANNELS_COUNT) g_channels = (aout_channels)k;
+	aout_apply(false);
+	moved_sound(app_, IN_DOWN);
+}
+
+static void channels_undo(void *app_, int kept)
+{
+	(void)app_;
+	if (kept >= 0 && kept < AOUT_CHANNELS_COUNT) g_channels = (aout_channels)kept;
+	aout_apply(false);
+}
+
+static const ds_hover PM_VOICE_HOVER = { .show = voice_show, .undo = voice_undo, .own_sound = true };
+static const ds_hover PM_CHANNELS_HOVER = { .show = channels_show, .undo = channels_undo, .own_sound = true };
+
+static const ds_hover SM_SORT_HOVER = { .show = sort_show, .undo = sort_undo, .rest_ms = 150 };
+static const ds_hover SM_VIEW_HOVER = { .show = view_show, .undo = view_undo };
+static const ds_hover SMM_SHOW_HOVER = { .show = show_kind_show, .undo = show_kind_undo };
+
+/* The pictures beside the shelf's and MENU's lists, as hovers */
+static const ds_hover SM_DMODE_HOVER = { .draw = sm_dmode_preview };
+static const ds_hover SM_SHADER_HOVER = { .draw = sm_shader_preview };
+static const ds_hover SM_STRENGTH_HOVER = { .draw = sm_strength_preview };
+static const ds_hover PM_SHADER_HOVER = { .draw = pm_shader_preview };
+static const ds_hover PM_STRENGTH_HOVER = { .draw = pm_strength_preview };
+
 static void menu_choices(app *a, int sys, bool games)
 {
 	/* A system's menu and MENU each their own words: the shelf under MENU
@@ -273,8 +466,10 @@ static void menu_choices(app *a, int sys, bool games)
 				P[0].lab[n++] = T(show_text[i]);
 			}
 			g_smm_choice[SMM_SHOW] = ch_make(&P[0], n, cur, false);
+			g_smm_choice[SMM_SHOW].hover = &SMM_SHOW_HOVER;
 			for (i = 0; i < ML_ORDERS; i++) P[1].lab[i] = ml_order_label_kind((ml_order)i, muse_kind_shown());
 			g_smm_choice[SMM_SORT] = ch_make(&P[1], ML_ORDERS, v->sort, false);
+			g_smm_choice[SMM_SORT].hover = &SM_SORT_HOVER;
 			return;
 		}
 		n = cfg_core_count(sc);
@@ -295,6 +490,7 @@ static void menu_choices(app *a, int sys, bool games)
 		g_sm_choice[SM_PACE] = ch_make(&P[10], PACING_CHOICES, pacing_load(sc), false);
 		for (i = 0; i < SORT_COUNT; i++) P[4].lab[i] = sort_label(i);
 		g_sm_choice[SM_SORT] = ch_make(&P[4], SORT_COUNT, v->sort, false);
+		g_sm_choice[SM_SORT].hover = &SM_SORT_HOVER;
 		{
 			static const char *notes[CH_MAX];
 
@@ -304,7 +500,7 @@ static void menu_choices(app *a, int sys, bool games)
 			}
 			g_sm_choice[SM_DISPLAY] = ch_make(&P[5], DMODE_COUNT, v->dmode, false);
 			g_sm_choice[SM_DISPLAY].notes = notes;
-			g_sm_choice[SM_DISPLAY].preview = sm_dmode_preview;
+			g_sm_choice[SM_DISPLAY].hover = &SM_DMODE_HOVER;
 		}
 		{
 			static const char *snotes[CH_MAX], *tnotes[CH_MAX];
@@ -315,18 +511,19 @@ static void menu_choices(app *a, int sys, bool games)
 			g_sm_choice[SM_SHADER] = ch_make(&P[6], n, cur, false);
 			shader_demo_notes(snotes, n);
 			g_sm_choice[SM_SHADER].notes = snotes;
-			g_sm_choice[SM_SHADER].preview = sm_shader_preview;
+			g_sm_choice[SM_SHADER].hover = &SM_SHADER_HOVER;
 			n = ch_strengths(&P[7], strength_clamp(v->strength), &cur);
 			g_sm_choice[SM_STRENGTH] = ch_make(&P[7], n, cur, false);
 			shader_demo_strength_notes(tnotes, n);
 			g_sm_choice[SM_STRENGTH].notes = tnotes;
-			g_sm_choice[SM_STRENGTH].preview = sm_strength_preview;
+			g_sm_choice[SM_STRENGTH].hover = &SM_STRENGTH_HOVER;
 		}
 		/* View: in the order Right steps it (view_turn) */
 		P[8].lab[0] = T(S_SYSMENU_VIEW_COVERS);
 		P[8].lab[1] = T(S_SYSMENU_VIEW_GRID);
 		P[8].lab[2] = T(S_SYSMENU_VIEW_LIST);
 		g_sm_choice[SM_VIEW] = ch_make(&P[8], 3, v->listed ? 2 : v->grid ? 1 : 0, false);
+		g_sm_choice[SM_VIEW].hover = &SM_VIEW_HOVER;
 		return;
 	}
 	/* MENU */
@@ -340,16 +537,18 @@ static void menu_choices(app *a, int sys, bool games)
 	P[11].lab[NIGHT_ON] = T(S_MENU_ON_TITLE);
 	P[11].lab[NIGHT_HOURS] = T(S_SYSMENU_NIGHT_BY_HOURS);
 	g_pm_choice[PM_NIGHT] = ch_make(&P[11], NM_MODES, nm_mode(), false);
+	g_pm_choice[PM_NIGHT].hover = &NM_MODE_HOVER;
 	for (i = 0; i < NM_WARMTH_MAX; i++) {
 		snprintf(P[12].buf[i], sizeof P[12].buf[i], "%d", i + 1);
 		P[12].lab[i] = P[12].buf[i];
 	}
 	g_pm_choice[PM_NIGHT_WARMTH] = ch_make(&P[12], NM_WARMTH_MAX, nm_warmth() - NM_WARMTH_MIN, false);
-	g_pm_choice[PM_NIGHT_WARMTH].focus = nm_warmth_focus;
+	g_pm_choice[PM_NIGHT_WARMTH].hover = &NM_WARMTH_HOVER;
 	P[1].lab[BATT_BARS] = T(S_PANEL_BATTERY_BARS);
 	P[1].lab[BATT_PCT] = T(S_PANEL_BATTERY_PERCENTAGE);
 	P[1].lab[BATT_TIME] = T(S_PANEL_BATTERY_TIME);
 	g_pm_choice[PM_BATTERY] = ch_make(&P[1], BATT_MODES, g_batt_mode, false);
+	g_pm_choice[PM_BATTERY].hover = &PM_BATT_HOVER;
 	for (i = 0, cur = 0; i < CHARGE_LIMITS_COUNT; i++) {
 		if (CHARGE_LIMITS[i] == g_charge_limit) cur = i;
 		if (CHARGE_LIMITS[i] > 0) snprintf(P[2].buf[i], sizeof P[2].buf[i], "%d%%", CHARGE_LIMITS[i]);
@@ -365,7 +564,7 @@ static void menu_choices(app *a, int sys, bool games)
 		g_pm_choice[PM_SHADER] = ch_make(&P[3], n, cur, mixed);
 		shader_demo_notes(snotes, n);
 		g_pm_choice[PM_SHADER].notes = snotes;
-		g_pm_choice[PM_SHADER].preview = pm_shader_preview;
+		g_pm_choice[PM_SHADER].hover = &PM_SHADER_HOVER;
 		g_pm_demo_shader = g_shader_all;
 		mixed = false;
 		{
@@ -377,7 +576,7 @@ static void menu_choices(app *a, int sys, bool games)
 			g_pm_choice[PM_STRENGTH] = ch_make(&P[4], n, cur, mixed);
 			shader_demo_strength_notes(tnotes, n);
 			g_pm_choice[PM_STRENGTH].notes = tnotes;
-			g_pm_choice[PM_STRENGTH].preview = pm_strength_preview;
+			g_pm_choice[PM_STRENGTH].hover = &PM_STRENGTH_HOVER;
 			g_pm_demo_strength = strength_clamp(all);
 		}
 	}
@@ -391,6 +590,7 @@ static void menu_choices(app *a, int sys, bool games)
 			P[5].lab[i] = P[5].buf[i];
 		}
 		g_pm_choice[PM_CHANNELS] = ch_make(&P[5], AOUT_CHANNELS_COUNT, (int)g_channels, false);
+		g_pm_choice[PM_CHANNELS].hover = &PM_CHANNELS_HOVER;
 	}
 	{
 		/* The voices round from the first, as uisound_setting_step goes */
@@ -403,6 +603,7 @@ static void menu_choices(app *a, int sys, bool games)
 			if (s == s0) break;
 		}
 		g_pm_choice[PM_SOUNDS] = ch_make(&P[6], n, cur, false);
+		g_pm_choice[PM_SOUNDS].hover = &PM_VOICE_HOVER;
 	}
 	for (i = 0, cur = 0; i < AUTO_OFF_COUNT; i++) {
 		if (AUTO_OFF[i] == a->auto_off) cur = i;
@@ -428,6 +629,7 @@ static void menu_choices(app *a, int sys, bool games)
 	/* Home Screen: in the order Right steps it */
 	for (i = 0; i < HOME_LAYOUTS; i++) P[9].lab[i] = home_name((home_layout)i);
 	g_pm_choice[PM_HOME] = ch_make(&P[9], HOME_LAYOUTS, (int)a->home_layout, false);
+	g_pm_choice[PM_HOME].hover = &PM_HOME_HOVER;
 	g_pm_choice[PM_LANGUAGE] = (menu_choice){ .n = LANG_COUNT, .cur = (unsigned char)i18n_lang(), .own = true };
 }
 
@@ -707,23 +909,50 @@ static void nm_keep(void)
 	night_keep(nm_cfg());
 }
 
-/* Night Warmth's list: the warmth under the cursor on the display alone,
- * loaded once a move (a list's build runs every pass), and the load a
- * key's repeat held back made once its gap is over; the list closed, what
- * is kept back on it */
-static int g_nm_shown;
-
-static void nm_warmth_focus(void *app_, int k)
+/* Night Warmth's list (src/ds/hover.h): the warmth under the cursor on the
+ * display alone, loaded once a move, and the load a key's repeat held back
+ * made once its gap is over; the kept one back on the cursor's return and
+ * when the list closes */
+static void nm_warmth_show(void *app_, int k)
 {
-	const int w = k < 0 ? 0 : NM_WARMTH_MIN + k;
-
 	(void)app_;
-	if (w != g_nm_shown) {
-		g_nm_shown = w;
-		plat_night_preview(w);
-	}
+	plat_night_preview(NM_WARMTH_MIN + k);
+}
+
+static void nm_warmth_undo(void *app_, int kept)
+{
+	(void)app_; (void)kept;
+	plat_night_preview(0);
+}
+
+static void screen_colors_tick(void *app_)
+{
+	(void)app_;
 	plat_screen_colors_tick(false);
 }
+
+static const ds_hover NM_WARMTH_HOVER = { .show = nm_warmth_show, .undo = nm_warmth_undo,
+                                          .tick = screen_colors_tick };
+
+/* Night Mode's list: the warmth its choice under the cursor gives now on
+ * the whole screen - none for Off, Night Warmth's for On, By Hours as the
+ * hour is - in memory, as Night Warmth's list shows its own */
+static void nm_mode_show(void *app_, int k)
+{
+	night_cfg c = *nm_cfg();
+	panelgamma_night s;
+	int w;
+
+	(void)app_;
+	if (k < 0 || k >= NM_MODES) return;
+	c.mode = (night_mode)k;
+	night_schedule(&c, time(NULL), &s);
+	w = panelgamma_night_at(&s, (long long)time(NULL));
+	plat_night_preview(w > 0 ? w : -1);
+}
+
+static const ds_hover NM_MODE_HOVER = { .show = nm_mode_show, .undo = nm_warmth_undo,
+                                        .tick = screen_colors_tick };
 
 /* The three Night rows as MENU's width measures them (main.c's
  * menu_shelf_width), into out[0..2], shown or not: Night Mode at its
@@ -916,27 +1145,39 @@ static void sc_preview_end(void)
 	plat_screen_colors(&c, false);
 }
 
-/* The Look list's picture: the color chart in a screen (src/ds/colorref.h),
- * and on the whole screen the look under the cursor, once a move (the list
- * draws this every frame), so the chart shows it as the panel makes it */
-static void sc_look_preview(void *app_, int k, int x, int y, int w, int h)
+/* The Look list (src/ds/hover.h): on the whole screen the look under the
+ * cursor, loaded once a move, and beside the list the color chart in a
+ * screen (src/ds/colorref.h), so the chart shows it as the panel makes it */
+static void sc_look_show(void *app_, int k)
+{
+	screen_colors c = k >= 0 && k < SC_LOOKS_N ? SC_LOOKS[k].c : sc_load();
+
+	(void)app_;
+	g_sc_preview_k = k;
+	g_sc_previewing = true;
+	plat_screen_colors(&c, false);
+}
+
+static void sc_look_undo(void *app_, int kept)
+{
+	(void)app_; (void)kept;
+	sc_preview_end();
+}
+
+static void sc_look_draw(void *app_, int k, int x, int y, int w, int h)
 {
 	app *a = app_;
 	const SDL_Rect screen = { x, y, w, h };
 	SDL_Rect in;
 
-	if (k != g_sc_preview_k) {
-		screen_colors c = k >= 0 && k < SC_LOOKS_N ? SC_LOOKS[k].c : sc_load();
-
-		g_sc_preview_k = k;
-		g_sc_previewing = true;
-		plat_screen_colors(&c, false);
-	}
-	plat_screen_colors_tick(false);
+	(void)k;
 	in = ds_preview_screen_begin(a->r, &screen);
 	ds_color_ref_draw(a->r, &(SDL_Rect){ in.x + DS_GRID, in.y + DS_GRID, in.w - 2 * DS_GRID, in.h - 2 * DS_GRID });
 	ds_preview_screen_end(a->r, &screen);
 }
+
+static const ds_hover SC_LOOK_HOVER = { .show = sc_look_show, .undo = sc_look_undo,
+                                        .draw = sc_look_draw, .tick = screen_colors_tick };
 
 /* The Look's list as the page opens it and the shots draw it: every look,
  * Custom last while it is the one on, with what each does */
@@ -953,7 +1194,7 @@ void sc_look_choice(menu_choice *out)
 	labels[SC_CUSTOM] = T(S_SCREEN_CUSTOM);
 	notes[SC_CUSTOM] = T(S_SCREEN_CUSTOM_NOTE);
 	*out = (menu_choice){ .n = (unsigned char)(SC_LOOKS_N + (cur == SC_CUSTOM)), .cur = (unsigned char)cur,
-	                      .labels = labels, .notes = notes, .preview = sc_look_preview };
+	                      .labels = labels, .notes = notes, .hover = &SC_LOOK_HOVER };
 }
 
 /* The rows by place: Saturation only where the kernel has its knob */
@@ -1009,8 +1250,8 @@ static menu_result sc_look_list(app *a)
 
 	sc_look_choice(&ch);
 	g_sc_preview_k = ch.cur;   /* what the display shows already */
-	k = menu_pick_preview(a, &g_sc_style, NULL, T(S_SCREEN_LOOK), ch.labels, ch.notes, ch.preview,
-	                      ch.n, ch.cur, ch.cur);
+	k = menu_pick_hover(a, &g_sc_style, NULL, T(S_SCREEN_LOOK), ch.labels, ch.notes, ch.hover,
+	                    ch.n, ch.cur, ch.cur);
 	if (k >= 0 && k < SC_LOOKS_N) {
 		sc_keep(&SC_LOOKS[k].c);
 	} else {
@@ -1181,9 +1422,56 @@ static const char *look_accent_name(void)
 	return T(ACCENT_NAME[look_now()->accent]);
 }
 
+/* Theme's three lists (src/ds/hover.h): the accent or the ground under
+ * the cursor on the whole screen, in memory (look_set, no file and no
+ * setting); a ground in the theme that is not on shows that theme while
+ * its list is open. The look as it was, back on undo. */
+static look g_lk_kept;
+static bool g_lk_showing;
+
+static void look_show(app *a, int row, int k)
+{
+	look l;
+
+	if (!g_lk_showing) {
+		g_lk_kept = *look_now();
+		g_lk_showing = true;
+	}
+	l = g_lk_kept;
+	if (row == LK_ACCENT && k >= 0 && k < DS_ACCENTS) l.accent = k;
+	if (row == LK_LIGHT && k >= 0 && k < DS_TONES) l.tone[DS_LIGHT] = k;
+	if (row == LK_DARK && k >= 0 && k < DS_TONES) l.tone[DS_DARK] = k;
+	look_set(&l);
+	theme_show(row == LK_LIGHT ? DS_LIGHT : row == LK_DARK ? DS_DARK : -1);
+	theme_changed(a);
+}
+
+static void look_undo(void *app_, int kept)
+{
+	(void)kept;
+	if (!g_lk_showing) return;
+	g_lk_showing = false;
+	look_set(&g_lk_kept);
+	theme_show(-1);
+	theme_changed(app_);
+}
+
+static void accent_show(void *app_, int k) { look_show(app_, LK_ACCENT, k); }
+static void light_show(void *app_, int k) { look_show(app_, LK_LIGHT, k); }
+static void dark_show(void *app_, int k) { look_show(app_, LK_DARK, k); }
+
+static const ds_hover LK_ACCENT_HOVER = { .show = accent_show, .undo = look_undo };
+static const ds_hover LK_LIGHT_HOVER = { .show = light_show, .undo = look_undo };
+static const ds_hover LK_DARK_HOVER = { .show = dark_show, .undo = look_undo };
+
 /* Theme's rows' choices (menu.h's menu_choice): the accents and each
  * theme's grounds, as look_key steps them, so A opens their list */
 static menu_choice g_lk_choice[LK_ROWS];
+
+const menu_choice *theme_choices(void)
+{
+	return g_lk_choice;
+}
 
 int look_build(void *ctx, menu_row *rows, int max, const char **heading)
 {
@@ -1196,11 +1484,12 @@ int look_build(void *ctx, menu_row *rows, int max, const char **heading)
 	for (t = 0; t < DS_THEMES; t++)
 		for (i = 0; i < DS_TONES; i++) tone[t][i] = T(TONE_NAME[t][i]);
 	memset(g_lk_choice, 0, sizeof g_lk_choice);
-	g_lk_choice[LK_ACCENT] = (menu_choice){ .n = DS_ACCENTS, .cur = (unsigned char)l->accent, .labels = acc };
+	g_lk_choice[LK_ACCENT] = (menu_choice){ .n = DS_ACCENTS, .cur = (unsigned char)l->accent, .labels = acc,
+	                                        .hover = &LK_ACCENT_HOVER };
 	g_lk_choice[LK_LIGHT] = (menu_choice){ .n = DS_TONES, .cur = (unsigned char)l->tone[DS_LIGHT],
-	                                       .labels = tone[DS_LIGHT] };
+	                                       .labels = tone[DS_LIGHT], .hover = &LK_LIGHT_HOVER };
 	g_lk_choice[LK_DARK] = (menu_choice){ .n = DS_TONES, .cur = (unsigned char)l->tone[DS_DARK],
-	                                      .labels = tone[DS_DARK] };
+	                                      .labels = tone[DS_DARK], .hover = &LK_DARK_HOVER };
 	*heading = T(S_SYSMENU_THEME);
 	rows[LK_ACCENT]  = (menu_row){ T(S_LOOK_ACCENT), T(ACCENT_NAME[l->accent]), true };
 	rows[LK_LIGHT]   = (menu_row){ T(S_LOOK_BG_LIGHT), T(TONE_NAME[DS_LIGHT][l->tone[DS_LIGHT]]), true };
@@ -1396,38 +1685,10 @@ menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		 * the album, whose folder is its `file`. */
 		if (d && sel == SM_SORT) {
 			sysview *v = &a->view[a->sys_cursor];
-			char keep[LIB_PATH];
-			int i, keep_owner = -1;
 
-			keep[0] = '\0';
-			if (v->cursor >= 0 && v->cursor < v->list.count) {
-				snprintf(keep, sizeof keep, "%s",
-				         v->list.items[v->cursor].file);
-				/* On Favorites a file name is not enough: the same one can
-				 * be on the shelf twice, from two systems. */
-				if (v->owner) keep_owner = v->owner[v->cursor];
-			}
-
-			v->sort = is_muse(&a->sys.systems[a->sys_cursor])
-			        ? (v->sort + d + ML_ORDERS) % ML_ORDERS
-			        : sort_step(v->sort, d);
-			sort_shelf(a, a->sys_cursor);
-			sort_save(a);
-
-			/* The textures are indexed by position, so they moved with
-			 * nothing. Dropping them lets the next frame fetch each card's
-			 * art for where it now sits. */
-			free_view_textures(v);
-
-			v->cursor = 0;
-			for (i = 0; i < v->list.count; i++)
-				if (!strcmp(v->list.items[i].file, keep) &&
-				    (!v->owner || v->owner[i] == keep_owner)) {
-					v->cursor = i;
-					break;
-				}
-			cf_reset(&v->cf, v->cursor);
-	games_reset(&v->row, v->cursor, v->list.count, plat_now_ms());
+			shelf_sort_to(a, a->sys_cursor, is_muse(&a->sys.systems[a->sys_cursor])
+			                                ? (v->sort + d + ML_ORDERS) % ML_ORDERS
+			                                : sort_step(v->sort, d), true);
 			return MENU_STAY;
 		}
 		if (key != IN_ACCEPT) return MENU_STAY;
@@ -1818,6 +2079,52 @@ void sysmenu_rows_report(app *a)
 	menu_rows_print("theme", rows, n, LOOK_SOUND, g_lk_choice);
 	n = hours_build(&hv, rows, MENU_MAX_ROWS, &h);
 	menu_rows_print("hours", rows, n, HOURS_SOUND, g_hours_choice);
+}
+
+/* The pages as check-hover-sweep reads them (src/hover_sweep.h) */
+static int sweep_menu(app *a, void *ctx, menu_row *rows, int max, const menu_choice **choices)
+{
+	static menu_bufs b;
+	const char *h;
+	int was = g_tabs.at, n;
+
+	(void)max;
+	g_tabs.at = ctx ? g_tabs.at : PT_TABS;   /* MENU: every one of its rows */
+	n = menu_build(a, ctx ? SCREEN_GAMES : SCREEN_SYSTEMS, a->sys_cursor, rows, &b, &h);
+	g_tabs.at = was;
+	*choices = b.choice;
+	return n;
+}
+
+static int sweep_theme(app *a, void *ctx, menu_row *rows, int max, const menu_choice **choices)
+{
+	const char *h;
+
+	(void)a; (void)ctx;
+	*choices = g_lk_choice;
+	return look_build(NULL, rows, max, &h);
+}
+
+static int sweep_screen(app *a, void *ctx, menu_row *rows, int max, const menu_choice **choices)
+{
+	const char *h;
+
+	(void)a; (void)ctx;
+	*choices = g_sc_choice;
+	return sc_build(NULL, rows, max, &h);
+}
+
+void sysmenu_hover_sweep(app *a)
+{
+	static int games = 1;
+	menu_choice ch;
+
+	hover_sweep_page(a, "menu", sweep_menu, NULL);
+	hover_sweep_page(a, "system", sweep_menu, &games);
+	hover_sweep_list(a, "menu", T(S_MENU_LANGUAGE), &LANGUAGE_HOVER, (int)i18n_lang(), LANG_COUNT, sweep_menu, NULL);
+	hover_sweep_page(a, "theme", sweep_theme, NULL);
+	sc_look_choice(&ch);
+	hover_sweep_list(a, "screen", T(S_SCREEN_LOOK), ch.hover, ch.cur, ch.n, sweep_screen, NULL);
 }
 
 /* MENU > Power Button as saved: "hold" is Hold, anything else Press, the

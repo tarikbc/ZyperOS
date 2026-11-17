@@ -8,6 +8,7 @@
 #include "panel.h"
 #include "theme.h"
 #include "ui.h"
+#include "hover_sweep.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -237,6 +238,49 @@ static int zone_list_build(void *ctx, menu_row *rows, int max, const char **head
 	                      max < CLOCK_ZONE_LIST_MAX ? max : CLOCK_ZONE_LIST_MAX);
 }
 
+/* The zone kept as the list opened, put back by undo */
+static char g_zone_kept[64];
+
+static void zone_show(void *app_, int row)
+{
+	char found[64];
+	clock_zone_change c = clock_zone_choose(g_zone_kept, zone_auto_on(), clock_zone_list_choice(row));
+	const char *z = c.zone;
+
+	(void)app_;
+	if (!z && c.auto_on) {
+		db_get_str(db_lib(), AUTOZONE_FOUND_KEY, found, sizeof found, "");
+		z = found[0] ? found : NULL;
+	}
+	plat_clock_zone(z ? z : g_zone_kept);
+	redraw_now();
+}
+
+static void zone_undo(void *app_, int kept)
+{
+	(void)app_; (void)kept;
+	plat_clock_zone(g_zone_kept);
+	redraw_now();
+}
+
+const ds_hover ZONE_HOVER = { .show = zone_show, .undo = zone_undo };
+
+static void zone_list_at(app *a, void *ctx, int sel)
+{
+	zone_list_ui *z = ctx;
+
+	(void)a;
+	ds_hover_at(&z->run, sel, plat_now_ms());
+}
+
+/* POWER or the idle timer on the list: the kept zone back, then off */
+static menu_result zone_list_power(app *a, void *ctx)
+{
+	ds_hover_end(&((zone_list_ui *)ctx)->run);
+	power_off(a);
+	return MENU_DONE;
+}
+
 static menu_result zone_list_key(app *a, void *ctx, in_button key, int sel)
 {
 	zone_list_ui *z = ctx;
@@ -255,10 +299,16 @@ static void zone_list_screen(app *a)
 	memset(&z, 0, sizeof z);
 	z.pick = -1;
 	db_get_str(db_lib(), "timezone", id, sizeof id, "America/New_York");
+	snprintf(g_zone_kept, sizeof g_zone_kept, "%s", id);
+	ds_hover_begin(&z.run, &ZONE_HOVER, a, clock_zone_list_on(id, zone_auto_on()),
+	               clock_zone_list_row(id, zone_auto_on()), plat_now_ms());
 	menu_run(a, &(menu_style){ .accent = MENU_ZYPEROS, .fixed_w = menu_std_width(a),
 	                           .sound = z.sound,
-	                           .start_sel = clock_zone_list_row(id, zone_auto_on()) },
+	                           .start_sel = clock_zone_list_row(id, zone_auto_on()),
+	                           .at = zone_list_at, .on_power = zone_list_power },
 	         zone_list_build, zone_list_key, &z);
+	/* Closed, whichever way: the kept zone back before a pick is made */
+	ds_hover_end(&z.run);
 	/* Set once the list has gone, so Auto's message comes over the page */
 	if (z.pick >= 0) zone_choose(a, clock_zone_list_choice(z.pick));
 }
@@ -312,4 +362,32 @@ void clock_screen(app *a)
 
 	memset(&c, 0, sizeof c);
 	menu_run(a, &st, clock_build, clock_key, &c);
+}
+
+/* Time Zone's list through what its cursor shows (src/hover_sweep.h): the
+ * Date & Time page read before and after */
+static int sweep_clock(app *a, void *ctx, menu_row *rows, int max, const menu_choice **choices)
+{
+	static clock_ui c;
+	const char *h;
+
+	(void)a; (void)ctx;
+	*choices = NULL;
+	return clock_build(&c, rows, max, &h);
+}
+
+void clock_hover_sweep(app *a)
+{
+	zone_list_ui z;
+	menu_row rows[CLOCK_ZONE_LIST_MAX];
+	char id[64], found[64];
+	int n;
+
+	memset(&z, 0, sizeof z);
+	db_get_str(db_lib(), "timezone", id, sizeof id, "America/New_York");
+	db_get_str(db_lib(), AUTOZONE_FOUND_KEY, found, sizeof found, "");
+	snprintf(g_zone_kept, sizeof g_zone_kept, "%s", id);
+	n = zone_list_rows(&z, id, zone_auto_on(), found, rows, CLOCK_ZONE_LIST_MAX);
+	hover_sweep_list(a, "datetime", T(S_CLOCK_TIME_ZONE), &ZONE_HOVER, clock_zone_list_on(id, zone_auto_on()), n,
+	                 sweep_clock, NULL);
 }

@@ -4025,10 +4025,13 @@ SDL_Surface *ui_card_paint(const ui_card_order *o, bool away)
  * into slots that are allocated, reordered, moved and freed in a dozen places
  * in src/main.c, and a mark that lives with the texture cannot be left behind
  * by any of them. */
-/* And by the look it was made in (src/look.h): a card made before the
- * player's look changed is made again, in its new colors, as one of the
- * other theme is. Four looks round is enough to tell the last from this. */
-#define CARD_LOOKS 4
+/* And by the look it was made in (src/look.h's look_id): a card made in
+ * another look is made again, in its new colors, as one of the other theme
+ * is. By the look itself and not a count of changes, so a list's cursor
+ * going through accents (src/ds/hover.h) and back leaves the kept look's
+ * cards current and no other: a count kept in four could come round to a
+ * shown look's cards. */
+#define CARD_LOOKS LOOK_IDS
 static char card_made_for[DS_THEMES][CARD_LOOKS];
 
 SDL_Texture *ui_card_upload(SDL_Renderer *r, SDL_Surface *s, int theme_ix)
@@ -4037,7 +4040,7 @@ SDL_Texture *ui_card_upload(SDL_Renderer *r, SDL_Surface *s, int theme_ix)
 
 	if (!t) return NULL;
 	SDL_SetTextureBlendMode(t, SDL_BLENDMODE_BLEND);
-	SDL_SetTextureUserData(t, &card_made_for[theme_clamp(theme_ix)][look_gen() % CARD_LOOKS]);
+	SDL_SetTextureUserData(t, &card_made_for[theme_clamp(theme_ix)][look_id()]);
 	return t;
 }
 
@@ -4072,7 +4075,7 @@ int ui_card_theme(SDL_Texture *t)
 	for (i = 0; i < DS_THEMES; i++)
 		for (g = 0; g < CARD_LOOKS; g++)
 			if (p == &card_made_for[i][g])
-				return g == (int)(look_gen() % CARD_LOOKS) ? i : (i == DS_DARK ? DS_LIGHT : DS_DARK);
+				return g == look_id() ? i : (i == DS_DARK ? DS_LIGHT : DS_DARK);
 	return -1;
 }
 

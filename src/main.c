@@ -911,12 +911,20 @@ void view_turn(app *a, int sys, int dir)
 	sysview *v = &a->view[sys];
 	int k = v->listed ? 2 : v->grid ? 1 : 0;
 
-	k = (k + (dir < 0 ? 2 : 1)) % 3;
+	view_set(a, sys, (k + (dir < 0 ? 2 : 1)) % 3, true);
+}
+
+/* Shelf `sys` as Covers (0), Grid (1) or List (2), on the same entry;
+ * saved with `keep`, or only shown (View's list's cursor, src/ds/hover.h) */
+void view_set(app *a, int sys, int k, bool keep)
+{
+	sysview *v = &a->view[sys];
+
 	v->listed = k == 2;
 	v->grid = k == 1;
 	v->lm.set = false;
 	v->gm.set = false;
-	view_save(a, sys);
+	if (keep) view_save(a, sys);
 	cf_reset(&v->cf, v->cursor);
 	games_reset(&v->row, v->cursor, v->list.count, plat_now_ms());
 }
@@ -2162,8 +2170,13 @@ static const char *const MUSE_SHOW[ML_KINDS + 1] = { "music", "books", "videos",
 
 void muse_show(sysview *v, ml_kind kind)
 {
-	g_muse_kind = kind;
 	db_set_str(db_dev(), "muse.show", MUSE_SHOW[kind >= 0 && kind <= ML_ALL ? kind : ML_ALL]);
+	muse_show_only(v, kind);
+}
+
+void muse_show_only(sysview *v, ml_kind kind)
+{
+	g_muse_kind = kind;
 	free_view_textures(v);
 	muse_order_view(v);
 	v->cursor = 0;
@@ -4232,6 +4245,16 @@ int menu_step_heard(app *a, const menu_row *rows, int n, int sel,
 	return to;
 }
 
+int menu_step_quiet(app *a, const menu_row *rows, int n, int sel,
+                    int dir, in_button b)
+{
+	int to = a->in.pressed[b] ? menu_step_round(rows, n, sel, dir)
+	                          : menu_step_sel(rows, n, sel, dir);
+
+	if (to == sel) step_sound(a, b, sel, to);
+	return to;
+}
+
 /* MENU was pressed in a screen over this one: every screen is closing */
 bool menu_closing(void)
 {
@@ -5529,6 +5552,7 @@ int main(int argc, char *argv[])
 			shot_gm_aspect = at ? atof(at + 1) : 4.0 / 3.0;
 		}
 		else if (!strcmp(argv[i], "--rows-report")) shot_rows_report = 1;
+		else if (!strcmp(argv[i], "--hover-sweep")) shot_hover_sweep = 1;
 		else if (!strcmp(argv[i], "--backdrop") && i + 1 < argc) shot_backdrop = argv[++i];
 		else if (!strcmp(argv[i], "--press") && i + 1 < argc) {
 			i++;

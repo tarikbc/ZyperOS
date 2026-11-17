@@ -18,20 +18,16 @@
 int menu_pick(app *a, const menu_style *from, void *from_ctx, const char *heading,
               const char *const *labels, const char *const *notes, int n, int ticked, int at);
 
-/* The same with a picture column (menu_choice's preview): the choice under
- * the cursor drawn by `preview` in a 4:3 box at the column's top, and its
- * note wrapped under it, so the list holds every choice and the note never
- * pushes it into a scroll. The column is src/ds/preview.h's. */
-int menu_pick_preview(app *a, const menu_style *from, void *from_ctx, const char *heading,
-                      const char *const *labels, const char *const *notes,
-                      void (*preview)(void *app, int k, int x, int y, int w, int h),
-                      int n, int ticked, int at);
-/* The same with `focus` (menu_choice's): told the choice under the cursor
- * on every pass, and -1 once the list has closed, so the whole screen can
- * show it; no picture column */
-int menu_pick_focus(app *a, const menu_style *from, void *from_ctx, const char *heading,
-                    const char *const *labels, const char *const *notes,
-                    void (*focus)(void *app, int k), int n, int ticked, int at);
+/* The same with what the cursor shows (menu_choice's hover, src/ds/hover.h):
+ * the choice under it shown from the frame the cursor reaches it and put
+ * back when the list closes, whichever way, before a choice is applied; a
+ * hover with draw has a picture column, the choice under the cursor drawn
+ * in a 4:3 box at its top and its note wrapped under it, so the list holds
+ * every choice and the note never pushes it into a scroll (the column is
+ * src/ds/preview.h's). NULL hover: menu_pick. */
+int menu_pick_hover(app *a, const menu_style *from, void *from_ctx, const char *heading,
+                    const char *const *labels, const char *const *notes, const struct ds_hover *hover,
+                    int n, int ticked, int at);
 /* The list's width: `base`, the menu it opens from's, or wider with a
  * picture column, to hold the column and the longest choice beside it
  * (`ticked` with its tick); and the column's width into `side_w` (0

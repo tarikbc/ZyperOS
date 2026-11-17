@@ -176,4 +176,10 @@ int theme_index(void);
  * steps from. APPEAR_LIGHT until theme_init. */
 appearance theme_appearance(void);
 
+/* Theme `ix` (DS_LIGHT or DS_DARK) on the screen for a while, said to no
+ * program and kept nowhere: a list's cursor showing a ground in the theme
+ * that is not on (Theme's Light Background with Dark on, src/ds/hover.h).
+ * -1: the theme the setting says, back. theme_appearance is untouched. */
+void theme_show(int ix);
+
 #endif

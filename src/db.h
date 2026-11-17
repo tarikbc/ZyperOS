@@ -63,6 +63,10 @@ bool db_has(db *d, const char *key);
 bool db_set_str(db *d, const char *key, const char *val);
 bool db_set_int(db *d, const char *key, int val);
 bool db_del(db *d, const char *key);
+/* Every row this connection has written, deleted or changed since it
+ * opened (sqlite3_total_changes): check-hover-sweep's proof that a list's
+ * cursor wrote nothing. 0 for none. */
+long db_changes(db *d);
 
 /* Every key under a prefix, in key order, until the callback returns false.
  *

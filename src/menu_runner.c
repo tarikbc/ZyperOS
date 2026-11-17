@@ -166,13 +166,8 @@ static menu_result menu_choose(app *a, zr_rig *z, const menu_style *st, menu_key
 
 	uisound_play(DS_SOUND_ACCEPT);
 	if (c->n > 2) {
-		to = c->preview
-		     ? menu_pick_preview(a, st, ctx, heading, c->labels, c->notes, c->preview, c->n,
-		                         c->none ? -1 : c->cur, c->cur)
-		     : c->focus
-		     ? menu_pick_focus(a, st, ctx, heading, c->labels, c->notes, c->focus, c->n,
-		                       c->none ? -1 : c->cur, c->cur)
-		     : menu_pick(a, st, ctx, heading, c->labels, c->notes, c->n, c->none ? -1 : c->cur, c->cur);
+		to = menu_pick_hover(a, st, ctx, heading, c->labels, c->notes, c->hover, c->n,
+		                     c->none ? -1 : c->cur, c->cur);
 		if (to == MENU_PICK_POWER) return MENU_DONE;   /* as POWER on the menu itself */
 		if (to < 0 || !a->running || want_quit || g_message_stopped || g_menu_closing) return MENU_STAY;
 	} else {
@@ -344,12 +339,14 @@ static menu_exit menu_run_body(app *a, const menu_style *st,
 		 * as a plain list, round on a press */
 		if (in_repeat(&a->in, IN_UP)) {
 			sel = st->visits_all ? list_step_heard(a, IN_UP, n, sel)
-			                     : menu_step_heard(a, rows, n, sel, -1, IN_UP);
+			    : st->quiet_moves ? menu_step_quiet(a, rows, n, sel, -1, IN_UP)
+			                      : menu_step_heard(a, rows, n, sel, -1, IN_UP);
 			if (z) zr_press(z, plat_now_ms());
 		}
 		if (in_repeat(&a->in, IN_DOWN)) {
 			sel = st->visits_all ? list_step_heard(a, IN_DOWN, n, sel)
-			                     : menu_step_heard(a, rows, n, sel, +1, IN_DOWN);
+			    : st->quiet_moves ? menu_step_quiet(a, rows, n, sel, +1, IN_DOWN)
+			                      : menu_step_heard(a, rows, n, sel, +1, IN_DOWN);
 			if (z) zr_press(z, plat_now_ms());
 		}
 
@@ -432,6 +429,9 @@ static menu_exit menu_run_body(app *a, const menu_style *st,
 			break;
 		}
 
+		/* The cursor where it is for this frame: an option's list shows
+		 * the choice under it before the frame is drawn */
+		if (st->at) st->at(a, ctx, sel);
 		if (!panel_frame(a, lv, &k)) continue;
 		tick_tint(a);
 		if (!st->backdrop) {
