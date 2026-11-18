@@ -5138,7 +5138,7 @@ checksum = "29666d0abbfad1e3dc4dcf6144730dd3a3ab225bbbdac83319345b1b44ccfc1b"
 
 [[package]]
 name = "zyperos-installer"
-version = "1.0.6"
+version = "1.0.6-rc.3"
 dependencies = [
  "fatfs",
  "libc",
