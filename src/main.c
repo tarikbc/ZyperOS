@@ -2491,6 +2491,10 @@ void heat_said(const char *where)
 static void notice_pump(void);
 static void heat_notice(void);
 
+/* dl.in_game (src/dlq.h, dlq_game_tick): the device test's developer
+ * switch, read as the launcher starts; off unless set to "on" */
+static bool g_dl_in_game;
+
 static void on_game_tick(void)
 {
 	char msg[96];
@@ -2504,6 +2508,9 @@ static void on_game_tick(void)
 	/* System Update behind the game: its looks, a cut download going on,
 	 * and its news as a notice */
 	tick_update_daily(true);
+	/* The downloads behind the screens wait in a game, unless the device
+	 * test's switch says otherwise: then 3 ms of this process a tick */
+	if (g_dl_in_game) dlq_game_tick(3);
 	/* px2-open's status and quit, and an open that ends this game first */
 	if (g_ctl_app) ctl_poll(g_ctl_app, CTL_AT_GAME);
 	int rc;
@@ -6542,6 +6549,12 @@ int main(int argc, char *argv[])
 		/* Without this every HTTPS request fails verification, because the
 		 * device has no trust store of its own - res/ssl/README.md. */
 		a.auto_off = auto_off_load();
+		{
+			char v[8];
+
+			g_dl_in_game = db_get_str(db_dev(), "dl.in_game", v, sizeof v, NULL) && !strcmp(v, "on");
+			if (g_dl_in_game) fprintf(stderr, "dlq: dl.in_game is on: downloads go on in games\n");
+		}
 		g_saver_s = saver_load();
 		g_charge_limit = charge_limit_load();
 		/* A full charge asked for ends with the cable out, here too */

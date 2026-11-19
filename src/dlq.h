@@ -94,6 +94,16 @@ unsigned dlq_wait(unsigned ms);
 /* A game is running, or is over: the lanes wait while one runs */
 void dlq_game(bool running);
 bool dlq_in_game(void);
+/* The developer switch dl.in_game (the device database, off unless set):
+ * a game's tick (on_game_tick, every 100 ms) steps the lanes anyway, at
+ * most DLQ_GAME_STEPS steps or `budget_ms` of this process's time a tick.
+ * For the device test that decides whether a run may go on in games
+ * (~/Documents/ZyperOS/downloads-plan.md, 10b: "If impact is low, continue
+ * in games too"); nothing else sets it. */
+void dlq_game_tick(unsigned budget_ms);
+#ifndef DLQ_GAME_STEPS
+#define DLQ_GAME_STEPS 8
+#endif
 
 /* The page that shows a lane's run is open: it takes the run's end itself,
  * and the status corner leaves that lane to it (as System Update's page

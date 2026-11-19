@@ -101,20 +101,19 @@ unsigned dlq_ends(dlq_lane l)
 	return (int)l >= 0 && l < DLQ_LANES ? g_lane[l].ends : 0;
 }
 
-void dlq_tick(void)
+/* Each running lane's step, at most once per its every_ms unless `any` */
+static void step_lanes(bool any)
 {
-	unsigned now;
+	unsigned now = now_ms32();
 	int l;
 
-	if (g_game || !dlq_busy()) return;
-	now = now_ms32();
 	for (l = 0; l < DLQ_LANES; l++) {
 		lane *ln = &g_lane[l];
 		net_slot was;
 		int r;
 
 		if (!ln->running) continue;
-		if (ln->last && now - ln->last < ln->d->every_ms) continue;
+		if (!any && ln->last && now - ln->last < ln->d->every_ms) continue;
 		ln->last = now ? now : 1;
 		was = net_slot_use(ln->d->slot);
 		r = ln->d->step(now);
@@ -128,6 +127,27 @@ void dlq_tick(void)
 			if (card_low(ln->d->card)) finish((dlq_lane)l, DLQ_FULL);
 		}
 	}
+}
+
+void dlq_tick(void)
+{
+	if (g_game || !dlq_busy()) return;
+	step_lanes(false);
+}
+
+void dlq_game_tick(unsigned budget_ms)
+{
+	static bool said;
+	unsigned t0;
+	int i;
+
+	if (!g_game || !dlq_busy()) return;
+	if (!said) {
+		said = true;
+		fprintf(stderr, "dlq: going on in the game (dl.in_game), %u ms a tick at most\n", budget_ms);
+	}
+	t0 = now_ms32();
+	for (i = 0; i < DLQ_GAME_STEPS && dlq_busy() && now_ms32() - t0 < budget_ms; i++) step_lanes(true);
 }
 
 unsigned dlq_wait(unsigned ms)

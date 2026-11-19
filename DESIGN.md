@@ -2531,7 +2531,12 @@ and while one rests (the input wait, cut to 16 ms while a run goes). The
 status corner shows it (11.12's download mark, swept as far as the runs
 have got), MENU closes over it as over anything, and Auto Off waits for it
 (11.38). While a game runs it waits, nothing of the game's frame spent on
-it, and goes on when the game is over. POWER stops it, as everything; the
+it, and goes on when the game is over. A developer switch, `dl.in_game` in
+the device's database (off unless set to "on"), lets a game's tick step it
+all the same, 3 ms of the launcher's time a tick at most: the device test
+that decides whether a run may go on in games (my note in the downloads
+lab: "If impact is low, continue in games too") sets it, and nothing
+else. POWER stops it, as everything; the
 next run starts from what is missing. Opening the page again shows the run
 where it is, or, when it ended while the page was closed, Done as it ended;
 a run that ended behind the screens leaves its names, covers and snaps to

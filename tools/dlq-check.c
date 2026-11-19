@@ -291,9 +291,15 @@ int main(int argc, char **argv)
 		run_out(400);
 		CHECK(g_fa.done_n == 0 && !g_fa.started, "while a game runs it waits: nothing asked");
 		CHECK(dlq_wait(80) == 80, "and the input wait is not cut for it");
+		/* The device test's switch: a game's tick steps it all the same,
+		 * within its budget */
+		dlq_game_tick(50);
+		CHECK(g_fa.started, "a game's tick with dl.in_game steps it: its request starts");
 		dlq_game(false);
 		run_out(3000);
 		CHECK(g_fa.done_n == 2 && g_fa.dones == 1 && g_fa.how == DLQ_ENDED, "after the game it goes on to its end");
+		dlq_game_tick(50);
+		CHECK(!dlq_busy(), "and a game's tick with nothing running does nothing");
 	}
 
 	printf("dlq: stop\n");
