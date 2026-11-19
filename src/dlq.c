@@ -200,3 +200,12 @@ int dlq_pct(void)
 	}
 	return n ? sum / n : 0;
 }
+
+int dlq_lane_pct(dlq_lane l)
+{
+	int p;
+
+	if (!dlq_running(l) || !g_lane[l].d->pct) return 0;
+	p = g_lane[l].d->pct();
+	return p < 0 ? 0 : p > 100 ? 100 : p;
+}

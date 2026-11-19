@@ -141,6 +141,9 @@ typedef struct scp_view_ {
 	unsigned long long free;         /* the card's room, 0 when it cannot tell */
 	/* the run */
 	systems_cfg cfg;
+	/* Which kinds a run gets (the Downloads page's rows): the page's own
+	 * runs get all three */
+	bool in_cov, in_vid, in_names;
 	art_progress p;
 	unsigned seen;                   /* the arrival last taken */
 	scp_cover ring[SCP_RING];          /* [0] the newest */
@@ -209,6 +212,13 @@ static bool art_lane_rule(const char *folder)
 	return snaps_covers(folder);
 }
 
+/* Covers out of the run (the Downloads page's Covers row) */
+static bool art_lane_none(const char *folder)
+{
+	(void)folder;
+	return false;
+}
+
 static bool art_lane_begin(void)
 {
 	art_begin(&g_art_sys, P_ROMS, NULL);
@@ -245,6 +255,8 @@ static void art_lane_done(dlq_end how)
 	if (how == DLQ_ENDED && !g_art_last.problem[0]) plat_side_lights_say(SIDE_LIGHTS_DONE);
 	art_cancel();
 	art_covers_rule(NULL);
+	art_names_rule(NULL);
+	g_snap_run_off = false;
 	g_snap_sys = NULL;
 	scp_menu_value(&g_art_sys, g_art_only);
 	/* Its page open, the page takes it as it shows the end; closed, the
@@ -464,12 +476,14 @@ static void scp_needs(const scp_view *v, scp_need *o)
 	memset(o, 0, sizeof *o);
 	for (i = 0; i < v->n; i++) {
 		const scp_sys *s = &v->s[i];
-		bool vid = s->vid && v->ss_in;
+		bool vid = s->vid && v->ss_in && v->in_vid;
 
-		if (s->cov) o->covers += s->miss;
+		if (s->cov && v->in_cov) o->covers += s->miss;
 		if (vid) o->videos += s->vneed[k];
 		if (v->ss_in) {
-			int nm = s->cov && scp_names_on() ? s->names : 0;
+			/* Names follow the system's covers switch; with the covers out
+			 * of the run, its games with no cover are asked too */
+			int nm = s->cov && scp_names_on() && v->in_names ? s->names + (v->in_cov ? 0 : s->miss) : 0;
 
 			o->names += nm;
 			o->looks += nm + (vid ? s->vneed[k] - (nm ? s->both[k] : 0) : 0);
@@ -1189,7 +1203,9 @@ static void scp_start(scp_view *v)
 		const system_cfg *sc = &v->a->sys.systems[i];
 
 		k = scp_find(v, sc->folder);
-		if (k < 0 || !(v->s[k].cov || v->s[k].vid || v->only[0])) continue;
+		if (k < 0 || !(v->only[0] || (v->s[k].cov && (v->in_cov || (v->in_names && scp_names_on()))) ||
+		               (v->s[k].vid && v->in_vid)))
+			continue;
 		if (v->cfg.count < CFG_MAX_SYSTEMS) v->cfg.systems[v->cfg.count++] = *sc;
 	}
 	{
@@ -1207,15 +1223,21 @@ static void scp_start(scp_view *v)
 	}
 	g_art_sys = v->cfg;
 	snprintf(g_art_only, sizeof g_art_only, "%s", v->only);
-	for (g_art_total = 0, i = 0; i < v->n; i++) if (v->s[i].cov || v->only[0]) g_art_total += v->s[i].miss;
+	for (g_art_total = 0, i = 0; v->in_cov && i < v->n; i++) if (v->s[i].cov || v->only[0]) g_art_total += v->s[i].miss;
 	g_snap_sys = &g_art_sys;
-	art_covers_rule(art_lane_rule);
-	art_names(scp_names_on());
+	/* The kinds this run gets: covers by the Systems switch, or none; names
+	 * by that same switch even with the covers out; videos, or none */
+	art_covers_rule(v->in_cov ? art_lane_rule : art_lane_none);
+	art_names(scp_names_on() && v->in_names);
+	art_names_rule(v->in_cov ? NULL : art_lane_rule);
+	g_snap_run_off = !v->in_vid;
 	/* Its own network slot (src/dlq.h): an account's answer after a game,
 	 * on the screens' slot, goes on beside it */
 	ART_LANE.card = P_ROMS;
 	if (!dlq_start(DLQ_ART, &ART_LANE, art_lane_begin)) {
 		art_covers_rule(NULL);
+		art_names_rule(NULL);
+		g_snap_run_off = false;
 		g_snap_sys = NULL;
 		return;
 	}
@@ -1369,6 +1391,7 @@ static void scp_page(app *a, const char *only)
 
 	if (!v) return;
 	v->a = a;
+	v->in_cov = v->in_vid = v->in_names = true;
 	if (only) snprintf(v->only, sizeof v->only, "%s", only);
 	scp_count(v);
 	/* A run behind the screens is shown where it is; one that ended while
@@ -1550,6 +1573,79 @@ menu_result scraper_screen(app *a)
 	return MENU_STAY;
 }
 
+/* ---- for the Downloads page (src/dl_screen.h) -----------------------------
+ * The page's own plan and run, with the kinds the Downloads page has in: a
+ * view counted as the page counts it, never drawn. */
+static scp_view *scp_plan_view(app *a, scraper_kinds k)
+{
+	scp_view *v = calloc(1, sizeof *v);
+
+	if (!v) return NULL;
+	v->a = a;
+	v->in_cov = k.covers;
+	v->in_vid = k.videos;
+	v->in_names = k.names;
+	scp_count(v);
+	return v;
+}
+
+static void scp_plan_free(scp_view *v)
+{
+	int i;
+
+	for (i = 0; i < v->n; i++) if (v->s[i].icon) SDL_DestroyTexture(v->s[i].icon);
+	free(v);
+}
+
+void scraper_plan_of(app *a, scraper_kinds k, scraper_counts *out)
+{
+	scp_view *v = scp_plan_view(a, k);
+	scp_need need;
+	int i;
+
+	memset(out, 0, sizeof *out);
+	if (!v) return;
+	scp_needs(v, &need);
+	out->covers = need.covers;
+	out->videos = need.videos;
+	out->names = need.names;
+	out->looks = need.looks;
+	out->bytes = need.bytes;
+	out->secs = need.secs;
+	out->net = v->net;
+	out->ss_in = v->ss_in;
+	out->fits = scp_fits(v, &need);
+	for (i = 0; i < v->n; i++) {
+		if (v->s[i].cov) out->cov_systems++;
+		if (v->s[i].vid) out->vid_systems++;
+	}
+	scp_plan_free(v);
+}
+
+bool scraper_run(app *a, scraper_kinds k)
+{
+	scp_view *v;
+	scp_need need;
+	bool ok;
+
+	if (dlq_running(DLQ_ART)) return true;
+	if (!(v = scp_plan_view(a, k))) return false;
+	scp_needs(v, &need);
+	ok = v->net && scp_fits(v, &need) && (need.covers || need.videos || need.looks);
+	if (ok) scp_start(v);
+	ok = ok && dlq_running(DLQ_ART);
+	scp_plan_free(v);
+	return ok;
+}
+
+bool scraper_names_on(void) { return scp_names_on(); }
+void scraper_names_set(bool on) { scp_names_set(on); }
+
+void scraper_time_text(double secs, char *out, size_t n)
+{
+	scp_time(secs, true, out, n);
+}
+
 /* ---- a shot's page (--scraper-page STATE [T]) ------------------------------
  * The real drawing on stand-in systems, without a card or a run: 0 the plan
  * with videos off, 1 with three systems' on, 2 with one, 3 Systems, 4 a long
@@ -1598,6 +1694,7 @@ static void scp_fixture(scp_view *v, app *a, int state, int t)
 	memset(v, 0, sizeof *v);
 	v->a = a;
 	v->fixture = true;
+	v->in_cov = v->in_vid = v->in_names = true;
 	v->net = state != 10;
 	v->ss_in = state != 12;     /* videos asked for, no account */
 	v->mb_video = SCP_MB_PER_VIDEO;

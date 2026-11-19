@@ -12,6 +12,7 @@
 #include "ctltab_screen.h"
 #include "db.h"
 #include "devmode_screen.h"
+#include "dl_screen.h"
 #include "ds/page.h"
 #include "emptyhome.h"
 #include "gamedel_screen.h"
@@ -1511,6 +1512,7 @@ static void shot_compose_once(app *a)
 		sysmenu_rows_report(a);
 		gm_rows_report(a);
 		snaps_rows_report(a);
+		downloads_rows_report(a);
 		bgm_rows_report(a);
 		hud_rows_report(a);
 		shot_rows_report = 0;   /* once: --flip composes the shot twice */
@@ -1635,6 +1637,11 @@ static void shot_compose_once(app *a)
 	}
 	if (shot_scraper_page >= 0) {
 		scraper_page_shot(a);
+		return;
+	}
+	/* MENU > Downloads (--downloads STATE) */
+	if (shot_downloads >= 0) {
+		downloads_shot(a);
 		return;
 	}
 	/* MENU > Achievements' page (--radl-page STATE) */

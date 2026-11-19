@@ -1168,7 +1168,7 @@ where it was.)*
 
 | Tab | Rows |
 |---|---|
-| **Games** | Search Games, Play Time, Random Game, Achievements, Scraper |
+| **Games** | Search Games, Play Time, Random Game, Downloads (11.53) |
 | **Display** | Appearance, Theme, Home Screen, System Order, Home Systems, Battery Icon, Screensaver, Shader and Strength (ZyperOS's own screens', 11.50; not on the Brick), Screen Colors, Night Mode (its page: Night Mode, Night Warmth, Night From, Until) |
 | **Sound** | Audio Output, Audio Channels, UI Sounds, Menu Music |
 | **Connections** | USB Device (while a plug waits), Wi-Fi, Bluetooth, File Transfer, USB Accessories, Developer Mode |
@@ -1190,7 +1190,7 @@ scrolls itself, so every Controls page is measured with the font
 (`--controls-fit`, in check-controls-shots).
 
 A key or a token is shown as four bullets and its last four characters,
-"••••1a2b", and nowhere in full: a value in a row (MENU > Scraper), a
+"••••1a2b", and nowhere in full: a value in a row (MENU > Downloads > Settings), a
 link on the File Transfer page. Notes under a rule fit the panel on one line
 each, about 30 characters at **menu**; a longer one is said in two.
 
@@ -1300,7 +1300,7 @@ left-aligned beside it. A progress notice is the achievement's name in
 **meta** **text-dim**, a strip **bar** high in **accent-ink** on **track**,
 and the count ("74 / 100") in **meta** **text** under it. Notices take turns:
 each has its time and a 300 ms gap before the next; unlocks go ahead of
-progress. The achievements list (MENU > Achievements) has the badge at the start
+progress. The achievements list (a game's Achievements row) has the badge at the start
 of every row, greyed and faded until earned, and the count where the points
 are while it moves. *(My picks in the achievements lab,
 docs/design/mock/cheevos-lab.html, 2026-11-05: badge at the left, strip, on
@@ -1794,7 +1794,7 @@ fits, else the fewest lines that fit and, of those, the break whose widest
 line is narrowest (src/linebreak.c). A sentence set left in a list's place
 (the in-game menu's Achievements tab, 11.46) is filled instead, each line as
 far as it goes, so it reaches the panel's right margin. Either way, the ">"
-of a way through the menus ("MENU > Achievements") stays with the word before
+of a way through the menus ("MENU > Downloads") stays with the word before
 it: no line starts with one.
 
 ### 11.12 Header and status corner
@@ -2458,7 +2458,9 @@ trident; Follow the port; Zyper cheers first.)*
 ---
 
 ### 11.19 Scraper and video snaps
-MENU > **Scraper** opens a page in the Flash Drive pages' look (11.18):
+MENU > Downloads' Covers, Videos and Names and Details rows (11.53; MENU >
+**Scraper** until the Downloads row took its place) open a page in the Flash
+Drive pages' look (11.18):
 Zyper and the heading at the top, the keys at the foot. A console's own
 **Box Art** opens the same page for that console alone. MENU's Scraper row
 still says what is missing (the count, "complete", "needs Wi-Fi"), counted
@@ -3854,7 +3856,7 @@ phone's tethering is a way out to the internet as Wi-Fi is. One rule says so
 for every fetch, net_internet (phonelink_way_out): Wi-Fi joined, or a
 default route on a link other than lo; never the USB cable to a computer,
 which gives the handheld no route (it leads nowhere, 2026-11-09). It gates
-MENU > Scraper, a game's Cover and Video, Box Art, Album Art, Achievements,
+MENU > Downloads, a game's Cover and Video, Box Art, Album Art, Achievements,
 System Update and PortMaster's install, and with no radio Achievements, Box
 Art and Album Art come back while it holds (sys_ui.online). The phone may be
 on mobile data: when the route out with the lowest metric is phone0's
@@ -4009,7 +4011,7 @@ a clip, START and then anything.)*
 **One rule.** A job the device was asked to do holds Auto Off the way the
 charger does: the countdown does not run while it works, and a whole fresh
 one starts when it ends. The jobs: the scraper's art and video downloads
-(a run of MENU > Scraper's page, from MENU or a console's Box Art),
+(a run of the Scraper's page, from MENU > Downloads or a console's Box Art),
 System Update's download, check of its files and install, PortMaster's install (whichever
 screen is up, or a game), Storage's walk of the card, File Transfer's copies
 and connected browsers, and Muse's album covers. A Scraper or Achievements
@@ -5240,7 +5242,8 @@ advance vs having to load the game while on WiFi would greatly enhance RA
 offline feature. Think of it like a scraper for achievements." So the page is
 the Scraper's (11.19), in its look.)*
 
-MENU > **Achievements** opens a page where A once went straight to the
+MENU > Downloads > **Achievements** (11.53; MENU > **Achievements** until
+the Downloads row took its place) opens a page where A once went straight to the
 sign-in keyboard; the sign-in is now behind **Y** (**A** while nobody is
 signed in). Three states, as the Scraper's page:
 
@@ -5282,7 +5285,7 @@ rows of seven; the counts as marks; over the keys `393 games ready offline ·
 run that ended well.
 
 The "not checked yet" message (A on a game's Achievements row) names it:
-"...or with Download in MENU > Achievements." Host shots: `--radl-page
+"...or with Download in MENU > Downloads." Host shots: `--radl-page
 STATE`, 0 to 14 (src/radl_screen.c).
 
 ### 11.50 The screens' shader
@@ -5450,3 +5453,52 @@ Checked with the stub core, which can repeat every second picture
 (`STUBCORE_DUPE`) or run two or three frames in a call (`STUBCORE_SPAN`):
 `make check-hudspeed` (end to end, 1.00x and 30 fps for each, below 1x for a
 slow core and the step in fast forward) and `make check-emumeter` (the rule).
+
+### 11.53 Downloads
+*(My picks in the downloads lab, 2026-11-19: one place for every download of
+game data, its name **Downloads**, one door - the Scraper and Achievements
+rows go - and a list with Download on top. The lab's other picks, a run that
+goes on behind the screens (11.19) and side by side on lanes of its own
+(src/dlq.h), came first.)*
+
+MENU > Games > **Downloads**, where Scraper was, is a MENU page (11.3) of
+every download of game data, src/dl_screen.c:
+
+- **Download**, first, so A, A from MENU gets everything: what every kind
+  that is in adds to the card and the time it takes, "186 MB · 15 min"
+  (the Scraper's and the achievements download's own estimates, the two
+  servers side by side, so the longer of the two); "Nothing to fetch";
+  "Needs Wi-Fi"; "Downloading · 41%" while a run goes on. A starts each
+  kind's lane at once (11.19). A plan that will not fit on the card with
+  200 MB to spare says "Not enough room on the card" and starts nothing.
+- a rule, then the kinds, each with what it lacks, as MENU values begin:
+  **Covers** ("41 missing", "Complete", "Off"), **Videos** ("63 to fetch",
+  "Needs ScreenScraper"), **Names and Details** ("199 names"),
+  **Achievements** ("150 to fetch", "Ready offline", "Sign in"). While a
+  lane runs its kinds say how far it has got, the number alone ("37%"), so
+  a long name keeps its room. A opens the kind's own page: the Scraper's
+  (11.19) for the first three, the achievements download's (11.49), or the
+  sign-in when nobody is signed in.
+- a rule, then **Settings**: **ScreenScraper**, **RetroAchievements** and
+  **SteamGridDB**, each with its account (or Link, Sign in) and its page;
+  a rule; what Download gets, each **On** or **Off** as every MENU switch is
+  (Left, Right, A): **Covers**, **Videos**, **Names and Details** (the
+  Scraper's own switch, the same as in its Settings) and **Achievements**;
+  a rule; **Video Snaps** (11.19's page).
+
+A kind that is Off says so on the page and Download leaves it out; a
+system's own switches (the Scraper's Systems) still choose within it, and
+Names and Details asks names for a system whose covers switch is on even
+with Covers off, its games with no cover too (artscrape.c's
+art_names_rule). Every kind starts On (my pick: everything but videos,
+whose systems start off). The counts are taken as the page opens, after a
+switch or a page it opened, and as a lane ends - never a frame. MENU's
+Downloads row says how far a run behind the screens has got, else what the
+Scraper's page counted as it closed.
+
+*(The lab drew the kinds' in and out on the page itself, Left and Right on
+each kind's row. In MENU a row that steps opens its own list on A, and the
+kinds' A opens their pages, so the switches are Settings' rows.)*
+
+Host shots: `--downloads STATE`, 0 the plan, 1 a run going on, 2 every kind
+done or out, 3 no network and nobody signed in, 4 Settings.

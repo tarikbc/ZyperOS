@@ -424,6 +424,13 @@ EXTRA = {
     "scraper-page-done-full": ("demo", "PS1", ["--scraper-page", "15"]),
     # and the Video Snaps page it opens: how the shelf plays them, the room
     "scraper-video-snaps": ("demo", "PS1", ["--scraper", "3"]),
+    # MENU > Downloads (DESIGN.md 11.53): the plan, a run going on, every
+    # kind done or out, no network and nobody signed in, and its Settings
+    "downloads": ("demo", "PS1", ["--downloads", "0"]),
+    "downloads-running": ("demo", "PS1", ["--downloads", "1"]),
+    "downloads-done": ("demo", "PS1", ["--downloads", "2"]),
+    "downloads-offline": ("demo", "PS1", ["--downloads", "3"]),
+    "downloads-settings": ("demo", "PS1", ["--downloads", "4"]),
     # A game's Cover and Video (DESIGN.md 11.34) in every state, a tile of
     # each kind and region focused, Delete's question and the message of a
     # download that did not come; and the details row's other value

@@ -23,7 +23,7 @@ SRC := $(I18N_TABLES) $(filter-out $(I18N_TABLES),$(wildcard src/*.c)) $(wildcar
 # checks that link the rest of src/ leave them all out.
 MAIN_SRC := src/main.c src/about_screen.c src/aout_route.c src/bgm_screen.c \
             src/bt_screen.c src/clock_screen.c src/ctl_channel.c src/ctltab_screen.c \
-            src/devmode_screen.c src/gamedel_screen.c src/gameinfo_screen.c \
+            src/devmode_screen.c src/dl_screen.c src/gamedel_screen.c src/gameinfo_screen.c \
             src/gamern_screen.c src/hover_sweep.c src/hudmenu_screen.c src/ingame_screen.c src/launch_screen.c \
             src/lights_screen.c src/media_screen.c src/menu_panel.c src/menu_runner.c \
             src/muse_screen.c src/nowplaying_screen.c src/place.c src/player2_screen.c \

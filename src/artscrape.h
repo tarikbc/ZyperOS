@@ -136,6 +136,12 @@ void art_covers_rule(bool (*on)(const char *folder));
  * the player turned it off (1.0.6). Off, the part asks only for the videos
  * a system with videos on is missing. For the runs that follow. */
 void art_names(bool on);
+/* Which systems' games get names: NULL, the default, is the covers rule's
+ * (art_covers_rule) - names only where covers come. The Downloads page hands
+ * its own when a run's covers are out and its names in, so names still come
+ * for a system whose covers switch is on. A system whose cover pass is off
+ * asks about every game, covered or not. For the runs that follow. */
+void art_names_rule(bool (*on)(const char *folder));
 
 /* How many games on these shelves have no cover yet: what MENU > Scraper
  * says it would fetch. One directory read and a stat per game, so for when a

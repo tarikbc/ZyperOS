@@ -114,18 +114,66 @@ static void signal_splash(int sig)
 /* The screens' shader is on this frame already (plat_screen_finish) */
 static bool fx_done;
 
-/* This file draws straight into the window, so the shader goes on the frame
- * where it is: CRT Curved's bend reads it back and draws it again, then the
- * mask multiplies it. The Brick's own rows offer none of the old screens
- * (plat_gpu_shaders), so on the Brick this is always Off and nothing; the
- * host, which shows the Pixel 2's screens, has them. */
+/* CRT Curved's frame: while the screens' shader bends, ZyperOS draws into
+ * this texture of the screen's size instead of the window, and the bend
+ * draws it onto the window (plat_screen_finish), as the Pixel 2 bends its
+ * screen_tex. Reading the window back instead (sfx_bend_target) stalls a
+ * GPU that draws in tiles, the Brick's PowerVR, for a whole frame's pixels
+ * every frame. Made the first time the curve is on; while it is off ZyperOS
+ * draws straight into the window as before, so a frame without the curve
+ * costs what it did. */
+static SDL_Texture *bend_tex;
+
+static bool bending(void) { return sfx_on() && sfx_curved(); }
+
+/* Where ZyperOS's frame goes: bend_tex while the curve is on, else the
+ * window (also when bend_tex cannot be made: the bend reads back then) */
+static SDL_Texture *screen_target(void)
+{
+	if (!bending()) return NULL;
+	if (!bend_tex) {
+		bend_tex = SDL_CreateTexture(ren, PLAT_TARGET_FORMAT, SDL_TEXTUREACCESS_TARGET,
+		                             ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H);
+		if (bend_tex) SDL_SetTextureBlendMode(bend_tex, SDL_BLENDMODE_NONE);
+		else fprintf(stderr, "screens' shader: no texture for the curve (%s); "
+		             "it reads the screen back\n", SDL_GetError());
+	}
+	return bend_tex;
+}
+
+/* The shader on the frame where it is: CRT Curved's bend draws bend_tex
+ * onto the window (or, the frame it came on, which went to the window,
+ * reads it back and draws it again), then the mask multiplies it. The
+ * Brick's own rows offer none of the old screens (plat_gpu_shaders), so on
+ * the Brick this is Off and nothing until they do; the host, which shows
+ * the Pixel 2's screens, has them. */
 void plat_screen_finish(void)
 {
 	SDL_Rect all = { 0, 0, ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H };
+	bool in_tex = bend_tex && SDL_GetRenderTarget(ren) == bend_tex;
 
+	if (in_tex && !bending()) {
+		/* The curve went off with this frame in bend_tex: the frame as it is */
+		SDL_SetRenderTarget(ren, NULL);
+		SDL_RenderCopy(ren, bend_tex, NULL, &all);
+		in_tex = false;
+	}
 	if (fx_done || !sfx_on()) return;
 	fx_done = true;
-	if (sfx_curved()) sfx_bend_target(ren, ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H);
+	if (sfx_curved()) {
+		if (in_tex) {
+			Uint8 cr, cg, cb, ca;
+
+			SDL_SetRenderTarget(ren, NULL);
+			SDL_GetRenderDrawColor(ren, &cr, &cg, &cb, &ca);
+			SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
+			SDL_RenderClear(ren);
+			SDL_SetRenderDrawColor(ren, cr, cg, cb, ca);
+			sfx_draw_curved(ren, bend_tex, &all, 0.0);
+		} else {
+			sfx_bend_target(ren, ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H);
+		}
+	}
 	sfx_draw_mask(ren, ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H, &all, 0.0);
 }
 
@@ -160,8 +208,10 @@ void plat_present(void)
 	}
 	SDL_RenderPresent(ren);
 	fx_done = false;
+	/* The next frame into bend_tex while the curve is on */
+	if (bending()) SDL_SetRenderTarget(ren, screen_target());
 }
-void plat_draw_to_screen(void) { SDL_SetRenderTarget(ren, NULL); }
+void plat_draw_to_screen(void) { SDL_SetRenderTarget(ren, screen_target()); }
 
 /* The Brick's screen is its panel: the picture goes straight into the frame,
  * and what is drawn after it lands on top of it. */
@@ -299,6 +349,7 @@ void plat_video_quit(void)
 {
 	plat_osd_forget();
 	sfx_forget();
+	if (bend_tex) { SDL_DestroyTexture(bend_tex); bend_tex = NULL; }
 	if (ren) { SDL_DestroyRenderer(ren); ren = NULL; }
 	if (win) { SDL_DestroyWindow(win); win = NULL; }
 	SDL_QuitSubSystem(SDL_INIT_VIDEO);

@@ -49,8 +49,6 @@ int sys_menu_zyperos_rows(const sys_ui *u, pm_row *out)
 		 * account nobody can reach is a row that can only fail. Audio Output
 		 * stays, since a cable and the speaker are still two places. */
 		if (u->no_wifi && r == PM_WIFI) continue;
-		/* A phone's USB tethering is a way out with no radio */
-		if (u->no_wifi && !u->online && r == PM_ACHIEVEMENTS) continue;
 		/* Unless the files go over a cable, which needs no radio. */
 		if (u->no_wifi && !u->cable_xfer && r == PM_XFER) continue;
 		if (u->no_bt && r == PM_BT) continue;
@@ -76,8 +74,7 @@ pm_tab sys_menu_tab_of(pm_row r)
 {
 	/* No default: -Wswitch names a row that has no tab */
 	switch (r) {
-	case PM_SEARCH: case PM_STATS: case PM_RANDOM: case PM_ACHIEVEMENTS:
-	case PM_SCRAPER:
+	case PM_SEARCH: case PM_STATS: case PM_RANDOM: case PM_SCRAPER:
 		return PT_GAMES;
 	case PM_APPEARANCE: case PM_THEME: case PM_HOME:
 	case PM_ORDER: case PM_HOMESYS: case PM_BATTERY: case PM_SAVER: case PM_SHADER:
@@ -600,10 +597,7 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 	/* Box Art, its sources and Video Snaps, behind one row (DESIGN.md
 	 * 11.19). Live with no network too: its fetch says it needs Wi-Fi, and
 	 * the rest of it does not. */
-	full[PM_SCRAPER]      = (menu_row){ T(S_SYSMENU_SCRAPER), u->scraper, true };
-	full[PM_ACHIEVEMENTS] = (menu_row){ T(S_SYSMENU_CHEEVOS),
-	                                   u->ra_in ? u->ra_name : T(S_SYSMENU_SIGN_IN),
-	                                   true };
+	full[PM_SCRAPER]      = (menu_row){ T(S_DOWNLOADS_HEADING), u->scraper, true };
 	/* ZyperOS's own screens' shader (src/screenfx.h); each system's own
 	 * menu and the in-game menu choose one for that system's games */
 	full[PM_SHADER]       = (menu_row){ T(S_GAMEMENU_SHADER),

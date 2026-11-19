@@ -37,6 +37,8 @@
 #include "powerhold.h"
 #include "powerscreens.h"
 #include "radl_screen.h"
+#include "dl_screen.h"
+#include "dlq.h"
 #include "rafetch.h"
 #include "saver.h"
 #include "search_screen.h"
@@ -587,7 +589,18 @@ int menu_build(app *a, screen_id screen, int sys,
 		u.ra_name   = u.ra_in ? ra_user() : NULL;
 		/* A check the page started may have ended after it closed */
 		sgdb_try_poll();
-		u.scraper   = g_scraper_val[0] ? g_scraper_val : NULL;
+		/* Downloads: how far a run behind the screens has got, else what
+		 * the Scraper's page counted as it closed */
+		{
+			static char dlv[48];
+
+			if (dlq_busy()) {
+				snprintf(dlv, sizeof dlv, T(S_DOWNLOADS_RUNNING), dlq_pct());
+				u.scraper = dlv;
+			} else {
+				u.scraper = g_scraper_val[0] ? g_scraper_val : NULL;
+			}
+		}
 		{
 			static char upv[48];
 			u.update = up_have() ? su_menu_value(up_view(false), upv, sizeof upv) : NULL;
@@ -1956,9 +1969,9 @@ menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 	case PM_HOMESYS:      homesys_screen(a); return MENU_CHANGED;
 	case PM_LANGUAGE:     language_screen(a); return MENU_CHANGED;
 	/* These three say how they went, which is Zyper's to answer */
-	case PM_SCRAPER:      return scraper_screen(a);
-	/* The download page (src/radl_screen.h); signing in is behind it */
-	case PM_ACHIEVEMENTS: return radl_screen(a);
+	/* Every download of game data (src/dl_screen.h): the Scraper's page,
+	 * the achievements download's and the accounts are behind it */
+	case PM_SCRAPER:      return downloads_screen(a);
 	case PM_BT:           bt_screen(a); break;
 	case PM_CLOCK:        clock_screen(a); break;
 	case PM_MUSIC:        bgm_screen(a); break;

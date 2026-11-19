@@ -71,6 +71,7 @@
 #include "spawn.h"
 #include "webtheme.h"
 #include "devmode.h"
+#include "dl_screen.h"
 #include "dlq.h"
 #include "sshlink.h"
 #include "mdns.h"
@@ -3823,6 +3824,9 @@ void menu_message(app *a, const char *heading, menu_row row,
  * covers are handed here as it starts (g_snap_sys); without them only "all"
  * gets videos. The play times are folded once a run (stats_summarize). */
 const systems_cfg *g_snap_sys;
+/* Videos out of the run going now (the Downloads page's Videos row): none
+ * come, whatever each system's switch says */
+bool g_snap_run_off;
 
 static bool snap_wanted(const char *folder, const char *file)
 {
@@ -3830,7 +3834,7 @@ static bool snap_wanted(const char *folder, const char *file)
 	int which, i;
 	long secs = 0, last = 0;
 
-	if (!snaps_get(folder)) return false;
+	if (g_snap_run_off || !snaps_get(folder)) return false;
 	if ((which = snaps_for()) == SNAPS_FOR_ALL) return true;
 	for (i = 0; g_snap_sys && i < g_snap_sys->count; i++)
 		if (!strcmp(g_snap_sys->systems[i].folder, folder)) { tag = g_snap_sys->systems[i].tag; break; }
@@ -5806,6 +5810,9 @@ int main(int argc, char *argv[])
 		/* --radl-page STATE: MENU > Achievements' page (radl_page_shot) */
 		else if (!strcmp(argv[i], "--radl-page") && i + 1 < argc)
 			shot_radl_page = atoi(argv[++i]);
+		/* --downloads STATE: MENU > Downloads (downloads_shot) */
+		else if (!strcmp(argv[i], "--downloads") && i + 1 < argc)
+			shot_downloads = atoi(argv[++i]);
 		else if (!strcmp(argv[i], "--scraper-page") && i + 1 < argc) {
 			shot_scraper_page = atoi(argv[++i]);
 			if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '9')

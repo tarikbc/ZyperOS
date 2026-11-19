@@ -53,15 +53,15 @@ ja = ZyperOS はこの種類のファイルのゲームを RetroAchievements 用
 it = ZyperOS non sa riconoscere i giochi in questo tipo di file per RetroAchievements. Un altro tipo di file potrebbe funzionare.
 
 [achtab.signed_out]
-note = Where the list would be, when nobody is signed in to RetroAchievements and the card has no set for the game. MENU is the button's name; Achievements is the MENU row (sysmenu.cheevos).
-en = Sign in to RetroAchievements in MENU > Achievements, then play with Wi-Fi to get this game's achievements.
-zh-Hans = 在 MENU > 成就 中登录 RetroAchievements，然后连接 Wi-Fi 游玩即可获取这个游戏的成就。
-es = Inicia sesión en RetroAchievements en MENU > Logros y juega con Wi-Fi para obtener los logros de este juego.
-pt-BR = Entre no RetroAchievements em MENU > Conquistas e jogue com Wi-Fi para receber as conquistas deste jogo.
-fr = Connectez-vous à RetroAchievements dans MENU > Succès, puis jouez avec le Wi-Fi pour obtenir les succès de ce jeu.
-de = Melde dich unter MENU > Erfolge bei RetroAchievements an und spiele dann mit WLAN, um die Erfolge dieses Spiels zu erhalten.
-ja = MENU > 実績 で RetroAchievements にサインインし、Wi-Fi に接続して遊ぶと、このゲームの実績を取得できます。
-it = Accedi a RetroAchievements in MENU > Obiettivi, poi gioca con il Wi-Fi per avere gli obiettivi di questo gioco.
+note = Where the list would be, when nobody is signed in to RetroAchievements and the card has no set for the game. MENU is the button's name; Downloads is the MENU row (downloads.heading), Settings its last row (home.settings).
+en = Sign in to RetroAchievements in MENU > Downloads > Settings, then play with Wi-Fi to get this game's achievements.
+zh-Hans = 在 MENU > 下载 > 设置 中登录 RetroAchievements，然后连接 Wi-Fi 游玩即可获取这个游戏的成就。
+es = Inicia sesión en RetroAchievements en MENU > Descargas > Ajustes y juega con Wi-Fi para obtener los logros de este juego.
+pt-BR = Entre no RetroAchievements em MENU > Downloads > Configurações e jogue com Wi-Fi para receber as conquistas deste jogo.
+fr = Connectez-vous à RetroAchievements dans MENU > Téléchargements > Réglages, puis jouez avec le Wi-Fi pour obtenir les succès de ce jeu.
+de = Melde dich unter MENU > Downloads > Einstellungen bei RetroAchievements an und spiele dann mit WLAN, um die Erfolge dieses Spiels zu erhalten.
+ja = MENU > ダウンロード > 設定 で RetroAchievements にサインインし、Wi-Fi に接続して遊ぶと、このゲームの実績を取得できます。
+it = Accedi a RetroAchievements in MENU > Download > Impostazioni, poi gioca con il Wi-Fi per avere gli obiettivi di questo gioco.
 
 [achtab.waiting]
 note = Where the list would be, while the game's achievements are being fetched behind it, the first time it is played with Wi-Fi

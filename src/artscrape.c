@@ -1704,6 +1704,17 @@ static bool covers_on(const char *folder)
 	return g_only[0] || !g_covers_on || g_covers_on(folder);
 }
 
+/* Which systems get names (art_names_rule): NULL, the default, is the covers
+ * rule's, as it always was */
+static bool (*g_names_for)(const char *folder);
+
+void art_names_rule(bool (*on)(const char *folder)) { g_names_for = on; }
+
+static bool names_on(const char *folder)
+{
+	return g_names_for ? g_names_for(folder) : covers_on(folder);
+}
+
 /* Something arrived: a cover, or a video with the cover it goes with */
 static void arrived(const char *path, const char *game, int src, bool video)
 {
@@ -1815,7 +1826,7 @@ static int details_count(const char *dir, const char *folder, const char *exts)
 
 		if ((cov && !cover) || db_titles_find(&miss, g->file)) continue;
 		t = db_titles_find(&titles, g->file);
-		if ((cov && g_names_on && (!t || !*t)) || snap_missing(dir, folder, g->file, g->name)) n++;
+		if ((names_on(folder) && g_names_on && (!t || !*t)) || snap_missing(dir, folder, g->file, g->name)) n++;
 	}
 	for (i = 0; i < nhave; i++) free(have[i]);
 	free(have);
@@ -1973,7 +1984,7 @@ int art_step(void)
 			/* A system with covers off: its videos only, cover or not */
 			if (art_paths(dir, game->name, media, sizeof media, dest, sizeof dest) &&
 			    (!cov || art_is_cover(dest) || (g_es_cover && g_es_cover(dir, game->file, game->name)))) {
-				g_meta_untitled = cov && g_names_on &&
+				g_meta_untitled = names_on(g_sys[g_si].folder) && g_names_on &&
 				                  !db_game_title(db_lib(), g_sys[g_si].folder, game->file,
 				                                 title, sizeof title);
 				/* ScreenScraper said lately it does not know it */

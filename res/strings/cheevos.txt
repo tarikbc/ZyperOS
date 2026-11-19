@@ -107,15 +107,15 @@ ja = 未確認
 it = Non ancora verificati
 
 [cheevos.unchecked_said]
-note = The message when A is pressed on that row: how the game gets its achievements - its first play with Wi-Fi, or MENU > Achievements' Download (radl.key_download) for every game at once - and that they then work offline. One sentence or two, balanced onto up to four lines.
-en = This game's achievements come the first time you play it with Wi-Fi, or with Download in MENU > Achievements. Then they work offline too.
-zh-Hans = 第一次连接 Wi-Fi 玩这个游戏时会获取它的成就，也可以在 MENU > 成就 中下载。之后离线也能使用。
-es = Los logros de este juego llegan la primera vez que lo juegas con Wi-Fi, o con Descargar en MENU > Logros. Luego funcionan sin conexión.
-pt-BR = As conquistas deste jogo chegam na primeira vez que você joga com Wi-Fi, ou com Baixar em MENU > Conquistas. Depois funcionam offline também.
-fr = Les succès de ce jeu arrivent la première fois que vous y jouez avec le Wi-Fi, ou avec Télécharger dans MENU > Succès. Ils marchent ensuite hors ligne.
-de = Die Erfolge dieses Spiels kommen beim ersten Spielen mit WLAN oder mit Laden unter MENU > Erfolge. Danach gehen sie auch offline.
-ja = このゲームの実績は、Wi-Fi に接続して初めて遊んだとき、または MENU > 実績 のダウンロードで取得されます。その後はオフラインでも使えます。
-it = Gli obiettivi di questo gioco arrivano la prima volta che ci giochi con il Wi-Fi, o con Scarica in MENU > Obiettivi. Poi funzionano anche offline.
+note = The message when A is pressed on that row: how the game gets its achievements - its first play with Wi-Fi, or MENU > Downloads' Download (radl.key_download) for every game at once - and that they then work offline. One sentence or two, balanced onto up to four lines.
+en = This game's achievements come the first time you play it with Wi-Fi, or with Download in MENU > Downloads. Then they work offline too.
+zh-Hans = 第一次连接 Wi-Fi 玩这个游戏时会获取它的成就，也可以在 MENU > 下载 中下载。之后离线也能使用。
+es = Los logros de este juego llegan la primera vez que lo juegas con Wi-Fi, o con Descargar en MENU > Descargas. Luego funcionan sin conexión.
+pt-BR = As conquistas deste jogo chegam na primeira vez que você joga com Wi-Fi, ou com Baixar em MENU > Downloads. Depois funcionam offline também.
+fr = Les succès de ce jeu arrivent la première fois que vous y jouez avec le Wi-Fi, ou avec Télécharger dans MENU > Téléchargements. Ils marchent ensuite hors ligne.
+de = Die Erfolge dieses Spiels kommen beim ersten Spielen mit WLAN oder mit Laden unter MENU > Downloads. Danach gehen sie auch offline.
+ja = このゲームの実績は、Wi-Fi に接続して初めて遊んだとき、または MENU > ダウンロード で取得されます。その後はオフラインでも使えます。
+it = Gli obiettivi di questo gioco arrivano la prima volta che ci giochi con il Wi-Fi, o con Scarica in MENU > Download. Poi funzionano anche offline.
 
 [cheevos.not_system]
 note = The game info screen and the in-game menu: the Achievements row's value for a game of a system whose games ZyperOS cannot identify for RetroAchievements (the Sega CD, the Saturn: discs of systems with no reader here). It stays so whatever the network, and A on it does nothing. A value, begun with a capital; it stands for the achievements (plural).

@@ -112,7 +112,9 @@ void dlq_page(dlq_lane l, bool open);
 bool dlq_page_open(dlq_lane l);
 /* A lane runs whose page is not open: the status corner's download mark */
 bool dlq_behind(void);
-/* The running lanes' progress together, 0 to 100, for the corner's ring */
+/* The running lanes' progress together, 0 to 100, for the corner's ring;
+ * one lane's, 0 when it is not running */
 int  dlq_pct(void);
+int  dlq_lane_pct(dlq_lane l);
 
 #endif

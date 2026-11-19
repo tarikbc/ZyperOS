@@ -87,7 +87,7 @@ ja = 全ゲーム確認済み
 it = Tutti i giochi verificati
 
 [radl.key_download]
-note = The word beside A on the page: start the download
+note = The word beside A on the page: start the download; and the first row of MENU > Downloads, which starts every kind that is in it (src/dl_screen.c)
 en = Download
 zh-Hans = 下载
 es = Descargar

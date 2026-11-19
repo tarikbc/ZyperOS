@@ -92,6 +92,7 @@ Each line has its details in [the guide](docs/guide.md).
 - **Eight languages,** chosen on the first start or in **MENU > Language**, with every word following it, down to the charging screen ([languages](docs/guide.md#languages)).
 - **A first start that asks:** Zyper teaches each button, then asks for the theme, the home screen, the button sounds and the menu music ([the first start](docs/guide.md#the-first-start)).
 - **Box art the device finds itself** from libretro, ScreenScraper and SteamGridDB, with **Cover and Video** to pick a cover and see it first ([Scraper](docs/guide.md#scraper)).
+- **Every download in one place:** **MENU > Downloads** gets covers, video snaps, names and every game's achievements at once, side by side, and keeps going behind the menus while you browse ([Downloads](docs/guide.md#downloads)).
 - **Video snaps and a screensaver:** rest on a game and its cover turns into a few seconds of the game itself, and after a minute on the shelf the snaps of random games play over the whole screen ([how](docs/guide.md#screensaver)).
 - **RetroAchievements,** signed in on the device and working offline: an unlock shows at once and goes to your account when Wi-Fi is back, dated when you earned it ([how](docs/guide.md#achievements)).
 - **Coming from Knulli, ROCKNIX, ArkOS or ROGUE OS:** copy their `roms` folders over as they are, with the covers, video snaps, names and favorites their scrapers left ([what ZyperOS reads](docs/guide.md#coming-from-emulationstation)).

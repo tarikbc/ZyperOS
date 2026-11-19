@@ -145,6 +145,7 @@ written to match. Change a term here first, then everywhere it is used.
 | Box Art | 封面 | Carátulas | Capas | Jaquettes | Cover | パッケージ画像 | Copertine |
 | Video Snaps | 视频预览 | Avances en video | Prévias em vídeo | Aperçus vidéo | Videovorschau | 動画プレビュー | Anteprime video |
 | Scraper | 资料抓取 | Scraper | Capas e vídeos | Scraper | Cover und Videos | 画像と動画 | Copertine e video |
+| Downloads (MENU's row and its page: every download of game data) | 下载 | Descargas | Downloads | Téléchargements | Downloads | ダウンロード | Download |
 | Wi-Fi File Transfer (the page; MENU and the empty home use the short form) | Wi-Fi 文件传输 | Transferir archivos por Wi-Fi; short: Transferir Wi-Fi | Transferir arquivos por Wi-Fi; short: Transferir Wi-Fi | Transfert de fichiers Wi-Fi; short: Transfert Wi-Fi | WLAN-Dateiübertragung; short: WLAN-Transfer | Wi-Fi ファイル転送 | Trasferimento file via Wi-Fi; short: Trasferisci Wi-Fi |
 | USB File Transfer (the same) | USB 文件传输 | Transferir archivos por USB; short: Transferir USB | Transferir arquivos por USB; short: Transferir USB | Transfert de fichiers USB; short: Transfert USB | USB-Dateiübertragung; short: USB-Transfer | USB ファイル転送 | Trasferimento file via USB; short: Trasferisci USB |
 | file / files | 文件 | archivo / archivos | arquivo / arquivos | fichier / fichiers | Datei / Dateien | ファイル | file / file |

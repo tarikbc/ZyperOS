@@ -70,10 +70,13 @@
 /* Show Tutorial between Controls and About: the same buttons as Controls,
  * taught a step at a time rather than listed (DESIGN.md 11.10), and like the
  * two either side of it, a row nobody needs every day. */
-/* PM_SCRAPER is Scraper, where Box Art was: the run that fetches missing box
- * art, Video Snaps, and the three sources it asks - ScreenScraper, libretro
- * and SteamGridDB - each linked on a page of its own. One row in place of
- * Box Art, ScreenScraper and SteamGridDB (My picks in the Scraper lab,
+/* PM_SCRAPER is Downloads (src/dl_screen.h): every download of game data -
+ * covers, videos, names, achievements - in one row and its page, in place of
+ * the Scraper and Achievements rows (my pick in the downloads lab, 2026-11-19:
+ * one door). Before it, Scraper, where Box Art was: the run that fetches
+ * missing box art, Video Snaps, and the three sources it asks - ScreenScraper,
+ * libretro and SteamGridDB - each linked on a page of its own. One row in
+ * place of Box Art, ScreenScraper and SteamGridDB (My picks in the Scraper lab,
  * 2026-11-06; DESIGN.md 11.19). On every device: with no network it cannot
  * fetch, but Video Snaps still play and a key pasted over the USB cable
  * still wants a place to be seen. */
@@ -121,7 +124,7 @@
  * rc.2 (DESIGN.md 11.42). */
 typedef enum {
 	/* Games */
-	PM_SEARCH, PM_STATS, PM_RANDOM, PM_ACHIEVEMENTS, PM_SCRAPER,
+	PM_SEARCH, PM_STATS, PM_RANDOM, PM_SCRAPER,
 	/* Display */
 	PM_APPEARANCE, PM_THEME, PM_HOME, PM_ORDER, PM_HOMESYS, PM_BATTERY, PM_SAVER,
 	PM_SHADER,

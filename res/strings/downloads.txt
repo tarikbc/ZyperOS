@@ -1,0 +1,94 @@
+# MENU > Downloads (src/dl_screen.c, DESIGN.md 11.53): one row and one page
+# for every download of game data - covers, video snaps, names and details,
+# achievements - in place of the Scraper and Achievements rows. Its rows'
+# values, begun with a capital as a row's value is. The glossary's words:
+# Downloads, Achievements, ScreenScraper.
+
+[downloads.heading]
+note = MENU's row in the Games tab, where Scraper was, and the heading of the page it opens: every download of game data (covers, videos, names, achievements) in one place. Short: a row's label.
+en = Downloads
+zh-Hans = 下载
+es = Descargas
+pt-BR = Downloads
+fr = Téléchargements
+de = Downloads
+ja = ダウンロード
+it = Download
+
+[downloads.running]
+note = A row's value while a download goes on, on its page or behind the screens, and how far it has got: %d is a percent ("41"). Short: it shares the row.
+en = Downloading · %d%%
+zh-Hans = 正在下载 · %d%%
+es = Descargando · %d%%
+pt-BR = Baixando · %d%%
+fr = En cours · %d%%
+de = Lädt · %d%%
+ja = 取得中 · %d%%
+it = In corso · %d%%
+
+[downloads.nothing]
+note = The Download row's value when everything that is in it is on the card already. A value, begun with a capital.
+en = Nothing to fetch
+zh-Hans = 没有待下载的内容
+es = Nada por descargar
+pt-BR = Nada a baixar
+fr = Rien à télécharger
+de = Nichts zu laden
+ja = すべて取得済み
+it = Niente da scaricare
+
+[downloads.to_fetch_n]
+note = The Videos and Achievements rows' value: how many video snaps, or how many games' achievements, a download would get. %d is the count. Short: it shares the row.
+en.one = %d to fetch
+en.other = %d to fetch
+zh-Hans = 待下载 %d
+es.one = %d por descargar
+es.other = %d por descargar
+pt-BR.one = %d a baixar
+pt-BR.other = %d a baixar
+fr.one = %d à télécharger
+fr.other = %d à télécharger
+de.one = %d zu laden
+de.other = %d zu laden
+ja = 取得予定 %d
+it.one = %d da scaricare
+it.other = %d da scaricare
+
+[downloads.ready]
+note = The Achievements row's value when every game's achievements are on the card already, so they work with no network. A value, begun with a capital.
+en = Ready offline
+zh-Hans = 可离线使用
+es = Listos sin conexión
+pt-BR = Prontas offline
+fr = Prêts hors ligne
+de = Offline bereit
+ja = オフライン可
+it = Pronti offline
+
+[downloads.missing_n]
+note = The Covers row's value: how many games have no cover yet. %d is the count. A value, begun with a capital (the Scraper's own, scraper.missing_n, is a fact inside a line).
+en.one = %d missing
+en.other = %d missing
+zh-Hans = 缺少 %d
+es.one = Falta %d
+es.other = Faltan %d
+pt-BR.one = %d faltando
+pt-BR.other = %d faltando
+fr.one = %d manquante
+fr.other = %d manquantes
+de.one = %d fehlt
+de.other = %d fehlen
+ja = %d 件不足
+it.one = %d mancante
+it.other = %d mancanti
+
+[downloads.needs_ss]
+note = The Videos and Names and Details rows' value when no ScreenScraper account is linked: both come only from ScreenScraper. A value, begun with a capital.
+en = Needs ScreenScraper
+zh-Hans = 需要 ScreenScraper
+es = Requiere ScreenScraper
+pt-BR = Requer ScreenScraper
+fr = ScreenScraper requis
+de = Braucht ScreenScraper
+ja = ScreenScraper が必要
+it = Richiede ScreenScraper

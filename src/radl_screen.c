@@ -883,6 +883,46 @@ static void rdl_page(app *a)
 	free(v);
 }
 
+/* ---- for the Downloads page (src/dl_screen.h) -----------------------------
+ * The page's plan and its run, with no page drawn */
+void radl_plan_of(app *a, radl_counts *out)
+{
+	rdl_view *v = calloc(1, sizeof *v);
+	rdl_sum t;
+
+	memset(out, 0, sizeof *out);
+	if (!v) return;
+	v->a = a;
+	rdl_count(v);
+	t = rdl_totals(v);
+	out->ready = t.ready;
+	out->todo = t.todo;
+	out->none = t.none;
+	out->in = v->in;
+	out->net = v->net;
+	out->secs = t.todo ? t.todo * RDL_S_GAME + t.nsys * RDL_S_SYSTEM : 0;
+	out->bytes = t.todo * RDL_MB_GAME * 1e6;
+	rdl_icons_free(v);
+	free(v);
+}
+
+bool radl_run(app *a)
+{
+	rdl_view *v;
+	bool ok;
+
+	if (dlq_running(DLQ_RA)) return true;
+	if (!(v = calloc(1, sizeof *v))) return false;
+	v->a = a;
+	rdl_count(v);
+	ok = v->in && v->net;
+	if (ok) rdl_start(v, plat_now_ms());
+	ok = ok && dlq_running(DLQ_RA);
+	rdl_icons_free(v);
+	free(v);
+	return ok;
+}
+
 menu_result radl_screen(app *a)
 {
 	rdl_page(a);

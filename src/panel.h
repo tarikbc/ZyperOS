@@ -428,6 +428,7 @@ void panel_close_at(app *a, int lv, bool cut, unsigned now);
  * or a shot, is drawn at rest. */
 #define PANEL_REST ((mm_frame){ { 1.0f, 0.0f }, { 1.0f, 1.0f }, 1.0f, false })
 extern const systems_cfg *g_snap_sys;
+extern bool g_snap_run_off;
 bool es_art_cover(const char *dir, const char *file, const char *stem);
 bool es_art_video(const char *dir, const char *file, const char *stem);
 void tiles_panel(app *a, int kind, const char *heading, const menu_row *tiles,
