@@ -49,8 +49,6 @@ static struct {
 	char        key[CFG_STR + LIB_PATH + 8];   /* tag, file and scope it was read for */
 	ct_model    m;
 	char        ext[16], label[64];
-	rm_choice   ch[32];
-	int         nch;
 	/* The rows last built, and whether since the tab was turned to; the
 	 * lines of a quiet row too long for the column */
 	ct_bufs     b;
@@ -150,7 +148,7 @@ static void refresh(const ctlscr_game *g)
 		rms_system(g->s, &m->def);
 	}
 	rms_default(g->s, &m->zdef);
-	m->held = ct_held_of(g->s->tag, g->s->stick);
+	m->held = ct_held_of(g->s->tag);
 	m->stick_offered = rms_stick_offered(g->s);
 	m->stick_on = rms_stick_get(g->s, file);
 	m->stick_default = rms_stick_default(g->s);
@@ -160,7 +158,6 @@ static void refresh(const ctlscr_game *g)
 	 * (mode dpad) takes SELECT for its own d-pad while it is on */
 	m->select_held_c = ct_select_held_c(&m->cur);
 	m->select_held_dpad = !m->select_held_c && m->stick_on && !strcmp(g->s->stick, "dpad");
-	g_cs.nch = ctl_remap_choices(g->s->tag, g_cs.ext, g->s->map, g_cs.ch, 32);
 	if (g_cs.base_row < 0) g_cs.base = m->cur;
 	m->base = g_cs.base;
 	g_cs.stale = false;
@@ -189,15 +186,27 @@ static void send_map(const ctlscr_game *g)
 	plat_resident_line("SETMAP\tmap=%s", map);
 }
 
+/* The map and, on a system with a stick, the stick after it: a button
+ * given the stick, or taken from it, changes what an off stick is sent as
+ * (rms_run_stick's keys) */
+static void send_stick(const ctlscr_game *g, bool on);
+static void send_all(const ctlscr_game *g)
+{
+	send_map(g);
+	if (rms_stick_offered(g->s)) send_stick(g, rms_stick_get(g->s, g->file));
+}
+
 /* The stick as RUN would start it (rms_run_stick), at once; Diatom's STICK
  * answer is not waited for, and shows no pop-up (the row says it already:
  * plat_resident_set_stick) */
 static void send_stick(const ctlscr_game *g, bool on)
 {
+	rm_table sent;
 	char run[24];
 
 	if (!g->running) return;
-	rms_run_stick(g->s, on, run, sizeof run);
+	rms_sent(g->s, g->file, on, &sent);
+	rms_run_stick(g->s, on, rm_has_stick(&sent), run, sizeof run);
 	fprintf(stderr, "controls: stick %s %s\n", g->s->tag, run[0] ? run : "off");
 	plat_resident_set_stick(!strncmp(run, "stick=", 6) ? run + 6 : "off");
 }
@@ -206,7 +215,7 @@ static void send_stick(const ctlscr_game *g, bool on)
 static void put(const ctlscr_game *g, const rm_table *t)
 {
 	rms_put(g->s, g_cs.m.scope_all ? NULL : g->file, t);
-	send_map(g);
+	send_all(g);
 	g_cs.stale = true;
 }
 
@@ -631,6 +640,9 @@ typedef struct {
 	const ctlscr_game *g;
 	int                button;
 	ct_pick_bufs       b;
+	/* the button's choices (ct_choices), as its list shows them */
+	rm_choice          ch[32];
+	int                nch;
 } cs_ctx;
 
 static void cs_backdrop(app *a, void *ctx, float k)
@@ -682,7 +694,8 @@ static int pick_build(void *ctx, menu_row *rows, int max, const char **heading)
 	int sel, n;
 
 	refresh(c->g);
-	n = ct_pick_rows(&g_cs.m, c->button, g_cs.ch, g_cs.nch, rows, &c->b, &sel);
+	c->nch = ct_choices(&g_cs.m, c->button, c->ch, 32);
+	n = ct_pick_rows(&g_cs.m, c->button, c->ch, c->nch, rows, &c->b, &sel);
 	*heading = c->b.head;
 	return n < max ? n : max;
 }
@@ -695,8 +708,8 @@ static menu_result pick_key(app *a, void *ctx, in_button key, int sel)
 	rm_table t;
 
 	(void)a;
-	if (key != IN_ACCEPT || sel < 0 || sel >= g_cs.nch) return MENU_STAY;
-	ct_pick(&g_cs.m, c->button, g_cs.ch[sel]);
+	if (key != IN_ACCEPT || sel < 0 || sel >= c->nch) return MENU_STAY;
+	ct_pick(&g_cs.m, c->button, c->ch[sel]);
 	t = g_cs.m.cur;
 	put(c->g, &t);
 	return MENU_DONE;
@@ -711,7 +724,8 @@ static void pick(app *a, const ctlscr_game *g, int button)
 	memset(&c, 0, sizeof c);
 	c.g = g;
 	c.button = button;
-	ct_pick_rows(&g_cs.m, button, g_cs.ch, g_cs.nch, rows, &c.b, &st.start_sel);
+	c.nch = ct_choices(&g_cs.m, button, c.ch, 32);
+	ct_pick_rows(&g_cs.m, button, c.ch, c.nch, rows, &c.b, &st.start_sel);
 	g_cs.mode = CS_PICK;
 	g_cs.pick_button = button;
 	g_cs.steady = true;
@@ -754,9 +768,8 @@ static void reset(app *a, const ctlscr_game *g)
 	rms_reset(g->s, scope_all(g) ? NULL : g->file);
 	if (!scope_all(g) && rms_stick_offered(g->s) && rms_stick_get(g->s, g->file) != rms_stick_default(g->s)) {
 		rms_stick_put(g->s, g->file, rms_stick_default(g->s));
-		send_stick(g, rms_stick_default(g->s));
 	}
-	send_map(g);
+	send_all(g);
 	g_cs.stale = true;
 	g_cs.base_row = -1;
 }
@@ -796,9 +809,8 @@ menu_result ctlscr_key(app *a, const ctlscr_game *g, in_button key, int id)
 		const bool on = !m->stick_on;
 
 		rms_stick_put(g->s, g->file, on);
-		send_stick(g, on);
 		/* The Dreamcast's SELECT follows the stick (rms_sent) */
-		send_map(g);
+		send_all(g);
 		g_cs.stale = true;
 		break;
 	}
@@ -851,7 +863,8 @@ void ctlscr_shot_pick(app *a, const ctlscr_game *g, int id)
 	if (bt < 0) bt = RM_A;
 	refresh(g);
 	track(id);
-	n = ct_pick_rows(&g_cs.m, bt, g_cs.ch, g_cs.nch, rows, &c.b, &sel);
+	c.nch = ct_choices(&g_cs.m, bt, c.ch, 32);
+	n = ct_pick_rows(&g_cs.m, bt, c.ch, c.nch, rows, &c.b, &sel);
 	g_cs.mode = CS_PICK;
 	g_cs.pick_button = bt;
 	/* Over the backdrop the choices' runner draws them over (the screen's

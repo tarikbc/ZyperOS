@@ -388,9 +388,20 @@ void diatom_input_set_stick_toggle(bool as_stick);
 /* RUN stick=plain: the d-pad is the left stick and the joypad's d-pad both,
  * always: no SELECT rule, and nothing turns it (main.c gives R2 no turn) */
 void diatom_input_set_stick_plain(void);
-/* R2 under stick=toggle: the d-pad goes to the other side. True when it is
- * the stick now. Nothing turns outside stick=toggle. */
+/* The side the d-pad starts on: the d-pad (`pad`) or the stick. RUN's -pad
+ * modes (stick=dpad-pad, plain-pad) start on the d-pad, for a game whose
+ * D-pad as Stick is off and whose map gives a button the stick. */
+void diatom_input_stick_side(bool pad);
+/* A press of a button the map gives Stick On/Off (`r2:stick`, the PSP's R2):
+ * the d-pad goes to the other side. True when it is the stick now. Nothing
+ * turns while the stick is off. */
 bool diatom_input_stick_flip(void);
+/* A button the map gives Stick While Held (`l2:stickhold`) is held: the
+ * d-pad is on its other side until it is let go */
+void diatom_input_stick_hold(bool held);
+/* The buttons the map gives Stick On/Off, and in *hold those it gives Stick
+ * While Held (DIATOM_BIT); none while the stick is off */
+uint32_t diatom_input_stick_keys(uint32_t *hold);
 /* Before each retro_run: the pad is read once a frame, at the core's poll or
  * its first question, whichever comes first (env.c, cb_input_poll) */
 void diatom_env_frame_begin(void);

@@ -70,6 +70,9 @@ float games_position(const games_row *row,uint32_t now);
 bool games_moving(const games_row *row,uint32_t now);
 int games_slots(const games_row *row,uint32_t now,games_slot slots[GAMES_WINDOW]);
 SDL_FRect games_cover_rect(int width,int height,float offset);
+/* A cover's four corners on screen at `offset`, turned as the row turns it
+ * (top left, top right, bottom right, bottom left), and how much of it shows */
+void games_cover_corners(int width,int height,float offset,SDL_FPoint q[4],float *alpha);
 /* The shelf's page, laid out by rules (src/ds/flex.h): the system's line,
  * the covers' band, the name's block and the keys on every screen's foot,
  * between the page's margins. The list and the grid share its line and its

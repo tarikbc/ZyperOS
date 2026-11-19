@@ -25,4 +25,9 @@ void panel_blit(const uint32_t *px, int w, int h, int x, int y);
 /* Let go of the buffer (after another program put its picture up) */
 void panel_close(void);
 
+/* One of ZyperOS's pictures in FRAMES (`w` x `h`, `turned` as at_load reads
+ * it) up on the panel, where the device has no splash --still to hold it:
+ * the Brick's (panel_fb.c). False when it cannot be read or shown. */
+bool panel_show(const char *path, int w, int h, bool turned);
+
 #endif

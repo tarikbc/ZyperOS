@@ -56,6 +56,8 @@ ds_key ds_key_of(const char *name)
 	/* The d-pad's two hints are the d-pad, on every handheld */
 	if (!strcmp(name, "< >")) return (ds_key){ DS_KEY_DPAD_LR, DS_KEY_MARK_NONE, name };
 	if (!strcmp(name, "^ v")) return (ds_key){ DS_KEY_DPAD_UD, DS_KEY_MARK_NONE, name };
+	if (!strcmp(name, "DPAD")) return (ds_key){ DS_KEY_DPAD, DS_KEY_MARK_NONE, name };
+	if (!strcmp(name, "VOL")) return (ds_key){ DS_KEY_ROCKER, DS_KEY_MARK_NONE, name };
 	id = ds_key_id(name);
 	for (i = 0; id != IN_NONE && i < g_n; i++)
 		if (g_table[i].id == id) b = &g_table[i];

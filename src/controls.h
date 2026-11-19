@@ -2,6 +2,9 @@
 #ifndef ZYPEROS_CONTROLS_H
 #define ZYPEROS_CONTROLS_H
 
+#include <stdbool.h>
+#include <stddef.h>
+
 #include "menu.h"
 #include "portdoc.h"
 #include "remap.h"
@@ -127,6 +130,31 @@ typedef struct {
 	char val[CTL_MAX_ROWS][64];
 	char note[96];
 } ctl_buf;
+
+/* ---------- the pages in glyphs (DESIGN.md 11.9) ----------------------------
+ *
+ * A page's button column is drawn as the handheld's own glyphs, each
+ * handheld's (src/ds/button.h: the Pixel 2's SE and ST faces and MENU's
+ * dots, the Brick's square and play keys and its MENU word), "+" for held
+ * together and "," for one press after the other. The rows above stay words
+ * ("SELECT+R1", "MENU, X", "Left/Right"), what the checks read; the screens
+ * that draw a page turn each row whose label is buttons into a key label
+ * (menu.h's MENU_KEYS_MARK) as they draw it. */
+
+/* Room for one row's key label: the mark and the longest chord */
+#define CTL_KEYS_MAX 32
+
+/* `label` as buttons, MENU_KEYS_MARK and their names, into out (n bytes):
+ * the d-pad's words its glyphs ("Left/Right" the d-pad's left and right
+ * arms, "Up/Down" its up and down, "D-pad" the whole cross, "SELECT+D-pad"
+ * SELECT with it), the volume rocker's word the rocker, and a chord of the
+ * handheld's buttons by name as it is. False, out untouched, for words that
+ * are no button (a port README's "Start", a note). Pure. */
+bool ctl_keys_of(const char *label, char *out, size_t n);
+
+/* ctl_keys_of on every row of a page that is buttons, in place: its label
+ * points into keys[i] then. Notes, rules and words stay as they are. */
+void ctl_glyph_rows(menu_row *rows, int n, char keys[][CTL_KEYS_MAX]);
 
 /* How many pages this game has: always In a game, after the system's.
  *

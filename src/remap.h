@@ -24,6 +24,16 @@ enum {
 /* Nothing: the button gives the game no button */
 #define RM_NONE (-1)
 
+/* The d-pad as the stick, on a button (a system with a `stick|` line,
+ * DESIGN.md 11.45): Stick On/Off turns the d-pad into the stick and back at
+ * each press, Stick While Held for as long as the button is held. Neither
+ * is a button of the game's: Diatom hides the button from the core and
+ * turns the d-pad itself (diatom/src/env.c). In the map, `r2:stick` and
+ * `l2:stickhold`. They swap as a game button does, and never turbo. */
+#define RM_STICK_TOGGLE (-2)
+#define RM_STICK_HOLD   (-3)
+#define RM_IS_STICK(to) ((to) == RM_STICK_TOGGLE || (to) == RM_STICK_HOLD)
+
 /* The half-period of a turbo, in frames, that every turbo choice uses */
 #define RM_TURBO 3
 
@@ -62,6 +72,9 @@ void rm_store(const rm_table *def, const rm_table *t, char *out, size_t n);
 bool rm_load(const rm_table *def, const char *stored, rm_table *out);
 
 bool rm_equal(const rm_table *a, const rm_table *b);
+
+/* Whether a button of t is Stick On/Off or Stick While Held */
+bool rm_has_stick(const rm_table *t);
 
 /* Whether a button gives something other than def's */
 bool rm_changed(const rm_table *def, const rm_table *t, int button);

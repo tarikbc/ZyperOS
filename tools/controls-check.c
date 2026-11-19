@@ -69,6 +69,33 @@ static int other_devices(const char *b)
  * fifty-four in a shot on 2026-09-19. */
 #define NOTE_MAX 30
 
+/* The button column as glyphs (ctl_keys_of): a chord of the handheld's
+ * buttons as it is, the d-pad's and the volume keys' words their glyphs,
+ * anything else words */
+static void keys_as_glyphs(void)
+{
+	char k[CTL_KEYS_MAX];
+	menu_row rows[2] = { { "MENU, X", "Quit", false }, { "Start", "Pause", false } };
+	char buf[2][CTL_KEYS_MAX];
+
+	printf("the button column as glyphs\n");
+	ck(ctl_keys_of("SELECT+R1", k, sizeof k) && !strcmp(k, MENU_KEYS_MARK "SELECT+R1"), "SELECT+R1");
+	ck(ctl_keys_of("MENU, X", k, sizeof k) && !strcmp(k, MENU_KEYS_MARK "MENU, X"), "MENU, X: one after the other");
+	ck(ctl_keys_of("X/Y/L2/R2", k, sizeof k), "four buttons, either");
+	ck(ctl_keys_of("Left/Right", k, sizeof k) && !strcmp(k, MENU_KEYS_MARK "< >"), "Left/Right: the d-pad's left and right");
+	ck(ctl_keys_of("Up/Down", k, sizeof k) && !strcmp(k, MENU_KEYS_MARK "^ v"), "Up/Down: its up and down");
+	ck(ctl_keys_of("D-pad", k, sizeof k) && !strcmp(k, MENU_KEYS_MARK "DPAD"), "D-pad: the whole cross");
+	ck(ctl_keys_of("SELECT+D-pad", k, sizeof k) && !strcmp(k, MENU_KEYS_MARK "SELECT+DPAD"), "SELECT+D-pad");
+	ck(ctl_keys_of("Volume rocker", k, sizeof k) && !strcmp(k, MENU_KEYS_MARK "VOL"), "the volume rocker");
+	ck(ctl_keys_of("VOL+", k, sizeof k), "VOL+ is a name, its plus no sign");
+	ck(!ctl_keys_of("Start", k, sizeof k) && !ctl_keys_of("SELECT+Fire", k, sizeof k) &&
+	   !ctl_keys_of("A/B/X/Y/L1", k, sizeof k) && !ctl_keys_of("", k, sizeof k),
+	   "words, a word in a chord and five buttons stay words");
+	ctl_glyph_rows(rows, 2, buf);
+	ck(!strcmp(rows[0].label, MENU_KEYS_MARK "MENU, X") &&
+	   !strcmp(rows[1].label, "Start"), "ctl_glyph_rows: the buttons' row marked, the words' left");
+}
+
 static void legends_are_one_form(void)
 {
 	printf("a key legend is one form\n");
@@ -190,6 +217,14 @@ static void rows_fit(void)
 				snprintf(msg, sizeof msg, "%s: \"%s\" is not a button",
 				         ctl_page_name((ctl_page)p), rows[i].label);
 				ck(is_button(rows[i].label), msg);
+				{
+					/* drawn as the handheld's glyphs (ctl_glyph_rows) */
+					char keys[CTL_KEYS_MAX];
+
+					snprintf(msg, sizeof msg, "%s: \"%s\" is not drawn as glyphs",
+					         ctl_page_name((ctl_page)p), rows[i].label);
+					ck(ctl_keys_of(rows[i].label, keys, sizeof keys), msg);
+				}
 				snprintf(msg, sizeof msg, "%s: \"%s\" says nothing",
 				         ctl_page_name((ctl_page)p), rows[i].label);
 				ck(rows[i].value != NULL, msg);
@@ -351,6 +386,14 @@ static void game_page_fits(const ctl_game *g, int page)
 		keys++;
 		snprintf(msg, sizeof msg, "%s p%d: \"%s\" is not a button", g->tag, page, rows[i].label);
 		ck(ingame_key(rows[i].label), msg);
+		if (!g->doc) {
+			/* a system's page draws every button as the handheld's glyphs */
+			char glyphs[CTL_KEYS_MAX];
+
+			snprintf(msg, sizeof msg, "%s p%d: \"%s\" is not drawn as glyphs", g->tag, page,
+			         rows[i].label);
+			ck(ctl_keys_of(rows[i].label, glyphs, sizeof glyphs), msg);
+		}
 		snprintf(msg, sizeof msg, "%s p%d: \"%s\" says \"%s\", over %d", g->tag, page,
 		         rows[i].label, rows[i].value ? rows[i].value : "", VALUE_MAX);
 		ck(rows[i].value && (int)strlen(rows[i].value) <= VALUE_MAX, msg);
@@ -720,6 +763,7 @@ int main(void)
 {
 	printf("controls: what MENU > Controls says\n");
 	pages_are_named();
+	keys_as_glyphs();
 	legends_are_one_form();
 	horizontal_controls();
 	for (int d = 0; d < 2; d++) {

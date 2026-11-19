@@ -27,6 +27,19 @@ extern const char MENU_TICK[];
  * Quit (11.28). Known by its address, as MENU_TICK is. */
 extern const char MENU_KEY_X[];
 
+/* A row's label that is buttons, not words: MENU_KEYS_MARK and then the
+ * buttons by their ids' names (src/ds/button.h), "+" for together, "," and
+ * a space for one after the other, "/" for either ("\x1bKSELECT+R1",
+ * "\x1bKMENU, X"), drawn as this handheld's glyphs (DESIGN.md 11.9) at
+ * MENU_KEYS_SIZE where the label goes, the value at the right as ever. The
+ * Controls pages' (src/controls.c, ctl_glyph_rows). Text, so a panel's
+ * snapshot keeps it as it keeps any label. */
+#define MENU_KEYS_MARK "\x1bK"
+#define MENU_KEYS_SIZE 44
+bool menu_keys_is(const char *label);
+/* The buttons after the mark, or `label` itself when it has none */
+const char *menu_keys_names(const char *label);
+
 /* Y's glyph at a row's right with On or Off before it: a setting Y toggles
  * from anywhere on its page, its state still read (the details page's
  * Favorite, 2026-11-09). Known by their addresses, as MENU_KEY_X is. */

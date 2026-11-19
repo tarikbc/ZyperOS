@@ -812,20 +812,36 @@ static uint32_t turbo_prev;      /* held mask at the previous poll, for edges */
  * from the host. */
 static long g_input_frame;
 
-/* RUN stick=dpad: the d-pad is the left analog stick (stick.h). g_stick_dpad
+/* RUN stick=dpad: the d-pad is the left analog stick (stick.h). g_stick_sel
  * is the SELECT rule's answer at the last poll: the d-pad is the game's
  * D-pad for now. */
-static bool     g_stick_on, g_stick_dpad;
+static bool     g_stick_on, g_stick_sel;
 static stick    g_stick;
 static uint32_t g_stick_was;
-/* RUN stick=toggle: the d-pad is the d-pad or the stick, and only R2 turns it
- * from one to the other (main.c), never SELECT's rule. g_stick_dpad is then
- * the side it is on. */
+/* RUN stick=toggle: no SELECT rule; the d-pad is the d-pad or the stick, by
+ * its side alone. */
 static bool     g_stick_toggle;
-/* RUN stick=plain: the toggle's stick side for good, and the d-pad stays the
- * joypad's d-pad too, so a game that reads only the d-pad still moves (a
- * PlayStation game whose DualShock stays digital): the d-pad is both */
+/* RUN stick=plain: the toggle's stick side, and the d-pad stays the joypad's
+ * d-pad too, so a game that reads only the d-pad still moves (a PlayStation
+ * game whose DualShock stays digital): the d-pad is both */
 static bool     g_stick_both;
+/* The side the d-pad is on, in every mode: true while it is the d-pad
+ * (stick=toggle, and the -pad modes, start there). A button the map gives
+ * Stick On/Off turns it (`r2:stick`, the PSP's R2: main.c), and while one
+ * given Stick While Held (`l2:stickhold`) is held the d-pad is on the other
+ * side (g_stick_holding). On the stick side, stick=dpad's SELECT rule still
+ * gives the d-pad to the game's D-pad. */
+static bool     g_stick_pad, g_stick_holding;
+/* Those buttons, from the map (diatom_input_set_map). The map gives them
+ * none: the core never sees them. */
+static uint32_t g_stick_tog_keys, g_stick_hold_keys;
+
+/* The d-pad is the game's d-pad now, not the stick: on the d-pad's side, or
+ * on the stick's with SELECT's rule giving it to the D-pad */
+static bool stick_dpad_now(void)
+{
+	return (g_stick_pad != g_stick_holding) || (!g_stick_toggle && g_stick_sel);
+}
 
 /* Labels the core gave us, indexed by canonical button after resolving the
  * active map - so they track a remap for free and a launcher never has to. */
@@ -891,7 +907,7 @@ static void turbo_tick(void)
 		 * SELECT goes by the stick's own rule here, not by the chords' */
 		uint32_t pad = diatom_port_input_state() & ~g_suppress;
 
-		g_stick_dpad = stick_turn(&g_stick, pad, g_stick_was);
+		g_stick_sel = stick_turn(&g_stick, pad, g_stick_was);
 		g_stick_was = pad;
 	}
 	for (b = 0; b < DIATOM_BTN_COUNT; b++)
@@ -910,6 +926,8 @@ void diatom_input_reset_map(void)
 	memcpy(button_map, identity_map, sizeof button_map);
 	shift_src = -1;
 	memset(shift_set, 0, sizeof shift_set);
+	g_stick_tog_keys = g_stick_hold_keys = 0;
+	g_stick_holding = false;
 	memset(turbo_period, 0, sizeof turbo_period);
 	memset(turbo_anchor, 0, sizeof turbo_anchor);
 	turbo_prev = 0;
@@ -919,9 +937,11 @@ void diatom_input_reset_map(void)
 void diatom_input_set_stick(bool dpad)
 {
 	g_stick_on = dpad;
-	g_stick_dpad = false;
+	g_stick_sel = false;
 	g_stick_toggle = false;
 	g_stick_both = false;
+	g_stick_pad = false;
+	g_stick_holding = false;
 	g_stick_was = 0;
 	stick_reset(&g_stick);
 }
@@ -930,7 +950,7 @@ void diatom_input_set_stick_toggle(bool as_stick)
 {
 	diatom_input_set_stick(true);
 	g_stick_toggle = true;
-	g_stick_dpad = !as_stick;
+	g_stick_pad = !as_stick;
 }
 
 void diatom_input_set_stick_plain(void)
@@ -939,10 +959,26 @@ void diatom_input_set_stick_plain(void)
 	g_stick_both = true;
 }
 
+void diatom_input_stick_side(bool pad)
+{
+	g_stick_pad = pad;
+}
+
 bool diatom_input_stick_flip(void)
 {
-	if (g_stick_toggle) g_stick_dpad = !g_stick_dpad;
-	return g_stick_on && !g_stick_dpad;
+	if (g_stick_on) g_stick_pad = !g_stick_pad;
+	return g_stick_on && !g_stick_pad;
+}
+
+void diatom_input_stick_hold(bool held)
+{
+	g_stick_holding = g_stick_on && held;
+}
+
+uint32_t diatom_input_stick_keys(uint32_t *hold)
+{
+	if (hold) *hold = g_stick_on ? g_stick_hold_keys : 0;
+	return g_stick_on ? g_stick_tog_keys : 0;
 }
 
 /* `spec` is the state plane's whole-table form: `a:b,x:none`, or `identity`.
@@ -953,6 +989,7 @@ bool diatom_input_set_map(const char *spec)
 	int next[DIATOM_BTN_COUNT], next_period[DIATOM_BTN_COUNT];
 	int next_shift[DIATOM_BTN_COUNT], next_src = -1;
 	bool next_set[DIATOM_BTN_COUNT];
+	uint32_t next_tog = 0, next_hold = 0;
 	char buf[512], *save = NULL, *pair;
 
 	ensure_identity();
@@ -1032,6 +1069,15 @@ bool diatom_input_set_map(const char *spec)
 			next[from] = -1;
 			continue;
 		}
+		/* The d-pad's side on a button (g_stick_pad): no button of the
+		 * core's, so none, and never a pulse */
+		if (!strcmp(colon + 1, "stick") || !strcmp(colon + 1, "stickhold")) {
+			if (period) return false;
+			next[from] = -1;
+			if (colon[6]) next_hold |= DIATOM_BIT(from);
+			else          next_tog |= DIATOM_BIT(from);
+			continue;
+		}
 		to = button_by_name(colon + 1);
 		if (to < 0 || to == DIATOM_BTN_MENU) return false;
 		next[from] = identity_map[to];
@@ -1040,6 +1086,9 @@ bool diatom_input_set_map(const char *spec)
 
 	memcpy(button_map, next, sizeof button_map);
 	memcpy(turbo_period, next_period, sizeof turbo_period);
+	g_stick_tog_keys = next_tog;
+	g_stick_hold_keys = next_hold;
+	if (!next_hold) g_stick_holding = false;
 	shift_src = next_src;
 	memcpy(shift_map, next_shift, sizeof shift_map);
 	memcpy(shift_set, next_set, sizeof shift_set);
@@ -1085,6 +1134,8 @@ void diatom_input_emit_map(void)
 				to = button_names[t];
 				break;
 			}
+		if (g_stick_tog_keys & DIATOM_BIT(b)) to = "stick";
+		if (g_stick_hold_keys & DIATOM_BIT(b)) to = "stickhold";
 		n += (size_t)snprintf(out + n, sizeof out - n, "%s%s:%s",
 		                      n ? "," : "", button_names[b], to);
 		/* Checked between the two writes, not only after: snprintf returns what
@@ -1157,7 +1208,7 @@ static int16_t cb_input_state(unsigned port, unsigned device,
 	if (port == 0 && device == RETRO_DEVICE_ANALOG) {
 		int16_t x, y;
 
-		if (!g_stick_on || g_stick_dpad || index != RETRO_DEVICE_INDEX_ANALOG_LEFT)
+		if (!g_stick_on || stick_dpad_now() || index != RETRO_DEVICE_INDEX_ANALOG_LEFT)
 			return 0;
 		state = (diatom_port_input_state() & ~(g_suppress | g_hook_hide)) | g_hook_give;
 		stick_axes(state, &x, &y);
@@ -1180,7 +1231,7 @@ static int16_t cb_input_state(unsigned port, unsigned device,
 	state = (diatom_port_input_state() & ~(g_suppress | g_hook_hide)) | g_hook_give;
 	/* The d-pad is the stick, and only the stick, unless SELECT says; or
 	 * both, under stick=plain */
-	if (g_stick_on && !g_stick_dpad && !g_stick_both) state &= ~STICK_DPAD;
+	if (g_stick_on && !stick_dpad_now() && !g_stick_both) state &= ~STICK_DPAD;
 
 	/* OR, not first-match. Under an identity map no two canonical buttons
 	 * share a target so returning the first was always correct; remapping

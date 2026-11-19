@@ -348,8 +348,11 @@ void controls_screen(app *a)
 
 	while (!done && !want_quit && a->running) {
 		menu_row rows[CTL_MAX_ROWS];
-		char head[80], count[16];
+		char head[80], count[16], keys[CTL_MAX_ROWS][CTL_KEYS_MAX];
 		int n = ctl_rows(page, rows);
+
+		/* the button column in the handheld's own glyphs (DESIGN.md 11.9) */
+		ctl_glyph_rows(rows, n, keys);
 
 		snprintf(head, sizeof head, T(S_PANEL_CONTROLS), ctl_page_name(page));
 		/* which page of how many, at the heading's right (DESIGN.md 11.3) */

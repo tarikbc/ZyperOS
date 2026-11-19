@@ -48,17 +48,18 @@
 #include <unistd.h>
 
 #include "atlas.h"
+#include "device.h"
 #include "drive.h"
 #include "drivestat.h"
 #include "panel.h"
 
 #define CARD       "/mnt/SDCARD"
-#define PART       "/dev/mmcblk0p3"
-#define GADGET     "/sys/kernel/config/usb_gadget/px2"
+#define PART       DEV_PART
+#define GADGET     DEV_GADGET
 #define MS         GADGET "/functions/mass_storage.0"
 #define LUN        MS "/lun.0"
-#define VBUS_IN    "/sys/class/power_supply/rk817-charger/online"
-#define PART_STAT  "/sys/class/block/mmcblk0p3/stat"
+#define VBUS_IN    DEV_VBUS_IN
+#define PART_STAT  DEV_PART_STAT
 #define BACKLIGHT  "/sys/class/backlight/backlight/brightness"
 #define GAUGE_FIFO "/run/gauge"   /* the side lights' gauge (package/gauge) */
 #define BRIGHT_OUT "/tmp/zyperos_usbdrive_bright"   /* the rung, for ZyperOS to keep */
@@ -142,6 +143,11 @@ static void show(const char *name)
 
 	if (still > 0) { kill(still, SIGTERM); waitpid(still, NULL, 0); still = 0; }
 	snprintf(path, sizeof path, "%s/%s", frames, name);
+#ifdef USBDRIVE_BRICK
+	/* The Brick's splash holds no picture: its panel does (panel_fb.c) */
+	if (!panel_show(path, 640, 480, DEV_TURNED)) say("usbdrive: %s not shown\n", name);
+	return;
+#endif
 	if (access(path, R_OK) || access("/usr/bin/splash", X_OK)) return;
 	if ((still = fork()) == 0) {
 		execl("/usr/bin/splash", "splash", "--still", path, (char *)NULL);
@@ -190,14 +196,14 @@ static bool live_start(void)
 	live.page = malloc(n * 4);
 	if (!live.base || !live.atlas || !live.page) return false;
 	snprintf(path, sizeof path, "%s/connected.raw", frames);
-	if (!at_load(path, live.l.w, live.l.h, true, live.base)) return false;
+	if (!at_load(path, live.l.w, live.l.h, DEV_TURNED, live.base)) return false;
 	snprintf(path, sizeof path, "%s/atlas.raw", frames);
-	if (!at_load(path, live.l.w, live.l.h, true, live.atlas)) return false;
+	if (!at_load(path, live.l.w, live.l.h, DEV_TURNED, live.atlas)) return false;
 	memcpy(live.page, live.base, n * 4);
 	/* The question's page, for B while the computer may still be copying */
 	if ((live.confirm = malloc(n * 4))) {
 		snprintf(path, sizeof path, "%s/confirm.raw", frames);
-		if (!at_load(path, live.l.w, live.l.h, true, live.confirm)) {
+		if (!at_load(path, live.l.w, live.l.h, DEV_TURNED, live.confirm)) {
 			free(live.confirm);
 			live.confirm = NULL;
 		}
@@ -248,7 +254,21 @@ static void bright_set(int level, unsigned now)
 	char text[16];
 
 	snprintf(text, sizeof text, "%d\n", bri.b.ladder[level]);
+#ifdef USBDRIVE_BRICK
+	{
+		/* The disp2 engine's DISP_LCD_SET_BRIGHTNESS, screen 0, as
+		 * ZyperOS's Brick file sets it (no /sys/class/backlight) */
+		unsigned long a[4] = { 0, (unsigned long)bri.b.ladder[level], 0, 0 };
+		int fd = open("/dev/disp", O_RDWR | O_CLOEXEC);
+
+		if (fd >= 0) {
+			ioctl(fd, 0x102, a);
+			close(fd);
+		}
+	}
+#else
 	put(BACKLIGHT, text);
+#endif
 	{
 		int fd = open(BRIGHT_OUT, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
 
@@ -537,7 +557,7 @@ static bool export_on(void)
 	put(LUN "/removable", "1");
 	put(LUN "/ro", "0");
 	put(LUN "/nofua", "0");
-	put(LUN "/inquiry_string", "ZyperOS GKD Pixel 2 card");
+	put(LUN "/inquiry_string", DEV_INQUIRY);
 	if (put(LUN "/file", PART)) { say("usbdrive: the LUN did not take " PART "\n", NULL); return false; }
 	if (symlink(MS, GADGET "/configs/c.1/mass_storage.0") && errno != EEXIST) return false;
 	put(GADGET "/bcdDevice", "0x0301");
@@ -626,6 +646,21 @@ static drv_act keys_read(int fd, drv_keys *k, unsigned now)
 		case KEY_VOLUMEDOWN:key = DRV_K_VOLDN; break;
 		case BTN_SOUTH:     key = DRV_K_A; break;
 		case BTN_EAST:      key = DRV_K_B; break;
+#ifdef USBDRIVE_BRICK
+		/* F1 and F2, the Brick's brightness keys: the chord's step,
+		 * FUNCTION taken as held for the press */
+		case BTN_THUMBL:
+		case BTN_THUMBR: {
+			bool was = k->fn;
+
+			if (!bri.on || ev.value != 1) continue;
+			k->fn = true;
+			a = drv_key(k, ev.code == BTN_THUMBR ? DRV_K_VOLUP : DRV_K_VOLDN, true, false);
+			k->fn = was;
+			if (a == DRV_A_BRIGHT) bright_set(k->level, now);
+			continue;
+		}
+#endif
 		default:            continue;
 		}
 		if (!bri.on && (key == DRV_K_VOLUP || key == DRV_K_VOLDN)) continue;
@@ -704,7 +739,13 @@ int main(int argc, char **argv)
 	bright_start();
 	pfd = power_open();
 	pad = input_with(BTN_SOUTH);
+#ifdef USBDRIVE_BRICK
+	/* The Brick's volume keys are its gamepad's (brick-pad): a second
+	 * reader of the same device would see each press twice */
+	vol = -1;
+#else
 	vol = input_with(KEY_VOLUMEUP);
+#endif
 	keys.level = bri.on ? bri.b.level : 0;
 	keys.max = bri.on ? bri.b.rungs - 1 : 0;
 	while (end == DRV_STAY) {

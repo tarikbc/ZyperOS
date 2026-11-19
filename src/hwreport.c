@@ -35,6 +35,8 @@ size_t hwreport_build(const hw_facts *f, char *out, size_t n)
 	PUT("  Wi-Fi: %s\n", or_dash(f->wifi));
 	if (f->closed_total >= 0)
 		PUT("  Closed files: %d of %d\n", f->closed_present, f->closed_total);
+	if (f->leds[0]) PUT("  LEDs: %s\n", f->leds);
+	if (f->motor_rail[0]) PUT("  Motor rail: %s\n", f->motor_rail);
 	PUT("Boot times:\n");
 	if (f->boot_times[0]) {
 		const char *p = f->boot_times;

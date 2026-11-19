@@ -90,11 +90,11 @@ typedef struct {
 } ct_model;
 
 /* The buttons Diatom keeps for itself, which no map reaches, since it hides
- * them from the core before the map (diatom/src/env.c, g_suppress): the
- * PSP's R2 under stick=toggle (stick mode "toggle"), which turns the d-pad
- * into the stick (diatom/src/main.c), and a DS game's L2 and R2, the other
- * screen and the stylus (diatom/src/screens.c). 1u << RM_*. */
-unsigned ct_held_of(const char *tag, const char *stick_mode);
+ * them from the core before the map (diatom/src/env.c, g_suppress): a DS
+ * game's L2 and R2, the other screen and the stylus (diatom/src/screens.c).
+ * 1u << RM_*. The PSP's R2, which turns the d-pad into the stick, was one
+ * until it became a button's choice, Stick On/Off, its default (RM_STICK_*). */
+unsigned ct_held_of(const char *tag);
 
 /* Whether button `button`'s row is dead: SELECT where the N64's C buttons
  * or the stick's rule hold it, or a button Diatom keeps (held). A dead row
@@ -172,6 +172,12 @@ void ct_sent(const ct_model *m, rm_table *out);
 /* Whether `c` gives this game nothing: Nothing, or a target its core names
  * nothing (an NES game's L1) */
 bool ct_says_nothing(const ct_model *m, rm_choice c);
+
+/* The choices of `button` (ctl_remap_choices), and last, on a system with a
+ * stick, Stick On/Off and Stick While Held (RM_STICK_*); not on SELECT,
+ * which holds the hotkeys (diatom/src/chord.h), so a press of it is never a
+ * turn of the stick and a hotkey at once. Into out, at most max; the count. */
+int ct_choices(const ct_model *m, int button, rm_choice *out, int max);
 
 /* Where `c` is among the system's choices `ch` (ctl_remap_choices), a button
  * that gives nothing being Nothing; -1 for none */

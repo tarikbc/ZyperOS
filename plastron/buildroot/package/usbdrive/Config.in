@@ -1,6 +1,7 @@
 config BR2_PACKAGE_USBDRIVE
 	bool "usbdrive"
-	select BR2_PACKAGE_LIBDRM
+	# The Pixel 2's page is DRM's; the Brick's is its framebuffer
+	select BR2_PACKAGE_LIBDRM if !BR2_PACKAGE_PVR_GE8300
 	help
 	  The games partition as a USB drive (configfs f_mass_storage) for
 	  ZyperOS's Computer Connected > USB Drive: the card unmounted first,

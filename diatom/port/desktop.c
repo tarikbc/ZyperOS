@@ -637,13 +637,16 @@ void diatom_port_level_invalidate(void) { }
  * and the host half of the low-battery state is tested through its answers. */
 void diatom_port_low_battery(bool on, bool blink) { (void)on; (void)blink; }
 /* No overlay to draw, but the numbers it would say, written down when
- * DIATOM_HUD_LOG is set, so test/hudspeed.py can read them */
+ * DIATOM_HUD_LOG is set, each with the time (Diatom's clock, the now file's
+ * t_us) its window ended, so test/hudspeed.py can read them */
 void diatom_port_hud(bool on, double fps, double speed)
 {
 	static int log = -1;
 
 	if (log < 0) log = getenv("DIATOM_HUD_LOG") != NULL;
-	if (log && on) printf("diatom: hud fps=%.2f speed=%.3f\n", fps, speed);
+	if (log && on)
+		printf("diatom: hud t=%llu fps=%.2f speed=%.3f\n",
+		       (unsigned long long)diatom_port_now_us(), fps, speed);
 }
 void diatom_port_hud_style(const diatom_hud_words *w) { (void)w; }
 void diatom_port_power_hold(bool on, unsigned ms, unsigned at, bool done)

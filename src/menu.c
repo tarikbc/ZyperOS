@@ -7,6 +7,16 @@ const char MENU_KEY_X[] = "";
 const char MENU_KEY_Y_ON[] = "";
 const char MENU_KEY_Y_OFF[] = "";
 
+bool menu_keys_is(const char *label)
+{
+	return label && label[0] == MENU_KEYS_MARK[0] && label[1] == MENU_KEYS_MARK[1];
+}
+
+const char *menu_keys_names(const char *label)
+{
+	return menu_keys_is(label) ? label + sizeof MENU_KEYS_MARK - 1 : label;
+}
+
 int menu_step_sel(const menu_row *rows, int n, int sel, int dir)
 {
 	int k;

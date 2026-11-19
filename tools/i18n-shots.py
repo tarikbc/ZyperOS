@@ -693,7 +693,8 @@ for _name, _tag, _flags in (
         ("keys-ingame", "PS1", ["--gamemenu", "13", "--gm-keys", "1"]),
         ("n64-end", "N64", ["--gamemenu", "13"]),
         ("dc", "DC", ["--gamemenu", "2"]), ("dc-end", "DC", ["--gamemenu", "13"]),
-        ("dc-place", "DC", ["--gamemenu", "2"]), ("dc-mixed", "DC", ["--gamemenu", "2"])):
+        ("dc-place", "DC", ["--gamemenu", "2"]), ("dc-mixed", "DC", ["--gamemenu", "2"]),
+        ("stick", "PS1", ["--gamemenu", "9"])):
     EXTRA.setdefault("gamemenu-controls-" + _name,
                      ("demo", _tag, ["--screen", "games", "--gm-tab", "2"] + _flags))
 # A Nintendo 64 game's Pak row, back in the Controls tab
@@ -714,7 +715,10 @@ SHOT_LIB = {"info-buttons": {_MGS: "1;b:y,y:b"},
             "gamemenu-controls-ask-all": {"map.PS1": "1;b:y,y:b"},
             "gamemenu-controls-dc-end": {"stick.DC." + _SONIC: "1"},
             "gamemenu-controls-dc-place": {"map.DC." + _SONIC: "1;a:a,b:b,x:x,y:y"},
-            "gamemenu-controls-dc-mixed": {"map.DC." + _SONIC: "1;a:a"}}
+            "gamemenu-controls-dc-mixed": {"map.DC." + _SONIC: "1;a:a"},
+            # L2 Stick While Held and R2 Stick On/Off, a button's two stick
+            # choices (DESIGN.md 11.45), the cursor on R2
+            "gamemenu-controls-stick": {_MGS: "1;l2:stickhold,r2:stick"}}
 
 
 # MENU > Display > Home Systems (src/homesys.h, DESIGN.md 11.48): its row with

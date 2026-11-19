@@ -19,8 +19,12 @@ slot's round trip as the launcher drives it.
     and keeps the d-pad on the joypad too: the d-pad is both.
   - SETMAP select:start does not touch SELECT's chords: SELECT+R1 still says
     HOTKEY key=save, and the core never reads START.
-  - RUN stick=toggle (the PSP's): R2 turns the d-pad into the left stick and
-    back, says STICK each time, and never reaches the game.
+  - RUN stick=toggle (the PSP's) with the map's r2:stick: R2 turns the
+    d-pad into the left stick and back, says STICK each time, and never
+    reaches the game; with no such pair R2 is the game's and turns nothing.
+  - A map's stickhold (Stick While Held): while that button is held the
+    d-pad is on its other side, and STICK is not said; stick=dpad-pad starts
+    the N64's stick on the d-pad's side for such a button to turn.
 
 Needs build/desktop (diatom and stubcore.so) and SKIPS without it, as
 check-proto does. SDL's dummy drivers: no window, no sound.
@@ -233,7 +237,7 @@ s.connect(SOCK3)
 s.settimeout(0.05)
 buf, got = b"", []
 pump(0.3)
-s.sendall(f"RUN\tcore={STUB}\tstick=toggle\n".encode())
+s.sendall(f"RUN\tcore={STUB}\tstick=toggle\nSETMAP\tmap=r2:stick\n".encode())
 pump_until(LOG3, 150)
 s.sendall(b"STOP\n")
 pump(1.0)
@@ -326,6 +330,34 @@ check("toggle: the d-pad is the joypad's until R2", any(bits[i] & UP for i in ra
 bits, ax = live_run("togglestick", "40:right;46:", "SETSTICK\tmode=toggle-stick\n", 60)
 check("SETSTICK toggle-stick answers STICK on=1", "STICK\ton=1" in got, got)
 check("toggle-stick: RIGHT is the stick", any(ax[i] == FULL for i in range(41, 46)), ax[38:48])
+
+# Stick While Held (a map's stickhold): under stick=toggle, L2 held is the
+# stick and let go the d-pad again, with no STICK said for it; the game never
+# reads L2. And toggle with no stick pair: R2 is the game's, and turns nothing.
+bits, ax = live_run("hold", "40:right;46:;60:l2;62:l2+right;68:l2;70:;80:right;86:",
+                    "SETSTICK\tmode=toggle\nSETMAP\tmap=l2:stickhold\n", 100)
+check("stickhold: RIGHT before L2 is the joypad's", any(bits[i] & RIGHT for i in range(41, 46)), bits[38:48])
+check("stickhold: RIGHT under L2 is the stick, not the joypad's",
+      any(ax[i] == FULL for i in range(63, 68)) and not any(bits[i] & RIGHT for i in range(63, 68)),
+      (ax[60:70], bits[60:70]))
+check("stickhold: RIGHT after L2 is let go is the joypad's again",
+      any(bits[i] & RIGHT for i in range(81, 86)) and not any(ax[i] for i in range(80, 88)), (ax[78:88], bits[78:88]))
+check("stickhold: the game never reads L2", not any(b & L2 for b in bits), [i for i, b in enumerate(bits) if b & L2][:5])
+check("stickhold: and no STICK is said for a hold", [l for l in got if l.startswith("STICK")] == ["STICK\ton=0"], got)
+
+bits, ax = live_run("nopair", "40:r2;44:;60:up;66:", "SETSTICK\tmode=toggle\n", 80)
+check("toggle with no stick pair: R2 is the game's", any(bits[i] & R2 for i in range(41, 44)), bits[38:46])
+check("and it turns nothing: UP is the d-pad's after it", any(bits[i] & UP for i in range(61, 66)), bits[58:68])
+
+# The N64's stick off with a button that turns it (stick=dpad-pad): the
+# d-pad is the d-pad until R1 (r1:stick) turns it into the stick, said.
+bits, ax = live_run("dpadpad", "40:right;46:;60:r1;62:;70:right;76:", "SETSTICK\tmode=dpad-pad\nSETMAP\tmap=r1:stick\n", 90)
+check("dpad-pad answers STICK on=0", "STICK\ton=0" in got, got)
+check("dpad-pad: RIGHT is the joypad's first", any(bits[i] & RIGHT for i in range(41, 46)) and
+      not any(ax[i] for i in range(38, 48)), (ax[38:48], bits[38:48]))
+check("dpad-pad: R1 turns it into the stick and says STICK on=1",
+      "STICK\ton=1" in got and any(ax[i] == FULL for i in range(71, 76)) and
+      not any(bits[i] & RIGHT for i in range(71, 76)), (got, ax[68:78], bits[68:78]))
 
 bits, ax = live_run("badmode", HOLD_RIGHT, "SETSTICK\tmode=plain\nSETSTICK\tmode=sideways\n", 60)
 check("an unknown mode is an ERROR", any(l.startswith("ERROR\tcode=bad_stick") for l in got), got)

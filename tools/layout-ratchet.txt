@@ -3,6 +3,7 @@
 3 about_screen.c
 1 artbadge.h
 3 cardart.h
+2 device/brick.c
 3 device/pixel2_levels.h
 1 ds/glyph.c
 4 emptyhome.h

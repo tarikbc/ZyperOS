@@ -129,6 +129,34 @@ int main(void)
 			ck(near(m.speed, 1.0, 0.001), "a thread's chunks: every window 1.00x, not 1.03x");
 	}
 
+	/* A machine so slow that a window holds five calls, each two frames long,
+	 * 100 ms apart: the overlay's windows and the now file's counter are one
+	 * count. Every window that closes, the counter is the windows' frames so
+	 * far, and the windows' speeds say 0.33x, the machine's. (The CI runner
+	 * ran a 25 ms core at 9.7 calls a second: Speed and the now file are made
+	 * of the same counters, and said the same.) */
+	{
+		double sum = 0.0, last_t = 0.0;
+		int windows = 0, off = 0;
+
+		runs = 0; sound = 0; pics = 0; t = 0;
+		emumeter_begin(&m, FPS, RATE, runs, sound, pics, t);
+		for (i = 0; i < 200; i++) {
+			runs++; pics++;
+			sound = (uint64_t)((double)runs * 2 * SOUND_A_FRAME);
+			t = (uint64_t)runs * 100000;
+			if (emumeter_turn(&m, runs, sound, pics, t)) {
+				sum += m.speed * ((double)t - last_t) / 1e6 * FPS;
+				last_t = (double)t;
+				windows++;
+				if (!near((double)emumeter_frames(&m, runs), sum, 1.0)) off++;
+			}
+		}
+		ck(windows >= 30, "a window every five calls: forty of them in 200 calls, thirty at least");
+		ck(off == 0, "at every window the now file's counter is the windows' frames");
+		ck(near(m.speed, 2.0 * 10.0 / FPS, 0.01), "100 ms a call, two frames each: 0.33x");
+	}
+
 	/* A stall: no calls in a window. Speed 0, and no division by it */
 	runs = 0; sound = 0; pics = 0; t = 0;
 	emumeter_begin(&m, FPS, RATE, runs, sound, pics, t);

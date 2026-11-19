@@ -2537,7 +2537,7 @@ static void button_fonts_free(void)
  * 1 left and right, 2 up and down, 0 for any other glyph. */
 static int key_dpad(ds_key k)
 {
-	return k.shape == DS_KEY_DPAD_LR ? 1 : k.shape == DS_KEY_DPAD_UD ? 2 : 0;
+	return k.shape == DS_KEY_DPAD_LR ? 1 : k.shape == DS_KEY_DPAD_UD ? 2 : k.shape == DS_KEY_DPAD ? 3 : 0;
 }
 
 static void dpad_key(SDL_Renderer *r, float cx, float cy, float size, int arms, SDL_Color edge,
@@ -2622,11 +2622,12 @@ static int button_pad(int size)
 	                 / (BUTTON_PILL_H - BUTTON_KEY_H);
 }
 
-/* A chord: buttons named with "/" between them for either (L1/R1) and "+"
- * for together (SELECT+START), each its own glyph with the sign between
- * them (DESIGN.md 11.9), as the device-modular spec's seam says. A sign with
- * nothing on one side is part of a name (VOL+). Up to CHORD_MAX names; the
- * pieces into `part`, the signs into `sign`; the count, 1 for no chord. */
+/* A chord: buttons named with "/" between them for either (L1/R1), "+"
+ * for together (SELECT+START) and ", " for one after the other (MENU, X),
+ * each its own glyph with the sign between them (DESIGN.md 11.9), as the
+ * device-modular spec's seam says. A sign with nothing on one side is part
+ * of a name (VOL+). Up to CHORD_MAX names; the pieces into `part`, the signs
+ * into `sign`; the count, 1 for no chord. */
 #define CHORD_MAX  4
 #define CHORD_NAME 16
 static int chord_split(const char *label, char part[CHORD_MAX][CHORD_NAME], char sign[CHORD_MAX])
@@ -2640,6 +2641,13 @@ static int chord_split(const char *label, char part[CHORD_MAX][CHORD_NAME], char
 			part[n][len] = '\0';
 			sign[n++] = *p;
 			len = 0;
+			continue;
+		}
+		if (*p == ',' && p[1] == ' ' && p[2] && len > 0 && n < CHORD_MAX - 1) {
+			part[n][len] = '\0';
+			sign[n++] = ',';
+			len = 0;
+			p++;                      /* and its space */
 			continue;
 		}
 		if (len >= CHORD_NAME - 1) return 1;
@@ -2663,6 +2671,12 @@ static TTF_Font *chord_font(void)
 	return ui_font(UI_F_META);
 }
 
+/* The air before and after sign `s`: a chord's own either side, and a
+ * comma close to the press before it and twice as far from the next, as a
+ * comma sits in a sentence */
+static int sign_before(char s, int size) { return s == ',' ? chord_gap(size) / 2 : chord_gap(size); }
+static int sign_after(char s, int size)  { return s == ',' ? chord_gap(size) * 2 : chord_gap(size); }
+
 static int chord_width(char part[CHORD_MAX][CHORD_NAME], const char sign[CHORD_MAX], int n, int size)
 {
 	int w = 0, i;
@@ -2672,7 +2686,7 @@ static int chord_width(char part[CHORD_MAX][CHORD_NAME], const char sign[CHORD_M
 		if (i + 1 < n) {
 			const char s[2] = { sign[i], '\0' };
 
-			w += chord_gap(size) * 2 + ui_text_width(chord_font(), s);
+			w += sign_before(sign[i], size) + sign_after(sign[i], size) + ui_text_width(chord_font(), s);
 		}
 	}
 	return w;
@@ -2686,6 +2700,7 @@ int ui_button_width(const char *label, int size)
 	bool round = key_round(k);
 
 	if (n > 1) return chord_width(part, sign, n, size);
+	if (k.shape == DS_KEY_ROCKER) return ui_rocker_width(size);
 	if (round) return size;
 	if (key_dpad(k)) return (int)((float)size * DPAD_KEY_K + 0.5f);
 	return ui_text_width(button_letter(round, size), k.text)
@@ -2713,9 +2728,9 @@ static void chord_draw(SDL_Renderer *r, char part[CHORD_MAX][CHORD_NAME], const 
 			                                          : ui_col(theme()->text_dim, 255);
 
 			if (pressed) c.a = (Uint8)(255.0f * (op < 0.0f ? 0.0f : op > 1.0f ? 1.0f : op) + 0.5f);
-			x += chord_gap(size);
+			x += sign_before(sign[i], size);
 			ui_text(r, f, s, x + ui_text_width(f, s) / 2, ui_cap_y(f, cy), 0, c);
-			x += ui_text_width(f, s) + chord_gap(size);
+			x += ui_text_width(f, s) + sign_after(sign[i], size);
 		}
 	}
 }
@@ -2741,6 +2756,10 @@ void ui_button(SDL_Renderer *r, const char *label, int cx, int cy, int size,
 	if (!label || size <= 0) return;
 	if ((parts = chord_split(label, part, sign)) > 1) {
 		chord_draw(r, part, sign, parts, cx, cy, size, style, false, 0.0f, 1.0f, 1.0f);
+		return;
+	}
+	if (k.shape == DS_KEY_ROCKER) {
+		ui_rocker(r, cx, cy, size, 0.0f, 0.0f, 1.0f, 1.0f);
 		return;
 	}
 	if (key_dpad(k)) {
@@ -3102,6 +3121,10 @@ void ui_button_pressed(SDL_Renderer *r, const char *label, int cx, int cy, int s
 	if (!label || size <= 0 || op <= 0.0f) return;
 	if ((parts = chord_split(label, part, sign)) > 1) {
 		chord_draw(r, part, sign, parts, cx, cy, size, style, true, press, scale, op);
+		return;
+	}
+	if (g.shape == DS_KEY_ROCKER) {
+		ui_rocker(r, cx, cy, size, press, press, scale, op);
 		return;
 	}
 	if (press <= 0.0f && (scale == 1.0f || scale <= 0.0f) && op >= 1.0f) {

@@ -40,6 +40,8 @@ BR2_PACKAGE_DROPBEAR=y
 # Graphics: Imagination's GLES and EGL, and SDL2 drawing to the framebuffer
 # through them (the pvrfb video driver, see external.mk)
 BR2_PACKAGE_PVR_GE8300=y
+# Flash Drive (package/usbdrive, its Brick build: no libdrm, fb0's page)
+BR2_PACKAGE_USBDRIVE=y
 BR2_PLASTRON_DEVICE="brick"
 # ZyperOS's boot animation from the moment the framebuffer exists until
 # ZyperOS's first frame (splash-fb.c, inittab's first line, /etc/init.d/splash)

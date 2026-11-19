@@ -60,13 +60,9 @@ void ct_sent(const ct_model *m, rm_table *out)
 		out->b[RM_SELECT] = m->zdef.b[RM_SELECT];
 }
 
-unsigned ct_held_of(const char *tag, const char *stick_mode)
+unsigned ct_held_of(const char *tag)
 {
-	unsigned k = 0;
-
-	if (stick_mode && !strcmp(stick_mode, "toggle")) k |= 1u << RM_R2;
-	if (tag && !strcmp(tag, "NDS")) k |= 1u << RM_L2 | 1u << RM_R2;
-	return k;
+	return tag && !strcmp(tag, "NDS") ? (1u << RM_L2 | 1u << RM_R2) : 0u;
 }
 
 /* A dead SELECT row: the stick's rule or the N64's C buttons hold it */
@@ -82,13 +78,10 @@ bool ct_dead(const ct_model *m, int button)
 }
 
 /* What a button Diatom keeps does, as the pages say it (controls.c): a DS
- * game's L2 the other screen and R2 the stylus; the PSP's R2 the d-pad as
- * the stick */
-static str_id held_says(const ct_model *m, int button)
+ * game's L2 the other screen and R2 the stylus */
+static str_id held_says(int button)
 {
-	if (m->tag && !strcmp(m->tag, "NDS"))
-		return button == RM_L2 ? S_CONTROLS_OTHER_SCREEN : S_CONTROLS_STYLUS;
-	return S_CONTROLS_DPAD_STICK;
+	return button == RM_L2 ? S_CONTROLS_OTHER_SCREEN : S_CONTROLS_STYLUS;
 }
 
 /* ---- the faces ------------------------------------------------------------- */
@@ -147,7 +140,8 @@ bool ct_reset_live(const ct_model *m)
 
 /* Whether button `i` can be what lost a game button: a changed one that
  * gives no game button plainly in what is sent - Nothing, a turbo, one its
- * core names nothing - or a SELECT the stick's rule sends as SELECT. A
+ * core names nothing, the stick's two - or a SELECT the stick's rule sends
+ * as SELECT. A
  * plain choice swaps, so it loses nothing, and a button as its default has
  * it lost nothing. */
 static bool lossy(const ct_model *m, const rm_table *sent, int i)
@@ -155,7 +149,7 @@ static bool lossy(const ct_model *m, const rm_table *sent, int i)
 	const rm_choice c = sent->b[i];
 
 	if (!rm_changed(&m->def, &m->cur, i)) return false;
-	return c.turbo || ct_says_nothing(m, c) || !same(c, m->cur.b[i]);
+	return c.turbo || ct_says_nothing(m, c) || RM_IS_STICK(c.to) || !same(c, m->cur.b[i]);
 }
 
 /* The row each lost game button's warning goes under: the button whose
@@ -233,7 +227,7 @@ int ct_rows(const ct_model *m, ct_row *ids, menu_row *out, unsigned *vcol, ct_bu
 		const rm_choice c = m->cur.b[i];
 
 		if (m->held >> i & 1u) {
-			ROW(CT_BUTTON + i, ((menu_row){ NAME[i], T(held_says(m, i)), false }), 0u);
+			ROW(CT_BUTTON + i, ((menu_row){ NAME[i], T(held_says(i)), false }), 0u);
 		} else if (i == RM_SELECT && (m->select_held_c || m->select_held_dpad)) {
 			ROW(CT_BUTTON + i, ((menu_row){ NAME[i], T(m->select_held_c ? S_CONTROLS_SELECT_C_BUTTONS
 			                                                       : S_CONTROLS_HELD_DPAD), false }), 0u);
@@ -395,6 +389,16 @@ void ct_pick(ct_model *m, int button, rm_choice c)
 		if (i != button && ct_dead(m, i)) m->cur.b[i] = m->base.b[i];
 }
 
+int ct_choices(const ct_model *m, int button, rm_choice *out, int max)
+{
+	int n = ctl_remap_choices(m->tag, m->ext, m->map, out, max);
+
+	if (n <= 0 || !m->stick_offered || button == RM_SELECT) return n;
+	if (n < max) out[n++] = (rm_choice){ RM_STICK_TOGGLE, 0 };
+	if (n < max) out[n++] = (rm_choice){ RM_STICK_HOLD, 0 };
+	return n;
+}
+
 bool ct_step(ct_model *m, ct_row id, int dir)
 {
 	const int bt = ct_button_of(id);
@@ -402,7 +406,7 @@ bool ct_step(ct_model *m, ct_row id, int dir)
 	int n;
 
 	if (bt < 0 || ct_dead(m, bt)) return false;
-	n = ctl_remap_choices(m->tag, m->ext, m->map, ch, 32);
+	n = ct_choices(m, bt, ch, 32);
 	if (n <= 0) return false;
 	ct_pick(m, bt, ct_next(m, ch, n, bt, dir));
 	return true;

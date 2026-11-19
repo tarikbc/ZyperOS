@@ -2390,41 +2390,54 @@ static void ctl_tab(void)
 	   "the N64's SELECT keeps R2, the C buttons' own, when another button is given it");
 	ck(!ct_step(&m, CT_BUTTON + RM_SELECT, +1), "and its dead row has no step");
 
-	/* ct_held_psp: the PSP's R2 is Diatom's under stick=toggle (it turns
-	 * the d-pad into the stick, and no map reaches it): a dead row that
-	 * says so, no choice, and never a swap's partner */
+	/* ct_stick_psp: the PSP's R2 is a button like any other now, its
+	 * default Stick On/Off (map|PSP|r2:stick), which turns the d-pad into
+	 * the stick; on a system with a stick every button but SELECT is
+	 * offered Stick On/Off and Stick While Held, last; they swap as a game
+	 * button does, and a game button left with none still warns */
 	memset(&m, 0, sizeof m);
-	m.tag = "PSP"; m.ext = "iso"; m.sys_label = "PSP"; m.sys_name = "PSP"; m.map = "";
-	rm_identity(&m.def);
+	m.tag = "PSP"; m.ext = "iso"; m.sys_label = "PSP"; m.sys_name = "PSP"; m.map = "r2:stick";
+	ct_table(&m.def, "r2:stick");
 	m.cur = m.base = m.zdef = m.def;
 	m.stick_offered = true;
-	m.held = ct_held_of("PSP", "toggle");
-	ck(m.held == 1u << RM_R2 && ct_held_of("PSP", "") == 0 && ct_held_of("PS1", "plain") == 0 &&
-	   ct_held_of("DC", "dpad") == 0, "ct_held_of: the PSP's R2 under toggle, on no other system");
+	m.held = ct_held_of("PSP");
+	ck(m.held == 0 && ct_held_of("PS1") == 0 && ct_held_of("DC") == 0,
+	   "ct_held_of: no button of the PSP's is Diatom's now, nor of any system but the DS");
 	n = ct_rows(&m, ids, rows, vcol, &b);
 	k = ct_at(ids, n, CT_BUTTON + RM_R2);
-	ck(k > 0 && !rows[k].live && !strcmp(val(&rows[k]), "D-pad as stick") && !vcol[k],
-	   "ct_held_psp: R2 is a dead row: D-pad as stick");
-	nch = ctl_remap_choices("PSP", "iso", "", ch, 32);
-	for (i = 0; i < nch && ch[i].to != RT_R2; i++) ;
-	ck(i == nch && nch == 13, "and no choice: four faces, L, R, Start, Select, four turbos, Nothing");
-	ck(ct_dead(&m, RM_R2) && !ct_dead(&m, RM_Y) && !ct_step(&m, CT_BUTTON + RM_R2, +1) &&
-	   rm_equal(&m.cur, &m.base), "R2 has no step");
-	ct_pick(&m, RM_Y, (rm_choice){ RT_R2, 0 });
-	ck(m.cur.b[RM_R2].to == RT_R2 && m.cur.b[RM_Y].to == RT_R2,
-	   "a swap never lands on R2: Y given the core's R2 leaves R2 as it was");
+	ck(k > 0 && rows[k].live && !strcmp(val(&rows[k]), "Stick On/Off") && !vcol[k],
+	   "ct_stick_psp: R2 is a live row, Stick On/Off, its default and so not changed");
+	nch = ct_choices(&m, RM_R2, ch, 32);
+	ck(nch == 15 && ch[13].to == RM_STICK_TOGGLE && ch[14].to == RM_STICK_HOLD && ch[12].to == RM_NONE,
+	   "R2's choices: four faces, L, R, Start, Select, four turbos, Nothing, then the stick's two");
+	ck(ct_choices(&m, RM_SELECT, ch, 32) == 13, "SELECT is offered no stick: it holds the hotkeys");
+	m.stick_offered = false;
+	ck(ct_choices(&m, RM_R2, ch, 32) == 13, "and a system with no stick offers none");
+	m.stick_offered = true;
+	ck(ct_step(&m, CT_BUTTON + RM_R2, +1) && m.cur.b[RM_R2].to == RM_STICK_HOLD,
+	   "Right on R2: Stick While Held");
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	k = ct_at(ids, n, CT_BUTTON + RM_R2);
+	ck(k > 0 && !strcmp(val(&rows[k]), "Stick While Held") && vcol[k] == 1u, "said, and changed");
+	m.cur = m.base = m.def;
+	ct_pick(&m, RM_Y, (rm_choice){ RM_STICK_TOGGLE, 0 });
+	ck(m.cur.b[RM_Y].to == RM_STICK_TOGGLE && m.cur.b[RM_R2].to == RT_Y && m.cur.b[RM_R2].turbo == 0,
+	   "Y given Stick On/Off: R2 takes square, a swap, so one button turns the stick");
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	for (k = 0; k < n && !(ids[k] >= CT_WARN && ids[k] < CT_RESET); k++) ;
+	ck(k == n, "and nothing has no button: square is on R2");
+	m.cur = m.base = m.def;
+	ct_pick(&m, RM_R2, (rm_choice){ RM_NONE, 0 });
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	for (k = 0; k < n && !(ids[k] >= CT_WARN && ids[k] < CT_RESET); k++) ;
+	ck(k == n && m.cur.b[RM_R2].to == RM_NONE,
+	   "R2 given Nothing: no game button is lost, the stick is none of the game's");
+	m.cur = m.base = m.def;
+	ct_pick(&m, RM_Y, (rm_choice){ RM_STICK_HOLD, 0 });
 	n = ct_rows(&m, ids, rows, vcol, &b);
 	k = ct_at(ids, n, CT_WARN + RT_Y);
-	ck(k > 0 && ids[k - 1] == CT_BUTTON + RM_Y && !strcmp(val(&rows[k - 1]), "Nothing"),
-	   "the core has no R2: Y reads Nothing, and square has no button now, under Y");
-	/* a key from before the fix: y:r2,r2:y gave square to the R2 Diatom
-	 * hides, and says so now */
-	ct_table(&m.cur, "y:r2,r2:y");
-	m.base = m.cur;
-	n = ct_rows(&m, ids, rows, vcol, &b);
-	k = ct_at(ids, n, CT_WARN + RT_Y);
-	ck(k > 0 && ids[k - 1] == CT_BUTTON + RM_R2 && !strcmp(lbl(&rows[k]), PAD_SQUARE " has no button now"),
-	   "a stored y:r2,r2:y: square has no button now, under the R2 that has it");
+	ck(m.cur.b[RM_R2].to == RM_STICK_TOGGLE && k > 0 && ids[k - 1] == CT_BUTTON + RM_Y,
+	   "Y given Stick While Held: R2 keeps Stick On/Off (another choice), and square has no button now, under Y");
 
 	/* ct_held_nds: a DS game's L2 and R2 are Diatom's, the other screen and
 	 * the stylus */
@@ -2432,7 +2445,7 @@ static void ctl_tab(void)
 	m.tag = "NDS"; m.ext = "nds"; m.sys_label = "NDS"; m.sys_name = "Nintendo DS"; m.map = "";
 	rm_identity(&m.def);
 	m.cur = m.base = m.zdef = m.def;
-	m.held = ct_held_of("NDS", "");
+	m.held = ct_held_of("NDS");
 	n = ct_rows(&m, ids, rows, vcol, &b);
 	k = ct_at(ids, n, CT_BUTTON + RM_L2);
 	ck(m.held == (1u << RM_L2 | 1u << RM_R2) && k > 0 && !rows[k].live &&

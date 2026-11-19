@@ -90,7 +90,9 @@ jobs:
   # device nobody is holding still fails here when it stops building.
   devices:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    # The compile itself takes under a minute; apt-get alone took over ten
+    # on some runners (2026-11-19), and the job was cancelled before it began
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 

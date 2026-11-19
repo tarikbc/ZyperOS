@@ -449,7 +449,11 @@ diatom_msg_kind diatom_proto_poll(diatom_msg *out, int timeout_ms, bool running)
 		 * d-pad is now the stick, on=0 otherwise, and an unknown mode is
 		 * an ERROR with the stick as it was. Additive, so proto stays 14:
 		 * an old Diatom ignores the verb, and the launcher never waits
-		 * for the answer. */
+		 * for the answer. Later (Stick On/Off and Stick While Held as a
+		 * button's choices): dpad-pad and plain-pad are dpad and plain
+		 * starting on the d-pad's side, and what turns the side is a
+		 * button the map gives `stick` or `stickhold`, the PSP's R2
+		 * among them, no longer R2 by itself under toggle. */
 		/* proto=13 moves the speed and adds the quick slot: SELECT+R2 and
 		 * SELECT+L2 step it in halves, so SPEED's x may be "1.5", and MENU+R1
 		 * does nothing; SELECT+R1 and SELECT+L1 send HOTKEY key=save|load,

@@ -563,6 +563,7 @@ void menu_panel(app *a, const char *heading, const menu_row *rows,
 		if (!rows[i].label) continue;          /* a rule measures nothing */
 		/* A legend of button hints (keyhints.h) on its one row */
 		w = keyhints_is(rows[i].label) ? keyhints_line_width(rows[i].label)
+		  : menu_keys_is(rows[i].label) ? ui_button_width(menu_keys_names(rows[i].label), MENU_KEYS_SIZE)
 		                               : ui_text_width(fm, rows[i].label);
 		if (two_col && rows[i].value && !ROW_IS_NOTE(rows[i]))
 			w += gap + menu_value_w(fm, rows[i].value);
@@ -1236,6 +1237,22 @@ void menu_panel(app *a, const char *heading, const menu_row *rows,
 				                content_w, mq_phase(slot, sel, i), lc);
 			}
 			notes_drawn++;
+		} else if (two_col && menu_keys_is(rows[i].label)) {
+			/* Buttons for a label (MENU_KEYS_MARK): this handheld's glyphs
+			 * where the label goes, faded with the row, and the value at
+			 * the right in what they leave */
+			const char *keys = menu_keys_names(rows[i].label);
+			const int kw = ui_button_width(keys, MENU_KEYS_SIZE);
+			char val[192];
+
+			ui_button_pressed(a->r, keys, content_x + kw / 2, y + ROW_H(rows[i]) / 2, MENU_KEYS_SIZE,
+			                  sel_w >= 0.5f ? UI_BUTTON_ON_ACCENT : UI_BUTTON_PLAIN, 0.0f, 1.0f,
+			                  lc.a / 255.0f);
+			if (rows[i].value) {
+				ui_fit_value(rows[i].value);
+				ui_fit_text(fm, rows[i].value, val, sizeof val, content_w - kw - fit_gap);
+				ui_text(a->r, fm, val, content_x + content_w, ty, 1, vc);
+			}
 		} else if (two_col) {
 			char lbl[192], val[192];
 			/* g_row_icon's square, three quarters of the row, and the row

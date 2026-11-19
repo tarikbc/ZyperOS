@@ -80,6 +80,9 @@ typedef struct diatom_session {
 	/* RUN stick=plain: the d-pad is the left stick always, and the joypad's
 	 * d-pad too. No SELECT rule (SELECT is the system's own) and no R2 turn */
 	bool          stick_plain;
+	/* RUN stick=dpad-pad or plain-pad: dpad or plain, starting on the
+	 * d-pad's side, for a button the map gives the stick to turn */
+	bool          stick_pad;
 	/* RUN pace=smooth: the display's rate where it is close to the core's
 	 * (src/pace.h, DISPLAY LOCK), the launcher's Timing: Smooth. Without
 	 * it, the core's own rate (Exact) */
@@ -874,9 +877,10 @@ static void usage(void)
 		"              [--pace smooth]     the display's rate where close, one frame a refresh\n"
 		"              [--controller <n>]  libretro controller type for port 0\n"
 		"              [--stick dpad]      the d-pad as the left analog stick (N64)\n"
-		"              [--stick toggle]    R2 turns the d-pad into the left stick and back (PSP)\n"
+		"              [--stick toggle]    the d-pad, which a Stick On/Off button (r2:stick in the map) turns into the left stick and back (PSP)\n"
 		"              [--stick toggle-stick]  the same, starting as the stick\n"
-		"              [--stick plain]     the d-pad is always the left stick and the d-pad; no SELECT rule, no R2 (PlayStation)\n"
+		"              [--stick plain]     the d-pad is the left stick and the d-pad; no SELECT rule (PlayStation)\n"
+		"              [--stick dpad-pad|plain-pad]  dpad or plain, starting as the d-pad until a stick button turns it\n"
 		"\n--firmware names a file the content needs, e.g. syscard3.pce for a PC\n"
 		"Engine CD. Diatom does not know which content needs what and will not\n"
 		"learn - it has no core list - so whoever launches it says.\n"
@@ -1737,13 +1741,12 @@ static void screens_set(const diatom_msg *m)
 	screens_emit();
 }
 
-/* RUN stick=toggle, the PSP's: R2 turned the d-pad into the left stick or
- * back. "STICK\ton=1" while it is the stick, sent at every turn, so the
- * launcher says it over the game and keeps it for the game. Additive: an old
- * launcher ignores the line, and an old Diatom ignores stick=toggle and
- * leaves the d-pad the d-pad. */
-static bool g_stick_toggle;
-
+/* A button the map gives Stick On/Off (`r2:stick`, the PSP's R2 by
+ * default) turned the d-pad into the left stick or back. "STICK\ton=1"
+ * while it is the stick, sent at every turn, so the launcher says it over
+ * the game and keeps it for the game. Additive: an old launcher ignores the
+ * line, and an old Diatom refuses a map with `stick` in it and leaves the
+ * d-pad the d-pad. */
 static void stick_emit(bool on)
 {
 	printf("diatom: the d-pad is the %s\n", on ? "left stick" : "d-pad");
@@ -1753,22 +1756,27 @@ static void stick_emit(bool on)
 }
 
 /* Sets how the d-pad is the stick, from a RUN's stick= or a SETSTICK's mode=
- * (plain, dpad, toggle, toggle-stick, off). False, and nothing touched, for
- * a name it does not know. `say` sends STICK on=1 when the d-pad is now the
- * stick and on=0 when it is the d-pad (the SELECT rule's dpad counts as the
- * stick, as it is until SELECT says otherwise). Plain is the toggle's
- * machinery with main.c's R2 turn left off: env.c's toggle mode has no SELECT
- * rule, and nothing here flips it; and the d-pad stays the joypad's d-pad as
- * well, so a PlayStation game whose DualShock stays digital still moves. */
+ * (plain, dpad, toggle, toggle-stick, dpad-pad, plain-pad, off). False, and
+ * nothing touched, for a name it does not know. `say` sends STICK on=1 when
+ * the d-pad is now the stick and on=0 when it is the d-pad (the SELECT
+ * rule's dpad counts as the stick, as it is until SELECT says otherwise).
+ * Toggle has no SELECT rule; plain is the toggle's stick side, and the d-pad
+ * stays the joypad's d-pad as well, so a PlayStation game whose DualShock
+ * stays digital still moves. What turns the side is a button the map gives
+ * the stick (stick_keys), in every mode; dpad-pad and plain-pad are dpad
+ * and plain starting on the d-pad's side, for a game whose D-pad as Stick
+ * is off and whose map gives a button the stick. */
 static bool stick_set(const char *mode, bool say)
 {
 	bool on;
 
-	if (!strcmp(mode, "dpad"))              { diatom_input_set_stick(true); g_stick_toggle = false; on = true; }
-	else if (!strcmp(mode, "plain"))        { diatom_input_set_stick_plain(); g_stick_toggle = false; on = true; }
-	else if (!strcmp(mode, "toggle"))       { diatom_input_set_stick_toggle(false); g_stick_toggle = true; on = false; }
-	else if (!strcmp(mode, "toggle-stick")) { diatom_input_set_stick_toggle(true); g_stick_toggle = true; on = true; }
-	else if (!strcmp(mode, "off"))          { diatom_input_set_stick(false); g_stick_toggle = false; on = false; }
+	if (!strcmp(mode, "dpad"))              { diatom_input_set_stick(true); on = true; }
+	else if (!strcmp(mode, "plain"))        { diatom_input_set_stick_plain(); on = true; }
+	else if (!strcmp(mode, "toggle"))       { diatom_input_set_stick_toggle(false); on = false; }
+	else if (!strcmp(mode, "toggle-stick")) { diatom_input_set_stick_toggle(true); on = true; }
+	else if (!strcmp(mode, "dpad-pad"))     { diatom_input_set_stick(true); diatom_input_stick_side(true); on = false; }
+	else if (!strcmp(mode, "plain-pad"))    { diatom_input_set_stick_plain(); diatom_input_stick_side(true); on = false; }
+	else if (!strcmp(mode, "off"))          { diatom_input_set_stick(false); on = false; }
 	else return false;
 	if (say && diatom_proto_connected())
 		diatom_proto_send("STICK\ton=%d", on ? 1 : 0);
@@ -2199,6 +2207,7 @@ static int run_session_inner(const diatom_session *sn)
 	uint64_t t_start, paused_us = 0;   /* menu time, excluded from the rate */
 	uint32_t buttons = 0, prev_buttons = 0, held_at_entry = 0;
 	uint32_t sel_took = 0;      /* shoulders SELECT's chords took this turn */
+	uint32_t stick_hold = 0;    /* Stick While Held buttons held as one (not a chord's) */
 	uint32_t sty_wait = 0;      /* d-pad and A held as the stylus came on */
 	bool     menu_armed = false, menu_chorded = false;
 	long     fast_frames = 0, fast_unshown = 0;
@@ -2258,17 +2267,19 @@ static int run_session_inner(const diatom_session *sn)
 	diatom_input_reset_map();
 	diatom_input_set_stick(sn->dpad_stick);
 	if (sn->dpad_stick)
-		printf("diatom: the d-pad is the left stick; SELECT, then the d-pad, its D-pad\n");
-	g_stick_toggle = !sn->dpad_stick && sn->stick_toggle;
-	if (g_stick_toggle) {
+		printf("diatom: the d-pad is the %s; SELECT, then the d-pad, its D-pad\n",
+		       sn->stick_pad ? "d-pad until a stick button turns it" : "left stick");
+	if (!sn->dpad_stick && sn->stick_toggle) {
 		diatom_input_set_stick_toggle(sn->stick_toggle == 2);
-		printf("diatom: the d-pad is the %s; R2 turns it into the %s\n",
+		printf("diatom: the d-pad is the %s; a Stick On/Off button turns it into the %s\n",
 		       sn->stick_toggle == 2 ? "left stick" : "d-pad",
 		       sn->stick_toggle == 2 ? "d-pad" : "left stick");
 	} else if (!sn->dpad_stick && sn->stick_plain) {
 		stick_set("plain", false);
-		printf("diatom: the d-pad is the left stick and the d-pad, always\n");
+		printf("diatom: the d-pad is the %s\n",
+		       sn->stick_pad ? "d-pad until a stick button turns it" : "left stick and the d-pad");
 	}
+	if (sn->stick_pad && (sn->dpad_stick || sn->stick_plain)) diatom_input_stick_side(true);
 	levels_forget();
 	audio_forget();
 	diatom_levels_invalidate();
@@ -3059,17 +3070,29 @@ static int run_session_inner(const diatom_session *sn)
 				}
 			}
 
-			/* A game whose d-pad R2 turns into the stick and back (RUN
-			 * stick=toggle, the PSP's, which has no R2): a press of R2
-			 * turns it, and R2 never reaches the core. Under MENU, R2 is
-			 * MENU's; under SELECT, the speed's (sel_took). */
-			if (g_stick_toggle) {
-				uint32_t down = buttons & ~prev_buttons & ~sel_took;
+			/* The buttons the map gives the stick (`r2:stick`, the PSP's
+			 * R2 by default, which the PSP has no button for; `l2:stickhold`):
+			 * a press of Stick On/Off turns the d-pad into the stick and
+			 * back, and while Stick While Held is held it is on its other
+			 * side; neither reaches the core. Under MENU a button is MENU's;
+			 * under SELECT, a hotkey's (sel_took), and one a chord took
+			 * starts no hold until it is let go. */
+			{
+				uint32_t hold, tog = diatom_input_stick_keys(&hold);
 
-				if ((down & DIATOM_BIT(DIATOM_BTN_R2)) &&
-				    !(buttons & DIATOM_BIT(DIATOM_BTN_MENU)))
-					stick_emit(diatom_input_stick_flip());
-				sty_mask |= DIATOM_BIT(DIATOM_BTN_R2);
+				if (tog | hold) {
+					const bool menu = (buttons & DIATOM_BIT(DIATOM_BTN_MENU)) != 0;
+					uint32_t down = buttons & ~prev_buttons & ~sel_took;
+
+					if ((down & tog) && !menu)
+						stick_emit(diatom_input_stick_flip());
+					if ((down & hold) && !menu) stick_hold |= down & hold;
+					stick_hold &= buttons;
+					diatom_input_stick_hold(stick_hold != 0);
+					sty_mask |= tog | hold;
+				} else {
+					stick_hold = 0;
+				}
 			}
 
 			/* The single writer. Every reason to hide a button from the core
@@ -3526,6 +3549,7 @@ int main(int argc, char **argv)
 	bool dpad_stick = false;
 	int  stick_toggle = 0;
 	bool stick_plain = false;
+	bool stick_pad = false;
 	int screens = 1;
 	diatom_filter start_filter;
 	int  start_strength = 100;
@@ -3583,8 +3607,9 @@ int main(int argc, char **argv)
 		else if (!strcmp(argv[i], "--stick") && i + 1 < argc) {
 			const char *v = argv[++i];
 
-			dpad_stick = !strcmp(v, "dpad");
-			stick_plain = !strcmp(v, "plain");
+			dpad_stick = !strcmp(v, "dpad") || !strcmp(v, "dpad-pad");
+			stick_plain = !strcmp(v, "plain") || !strcmp(v, "plain-pad");
+			stick_pad = !strcmp(v, "dpad-pad") || !strcmp(v, "plain-pad");
 			stick_toggle = !strcmp(v, "toggle") ? 1 : !strcmp(v, "toggle-stick") ? 2 : 0;
 		}
 		else if (!strcmp(argv[i], "--layout") && i + 1 < argc) {
@@ -3758,10 +3783,11 @@ int main(int argc, char **argv)
 			sn.controller = m.controller;
 			/* The system's share of the core's rumble, this game on */
 			diatom_env_rumble_scale(m.rumble);
-			sn.dpad_stick = !strcmp(m.stick, "dpad");
+			sn.dpad_stick = !strcmp(m.stick, "dpad") || !strcmp(m.stick, "dpad-pad");
 			sn.stick_toggle = !strcmp(m.stick, "toggle") ? 1
 			                : !strcmp(m.stick, "toggle-stick") ? 2 : 0;
-			sn.stick_plain = !strcmp(m.stick, "plain");
+			sn.stick_plain = !strcmp(m.stick, "plain") || !strcmp(m.stick, "plain-pad");
+			sn.stick_pad = !strcmp(m.stick, "dpad-pad") || !strcmp(m.stick, "plain-pad");
 			sn.pace_smooth = !strcmp(m.pace, "smooth");
 			sn.mode   = start_mode;
 			sn.filter = start_filter;
@@ -3795,6 +3821,7 @@ int main(int argc, char **argv)
 			.dpad_stick = dpad_stick,
 			.stick_toggle = stick_toggle,
 			.stick_plain = stick_plain,
+			.stick_pad = stick_pad,
 			.pace_smooth = !strcmp(pace, "smooth"),
 		};
 		int rc = run_session(&sn);

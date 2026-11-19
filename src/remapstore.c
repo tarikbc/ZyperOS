@@ -174,7 +174,7 @@ void rms_stick_put(const system_cfg *s, const char *file, bool on)
 	else                            db_set_str(db_lib(), key, on ? "1" : "0");
 }
 
-void rms_run_stick(const system_cfg *s, bool on, char *key, size_t n)
+void rms_run_stick(const system_cfg *s, bool on, bool keys, char *key, size_t n)
 {
 	const char *v = "";
 
@@ -182,6 +182,7 @@ void rms_run_stick(const system_cfg *s, bool on, char *key, size_t n)
 	if (rms_stick_offered(s)) {
 		if (mode_is(s, "toggle"))    v = on ? "stick=toggle-stick" : "stick=toggle";
 		else if (on)                 v = mode_is(s, "plain") ? "stick=plain" : "stick=dpad";
+		else if (keys)               v = mode_is(s, "plain") ? "stick=plain-pad" : "stick=dpad-pad";
 	}
 	snprintf(key, n, "%s", v);
 }

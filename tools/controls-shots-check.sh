@@ -315,15 +315,16 @@ done
 other "the Controls tab's themes are the same picture" "ctltab-light" "ctltab-dark"
 
 echo "the Controls tab keeps its cursor on the row a change moved"
-# A and B on Nothing (one Left on A, two on B) put two warnings above X;
-# then seven Lefts take X from triangle to Turbo circle, and each one adds or
-# takes away a warning above it. The cursor stays on X all the way (it went
+# A and B on Nothing (three Lefts on A, four on B, past the two stick
+# choices at the list's end) put two warnings above X; then nine Lefts take
+# X from triangle to Turbo circle, and each one adds or takes away a warning
+# above it. The cursor stays on X all the way (it went
 # to the warning row under X and stepped on to Y, losing the Lefts after the
 # first), on a library of its own, as the swap's
 rm -rf "$D/shared-keep" && mkdir -p "$D/shared-keep" || exit 1
 SHARED="$D/shared-keep"
 run --shot "$D/ctltab-keep.png" --theme light --screen games --gamemenu 2 --gm-tab 2 \
-    --gm-press left,down,left,left,down,left,left,left,left,left,left,left --shot-at 400 \
+    --gm-press left,left,left,down,left,left,left,left,down,left,left,left,left,left,left,left,left,left --shot-at 400 \
     --status "20:41 24h wifi=3 batt=80" >"$D/one.log" 2>&1
 SHARED=""
 cat "$D/one.log" >>"$D/log"

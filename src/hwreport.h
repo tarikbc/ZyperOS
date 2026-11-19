@@ -23,6 +23,12 @@ typedef struct {
 	char wifi[64];           /* the Wi-Fi chip's driver, "" for none up */
 	int  closed_present;     /* the closed files on the card, of closed_total */
 	int  closed_total;       /* -1: a device without closed files */
+	/* The LEDs the kernel has (/sys/class/leds), how many and their names,
+	 * "" where none is read; and a motor's power rail, its regulator's name,
+	 * microvolts and state, "" where none is read: for the Brick's lights
+	 * and rumble, which its next work needs facts about */
+	char leds[256];
+	char motor_rail[96];
 	char boot_times[1024];   /* the start's own marks, a line each */
 } hw_facts;
 

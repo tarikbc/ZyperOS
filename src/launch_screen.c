@@ -663,16 +663,17 @@ void launch(app *a)
 		bool stick_on = rms_stick_get(s, romfile);
 
 		cfg_run_keys(s, g_game_dual, pacing_id(pacing_load(s)), keys, (int)sizeof keys);
+		/* The whole table, whatever the card holds for the game or its
+		 * system (rms_sent): Diatom is sent no turbo of its own */
+		rms_sent(s, romfile, stick_on, &sent);
 		/* The d-pad as the stick, a game's own (rms_stick_get): the PSP's
-		 * stick=toggle-stick when it was left on the stick */
-		rms_run_stick(s, stick_on, stick, sizeof stick);
+		 * stick=toggle-stick when it was left on the stick, and a stick
+		 * that is off on the d-pad's side when a button turns it */
+		rms_run_stick(s, stick_on, rm_has_stick(&sent), stick, sizeof stick);
 		if (stick[0] && strlen(keys) + strlen(stick) + 2 <= sizeof keys)
 			snprintf(keys + strlen(keys), sizeof keys - strlen(keys), "%s%s",
 			         keys[0] ? "\t" : "", stick);
 		if (keys[0]) plat_resident_run_keys(keys);
-		/* The whole table, whatever the card holds for the game or its
-		 * system (rms_sent): Diatom is sent no turbo of its own */
-		rms_sent(s, romfile, stick_on, &sent);
 		rm_format(&sent, map, sizeof map);
 		plat_resident_map(strcmp(map, "identity") ? map : "");
 		/* And an N64 game's Pak, its own over the system's; none else */

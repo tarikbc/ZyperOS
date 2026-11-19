@@ -122,6 +122,38 @@ static void none_warns(void)
 	report(ok && n == 1 && targets[0] == RT_Y, "none_warns");
 }
 
+/* Stick On/Off and Stick While Held: `stick` and `stickhold` in the map,
+ * never a turbo, a swap as a game button's, and no game button to lose */
+static void stick_choices(void)
+{
+	rm_table def, t;
+	int targets[RT_COUNT], n;
+	char out[100];
+	bool ok;
+
+	t = parsed("r2:stick,l2:stickhold");
+	ok = t.b[RM_R2].to == RM_STICK_TOGGLE && t.b[RM_L2].to == RM_STICK_HOLD && rm_has_stick(&t);
+	rm_format(&t, out, sizeof out);
+	ok = ok && !strcmp(out, "l2:stickhold,r2:stick");
+	ok = ok && !rm_parse("r2:stick~3", &t) && !rm_parse("r2:stickhold~3", &t) && !rm_parse("r2:sticks", &t);
+	rm_identity(&t);
+	ok = ok && !rm_has_stick(&t);
+	/* given to Y while R2 has it: R2 takes Y's, one button turns the stick */
+	def = parsed("r2:stick");
+	rm_set(&t, &def, RM_Y, (rm_choice){ RM_STICK_TOGGLE, 0 });
+	ok = ok && t.b[RM_Y].to == RM_STICK_TOGGLE && t.b[RM_R2].to == RT_Y;
+	/* R2 given Nothing loses no game button: the stick is none of the game's */
+	rm_set(&t, &def, RM_R2, (rm_choice){ RM_NONE, 0 });
+	n = rm_unreached(&def, &t, targets, RT_COUNT);
+	ok = ok && n == 0;
+	/* and kept as pairs over the default, read back */
+	rm_set(&t, &def, RM_L2, (rm_choice){ RM_STICK_HOLD, 0 });
+	rm_store(&def, &t, out, sizeof out);
+	ok = ok && !strcmp(out, "1;l2:stickhold");
+	report(ok && rm_load(&def, out, &t) && t.b[RM_L2].to == RM_STICK_HOLD && t.b[RM_R2].to == RM_STICK_TOGGLE,
+	       "stick_choices");
+}
+
 static void store_equal_is_empty(void)
 {
 	rm_table def = parsed(DC_MAP);
@@ -471,19 +503,27 @@ static void run_stick_keys(void)
 	char k[32];
 	bool ok;
 
-	rms_run_stick(&dc, true, k, sizeof k);
+	rms_run_stick(&dc, true, false, k, sizeof k);
 	ok = !strcmp(k, "stick=dpad");
-	rms_run_stick(&ps1, true, k, sizeof k);
+	rms_run_stick(&ps1, true, false, k, sizeof k);
 	ok = ok && !strcmp(k, "stick=plain");
-	rms_run_stick(&psp, true, k, sizeof k);
+	rms_run_stick(&psp, true, true, k, sizeof k);
 	ok = ok && !strcmp(k, "stick=toggle-stick");
-	/* the PSP with the d-pad as the d-pad still has R2's turn */
-	rms_run_stick(&psp, false, k, sizeof k);
+	/* the PSP with the d-pad as the d-pad still has its R2's turn */
+	rms_run_stick(&psp, false, true, k, sizeof k);
 	ok = ok && !strcmp(k, "stick=toggle");
-	rms_run_stick(&n64, false, k, sizeof k);
+	rms_run_stick(&n64, false, false, k, sizeof k);
 	ok = ok && k[0] == '\0';
-	rms_run_stick(&dc, false, k, sizeof k);
-	report(ok && k[0] == '\0', "run_stick_keys");
+	rms_run_stick(&dc, false, false, k, sizeof k);
+	ok = ok && k[0] == '\0';
+	/* a stick that is off, with a button that turns it: the d-pad's side */
+	rms_run_stick(&n64, false, true, k, sizeof k);
+	ok = ok && !strcmp(k, "stick=dpad-pad");
+	rms_run_stick(&ps1, false, true, k, sizeof k);
+	ok = ok && !strcmp(k, "stick=plain-pad");
+	/* and one that is on is as before, a button or not */
+	rms_run_stick(&n64, true, true, k, sizeof k);
+	report(ok && !strcmp(k, "stick=dpad"), "run_stick_keys");
 }
 
 static void select_rule_keeps_default(void)
@@ -635,10 +675,17 @@ static void systems_stick_lines(void)
 		if (!strcmp(s->tag, "PS1")) ps1 = s;
 		if (!strcmp(s->tag, "PSP")) psp = s;
 	}
-	report(n64 && dc && ps1 && psp &&
-	       rms_stick_default(n64) && !rms_stick_default(dc) && !rms_stick_default(ps1) &&
-	       !rms_stick_default(psp) && rms_stick_offered(psp) &&
-	       !strcmp(dc->stick, "dpad") && !strcmp(ps1->stick, "plain"), "systems_stick_lines");
+	{
+		rm_table pspd;
+
+		/* the PSP's R2 is Stick On/Off by default (map|PSP|r2:stick) */
+		if (psp) rms_default(psp, &pspd);
+		report(n64 && dc && ps1 && psp &&
+		       rms_stick_default(n64) && !rms_stick_default(dc) && !rms_stick_default(ps1) &&
+		       !rms_stick_default(psp) && rms_stick_offered(psp) &&
+		       !strcmp(dc->stick, "dpad") && !strcmp(ps1->stick, "plain") &&
+		       pspd.b[RM_R2].to == RM_STICK_TOGGLE && rm_has_stick(&pspd), "systems_stick_lines");
+	}
 }
 
 static int store_checks(void)
@@ -681,6 +728,7 @@ int main(void)
 	turbo_never_swaps();
 	steps_do_not_pile();
 	none_warns();
+	stick_choices();
 	store_equal_is_empty();
 	store_load_roundtrip();
 	stored_bad_version_falls_back();

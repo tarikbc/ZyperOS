@@ -45,6 +45,74 @@ static menu_row row_brightness(void)
 	return (menu_row){ dev_role_keys(&chords, DEV_ROLE_BRIGHTNESS), T(S_CONTROLS_BRIGHTNESS), false };
 }
 
+/* ---------- the pages in glyphs -------------------------------------------- */
+
+/* The names a key label may carry, as src/ds/button.h knows them, and the
+ * two of the pages' own: the whole d-pad and the volume rocker */
+static const char *const GLYPH_NAMES[] = {
+	"A", "B", "X", "Y", "L1", "R1", "L2", "R2", "L3", "R3", "SELECT", "START", "MENU",
+	"POWER", "F1", "F2", "VOL", "VOL+", "VOL-", "DPAD", "< >", "^ v"
+};
+
+static bool glyph_name(const char *s, size_t len)
+{
+	size_t i;
+
+	for (i = 0; i < sizeof GLYPH_NAMES / sizeof GLYPH_NAMES[0]; i++)
+		if (strlen(GLYPH_NAMES[i]) == len && !strncmp(GLYPH_NAMES[i], s, len)) return true;
+	return false;
+}
+
+/* Whether `keys` is names with "+", "/" or ", " between them, four at most,
+ * as ui_button draws a chord: a sign with nothing on one side is part of a
+ * name (VOL+) */
+static bool glyph_chord(const char *keys)
+{
+	const char *p = keys, *start = keys;
+	int parts = 1;
+
+	for (; *p; p++) {
+		size_t skip = 0;
+
+		if ((*p == '+' || *p == '/') && p > start && p[1] && p[1] != '+' && p[1] != '/') skip = 1;
+		else if (*p == ',' && p[1] == ' ' && p > start && p[2]) skip = 2;
+		if (!skip) continue;
+		if (!glyph_name(start, (size_t)(p - start))) return false;
+		parts++;
+		p += skip - 1;
+		start = p + 1;
+	}
+	return parts <= 4 && glyph_name(start, strlen(start));
+}
+
+bool ctl_keys_of(const char *label, char *out, size_t n)
+{
+	static const struct { str_id words; const char *keys; } SAID[] = {
+		{ S_CONTROLS_KEY_LEFT_RIGHT, "< >" }, { S_CONTROLS_KEY_UP_DOWN, "^ v" },
+		{ S_CONTROLS_KEY_DPAD, "DPAD" }, { S_CONTROLS_SELECT_DPAD, "SELECT+DPAD" },
+		{ S_CONTROLS_KEY_VOLUME, "VOL" },
+	};
+	const char *keys = NULL;
+	size_t i;
+
+	if (!label || !label[0] || !strncmp(label, MENU_KEYS_MARK, strlen(MENU_KEYS_MARK))) return false;
+	for (i = 0; i < sizeof SAID / sizeof SAID[0] && !keys; i++)
+		if (!strcmp(label, T(SAID[i].words))) keys = SAID[i].keys;
+	if (!keys && glyph_chord(label)) keys = label;
+	if (!keys || strlen(MENU_KEYS_MARK) + strlen(keys) >= n) return false;
+	snprintf(out, n, "%s%s", MENU_KEYS_MARK, keys);
+	return true;
+}
+
+void ctl_glyph_rows(menu_row *rows, int n, char keys[][CTL_KEYS_MAX])
+{
+	int i;
+
+	for (i = 0; i < n && i < CTL_MAX_ROWS; i++)
+		if (rows[i].label && !ROW_IS_NOTE(rows[i]) && ctl_keys_of(rows[i].label, keys[i], CTL_KEYS_MAX))
+			rows[i].label = keys[i];
+}
+
 static const str_id NAMES[CTL_PAGES] = {
 	[CTL_MOVING]   = S_CONTROLS_PAGE_MOVING,
 	[CTL_SHELF]    = S_CONTROLS_PAGE_SHELF,
@@ -1292,6 +1360,11 @@ void ctl_remap_say(const char *tag, const char *ext, rm_choice c, char *out, siz
 
 	if (c.to == RM_NONE) {
 		snprintf(out, n, "%s", T(S_CONTROLS_NOTHING));
+		return;
+	}
+	/* The d-pad's side on a button, whatever the system (ct_choices) */
+	if (RM_IS_STICK(c.to)) {
+		snprintf(out, n, "%s", T(c.to == RM_STICK_TOGGLE ? S_CONTROLS_STICK_TOGGLE : S_CONTROLS_STICK_HOLD));
 		return;
 	}
 	if (!pd || p < 0 || !remap_label(&pd->pad[p])) {

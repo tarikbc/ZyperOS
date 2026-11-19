@@ -66,6 +66,12 @@ static bool read_pair(const char *p, size_t n, int *button, rm_choice *c)
 		c->to = RM_NONE;
 		return true;
 	}
+	/* The stick's two, which have no turbo */
+	if ((tn == 5 && !strncmp(to, "stick", 5)) || (tn == 9 && !strncmp(to, "stickhold", 9))) {
+		if (tilde) return false;
+		c->to = tn == 5 ? RM_STICK_TOGGLE : RM_STICK_HOLD;
+		return true;
+	}
 	t = index_of(TO, RT_COUNT, to, tn);
 	if (t < 0) return false;
 	if (tilde) {
@@ -155,8 +161,9 @@ static size_t put_pair(char *out, size_t n, size_t at, int button, rm_choice c)
 	int w;
 
 	if (at >= n) return at;
-	if (c.to == RM_NONE)
-		w = snprintf(out + at, n - at, "%s%s:none", at ? "," : "", FROM[button]);
+	if (c.to == RM_NONE || RM_IS_STICK(c.to))
+		w = snprintf(out + at, n - at, "%s%s:%s", at ? "," : "", FROM[button],
+		             c.to == RM_NONE ? "none" : c.to == RM_STICK_TOGGLE ? "stick" : "stickhold");
 	else if (c.turbo)
 		w = snprintf(out + at, n - at, "%s%s:%s~%d", at ? "," : "", FROM[button], TO[c.to],
 		             c.turbo);
@@ -214,6 +221,15 @@ bool rm_equal(const rm_table *a, const rm_table *b)
 	return !strcmp(a->layer, b->layer);
 }
 
+bool rm_has_stick(const rm_table *t)
+{
+	int i;
+
+	for (i = 0; i < RM_BUTTONS; i++)
+		if (RM_IS_STICK(t->b[i].to)) return true;
+	return false;
+}
+
 bool rm_changed(const rm_table *def, const rm_table *t, int button)
 {
 	return !same(def->b[button], t->b[button]);
@@ -240,9 +256,10 @@ int rm_unreached(const rm_table *def, const rm_table *t, int *targets, int max)
 	bool in_def[RT_COUNT] = { false }, in_t[RT_COUNT] = { false };
 	int i, n = 0;
 
+	/* The stick's two are no game button to lose */
 	for (i = 0; i < RM_BUTTONS; i++) {
-		if (def->b[i].to != RM_NONE) in_def[def->b[i].to] = true;
-		if (t->b[i].to != RM_NONE) in_t[t->b[i].to] = true;
+		if (def->b[i].to >= 0) in_def[def->b[i].to] = true;
+		if (t->b[i].to >= 0) in_t[t->b[i].to] = true;
 	}
 	for (i = 0; i < RT_COUNT && n < max; i++)
 		if (in_def[i] && !in_t[i]) targets[n++] = i;

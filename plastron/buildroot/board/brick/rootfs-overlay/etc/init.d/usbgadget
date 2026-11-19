@@ -64,15 +64,34 @@ start() {
 	echo MSFT100 > $g/os_desc/qw_sign
 	echo WINNCM > $g/functions/ncm.usb0/os_desc/interface.ncm/compatible_id
 	ln -s $g/configs/c.1 $g/os_desc/
-	if [ -n "$udc" ] && echo "$udc" > $g/UDC 2>/dev/null; then
-		ifconfig usb0 10.55.0.2 netmask 255.255.255.0 up
-		: > /tmp/udhcpd.leases
-		udhcpd /etc/udhcpd.conf
-		[ -x /etc/init.d/S50dropbear ] && /etc/init.d/S50dropbear start > /dev/null
-		cable_watch &
-	else
+	# Charging only until asked, as on the Pixel 2 (its S40usbgadget): the
+	# gadget is made but bound to the controller only in Developer Mode, so
+	# otherwise a computer sees no device. ZyperOS tells a computer from a
+	# charger, asks once a plug and binds it for File Transfer or Developer
+	# (SSH), or hands the card over for Flash Drive (its src/usblink.h, and
+	# src/device/brick.c's plat_usb_peer). Developer Mode is a development
+	# image's only (one that starts dropbear), on unless the card's
+	# .userdata/brick/developer, which ZyperOS keeps, says "0". A release
+	# image binds nothing here, whatever a development image left on the card.
+	dev=0
+	if [ -e /etc/init.d/S50dropbear ]; then
+		dev=1
+		v=
+		[ -r /mnt/SDCARD/.userdata/brick/developer ] &&
+			read -r v < /mnt/SDCARD/.userdata/brick/developer
+		[ "$v" = 0 ] && dev=0
+	fi
+	if [ -z "$udc" ]; then
+		mark "usb: no controller for the network"
+	elif [ "$dev" = 1 ] && ! echo "$udc" > $g/UDC 2>/dev/null; then
 		mark "usb: network didn't bind"
 	fi
+	ifconfig usb0 10.55.0.2 netmask 255.255.255.0 up
+	: > /tmp/udhcpd.leases
+	udhcpd /etc/udhcpd.conf
+	[ -x /etc/init.d/S50dropbear ] && /etc/init.d/S50dropbear start > /dev/null
+	# Whoever binds it, the bus follows the cable's power
+	[ -n "$udc" ] && cable_watch &
 	mark usb
 }
 

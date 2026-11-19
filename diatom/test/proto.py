@@ -160,7 +160,7 @@ def main():
         # The stick, for a game's d-pad: each mode is answered with whether the
         # d-pad is now the stick (the live input is test/hotkeys.py's), and a
         # mode it does not know is refused without touching what is in force.
-        for mode, on in (("dpad", 1), ("plain", 1), ("toggle", 0), ("toggle-stick", 1), ("off", 0)):
+        for mode, on in (("dpad", 1), ("plain", 1), ("toggle", 0), ("toggle-stick", 1), ("dpad-pad", 0), ("plain-pad", 0), ("off", 0)):
             d.send(f"SETSTICK\tmode={mode}")
             ck(d.line("STICK") == f"STICK\ton={on}", f"SETSTICK {mode} answers STICK on={on}")
         d.send("SETSTICK\tmode=sideways")

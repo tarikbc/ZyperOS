@@ -20,10 +20,12 @@
 
 /* The glyph's shape: a circle as wide as it is tall (a face), a pill as
  * long as its word, the d-pad drawn as itself with the arms a hint means
- * lit (left and right, or up and down), or a stick's cap, a circle with its
- * top's ring inside */
+ * lit (left and right, or up and down, or all four for the whole d-pad), a
+ * stick's cap, a circle with its top's ring inside, or the volume keys'
+ * rocker, VOL- and VOL+ as one pill */
 typedef enum {
-	DS_KEY_FACE, DS_KEY_PILL, DS_KEY_DPAD_LR, DS_KEY_DPAD_UD, DS_KEY_STICK
+	DS_KEY_FACE, DS_KEY_PILL, DS_KEY_DPAD_LR, DS_KEY_DPAD_UD, DS_KEY_STICK,
+	DS_KEY_DPAD, DS_KEY_ROCKER
 } ds_key_shape;
 
 /* What is on it instead of a word, from the design system's closed set */
@@ -47,7 +49,9 @@ typedef struct {
 void ds_keys_set(const dev_button *table, int n);
 
 /* The glyph for the button named `name` on this handheld. A name no button
- * has ("PIN", a word of a screen's own) is a pill with that word. */
+ * has ("PIN", a word of a screen's own) is a pill with that word. "DPAD" is
+ * the whole d-pad and "VOL" the volume keys as one rocker, as the Controls
+ * pages name them (src/controls.c, ctl_keys_of). */
 ds_key ds_key_of(const char *name);
 
 /* `name`'s button id ("A" IN_ACCEPT, "F1" IN_BRIGHTDN), IN_NONE for none */

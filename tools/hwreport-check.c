@@ -43,6 +43,8 @@ int main(void)
 	f.closed_present = 13;
 	f.closed_total = 13;
 	strcpy(f.boot_times, "0.61 init\n0.72 closed\n\n1.43 card\n");
+	strcpy(f.leds, "2: sunxi_led0r sunxi_led0g");
+	strcpy(f.motor_rail, "axp2202-bldo3, 3300000 uV, enabled");
 	hwreport_build(&f, out, sizeof out);
 	ck(!strcmp(out,
 	           "Hardware:\n"
@@ -52,6 +54,8 @@ int main(void)
 	           "  Graphics: PowerVR Rogue GE8300, OpenGL ES 3.2 build 1.11@5516664\n"
 	           "  Wi-Fi: xr829\n"
 	           "  Closed files: 13 of 13\n"
+	           "  LEDs: 2: sunxi_led0r sunxi_led0g\n"
+	           "  Motor rail: axp2202-bldo3, 3300000 uV, enabled\n"
 	           "Boot times:\n"
 	           "  0.61 init\n"
 	           "  0.72 closed\n"
@@ -63,7 +67,8 @@ int main(void)
 	hwreport_build(&f, out, sizeof out);
 	ck(!strcmp(out, "Hardware:\n  Panel: -\n  Inputs: -\n  GPU driver: -\n  Graphics: -\n  Wi-Fi: -\n"
 	                "Boot times:\n  -\n"),
-	   "nothing known: every value -, and no closed files line on a device without them");
+	   "nothing known: every value -, and no closed files, LEDs or motor rail line on a device "
+	   "without them (the Pixel 2's report as before)");
 
 	memset(&f, 0, sizeof f);
 	memset(f.panel, 'x', sizeof f.panel - 1);
