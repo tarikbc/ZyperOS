@@ -39,7 +39,7 @@ STAMP := -e PLASTRON_COMMIT=$(PLASTRON_COMMIT) -e "PLASTRON_WHO=$(USER) with pla
 STAMP += -e PLASTRON_CLEAN=$(CLEAN) -e PLASTRON_DEV=$(filter 0 1,$(DEV))
 DOCKER_RUN := docker run --rm -t $(STAMP) -v $(CURDIR):/src:ro $(SOURCES) -v $(VOLUME):/work $(IMAGE)
 
-.PHONY: gauge-check charge-limit-check start-soc-check push all builder volume cores image base qemu sdk brick brick-fetch brick-inputs brick-kernel brick-bootloader brick-probe bootloader shell linux-rebuild copy-out clean-output release release-pixel2 release-brick release-qemu third-party
+.PHONY: gauge-check charge-limit-check start-soc-check push all builder volume cores image base qemu sdk brick brick-fetch brick-inputs brick-kernel smartpro smartpro-kernel brick-bootloader smartpro-bootloader brick-probe bootloader shell linux-rebuild copy-out clean-output release release-pixel2 release-brick release-qemu third-party
 
 all: image
 
@@ -114,6 +114,15 @@ brick: builder volume brick-inputs cores
 	$(BRICK_RUN) env FLAVOR=brick sh /src/scripts/build.sh $(BRICK_TARGET)
 	$(if $(BRICK_TARGET),,$(MAKE) copy-out OUTPUT=output-brick CARD=brick-sdcard.img)
 
+# The TrimUI Smart Pro's system (configs/smartpro_defconfig: the Brick's with
+# its own device), in output-smartpro, with the Brick's closed files. Its
+# kernel and modules come from make smartpro-kernel, in this volume.
+smartpro: builder volume brick-inputs cores
+	@docker run --rm -v $(VOLUME):/work $(IMAGE) test -f /work/smartpro-kernel/images/pvrsrvkm.ko || \
+		{ echo "no Smart Pro kernel modules yet: make smartpro-kernel first" >&2; exit 1; }
+	$(BRICK_RUN) env FLAVOR=smartpro sh /src/scripts/build.sh $(SMARTPRO_TARGET)
+	$(if $(SMARTPRO_TARGET),,$(MAKE) copy-out OUTPUT=output-smartpro CARD=smartpro-sdcard.img)
+
 # The TrimUI Brick's kernel and the modules it loads: Allwinner's Linux 4.9
 # with board/brick/linux/patches, built by scripts/build-brick-kernel.sh in
 # docker/brick-kernel (the GCC 10 that kernel needs) into the volume's
@@ -123,6 +132,14 @@ brick-kernel: volume
 	docker build -q -t $(BRICK_KERNEL_IMAGE) docker/brick-kernel
 	docker run --rm -v $(CURDIR):/src:ro -v $(VOLUME):/work $(BRICK_KERNEL_IMAGE) \
 		sh /src/scripts/build-brick-kernel.sh
+
+# The TrimUI Smart Pro's, the same way: the Brick's patches, then
+# board/smartpro/linux/patches (smartpro_defconfig, its panels) and its
+# device tree, into the volume's smartpro-kernel/images
+smartpro-kernel: volume
+	docker build -q -t $(BRICK_KERNEL_IMAGE) docker/brick-kernel
+	docker run --rm -v $(CURDIR):/src:ro -v $(VOLUME):/work $(BRICK_KERNEL_IMAGE) \
+		sh /src/scripts/build-brick-kernel.sh smartpro
 
 # The TrimUI Brick's boot loader: TF-A's BL31 and U-Boot, built by
 # scripts/build-brick-bootloader.sh in docker/brick-boot (the GCC 14 it was
@@ -138,6 +155,19 @@ brick-bootloader: volume
 		--user root $(BRICK_BOOT_IMAGE) sh -c 'cp /work/brick-boot/u-boot-sunxi-with-spl.bin /out/ && \
 		chown $(shell id -u):$(shell id -g) /out/u-boot-sunxi-with-spl.bin'
 	@ls -l buildroot/board/brick/bootloader/u-boot-sunxi-with-spl.bin
+
+# The TrimUI Smart Pro's, the same way: the Brick's U-Boot patches, then
+# board/smartpro/u-boot/patches (its LPDDR4), into
+# buildroot/board/smartpro/bootloader/u-boot-sunxi-with-spl.bin. Committed too.
+smartpro-bootloader: volume
+	docker build -q -t $(BRICK_BOOT_IMAGE) docker/brick-boot
+	docker run --rm -v $(CURDIR):/src:ro -v $(VOLUME):/work $(BRICK_BOOT_IMAGE) \
+		sh /src/scripts/build-brick-bootloader.sh smartpro
+	mkdir -p buildroot/board/smartpro/bootloader
+	docker run --rm -v $(VOLUME):/work -v $(CURDIR)/buildroot/board/smartpro/bootloader:/out \
+		--user root $(BRICK_BOOT_IMAGE) sh -c 'cp /work/smartpro-boot/u-boot-sunxi-with-spl.bin /out/ && \
+		chown $(shell id -u):$(shell id -g) /out/u-boot-sunxi-with-spl.bin'
+	@ls -l buildroot/board/smartpro/bootloader/u-boot-sunxi-with-spl.bin
 
 # The Brick panel probe (board/brick/probe): a card that shows and saves which
 # panel a Brick has, to hand to other Brick owners. Kernel and boot loader only,
@@ -197,6 +227,11 @@ third-party:
 	docker run --rm -v $(VOLUME):/work -v $(CURDIR):/src:ro $(IMAGE) python3 /src/scripts/third-party.py \
 		/work/release-output-brick/legal-info/manifest.csv brick > buildroot/board/brick/third-party-packages.md
 
+# The Smart Pro's, from its release build (make release-smartpro), on its own
+third-party-smartpro:
+	docker run --rm -v $(VOLUME):/work -v $(CURDIR):/src:ro $(IMAGE) python3 /src/scripts/third-party.py \
+		/work/release-output-smartpro/legal-info/manifest.csv smartpro > buildroot/board/smartpro/third-party-packages.md
+
 release-pixel2: cores
 	@mkdir -p out
 	$(DOCKER_RUN) sh /src/scripts/release.sh $(VERSION) pixel2 > out/release-pixel2.log 2>&1 || \
@@ -208,6 +243,13 @@ release-brick: brick-inputs cores
 	@mkdir -p out
 	$(BRICK_RUN) sh /src/scripts/release.sh $(VERSION) brick > out/release-brick.log 2>&1 || \
 		{ tail -30 out/release-brick.log; exit 1; }
+
+# The TrimUI Smart Pro's, for its test kits (ZyperOS's tools/release.sh --kit
+# smartpro): make smartpro-kernel first, as release-brick needs brick-kernel
+release-smartpro: brick-inputs cores
+	@mkdir -p out
+	$(BRICK_RUN) sh /src/scripts/release.sh $(VERSION) smartpro > out/release-smartpro.log 2>&1 || \
+		{ tail -30 out/release-smartpro.log; exit 1; }
 
 # QEMU's image for a release, ZyperOS-v<VERSION>-qemu.tar.xz, and the
 # sources of what only it has, ZyperOS-v<VERSION>-qemu-sources.tar

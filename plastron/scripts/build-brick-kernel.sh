@@ -6,7 +6,19 @@
 # plastron-brick-kernel (docker/brick-kernel), for its GCC 10. Output in
 # /work/brick-kernel/images: Image, the device tree (brick.dtb, from
 # board/brick/dts) and the modules stripped of debug info.
+#
+# Or another board on the Brick's (its argument, brick when none): the TrimUI
+# Smart Pro's is the Brick's patches, then board/smartpro/linux/patches (its
+# smartpro_defconfig and panels), its device tree (smartpro.dtb, from
+# board/smartpro/dts), in /work/smartpro-kernel.
+#
+#   sh build-brick-kernel.sh [brick|smartpro]
 set -eu
+DEV=${1:-brick}
+case $DEV in
+brick|smartpro) ;;
+*) echo "build-brick-kernel: no board $DEV (brick or smartpro)" >&2; exit 2 ;;
+esac
 
 # The base: the kernel tree as Creality published it (CrealityTech/
 # sonic_pad_os 7f37a7f, lichee/linux-4.9), less 11 closed binaries the Brick
@@ -17,9 +29,9 @@ LINUX_URL=https://github.com/ericreinsmidt/plastron/releases/download/brick-linu
 
 # Where it builds, and what it says about itself, fixed so the same sources
 # always build the same bytes. All can be set, to compare with an older build.
-SRC=${KERNEL_SRC:-/work/brick-kernel/linux}
-OUT=${KERNEL_OUT:-/work/brick-kernel/out}
-GPU=${KERNEL_GPU:-/work/brick-kernel/gpu}
+SRC=${KERNEL_SRC:-/work/$DEV-kernel/linux}
+OUT=${KERNEL_OUT:-/work/$DEV-kernel/out}
+GPU=${KERNEL_GPU:-/work/$DEV-kernel/gpu}
 export KBUILD_BUILD_VERSION=${KBUILD_BUILD_VERSION:-1}
 export KBUILD_BUILD_TIMESTAMP=${KBUILD_BUILD_TIMESTAMP:-Wed Oct 14 00:00:00 UTC 2026}
 export KBUILD_BUILD_USER=${KBUILD_BUILD_USER:-plastron}
@@ -31,10 +43,10 @@ export SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH:-1791936000}
 LOCALVERSION=+
 
 BOARD=/src/buildroot/board/brick/linux
-IMAGES=/work/brick-kernel/images
-# One Brick kernel build at a time (scripts/lock.sh)
+IMAGES=/work/$DEV-kernel/images
+# One kernel build of a board at a time (scripts/lock.sh)
 . /src/scripts/lock.sh
-plastron_lock /work/brick-kernel
+plastron_lock /work/$DEV-kernel
 mkdir -p /work/dl "$IMAGES"
 
 f=/work/dl/$LINUX_BASE.tar.xz
@@ -46,6 +58,9 @@ mkdir -p "$SRC" "$OUT" "$GPU/img-rgx"
 tar -C "$SRC" --strip-components=1 -xJf "$f"
 cd "$SRC"
 for p in "$BOARD"/patches/*.patch; do patch -p1 -F0 -s --batch < "$p"; done
+if [ "$DEV" != brick ]; then
+	for p in /src/buildroot/board/$DEV/linux/patches/*.patch; do patch -p1 -F0 -s --batch < "$p"; done
+fi
 
 # The same compiler name on any computer, Arm or x86 (docker/brick-kernel)
 CROSS_COMPILE=aarch64-linux-gnu-
@@ -56,7 +71,7 @@ CROSS_COMPILE=aarch64-linux-gnu-
 # build goes through the kernel's, so it gets this too.
 export KCFLAGS=-fdebug-prefix-map=/usr/lib/gcc-cross/=/usr/lib/gcc/
 k() { make -s -C "$SRC" O="$OUT" ARCH=arm64 CROSS_COMPILE=$CROSS_COMPILE LOCALVERSION="$LOCALVERSION" -j"$(nproc)" "$@"; }
-k brick_defconfig
+k ${DEV}_defconfig
 # All the modules, not each by name: the Wi-Fi driver's three need cfg80211's
 # symbols, and only a full modules pass resolves them between modules
 k Image modules
@@ -81,5 +96,5 @@ for m in "$OUT/drivers/input/joystick/brick-pad.ko" "$G/pvrsrvkm.ko" "$G/dc_sunx
 	"$OUT/drivers/bluetooth/xradio_btfdi.ko"; do
 	${CROSS_COMPILE}strip --strip-debug -o "$IMAGES/$(basename "$m")" "$m"
 done
-dtc -q -I dts -O dtb -o "$IMAGES/brick.dtb" /src/buildroot/board/brick/dts/sun50iw10p1-trimui-brick.dts
+dtc -q -I dts -O dtb -o "$IMAGES/$DEV.dtb" /src/buildroot/board/$DEV/dts/sun50iw10p1-trimui-$DEV.dts
 strings "$IMAGES/Image" | grep -m1 "^Linux version"

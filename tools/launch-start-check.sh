@@ -1,9 +1,12 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-only
-# launch.sh's start on a card a power cut broke, on both devices: a copy of
+# launch.sh's start on a card a power cut broke, on each device: a copy of
 # the card script (sd/zyperos/launch.sh) and of each device's device.sh beside
-# it, with the card's paths and /tmp moved under a scratch folder and the
-# device's commands stubbed (poweroff, reboot, pidof), run by sh.
+# it, with the card's paths, /tmp and the system's own file (/etc/zyperos/
+# system, its device line: the Brick's device.sh is the Smart Pro's too) moved
+# under a scratch folder and the device's commands stubbed (poweroff, reboot,
+# pidof), run by sh. Each device's log is looked for in its own folder
+# (.userdata/<id>), so a device.sh that names another's fails here.
 #
 #   1. boot.env is junk (what a power cut can leave): read, not sourced, so
 #      the script goes on to the launcher, where a syntax error in a sourced
@@ -34,11 +37,13 @@ fail() { echo "FAIL $dev: $*"; fails=$((fails + 1)); }
 # instead. device.sh names the card only through launch.sh's SDCARD.
 edit() {
 	sed -e "s#/mnt/SDCARD#$D/card#g" -e "s#/usr/share/zyperos/card#$D/seed#g" \
-	    -e "s#/tmp/#$D/tmp/#g" -e "s#/dev/kmsg#$D/kmsg#g" -e 's#( sleep 8$#( exit#' "$1"
+	    -e "s#/tmp/#$D/tmp/#g" -e "s#/dev/kmsg#$D/kmsg#g" -e 's#( sleep 8$#( exit#' \
+	    -e "s#/etc/zyperos/system#$D/system#g" "$1"
 }
 prepare() {
 	rm -rf "$D"
 	mkdir -p "$D/card/ZyperOS" "$D/card/.userdata/$dev" "$D/seed/ZyperOS" "$D/bin" "$D/tmp"
+	printf 'version 1.0.6\ndevice %s\n' "$dev" > "$D/system"
 	for p in '/mnt/SDCARD' '/usr/share/zyperos/card' '( sleep 8$' '/dev/kmsg' \
 	         '^device_radios &$'; do
 		grep -q -- "$p" sd/zyperos/launch.sh || { fail "launch.sh no longer has '$p'"; return 1; }
@@ -80,7 +85,7 @@ run() {
 	LOG=$D/card/.userdata/$dev/logs/zyperos.log
 }
 
-for dev in pixel2 brick; do
+for dev in pixel2 brick smartpro; do
 	prepare || continue
 	U=$D/card/.userdata/$dev
 	printf "WIFI='1\nBLU\001\377'\"\`)(" > "$U/boot.env"
@@ -136,7 +141,8 @@ for dev in pixel2 brick; do
 	# A fresh install's first start: your PICO-8, which ZyperOS Installer
 	# left in the boot partition's pico8/, copied into Bios/PICO-8. The boot
 	# partition is a folder here: the Pixel 2 mounts it (mount, stubbed,
-	# copies the folder to the mount point), the Brick has it at /boot
+	# copies the folder to the mount point), the Brick has it at /boot, and
+	# so has the Smart Pro, whose device.sh is the Brick's
 	prepare || continue
 	U=$D/card/.userdata/$dev
 	rm -rf "$U"
@@ -147,7 +153,7 @@ for dev in pixel2 brick; do
 	printf '#!/bin/sh\nfor a; do m=$a; done\necho mount >> "%s/calls"\ncp -R "%s/bootfs/." "$m/"\n' "$D" "$D" > "$D/bin/mount"
 	printf '#!/bin/sh\nfor a; do m=$a; done\necho umount >> "%s/calls"\nrm -rf "$m/"*\n' "$D" > "$D/bin/umount"
 	chmod +x "$D/bin/mount" "$D/bin/umount"
-	if [ "$dev" = brick ]; then
+	if [ "$dev" = brick ] || [ "$dev" = smartpro ]; then
 		grep -q '\[ -d /boot \] && BOOT_DIR=/boot' "$D/card/ZyperOS/device.sh" ||
 			fail "device.sh no longer has its /boot"
 		sed "s#\[ -d /boot \] \&\& BOOT_DIR=/boot#[ -d $D/bootfs ] \&\& BOOT_DIR=$D/bootfs#" \

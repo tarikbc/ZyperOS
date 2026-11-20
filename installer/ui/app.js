@@ -22,8 +22,8 @@ const listen = TAURI ? TAURI.event.listen : demo().listen;
 
 // Every device the page knows, in its order; which of them it offers is
 // offered()'s
-const DEVICE = { pixel2: "GKD Pixel 2", brick: "TrimUI Brick" };
-const THE = { pixel2: "the GKD Pixel 2", brick: "the TrimUI Brick" };
+const DEVICE = { pixel2: "GKD Pixel 2", brick: "TrimUI Brick", smartpro: "TrimUI Smart Pro" };
+const THE = { pixel2: "the GKD Pixel 2", brick: "the TrimUI Brick", smartpro: "the TrimUI Smart Pro" };
 // A card this big is likely a drive, not a card: said on its row
 const LARGE = 256e9;
 
@@ -584,7 +584,7 @@ function eta(seconds) {
 }
 
 const WORDS = {
-	fetching: ["Getting the Brick's graphics and Wi-Fi files",
+	fetching: ["Getting the graphics and Wi-Fi files",
 		"From Creality's Sonic Pad SDK on GitHub, each one checked, then put on this card only. ZyperOS can't include them itself."],
 	downloading: ["Downloading", "From GitHub, then checked against the release's SHA256SUMS."],
 	verifying: ["Checking the image", "Against the SHA256SUMS beside it, before anything is written."],

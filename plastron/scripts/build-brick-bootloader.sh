@@ -4,7 +4,18 @@
 # sources plus board/brick/u-boot/patches, which were scute's commits. Runs in
 # plastron-brick-boot (docker/brick-boot), the compiler it was tested with;
 # output: /work/brick-boot/u-boot-sunxi-with-spl.bin.
+#
+# Or another board on the Brick's (its argument, brick when none): the TrimUI
+# Smart Pro's is the Brick's patches, then board/smartpro/u-boot/patches
+# (its memory), its trimui-smartpro_defconfig, into /work/smartpro-boot.
+#
+#   sh build-brick-bootloader.sh [brick|smartpro]
 set -eu
+DEV=${1:-brick}
+case $DEV in
+brick|smartpro) ;;
+*) echo "build-brick-bootloader: no board $DEV (brick or smartpro)" >&2; exit 2 ;;
+esac
 
 UBOOT_COMMIT=5e3b01c8466dbe45cd6a06299f8f4c7e8c1c2363
 UBOOT_SHA256=1a7f1b493f48e1fcc2ef99e56620be8ff7772f3a7f30c8c40c32d9cbac6c260a
@@ -21,7 +32,7 @@ UBOOT_EPOCH=1791867416
 UBOOT_LOCALVERSION=${UBOOT_LOCALVERSION--plastron}
 
 BOARD=/src/buildroot/board/brick/u-boot
-W=/work/brick-boot
+W=/work/$DEV-boot
 mkdir -p /work/dl "$W"
 
 fetch() {
@@ -43,7 +54,10 @@ make -s -C "$W/tf-a" -j"$(nproc)" PLAT=sun50i_a133 DEBUG=0 \
 
 cd "$W/u-boot"
 for p in "$BOARD"/patches/*.patch; do patch -p1 -F0 -s --batch < "$p"; done
-make -s trimui-brick_defconfig
+if [ "$DEV" != brick ]; then
+	for p in /src/buildroot/board/$DEV/u-boot/patches/*.patch; do patch -p1 -F0 -s --batch < "$p"; done
+fi
+make -s trimui-${DEV}_defconfig
 SOURCE_DATE_EPOCH=$UBOOT_EPOCH make -s -j"$(nproc)" LOCALVERSION="$UBOOT_LOCALVERSION" \
 	BL31="$W/tf-a/build/sun50i_a133/release/bl31.bin" SCP=/dev/null
 cp u-boot-sunxi-with-spl.bin "$W/"

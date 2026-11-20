@@ -9,6 +9,7 @@ changes:
 
     scripts/make-splash-frames.py [path/to/zyperos-fly.mp4]
     scripts/make-splash-frames.py --brick [path/to/zyperos-fly.mp4]
+    scripts/make-splash-frames.py --smartpro [path/to/zyperos-fly.mp4]
 
 The boot animation is ZyperOS's res/boot/zyperos-fly.mp4, from its
 tools/genboot.py, at 60 fps: the name from the first frame, and Zyper. Without --brick the frames are the Pixel 2's
@@ -78,6 +79,13 @@ the splash plays the one the card's Appearance asks for (ZyperOS's DESIGN.md
 
     scripts/make-splash-frames.py --light path/to/build/boot-frames-light
 
+The Smart Pro's (--smartpro, smartpro/frames.bin) is the Brick's format at its
+framebuffer's 1280x720: the animation at the launcher's own scale there (its
+768-unit canvas on 720 rows, 0.9375), 960x720 in the middle, on the
+animation's own ground beside it, the colour of the first frame's corner.
+Zyper and the word are drawn in the middle of a flat ground, so this is the
+animation as a 1368-unit canvas would draw it.
+
 The Brick's (--brick) is "TSPZ" instead, for splash-fb.c: the same header and
 offsets, then per frame only the band of rows that changed from the frame
 before (frame 0 whole), as u16 first row, u16 rows, u32 length, and that
@@ -105,8 +113,9 @@ def main():
         first_start(args[1] if len(args) > 1 else DEFAULT_FIRST_START)
         return
     brick = "--brick" in args
+    smartpro = "--smartpro" in args
     light = "--light" in args
-    args = [a for a in args if a not in ("--brick", "--light")]
+    args = [a for a in args if a not in ("--brick", "--smartpro", "--light")]
     video = args[0] if args else DEFAULT_VIDEO
     fps = FPS
     loop = None
@@ -116,6 +125,9 @@ def main():
     if brick:
         W, H, OUT = 1024, 768, os.path.join(PACKAGE, "frames-brick.bin")
         vf = "fps=%d" % fps
+    elif smartpro:
+        W, H, OUT = 1280, 720, os.path.join(PACKAGE, "smartpro", "frames.bin")
+        vf = "fps=%d,scale=960:720:flags=lanczos,pad=1280:720:160:0:color=0x%s" % (fps, ground_of(video))
     else:
         W, H, OUT = 480, 640, os.path.join(PACKAGE, "frames-light.bin" if light else "frames.bin")
         vf = "scale=640:480:flags=area,transpose=2,fps=%d" % fps
@@ -145,10 +157,20 @@ def main():
     elif not 0 < loop < len(frames):
         sys.exit("loop.txt: the loop starts at frame %d of %d" % (loop, len(frames)))
 
-    if brick:
+    if brick or smartpro:
+        os.makedirs(os.path.dirname(OUT), exist_ok=True)
         write_bands(OUT, frames, W, H, fps)
     else:
         write_bands(OUT, frames, W, H, fps, loop=len(frames) if loop is None else loop)
+
+
+def ground_of(video):
+    """The animation's ground: its first frame's top left pixel, RRGGBB"""
+    source = ["-i", os.path.join(video, "f0000.png")] if os.path.isdir(video) else ["-i", video]
+    px = subprocess.run(["ffmpeg", "-v", "error"] + source + ["-frames:v", "1", "-vf", "crop=1:1:0:0",
+                         "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
+                        check=True, stdout=subprocess.PIPE).stdout
+    return "%02x%02x%02x" % (px[0], px[1], px[2])
 
 
 def first_start(folder):

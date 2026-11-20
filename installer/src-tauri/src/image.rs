@@ -56,8 +56,8 @@ fn fat_label(sector: &[u8]) -> Option<String> {
 }
 
 /// Which device a card image is for, from the label of its boot partition:
-/// PX2BOOT the Pixel 2's, BRICKBOOT the Brick's. None for an image with
-/// neither, which is not ZyperOS's. Reads the image only as far as that
+/// PX2BOOT the Pixel 2's, BRICKBOOT the Brick's, SMARTBOOT the Smart Pro's.
+/// None for an image with none of them, which is not ZyperOS's. Reads the image only as far as that
 /// partition's first sector, a few MB in.
 pub fn device_of(path: &Path) -> io::Result<Option<crate::cards::Device>> {
     use crate::writer::{table_of, HEAD, SECTOR};
@@ -234,7 +234,8 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("zyperos-installer-device-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let cases = [("PX2BOOT", false, Some(Device::Pixel2)), ("PX2BOOT", true, Some(Device::Pixel2)),
-                     ("BRICKBOOT", true, Some(Device::Brick)), ("EMUELEC", true, None)];
+                     ("BRICKBOOT", true, Some(Device::Brick)), ("SMARTBOOT", true, Some(Device::SmartPro)),
+                     ("EMUELEC", true, None)];
         for (label, fat32, want) in cases {
             let p = dir.join("t.img.xz");
             std::fs::write(&p, xz(&mbr_image(label, fat32))).unwrap();

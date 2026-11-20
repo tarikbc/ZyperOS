@@ -1,0 +1,5 @@
+table gpt
+part-boot 1
+part-root-a 2
+part-root-b 4
+part-games 5

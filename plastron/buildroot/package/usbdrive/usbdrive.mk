@@ -12,10 +12,11 @@ USBDRIVE_LICENSE_FILES = LICENSE
 # libdrm: the connected page is held on the panel by usbdrive itself, so its
 # rows can say what moves (src/panel.h)
 # The handheld's facts (src/device.h) and its panel: the Pixel 2's DRM
-# (panel.c, libdrm), or the TrimUI Brick's framebuffer (panel_fb.c)
-ifeq ($(ZYDEV_ID),brick)
+# (panel.c, libdrm), or the framebuffer of a handheld on the TrimUI Brick's
+# board (panel_fb.c): the Brick's, and the Smart Pro's with its own name
+ifeq ($(ZYDEV_BACKEND),brick)
 USBDRIVE_DEPENDENCIES =
-USBDRIVE_DEVICE_FLAGS = -DUSBDRIVE_BRICK
+USBDRIVE_DEVICE_FLAGS = -DUSBDRIVE_BRICK $(if $(filter smartpro,$(ZYDEV_ID)),-DUSBDRIVE_SMARTPRO)
 USBDRIVE_PANEL = panel_fb.c
 USBDRIVE_PANEL_LIBS =
 else

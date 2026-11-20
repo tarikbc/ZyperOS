@@ -124,6 +124,7 @@ typedef struct device_profile {
 
 extern const device_profile device_profile_pixel2;
 extern const device_profile device_profile_brick;
+extern const device_profile device_profile_smartpro;
 extern const device_profile device_profile_desktop;
 
 /* The Pixel 2's core options (src/device/pixel2_coreopts.c), linked on every

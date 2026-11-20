@@ -16,6 +16,7 @@
 #include "panelgamma_sunxi.h"
 #include "platform.h"
 #include "screenfx_draw.h"
+#include "stickpad.h"
 #include "thermal.h"
 #include "keymap.h"
 #ifdef ZYPEROS_DESK
@@ -38,6 +39,17 @@
 
 static SDL_Window *win;
 static SDL_Renderer *ren;
+/* A panel of another shape than the picture (the Smart Pro's 16:9,
+ * src/device/smartpro_profile.c): the picture is drawn into screen_tex, at
+ * its own 1024x768, and plat_present scales it to the panel's height into
+ * screen_dst, in the middle, black at each side. NULL where the panel is the
+ * picture's shape (the Brick's, the host's desktop): the window is the
+ * screen, as it always was. */
+static SDL_Texture *screen_tex;
+static SDL_Rect     screen_dst;
+/* A video picture under the screen for the next present (plat_video_under),
+ * where the screen is screen_tex */
+static struct { bool on, has_src; SDL_Texture *tex; SDL_Rect src, dst; SDL_Color bg; } under;
 
 #define BITS_PER_LONG   (8 * (int)sizeof(long))
 #define NLONGS(max)     (((max) + BITS_PER_LONG) / BITS_PER_LONG)
@@ -51,6 +63,19 @@ static int jack_fd = -1;    /* "audiocodec sunxi Audio Jack": the jack switch, f
 /* ZYPEROS_INPUT_DEBUG=1 logs raw evdev codes, so one press tells you exactly
  * which device a control arrives on. */
 static int dbg_input;
+
+#ifdef __linux__
+/* The left stick as the d-pad on the launcher's screens (src/stickpad.h),
+ * where the pad has one: the Smart Pro's, from tools/sppad.c, as ABS_X and
+ * ABS_Y. A direction is held while its key or the stick holds it. The Brick's
+ * pad has no axis, so stick_max stays 0 and nothing changes there. */
+_Static_assert((int)IN_LEFT == (int)STICK_LEFT && (int)IN_RIGHT == (int)STICK_RIGHT &&
+               (int)IN_UP == (int)STICK_UP && (int)IN_DOWN == (int)STICK_DOWN,
+               "stickpad's directions are the d-pad's buttons");
+static stickpad stick;
+static int      stick_x, stick_y, stick_max;
+static bool     dpad_key[STICK_DIRS];
+#endif
 
 #ifdef __linux__
 /* Every button by its key code, as the Pixel 2 reads its own. brick-pad sends
@@ -76,7 +101,12 @@ static const struct { int code; in_button b; } keymap[] = {
 const char *P_ROOT = "/mnt/SDCARD/ZyperOS";
 const char *P_CARD = "/mnt/SDCARD";
 const char *P_ROMS = "/mnt/SDCARD/Roms";
-const char *P_USERDATA = "/mnt/SDCARD/.userdata/brick";
+/* The card folder of the device built for: the Brick's own, or the Smart
+ * Pro's, which runs this platform layer too (mk/cross.mk) */
+#ifndef ZYPEROS_DEVICE_ID
+#define ZYPEROS_DEVICE_ID "brick"
+#endif
+const char *P_USERDATA = "/mnt/SDCARD/.userdata/" ZYPEROS_DEVICE_ID;
 
 /* The Brick's boot screen is drawn before anything could say a theme to it */
 int plat_boot_theme(const char *text) { (void)text; return 0; }
@@ -130,16 +160,16 @@ static SDL_Texture *bend_tex;
 
 static bool bending(void) { return sfx_on() && sfx_curved(); }
 
-/* The window, as a render target: the window itself, or in the host's desk
- * mode the texture its screen is drawn into, which goes to the window at
- * present (src/device/desk.h) */
+/* The window, as a render target: the window itself, screen_tex on a panel
+ * of another shape (show_scaled), or in the host's desk mode the texture its
+ * screen is drawn into, which goes to the window at present
+ * (src/device/desk.h) */
 static SDL_Texture *window_target(void)
 {
 #ifdef ZYPEROS_DESK
-	return desk_screen();
-#else
-	return NULL;
+	if (desk_on()) return desk_screen();
 #endif
+	return screen_tex;
 }
 
 /* Where ZyperOS's frame goes: bend_tex while the curve is on, else the
@@ -195,13 +225,50 @@ void plat_screen_finish(void)
 
 bool plat_screen_shader_in_frame(void) { return sfx_on(); }
 
+/* The picture onto a panel of another shape: black, the video under it if
+ * there is one (at the panel's own resolution, its rectangle scaled as the
+ * picture is), then the picture, the screens' shader on it already. Over a
+ * video the picture went into a clear texture, which SDL's blend
+ * premultiplied, so it goes over with ONE; with none it is copied as it is,
+ * alpha ignored, as the Brick's window shows it. */
+static void show_scaled(void)
+{
+	SDL_SetRenderTarget(ren, NULL);
+	SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
+	SDL_RenderClear(ren);
+	if (under.on) {
+		static SDL_BlendMode premul;
+		float s = (float)screen_dst.w / ZYPEROS_SCREEN_W;
+		SDL_FRect r = { screen_dst.x + under.dst.x * s, screen_dst.y + under.dst.y * s,
+		                under.dst.w * s, under.dst.h * s };
+		SDL_Rect bg = screen_dst;
+
+		if (!premul)
+			premul = SDL_ComposeCustomBlendMode(
+				SDL_BLENDFACTOR_ONE, SDL_BLENDFACTOR_ONE_MINUS_SRC_ALPHA, SDL_BLENDOPERATION_ADD,
+				SDL_BLENDFACTOR_ONE, SDL_BLENDFACTOR_ONE_MINUS_SRC_ALPHA, SDL_BLENDOPERATION_ADD);
+		SDL_SetRenderDrawColor(ren, under.bg.r, under.bg.g, under.bg.b, 255);
+		SDL_RenderFillRect(ren, &bg);
+		if (under.tex) SDL_RenderCopyF(ren, under.tex, under.has_src ? &under.src : NULL, &r);
+		SDL_SetTextureBlendMode(screen_tex, premul);
+		under.on = false;
+	} else {
+		SDL_SetTextureBlendMode(screen_tex, SDL_BLENDMODE_NONE);
+	}
+	SDL_RenderCopy(ren, screen_tex, NULL, &screen_dst);
+	SDL_RenderPresent(ren);
+	SDL_SetRenderTarget(ren, screen_tex);
+}
+
 /* The Brick's panel is the screen, so drawing to the screen is drawing to the
- * window. The first present tells the splash first, and goes on the kernel's
- * clock beside the splash's own lines, so the boot from power to shelf reads
- * off one log, as on the Pixel 2. */
+ * window (on a panel of another shape, show_scaled). The first present tells
+ * the splash first, and goes on the kernel's clock beside the splash's own
+ * lines, so the boot from power to shelf reads off one log, as on the
+ * Pixel 2. The draw color is put back, as ZyperOS expects it to stay. */
 void plat_present(void)
 {
 	static bool shown;
+	Uint8 r, g, b, a;
 
 	plat_overlay_present(ren);
 	plat_screen_finish();
@@ -226,20 +293,48 @@ void plat_present(void)
 	if (desk_on()) desk_present(ren);
 	else
 #endif
-	SDL_RenderPresent(ren);
+	if (screen_tex) {
+		SDL_GetRenderDrawColor(ren, &r, &g, &b, &a);
+		show_scaled();
+		SDL_SetRenderDrawColor(ren, r, g, b, a);
+	} else {
+		SDL_RenderPresent(ren);
+	}
 	fx_done = false;
 	/* The next frame into bend_tex while the curve is on */
 	if (bending()) SDL_SetRenderTarget(ren, screen_target());
 }
+/* The window, or screen_tex on a panel of another shape, or bend_tex */
 void plat_draw_to_screen(void) { SDL_SetRenderTarget(ren, screen_target()); }
 
 /* The Brick's screen is its panel: the picture goes straight into the frame,
- * and what is drawn after it lands on top of it. */
+ * and what is drawn after it lands on top of it. On a panel of another shape
+ * the picture waits for the present (show_scaled), at the panel's own
+ * pixels, and the screen is cleared to nothing, so it shows through wherever
+ * this frame draws nothing; under CRT Curved it goes into the frame as on the
+ * Brick, so the curve bends it with the rest. */
 void plat_video_under(SDL_Texture *tex, const SDL_Rect *src, const SDL_Rect *dst, SDL_Color bg)
 {
-	SDL_SetRenderDrawColor(ren, bg.r, bg.g, bg.b, 255);
+	SDL_BlendMode mode;
+
+	if (!screen_tex || bending()) {
+		SDL_SetRenderDrawColor(ren, bg.r, bg.g, bg.b, 255);
+		SDL_RenderClear(ren);
+		if (tex) SDL_RenderCopy(ren, tex, src, dst);
+		return;
+	}
+	under.on = true;
+	under.tex = tex;
+	under.has_src = src != NULL;
+	under.src = src ? *src : (SDL_Rect){ 0, 0, 0, 0 };
+	under.dst = dst ? *dst : (SDL_Rect){ 0, 0, 0, 0 };
+	under.bg = bg;
+	SDL_SetRenderTarget(ren, screen_tex);
+	SDL_GetRenderDrawBlendMode(ren, &mode);
+	SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_NONE);
+	SDL_SetRenderDrawColor(ren, 0, 0, 0, 0);
 	SDL_RenderClear(ren);
-	if (tex) SDL_RenderCopy(ren, tex, src, dst);
+	SDL_SetRenderDrawBlendMode(ren, mode);
 }
 
 /* No ports on the Brick, and no splash --still to hold a picture */
@@ -342,8 +437,16 @@ bool plat_video_init(void)
 		return true;
 	}
 #endif
-	win = SDL_CreateWindow("ZyperOS", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-	                       ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H,
+	/* The panel as it is seen, landscape: the screen itself where it is
+	 * the picture's shape; a wider one (the Smart Pro's 1280x720, which its
+	 * kernel turns from the 720x1280 panel) gets the picture scaled to its
+	 * height, in the middle (show_scaled). */
+	const device_profile *p = plat_profile();
+	bool wide = p->screen.aspect_w * 3 != p->screen.aspect_h * 4;
+	int ww = wide ? (p->screen.turn % 180 ? p->screen.panel_h : p->screen.panel_w) : ZYPEROS_SCREEN_W;
+	int wh = wide ? (p->screen.turn % 180 ? p->screen.panel_w : p->screen.panel_h) : ZYPEROS_SCREEN_H;
+
+	win = SDL_CreateWindow("ZyperOS", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, ww, wh,
 	                       headless ? SDL_WINDOW_HIDDEN : SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
 	if (!win) {
 		fprintf(stderr, "window: %s\n", SDL_GetError());
@@ -356,6 +459,21 @@ bool plat_video_init(void)
 		return false;
 	}
 	SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
+	if (wide) {
+		screen_tex = SDL_CreateTexture(ren, PLAT_TARGET_FORMAT, SDL_TEXTUREACCESS_TARGET,
+		                               ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H);
+		if (!screen_tex) {
+			fprintf(stderr, "screen texture: %s\n", SDL_GetError());
+			return false;
+		}
+		screen_dst.h = wh;
+		screen_dst.w = ZYPEROS_SCREEN_W * wh / ZYPEROS_SCREEN_H;
+		screen_dst.x = (ww - screen_dst.w) / 2;
+		screen_dst.y = 0;
+		SDL_SetRenderTarget(ren, screen_tex);
+		fprintf(stderr, "video: a %dx%d panel, the screen scaled to %dx%d in its middle\n",
+		        ww, wh, screen_dst.w, screen_dst.h);
+	}
 	/* Whether vsync was GRANTED, not whether it was asked for. PRESENTVSYNC
 	 * is a request the driver may decline in silence, and the shelf loop has
 	 * no delay in it - so a declined request is not a slower animation, it is
@@ -382,6 +500,8 @@ void plat_video_quit(void)
 	plat_osd_forget();
 	sfx_forget();
 	if (bend_tex) { SDL_DestroyTexture(bend_tex); bend_tex = NULL; }
+if (screen_tex) { SDL_DestroyTexture(screen_tex); screen_tex = NULL; }
+	under.on = false;
 #ifdef ZYPEROS_DESK
 	desk_video_quit();
 #endif
@@ -410,8 +530,13 @@ static void input_scan(void)
 		memset(sw, 0, sizeof sw);
 		ioctl(fd, EVIOCGBIT(EV_KEY, sizeof keys), keys);
 		ioctl(fd, EVIOCGBIT(EV_SW, sizeof sw), sw);
-		if      (fd_pad < 0   && BIT_IS_SET(keys, BTN_SOUTH))           fd_pad = fd;
-		else if (fd_keys < 0  && BIT_IS_SET(keys, KEY_VOLUMEUP))        fd_keys = fd;
+		if (fd_pad < 0 && BIT_IS_SET(keys, BTN_SOUTH)) {
+			struct input_absinfo ax;
+
+			fd_pad = fd;
+			if (ioctl(fd, EVIOCGABS(ABS_X), &ax) == 0 && ax.maximum > 0)
+				stick_max = ax.maximum;
+		} else if (fd_keys < 0  && BIT_IS_SET(keys, KEY_VOLUMEUP))        fd_keys = fd;
 		else if (fd_power < 0 && BIT_IS_SET(keys, KEY_POWER))           fd_power = fd;
 		else if (jack_fd < 0  && BIT_IS_SET(sw, SW_HEADPHONE_INSERT))   jack_fd = fd;
 		else kept = false;
@@ -483,23 +608,60 @@ bool plat_rumble_buzz(float scale, int ms)
 	return false;
 }
 
+#ifdef __linux__
+/* The stick where the last report left it: each direction it holds or lets
+ * go, with the d-pad's key for that direction */
+static void stick_apply(in_state *st)
+{
+	bool was[STICK_DIRS];
+	int d;
+
+	memcpy(was, stick.held, sizeof was);
+	stickpad_update(&stick, stick_x, stick_y, stick_max);
+	for (d = 0; d < STICK_DIRS; d++)
+		if (stick.held[d] != was[d])
+			plat_set_btn(st, (in_button)d, stick.held[d] || dpad_key[d]);
+}
+#endif
+
 static void poll_fd(int fd, in_state *st)
 {
 #ifdef __linux__
 	struct input_event ev;
 	size_t i;
+	bool moved = false;
 
 	while (fd >= 0 && read(fd, &ev, sizeof ev) == (ssize_t)sizeof ev) {
+		/* The stick, taken as a whole at each report */
+		if (ev.type == EV_ABS && fd == fd_pad && (ev.code == ABS_X || ev.code == ABS_Y)) {
+			if (ev.code == ABS_X) stick_x = ev.value;
+			else stick_y = ev.value;
+			moved = true;
+			continue;
+		}
+		if (ev.type == EV_SYN && ev.code == SYN_REPORT && moved) {
+			stick_apply(st);
+			moved = false;
+			continue;
+		}
 		if (ev.type != EV_KEY || ev.value == 2) continue;
 		if (dbg_input) fprintf(stderr, "[in] fd=%d code=%d val=%d\n", fd, ev.code, ev.value);
 		for (i = 0; i < sizeof keymap / sizeof keymap[0]; i++)
 			if (keymap[i].code == ev.code) {
+				in_button b = keymap[i].b;
+
+				/* A d-pad key: held while it or the stick holds it */
+				if (b <= IN_DOWN) {
+					dpad_key[b] = ev.value == 1;
+					plat_set_btn(st, b, dpad_key[b] || stick.held[b]);
 				/* A repeat is no let-go of POWER (src/powerhold.h) */
-				if (keymap[i].b != IN_POWER || ev.value != 2)
-					plat_set_btn(st, keymap[i].b, ev.value == 1);
+				} else if (b != IN_POWER || ev.value != 2) {
+					plat_set_btn(st, b, ev.value == 1);
+				}
 				break;
 			}
 	}
+	if (moved) stick_apply(st);
 #else
 	(void)fd; (void)st;
 #endif

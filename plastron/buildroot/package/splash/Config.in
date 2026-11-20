@@ -1,7 +1,7 @@
 config BR2_PACKAGE_SPLASH
 	bool "splash"
-	select BR2_PACKAGE_LIBDRM if BR2_PLASTRON_DEVICE != "brick"
-	select BR2_PACKAGE_ZLIB if BR2_PLASTRON_DEVICE = "brick"
+	select BR2_PACKAGE_LIBDRM if BR2_PLASTRON_DEVICE != "brick" && BR2_PLASTRON_DEVICE != "smartpro"
+	select BR2_PACKAGE_ZLIB if BR2_PLASTRON_DEVICE = "brick" || BR2_PLASTRON_DEVICE = "smartpro"
 	help
 	  ZyperOS's boot animation, from the moment the panel lights until
 	  ZyperOS takes the display over - which it does as soon as it is

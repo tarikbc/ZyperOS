@@ -95,6 +95,15 @@ define ZYPEROS_INSTALL_TARGET_CMDS
 		sh $(@D)/mk/payload.sh
 	$(ZYPEROS_INSTALL_SYSTEM)
 	$(if $(filter update,$(ZYDEV_HELPERS)),$(ZYPEROS_INSTALL_UPDATE))
+	$(if $(filter sppad,$(ZYDEV_HELPERS)),$(ZYPEROS_INSTALL_SPPAD))
+endef
+
+# The TrimUI Smart Pro's gamepad reader (ZyperOS's tools/sppad.c): every
+# button and both sticks come from two serial halves, so it is part of the
+# system, not the card's payload, and the start script (board/smartpro's
+# init.d/brick) runs it before anything reads a button
+define ZYPEROS_INSTALL_SPPAD
+	$(INSTALL) -D -m 0755 $(@D)/$(ZYPEROS_BUILD_DIR)/sppad $(TARGET_DIR)/usr/lib/zyperos/sppad
 endef
 
 # Which system this is (/etc/zyperos/system), for System Update, the crash

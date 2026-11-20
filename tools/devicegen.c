@@ -14,13 +14,13 @@
 
 #include "../src/device/build.h"
 
-static const dev_build *const BUILDS[] = { &device_build_pixel2, &device_build_brick };
+static const dev_build *const BUILDS[] = { &device_build_pixel2, &device_build_brick, &device_build_smartpro };
 
 static const struct { unsigned bit; const char *word; } HELPERS[] = {
 	{ DEV_HELPER_PORTKEYS, "portkeys" }, { DEV_HELPER_ZYHOME, "zyhome" },
 	{ DEV_HELPER_UPDATE, "update" },     { DEV_HELPER_P2D, "p2d" },
 	{ DEV_HELPER_PORTS, "ports" },       { DEV_HELPER_BTPLAYER, "btplayer" },
-	{ DEV_HELPER_BTALSA, "btalsa" },
+	{ DEV_HELPER_BTALSA, "btalsa" },     { DEV_HELPER_SPPAD, "sppad" },
 };
 
 static int write_mk(const char *dir, const dev_build *b)
@@ -34,8 +34,9 @@ static int write_mk(const char *dir, const dev_build *b)
 	fprintf(f, "# %s's build: written by tools/devicegen.c from src/device/%s_build.c\n"
 	           "# (make device-files). Do not edit; change that file and write it again.\n",
 	        b->id, b->id);
-	fprintf(f, "ZYDEV_ID = %s\nZYDEV_ARCH = %s\nZYDEV_MCPU = %s\nZYDEV_CPU = %s\nZYDEV_DIATOM_PORT = %s\n",
-	        b->id, b->arch, b->mcpu, b->cpu, b->diatom_port);
+	fprintf(f, "ZYDEV_ID = %s\nZYDEV_ARCH = %s\nZYDEV_MCPU = %s\nZYDEV_CPU = %s\nZYDEV_BACKEND = %s\n"
+	           "ZYDEV_DIATOM_PORT = %s\n",
+	        b->id, b->arch, b->mcpu, b->cpu, b->backend, b->diatom_port);
 	fprintf(f, "ZYDEV_HELPERS =");
 	for (i = 0; i < sizeof HELPERS / sizeof HELPERS[0]; i++)
 		if (b->helpers & HELPERS[i].bit) fprintf(f, " %s", HELPERS[i].word);

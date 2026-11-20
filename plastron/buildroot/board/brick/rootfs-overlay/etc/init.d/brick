@@ -121,8 +121,21 @@ start() {
 	[ -x $L/sincereset ] && $L/sincereset >> /tmp/boot-times
 
 	# The pad, after the volume keys, power key and jack, which keep event0-2:
-	# before ZyperOS, as Diatom opens it the moment it starts
-	insmod $L/brick-pad.ko
+	# before ZyperOS, as Diatom opens it the moment it starts. On the TrimUI
+	# Smart Pro, which runs this system with its own device (/etc/zyperos/
+	# system), every button and both sticks are two small controllers on
+	# serial ports, which ZyperOS's sppad turns into one gamepad: its 5 V
+	# first (PD11, GPIO 107, as TrimUI's start script sets it), then sppad,
+	# which powers both halves itself. brick-pad never loads there: it would
+	# take PD15 and PD19, the halves' serial lines, as buttons
+	if grep -q '^device smartpro$' /etc/zyperos/system 2> /dev/null; then
+		[ -d /sys/class/gpio/gpio107 ] || echo 107 > /sys/class/gpio/export
+		echo out > /sys/class/gpio/gpio107/direction
+		echo 1 > /sys/class/gpio/gpio107/value
+		/usr/lib/zyperos/sppad > /tmp/sppad.log 2>&1 &
+	else
+		insmod $L/brick-pad.ko
+	fi
 	mark pad
 
 	# The mute switch (PH19), exported for ZyperOS, which reads

@@ -112,6 +112,11 @@ static SDL_AudioDeviceID g_audio;
 static int               g_pad_fd = -1;  /* "Brick Gamepad": every button */
 static bool              g_quit;
 static uint32_t          g_buttons;
+/* The pad's sticks, where it has them (the Smart Pro's, ABS_X and ABS_Y,
+ * ABS_RX and ABS_RY from tools/sppad.c): the Brick's has none. g_axis_max is
+ * ABS_X's end, 0 for no sticks. */
+static int16_t           g_axes[4];
+static int               g_axis_max;
 static bool              g_input_debug;
 
 /* Opaque value for the framebuffer's alpha channel, zero if it has none.
@@ -411,7 +416,13 @@ static void input_scan(void)
 		memset(sw, 0, sizeof sw);
 		ioctl(fd, EVIOCGBIT(EV_KEY, sizeof keys), keys);
 		ioctl(fd, EVIOCGBIT(EV_SW, sizeof sw), sw);
-		if      (g_pad_fd < 0  && BIT_IS_SET(keys, BTN_SOUTH))          g_pad_fd = fd;
+		if (g_pad_fd < 0 && BIT_IS_SET(keys, BTN_SOUTH)) {
+			struct input_absinfo ax;
+
+			g_pad_fd = fd;
+			if (ioctl(fd, EVIOCGABS(ABS_X), &ax) == 0 && ax.maximum > 0)
+				g_axis_max = ax.maximum;
+		}
 		else if (g_jack_fd < 0 && BIT_IS_SET(sw, SW_HEADPHONE_INSERT))  g_jack_fd = fd;
 		else kept = false;
 		if (!kept) close(fd);
@@ -832,10 +843,11 @@ static void overlay_page(uint8_t *base, int page, diatom_rect dst)
 
 /* The level bar: the launcher's own pill, from the same code (osdbar.c, which
  * is ZyperOS's src/osdbar.c), so a volume press looks the same in a game as on
- * the shelf, over a port and in a game on the Pixel 2. The panel is the
- * launcher's own 1024x768, one pixel a unit, so it is drawn at scale 1: 476 x
- * 92 pixels with its shadow, the pill 452 x 64 at 22 under the top edge,
- * centered. Drawn into ordinary memory, premultiplied, and again only when
+ * the shelf, over a port and in a game on the Pixel 2. At the launcher's
+ * scale: the panel's height over its 768 units, whatever the panel's width
+ * (ZyperOS's src/canvas.h). The Brick's 1024x768 is one pixel a unit, so it
+ * is drawn at scale 1: 476 x 92 pixels with its shadow, the pill 452 x 64 at
+ * 22 under the top edge, centered; the Smart Pro's 1280x720 at 0.9375. Drawn into ordinary memory, premultiplied, and again only when
  * the level, the fade or the theme moves; the slide is where it goes on the
  * page.
  *
@@ -869,7 +881,7 @@ static void bar_frame(void)
 	static int drawn_kind = -1, drawn_level, drawn_max, drawn_theme;
 	static float drawn_alpha;
 	static unsigned colors_seen;
-	const float s = (float)g_vinfo.xres / 1024.0f;
+	const float s = (float)g_vinfo.yres / 768.0f;
 	const uint64_t now = diatom_port_now_us();
 	float alpha, rise;
 	diatom_rect r;
@@ -899,7 +911,8 @@ static void bar_frame(void)
 		drawn_kind = g_osd_kind; drawn_level = g_osd_level; drawn_max = g_osd_max;
 		drawn_theme = g_osd_theme; drawn_alpha = alpha;
 	}
-	g_bar_x = (int)roundf(OSDBAR_X * s);
+	/* In the panel's middle: OSDBAR_X is that on a 4:3 one */
+	g_bar_x = ((int)g_vinfo.xres - g_bar_w) / 2;
 	g_bar_y = (int)roundf((OSDBAR_Y - rise) * s);
 	r.x = g_bar_x > 0 ? g_bar_x : 0;
 	r.y = g_bar_y > 0 ? g_bar_y : 0;
@@ -2328,10 +2341,14 @@ static void hud_cpu_update(void)
 	g_hudc_style = st;
 	g_hudc_colors = colors;
 	g_hudc_rect.w = 0;
-	hud_size(text, 1.0f, &st, &w, &h);
+	/* At the launcher's scale, the panel's height over its 768 units: 1 on
+	 * the Brick, 0.9375 on the Smart Pro's 1280x720 (ZyperOS's
+	 * src/canvas.h) */
+	const float k = g_vinfo.yres < 768 ? (float)g_vinfo.yres / 768.0f : 1.0f;
+	hud_size(text, k, &st, &w, &h);
 	if (!w || w > 1024 || h > 128 || w > (int)g_vinfo.xres || h > (int)g_vinfo.yres) return;
-	hud_render(g_hudc_px, w, h, w, 1.0f, text, &st, &colors, false);
-	hud_place(&st, 1.0f, w, h, (int)g_vinfo.xres, (int)g_vinfo.yres, &x, &y);
+	hud_render(g_hudc_px, w, h, w, k, text, &st, &colors, false);
+	hud_place(&st, k, w, h, (int)g_vinfo.xres, (int)g_vinfo.yres, &x, &y);
 	if (x < 0 || y < 0 || x + w > (int)g_vinfo.xres || y + h > (int)g_vinfo.yres) return;
 	g_hudc_rect = (diatom_rect){ x, y, w, h };
 }
@@ -2761,6 +2778,16 @@ void diatom_port_input_poll(void)
 				pad_resync();
 				continue;
 			}
+			/* A stick: to libretro's range from the pad's own */
+			if (ev[i].type == EV_ABS && g_axis_max > 0) {
+				int k2 = ev[i].code == ABS_X ? 0 : ev[i].code == ABS_Y ? 1 :
+				         ev[i].code == ABS_RX ? 2 : ev[i].code == ABS_RY ? 3 : -1;
+				long v = (long)ev[i].value * 0x7fff / g_axis_max;
+
+				if (k2 >= 0)
+					g_axes[k2] = (int16_t)(v > 0x7fff ? 0x7fff : v < -0x7fff ? -0x7fff : v);
+				continue;
+			}
 			if (ev[i].type != EV_KEY || ev[i].value == 2) continue;
 			if (g_input_debug) {
 				char msg[48];
@@ -2780,6 +2807,13 @@ void diatom_port_input_poll(void)
 }
 
 uint32_t diatom_port_input_state(void) { return g_buttons; }
+
+bool diatom_port_input_axes(int16_t axes[4])
+{
+	if (g_axis_max <= 0) return false;
+	memcpy(axes, g_axes, sizeof g_axes);
+	return true;
+}
 
 /* No motor yet: GPIO 227 and the bldo3 rail wait for the tester's buzz
  * (the Brick parity plan's item 14), and `scale` will set the voltage */

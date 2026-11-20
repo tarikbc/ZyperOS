@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* The TrimUI Brick's core options (src/device/profile.h, coreopts), given
  * at run time under the player's own rows (src/coreopts.h); the ones every
- * device takes are in src/coreopts.c.
+ * device takes are in src/coreopts.c. The Smart Pro takes these too: the
+ * same chip and GPU, and its build links the Brick's platform layer.
  *
  * None is measured on a Brick yet. They start as the Pixel 2's
  * (src/device/pixel2_coreopts.c), whose reasons are written there: those

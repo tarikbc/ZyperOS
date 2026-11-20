@@ -6,7 +6,9 @@
 
 BRICK_KMODS_VERSION = local
 # make brick-kernel's output, in the build volume
-BRICK_KMODS_SITE = /work/brick-kernel/images
+# The board's own build (make brick-kernel, or make smartpro-kernel for the
+# TrimUI Smart Pro, which runs the Brick's kernel with its own config)
+BRICK_KMODS_SITE = /work/$(PLASTRON_DEVICE)-kernel/images
 BRICK_KMODS_SITE_METHOD = local
 BRICK_KMODS_LICENSE = GPL-2.0 (brick-pad, cfg80211, xr829, bluetooth, hci_uart, xradio_bt*), Dual MIT/GPL-2.0 (pvrsrvkm, dc_sunxi)
 # Built files, not source: their source is the Brick's kernel recipe

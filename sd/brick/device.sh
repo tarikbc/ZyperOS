@@ -9,8 +9,19 @@
 # around TrimUI's firmware (its input daemon, LEDs, boot logo and splash,
 # procd's services) went with it: the system is plastron, ours from the
 # kernel up.
+#
+# The TrimUI Smart Pro runs the Brick's system as a device of its own, so this
+# is its device.sh too (sd/smartpro/device.sh links here). The two differ only
+# in their folder, which is each one's id as the launcher's is (P_USERDATA,
+# src/device/brick.c). Which one this is comes from the system's device line
+# (/etc/zyperos/system, plastron's zyperos package), as its start script
+# (/etc/init.d/brick) reads it; any other line, or none, is the Brick.
+case $(sed -n 's/^device //p' /etc/zyperos/system 2> /dev/null) in
+smartpro) DEVICE_ID=smartpro ;;
+*) DEVICE_ID=brick ;;
+esac
 
-export USERDATA_PATH=$SDCARD/.userdata/brick
+export USERDATA_PATH=$SDCARD/.userdata/$DEVICE_ID
 export SDL_VIDEODRIVER=pvrfb SDL_RENDER_DRIVER=opengles2
 # .asoundrc named as a top-level ALSA config file, and not only reached through
 # alsa.conf's @hooks load: alsa-lib re-reads its config at the next open when a
@@ -45,7 +56,9 @@ WIFI_DOWN="the radio did not come up"
 # until 2026-10-21. A card that still has it and not the new one has it renamed
 # once, which on the same card costs nothing. With both there, neither is
 # touched: merging two sets of settings is not a guess to make at boot.
-OLD_USERDATA=$SDCARD/.userdata/tg3040
+# The Brick's alone: a Smart Pro never had that folder.
+OLD_USERDATA=
+[ "$DEVICE_ID" = brick ] && OLD_USERDATA=$SDCARD/.userdata/tg3040
 device_card() {
 	[ -d "$OLD_USERDATA" ] && [ ! -e "$USERDATA_PATH" ] &&
 		mv "$OLD_USERDATA" "$USERDATA_PATH"

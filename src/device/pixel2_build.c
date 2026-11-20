@@ -11,6 +11,7 @@ const dev_build device_build_pixel2 = {
 	.arch = "aarch64",
 	.mcpu = "cortex-a53",
 	.cpu = "cortex-a35",
+	.backend = "pixel2",
 	.diatom_port = "pixel2",
 	.table = "mbr",
 	.part_boot = 1,

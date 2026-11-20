@@ -5,7 +5,7 @@
 #
 #   1. mk/cross.mk, for each device: a VERSION without "-kit" compiles no
 #      ZYPEROS_KIT_BUILD and links no src/device/<id>_kit.c; a kit's VERSION
-#      adds the define and the device's kit file, where it has one, and
+#      adds the define and its platform layer's kit file, where it has one, and
 #      nothing else to the line or the sources.
 #   2. The files with a kit's hooks, compiled on the host without the define
 #      and with it: without, no kit symbol or string in their objects and the
@@ -54,8 +54,11 @@ for d in $(ls config/device/*.mk | sed 's|.*/||; s|\.mk$||'); do
 	vars "$d" 9.9.9-kit.1 > "$T/vars-kit" 2>&1 || { ck 1 "$d: mk/cross.mk's line for a kit: $(head -3 "$T/vars-kit")"; continue; }
 	! grep -q 'ZYPEROS_KIT_BUILD' "$T/vars-rel" && ! grep -q '_kit\.c' "$T/vars-rel"
 	ck $? "$d: a release's build has no ZYPEROS_KIT_BUILD and no kit file"
+	# The kit file is its platform layer's (ZYDEV_BACKEND): the Smart Pro
+	# runs the Brick's
+	b=$(sed -n 's/^ZYDEV_BACKEND = //p' "config/device/$d.mk")
 	kitfile=
-	[ -f "src/device/${d}_kit.c" ] && kitfile=" src/device/${d}_kit.c"
+	[ -f "src/device/${b:-$d}_kit.c" ] && kitfile=" src/device/${b:-$d}_kit.c"
 	# The kit's line and sources less what a kit adds, its version made the
 	# release's: the release's own, word for word
 	sed -e 's/9\.9\.9-kit\.1/9.9.9/' -e 's/ -DZYPEROS_KIT_BUILD$//' -e "s|^\(SRC=.*\)${kitfile}\$|\\1|" \
