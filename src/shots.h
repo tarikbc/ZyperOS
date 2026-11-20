@@ -25,6 +25,7 @@ extern const char *shot_look;
 extern const char *shot_look_page;
 extern int shot_homesys;        /* --homesys-page ROW: MENU > Home Systems' page, or -1 */
 extern int shot_lights;         /* --lights-page ROW: MENU > Side Lights' page, or -1 */
+extern int shot_coreopts;       /* --coreopts-page ROW: a system's Core Settings page, or -1 */
 extern int shot_look_row;
 extern int shot_kb_layer;
 extern int shot_kb;

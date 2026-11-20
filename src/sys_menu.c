@@ -520,6 +520,8 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 		full[SM_CORE]    = (menu_row){ T(S_SYSMENU_CORE),         b->b, u->core_choice };
 		/* The Nintendo DS's game language, a choice stepped like the core */
 		full[SM_DSLANG]  = (menu_row){ T(S_SYSMENU_DSLANG), u->dslang, u->dslang != NULL };
+		/* The core's own options (mapper, sound cart, ...): opens a page */
+		full[SM_COREOPTS] = (menu_row){ T(S_SYSMENU_CORE_SETTINGS), NULL, true };
 		/* Off or Its Games, the Game Boys' on mGBA (src/sgbmode.h) */
 		full[SM_SGB]     = (menu_row){ T(S_SYSMENU_SGB), u->sgb, u->sgb != NULL };
 		/* Smooth or Exact, how its games meet the screen (src/pacing.h) */

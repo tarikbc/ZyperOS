@@ -3,13 +3,15 @@
 #define ZYPEROS_INGAME_SCREEN_H
 
 /* The in-game menu (DESIGN.md 11.4): the menu over a paused game or a port,
- * its tabs (Game, Display, Controls, Achievements), the save slots' strip,
- * the Controls page, the achievement list and card, and a game's synopsis.
- * The screens are src/ingame_screen.c; the rows are src/game_menu.c's. */
+ * its tabs (Game, Display, Core, Controls, Achievements), the save slots'
+ * strip, the Controls page, the achievement list and card, and a game's
+ * synopsis. The screens are src/ingame_screen.c; the rows are
+ * src/game_menu.c's. */
 #include "achtab.h"
 #include "achtab_screen.h"
 #include "app.h"
 #include "controls.h"
+#include "coreopts_page.h"
 #include "ctltab.h"
 #include "ctltab_screen.h"
 #include "menu_panel.h"
@@ -35,7 +37,8 @@ typedef struct {
 	gm_bufs      bufs;
 	menu_style   st;
 	bool         resume;
-	menu_tabs    tabs;     /* Game, Display, Controls; none over a port */
+	menu_tabs    tabs;     /* Game, Display, Core, Controls, Achievements;
+	                        * none over a port */
 	int          seen;     /* the runner's cursor (menu_style.sel_out) */
 	/* The Controls tab's rows' value colors and sound classes, which are
 	 * more than gm_bufs holds (src/ctltab_screen.h) */

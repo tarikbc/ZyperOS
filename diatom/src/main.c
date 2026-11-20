@@ -1165,6 +1165,24 @@ void diatom_on_audio_batch_store(const int16_t *data, size_t frames)
 	diatom_audio_push(data, frames);
 }
 
+/* ZyperOS's language codes (src/i18n.h) → libretro's RETRO_LANGUAGE_*, so a
+ * core's SET_CORE_OPTIONS_V2_INTL local set matches the UI. Unknown → English. */
+static unsigned language_from_code(const char *code)
+{
+	if (!code || !code[0]) return RETRO_LANGUAGE_ENGLISH;
+	if (!strcmp(code, "fr")) return RETRO_LANGUAGE_FRENCH;
+	if (!strcmp(code, "es")) return RETRO_LANGUAGE_SPANISH;
+	if (!strcmp(code, "de")) return RETRO_LANGUAGE_GERMAN;
+	if (!strcmp(code, "it")) return RETRO_LANGUAGE_ITALIAN;
+	if (!strcmp(code, "ja")) return RETRO_LANGUAGE_JAPANESE;
+	if (!strcmp(code, "pt-BR") || !strcmp(code, "pt-br") || !strcmp(code, "pt"))
+		return RETRO_LANGUAGE_PORTUGUESE_BRAZIL;
+	if (!strcmp(code, "zh-Hans") || !strcmp(code, "zh-hans") ||
+	    !strcmp(code, "zh-CN") || !strcmp(code, "zh") || !strcmp(code, "zh-cn"))
+		return RETRO_LANGUAGE_CHINESE_SIMPLIFIED;
+	return RETRO_LANGUAGE_ENGLISH;
+}
+
 static void usage(void)
 {
 	int i;
@@ -1173,6 +1191,7 @@ static void usage(void)
 		"              [--display <mode>] [--filter nearest|sharp|shimmerless]\n"
 		"              [--strength 0-100]  an old screen's filter, percent (crt, scanlines, lcd)\n"
 		"              [--channels stereo|mono|left|right]\n"
+		"              [--language <code>]  UI language (en, fr, de, …); core option labels\n"
 		"              [--load-state <file>] [--state-on-exit <file>]\n"
 		"              [--firmware <name>]  required in --system, checked first\n"
 		"              [--frames <n>] [--shot <file.bmp>] [--preview-on-exit <file.bmp>]\n"
@@ -4020,6 +4039,8 @@ int main(int argc, char **argv)
 		else if (!strcmp(argv[i], "--rom") && i + 1 < argc) rom_path = argv[++i];
 		else if (!strcmp(argv[i], "--system") && i + 1 < argc) g_policy.system_dir = argv[++i];
 		else if (!strcmp(argv[i], "--save") && i + 1 < argc) g_policy.save_dir = argv[++i];
+		else if (!strcmp(argv[i], "--language") && i + 1 < argc)
+			g_policy.language = language_from_code(argv[++i]);
 		else if (!strcmp(argv[i], "--frames") && i + 1 < argc) limit = strtol(argv[++i], NULL, 10);
 		else if (!strcmp(argv[i], "--shot") && i + 1 < argc) shot_path = argv[++i];
 		else if (!strcmp(argv[i], "--border") && i + 1 < argc) g_border_arg = argv[++i];

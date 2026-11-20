@@ -14,6 +14,7 @@
 #include "ingame_screen.h"
 #include "cheats_screen.h"
 #include "hudmenu_screen.h"
+#include "i18n.h"
 #include "mp4c.h"
 #include "net.h"
 #include "notice.h"
@@ -79,45 +80,11 @@ static void fallback_tick(void)
 
 static void respawn_resident(app *a)
 {
-	char elf[CFG_STR * 2], save[CFG_STR * 2], bios[CFG_STR * 2];
-	char cores[CFG_STR * 2];
-	char *argv[10];
-	long pid;
 	(void)a;
-
+	/* Already up: leave it. Gone (crash, fallback game): the same start
+	 * MENU > Language uses (plat_resident_restart), with --language. */
 	if (plat_resident_ready()) return;
-
-	/* The resident is Diatom. It maps every core in the directory it is given
-	 * and keeps them, so the directory is the only thing handed over and
-	 * nothing here changes when a system is added. */
-	snprintf(elf, sizeof elf, "%s/diatom", P_ROOT);
-	if (access(elf, X_OK) != 0) return;
-	snprintf(save, sizeof save, "%s/Saves", P_CARD);
-	snprintf(bios, sizeof bios, "%s/Bios", P_CARD);
-	/* --cores here as well as in launch.sh. There are two places that start
-	 * the resident emulator - the boot script and this - and a flag added to
-	 * only one of them means every restart after the first silently loses it.
-	 * That is exactly what happened: the log showed a premapped boot, then a
-	 * dlopen on every launch once this path had restarted it. */
-	snprintf(cores, sizeof cores, "%s/cores", P_ROOT);
-	argv[0] = elf;
-	argv[1] = (char *)"--socket";
-	argv[2] = (char *)plat_resident_socket();
-	argv[3] = (char *)"--cores";  argv[4] = cores;
-	argv[5] = (char *)"--save";   argv[6] = save;
-	argv[7] = (char *)"--system"; argv[8] = bios;
-	argv[9] = NULL;
-	/* Its pid goes in the pid file, where launch.sh looks for the running
-	 * resident before it starts one (plat_resident_note_pid says why) */
-	pid = plat_spawn_detached_pid(argv, NULL, P_ROOT);
-	if (pid <= 0)
-		fprintf(stderr, "resident emulator is gone, and diatom would not start: %s\n",
-		        strerror(errno));
-	else if (!plat_resident_note_pid(pid))
-		fprintf(stderr, "resident emulator is gone, started diatom (pid %ld), but could "
-		        "not write %s\n", pid, plat_resident_pidfile());
-	else
-		fprintf(stderr, "resident emulator is gone, started diatom (pid %ld)\n", pid);
+	plat_resident_restart();
 }
 
 /* The Ports shelf. A port is a Linux program with a script of its own - a
@@ -1391,6 +1358,7 @@ void launch(app *a)
 		argv[n++] = (char *)"--rom";             argv[n++] = rom;
 		argv[n++] = (char *)"--save";            argv[n++] = save;
 		argv[n++] = (char *)"--system";          argv[n++] = bios;
+		argv[n++] = (char *)"--language";        argv[n++] = (char *)lang_code(i18n_lang());
 		argv[n++] = (char *)"--display";
 		argv[n++] = (char *)DMODES[a->view[o].dmode].name;
 		argv[n++] = (char *)"--filter";

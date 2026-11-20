@@ -668,6 +668,28 @@ de = Core
 ja = コア
 it = Core
 
+[sysmenu.core_settings]
+note = A system menu row and an in-game menu row: opens the page of that core's options (mapper, sound cart, ...)
+en = Core Settings
+zh-Hans = 核心设置
+es = Ajustes del núcleo
+pt-BR = Ajustes do núcleo
+fr = Réglages du cœur
+de = Core-Einstellungen
+ja = コア設定
+it = Impostazioni core
+
+[sysmenu.core_settings_empty]
+note = Core Settings when this core has nothing to configure (no options, or none known yet)
+en = No options.
+zh-Hans = 无选项。
+es = Sin opciones.
+pt-BR = Sem opções.
+fr = Aucune option.
+de = Keine Optionen.
+ja = オプションはありません。
+it = Nessuna opzione.
+
 [sysmenu.dslang]
 note = A system menu row, on the Nintendo DS shelf: the language its games speak, whatever the firmware.bin on the card was dumped from
 en = Game Language

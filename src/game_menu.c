@@ -235,6 +235,7 @@ int gm_tab_rows(const gm_ui *u, gm_tab t, gm_row *ids)
 		if (u->quick) ids[n++] = GM_QUICK;
 		if (u->discs > 1) ids[n++] = GM_DISC;
 		if (u->player2) ids[n++] = GM_PLAYER2;
+		ids[n++] = GM_COREOPTS;
 		if (u->cheats) ids[n++] = GM_CHEATS;
 		ids[n++] = GM_CHEEVOS;
 		ids[n++] = GM_RESET;
@@ -305,8 +306,10 @@ int gm_rows(const gm_ui *u, gm_tab t, menu_row *out, gm_bufs *b)
 		S_GAMEMENU_RESET,
 		S_GAMEMENU_QUIT, S_GAMEMENU_SCREENS, S_GAMEMENU_SWAP, S_GAMEMENU_STYLUS,
 		S_GAMEMENU_PAK, S_PLAYER2_ROW, S_GAMEMENU_DISC, S_GAMEMENU_STRENGTH,
-		S_GAMEMENU_UNDO, S_GAMEMENU_HUD, S_GAMEMENU_BORDER, S_GAMEMENU_BORDER_COLOR, S_CHEATS_ROW,
+		S_GAMEMENU_UNDO, S_GAMEMENU_HUD, S_SYSMENU_CORE_SETTINGS,
+		S_GAMEMENU_BORDER, S_GAMEMENU_BORDER_COLOR, S_CHEATS_ROW,
 	};
+
 	menu_row full[GM_MAX_ROWS];
 	gm_row ids[GM_MAX_ROWS];
 	int i, n;

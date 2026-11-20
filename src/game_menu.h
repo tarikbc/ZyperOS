@@ -203,6 +203,9 @@ typedef enum {
 	/* On-Screen Stats over the game (src/hud.h), on or off, and A opens
 	 * its page (src/hudmenu.h): the Display tab's last row */
 	GM_HUD,
+	/* Core Settings (src/coreopts_page.h): A opens the page of this system's
+	 * core options, as the shelf's Core Settings row does */
+	GM_COREOPTS,
 	/* Border (src/border.h), under Display, while the mode leaves room */
 	GM_BORDER,
 	/* Handheld Color, under Border while it is a Handheld frame that comes
@@ -302,14 +305,15 @@ const char *gm_disc_value(const gm_ui *u, char *out, size_t n, bool (*fits)(cons
 int gm_disc_step(int disc, int discs, int d);
 
 /* The in-game menu is in tabs, MENU's tab row (DESIGN.md
- * 11.45): Game, Display and Controls,
- * L1 and R1 going round them. gm_tab_name is a tab's name in the language
- * that is on, the first for a tab past the ends.
+ * 11.45): Game, Display, Controls and Achievements, L1 and R1 going round
+ * them. gm_tab_name is a tab's name in the language that is on, the first
+ * for a tab past the ends.
  *
  * gm_tab_rows says which rows a tab has, in the order shown:
  *   Game      Continue, Save, Load, Quick Slot (a system that keeps states),
  *             Disc (a game on more than one disc), Player 2 (an NES game),
- *             Cheats, Achievements, Reset, Quit
+ *             Core Settings (A opens src/coreopts_page.c), Cheats,
+ *             Achievements, Reset, Quit
  *   Display   Display, Shader, Strength (an old screen's shader), and a DS
  *             game's Screens, Swap Screens, Stylus
  *   Controls  none from here: its rows are src/ctltab.c's
