@@ -56,9 +56,10 @@ settles something the lab did not ask about, it says so and gives the reason.
 
 | | |
 |---|---|
-| Design space | 1024 x 768 units, landscape (`ZYPEROS_SCREEN_W/H`) |
+| Design space (the canvas) | 768 units high on every handheld; as wide as the panel's shape makes it, to the grid: 1024 on 4:3, 1368 on 16:9 (`ZYPEROS_SCREEN_W/H`, `src/canvas.h`). A screen takes its places from the canvas's edges, middle and columns, never from a typed 1024 |
 | GKD Pixel 2 panel | 640 x 480 shown, 0.625 px per unit; the panel is 480x640 portrait mounted turned, and the picture is turned onto it (`plat_save_screen`, plastron's SDL patch) |
 | TrimUI Brick | 1024 x 768, 1 px per unit |
+| TrimUI Smart Pro | the 1368 x 768 canvas on its 1280 x 720 panel (turned by its kernel), 0.9375 px per unit; no bars |
 | Grid | 8 units, which is exactly 5 panel pixels; 4 units for fine steps |
 | Screen inset | 24 units from every edge for text and marks |
 

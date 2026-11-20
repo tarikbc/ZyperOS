@@ -99,7 +99,10 @@ static void usb_drive(app *a);
 #define UD_SPEED_H   80          /* the speed's slot: the title face's line */
 #define UD_TOTAL_CY  488
 #define UD_TOTAL_H   48          /* the total's: the meta face's */
-#define UD_SAVE_W    640
+/* The saved pictures: 0.625 of the canvas both ways, 640 x 480 on a 4:3 one
+ * (the device's plat_save_screen_hidden makes them so; usbdrive takes a
+ * picture's width from its file and the atlas's from its size line) */
+#define UD_SAVE_W    (ZYPEROS_SCREEN_W * 5 / 8)
 #define UD_SAVE_H    480
 
 /* The tokens of a number, as plastron's usbdrive makes them (its
@@ -375,7 +378,8 @@ void usb_drive_draw(app *a, int which)
 		                            OSDBAR_H))) {
 			SDL_SetTextureBlendMode(tx, SDL_BLENDMODE_BLEND);
 			SDL_UpdateTexture(tx, NULL, px, OSDBAR_W * 4);
-			SDL_RenderCopy(a->r, tx, NULL, &(SDL_Rect){ OSDBAR_X, OSDBAR_Y, OSDBAR_W, OSDBAR_H });
+			SDL_RenderCopy(a->r, tx, NULL, &(SDL_Rect){ (ZYPEROS_SCREEN_W - OSDBAR_W) / 2, OSDBAR_Y, OSDBAR_W,
+			                                           OSDBAR_H });
 			SDL_DestroyTexture(tx);
 		}
 	}
@@ -450,7 +454,7 @@ bool usb_drive_atlas(app *a, const char *raw, const char *txt, FILE *shot)
  * (src/osdbar.h, the one every other place shows) at each rung, already laid
  * on the page's ground, where it sits at the top. False where the backlight
  * has no ladder to hand on (the Brick). */
-#define UD_BAR_X ((OSDBAR_X * 5) / 8)
+#define UD_BAR_X ((ZYPEROS_SCREEN_W - OSDBAR_W) / 2 * 5 / 8)   /* OSDBAR_X on 4:3: in the middle */
 #define UD_BAR_Y ((OSDBAR_Y * 5) / 8)
 #define UD_BAR_W ((OSDBAR_W * 5 + 7) / 8)
 #define UD_BAR_H ((OSDBAR_H * 5 + 7) / 8)

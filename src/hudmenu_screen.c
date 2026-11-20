@@ -119,11 +119,11 @@ static void hm_band(app *a, const SDL_Rect *r)
 	const hud_style *st = &g_hm.st;
 	const bool right = st->corner == HUD_TOP_RIGHT || st->corner == HUD_BOTTOM_RIGHT;
 	const bool top = st->corner == HUD_TOP_LEFT || st->corner == HUD_TOP_RIGHT;
-	const int cy = top ? 0 : 768 - r->h;
+	const int cy = top ? 0 : ZYPEROS_SCREEN_H - r->h;
 	const ds_rgb ink = theme()->ink, edge = theme()->edge;
 	SDL_Texture *tex = g_hm.on ? line_tex(a->r, st, &w_, &h_) : NULL;
 	SDL_Rect game;
-	int cx = right ? 1024 - r->w : 0, x = 0, y = 0;
+	int cx = right ? ZYPEROS_SCREEN_W - r->w : 0, x = 0, y = 0;
 
 	/* The strip from the corner's side, or from a little left of a line
 	 * longer than it, so the whole line shows */

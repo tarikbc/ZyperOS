@@ -12,10 +12,11 @@
                                                 alone (src/device/profile.h)
 
 Every screen is shot as each handheld ZyperOS runs on (DEVICES: the Pixel 2,
-the README's, first, then the Brick), with its own keys, rows and words: the
-Brick's MENU is the word on its key, wider than the Pixel 2's three dots, and
-it has rows the Pixel 2 has not (Bluetooth) and the other way round (Side
-Lights). A string must fit on each, and is drawn if either draws it.
+the README's, first, then the Brick and the Smart Pro), with its own keys,
+rows and words: the Brick's MENU is the word on its key, wider than the
+Pixel 2's three dots, and it has rows the Pixel 2 has not (Bluetooth) and
+the other way round (Side Lights); the Smart Pro's canvas is 1368 units wide
+(src/canvas.h). A string must fit on each, and is drawn if any draws it.
 
 A layout drawn for English meets words up to half again as long in French or
 Portuguese, and Chinese's taller face. The launcher, built for the host, says
@@ -63,8 +64,9 @@ _spec.loader.exec_module(R)
 
 # The handhelds every screen is shot as: the README's first, whose every row
 # a shot finds (a missing one is a renamed row), then the rest, which may lack
-# one (the Brick's Strength row, with no GPU shaders)
-DEVICES = ["pixel2", "brick"]
+# one (the Brick's Strength row, with no GPU shaders); the Smart Pro for its
+# wide canvas
+DEVICES = ["pixel2", "brick", "smartpro"]
 
 # The string IDs of a text the launcher drew: src/ui.c says the text, not the
 # ID (a label is copied into a row's buffer, or formatted around a name, and

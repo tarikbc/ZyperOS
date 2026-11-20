@@ -34,8 +34,8 @@ ds_page_frame ds_page_frame_of(bool zyper)
 	/* in the body: two tiles from the insets, and a line of words under
 	 * them (its middle DS_PAGE_NEWS_DROP under their foot) */
 	tiles = ds_flex_add(&F, body, &(ds_box){ .dir = DS_ROW, .justify = DS_J_BETWEEN, .h = DS_PAGE_TILE_H });
-	t0 = ds_flex_add(&F, tiles, &(ds_box){ .w = DS_PAGE_TILE_W, .h = DS_PAGE_TILE_H });
-	t1 = ds_flex_add(&F, tiles, &(ds_box){ .w = DS_PAGE_TILE_W, .h = DS_PAGE_TILE_H });
+	t0 = ds_flex_add(&F, tiles, &(ds_box){ .w = ds_page_tile_w(), .h = DS_PAGE_TILE_H });
+	t1 = ds_flex_add(&F, tiles, &(ds_box){ .w = ds_page_tile_w(), .h = DS_PAGE_TILE_H });
 	news = ds_flex_add(&F, body, &(ds_box){ .h = DS_LINE_META });
 	keys = ds_flex_add(&F, root, &(ds_box){ .dir = DS_COL, .gap = DS_PAGE_LINE_OVER });
 	line = ds_flex_add(&F, keys, &(ds_box){ .h = DS_HINT_GLYPH });

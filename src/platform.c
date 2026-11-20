@@ -602,7 +602,10 @@ void plat_draw_osd(SDL_Renderer *r)
 		osd_dirty = false;
 	}
 	SDL_SetTextureAlphaMod(osd_tex, (Uint8)(a * 255 + 0.5f));
-	SDL_RenderCopyF(r, osd_tex, NULL, &(SDL_FRect){ OSDBAR_X, OSDBAR_Y - rise, OSDBAR_W, OSDBAR_H });
+	/* In the canvas's middle (OSDBAR_X is a 4:3 canvas's, which Diatom and
+	 * portkeys share) */
+	SDL_RenderCopyF(r, osd_tex, NULL,
+	                &(SDL_FRect){ (ZYPEROS_SCREEN_W - OSDBAR_W) / 2, OSDBAR_Y - rise, OSDBAR_W, OSDBAR_H });
 }
 
 /* ---- Date & Time ---------------------------------------------------------- */

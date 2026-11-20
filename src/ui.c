@@ -1200,11 +1200,11 @@ static void fit_check(SDL_Renderer *r, const char *s, const SDL_Rect *dst, int a
 		for (char *c = fit_line[fit_lines].text; *c; c++) if (*c == '\n' || *c == '|') *c = ' ';
 		fit_lines++;
 	}
-	/* Past the screen's edge (the 1024 units' design space) */
+	/* Past the screen's edge (the canvas, src/canvas.h) */
 	over = FIT_MARGIN - dst->x;
-	if (dst->x + dst->w - (1024 - FIT_MARGIN) > over) over = dst->x + dst->w - (1024 - FIT_MARGIN);
+	if (dst->x + dst->w - (ZYPEROS_SCREEN_W - FIT_MARGIN) > over) over = dst->x + dst->w - (ZYPEROS_SCREEN_W - FIT_MARGIN);
 	if (over > 0) {
-		snprintf(head, sizeof head, "%d|screen 0..1024|", over);
+		snprintf(head, sizeof head, "%d|screen 0..%d|", over, ZYPEROS_SCREEN_W);
 		fit_say("overflow", head, s);
 	}
 }

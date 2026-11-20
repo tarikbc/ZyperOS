@@ -306,6 +306,29 @@ BRICK_BACK_MS = "4000"
 GLASS = (17, 19, 16)            # **ink**, Beard's glass
 
 
+def smartpro():
+    print("on the Smart Pro: its own handheld in the column a 16:9 canvas widens, every pose in "
+          "its kept box, the lit key on its side")
+    handheld_box("--device", "smartpro")
+    # The canvas is 1368 wide: the column from 0 to the lesson block's 620
+    col_l, col_r = (0, 82, 310, 442), (310, 82, 620, 442)
+    for th in ("light", "dark"):
+        for step, side in SMARTPRO_LIT_SIDE.items():
+            img = shot("sp-%s-%s" % (step, th), "--theme", th, "--device", "smartpro", "--tour", step, "2000")
+            if img is None:
+                continue
+            left, right = count(img, ACCENT, col_l), count(img, ACCENT, col_r)
+            ck(("l" in side) == (left > 30) and ("r" in side) == (right > 30),
+               "smartpro %s %s: the lit key is on the %s of the handheld (lit pixels left %d, right %d)"
+               % (th, step, {"l": "left", "r": "right", "lr": "both sides"}[side], left, right))
+
+
+# Where each lesson's lit keys are on the Smart Pro: the d-pad and L/R both
+# ends, A B X Y and START's lesson's SELECT at the right, MENU at the left,
+# the volume keys right of the middle, POWER left of it
+SMARTPRO_LIT_SIDE = {"move": "lr", "a": "r", "y": "r", "menu": "l", "vol": "r", "power": "l"}
+
+
 def brick():
     print("on the Brick: its own handheld beside each lesson, its key lit where it is, "
           "the front first and the shoulders from the back where a lesson has both, the block "
@@ -512,6 +535,7 @@ def main():
     pixel2()
     devices()
     brick()
+    smartpro()
     choices()
 
     if fails:

@@ -39,12 +39,11 @@
 
 static SDL_Window *win;
 static SDL_Renderer *ren;
-/* A panel of another shape than the picture (the Smart Pro's 16:9,
- * src/device/smartpro_profile.c): the picture is drawn into screen_tex, at
- * its own 1024x768, and plat_present scales it to the panel's height into
- * screen_dst, in the middle, black at each side. NULL where the panel is the
- * picture's shape (the Brick's, the host's desktop): the window is the
- * screen, as it always was. */
+/* A panel of another size than the canvas (src/canvas.h): the Smart Pro's
+ * 1280x720 under its 1368x768 canvas. The canvas is drawn into screen_tex,
+ * at its own size, and plat_present scales it onto the whole panel
+ * (screen_dst). NULL where the panel is the canvas (the Brick's 1024x768,
+ * the host's desktop): the window is the screen, as it always was. */
 static SDL_Texture *screen_tex;
 static SDL_Rect     screen_dst;
 /* A video picture under the screen for the next present (plat_video_under),
@@ -225,12 +224,12 @@ void plat_screen_finish(void)
 
 bool plat_screen_shader_in_frame(void) { return sfx_on(); }
 
-/* The picture onto a panel of another shape: black, the video under it if
- * there is one (at the panel's own resolution, its rectangle scaled as the
- * picture is), then the picture, the screens' shader on it already. Over a
- * video the picture went into a clear texture, which SDL's blend
- * premultiplied, so it goes over with ONE; with none it is copied as it is,
- * alpha ignored, as the Brick's window shows it. */
+/* The canvas onto a panel of another size: the video under it if there is
+ * one (at the panel's own resolution, its rectangle scaled as the canvas
+ * is), then the canvas, the screens' shader on it already. Over a video the
+ * canvas went into a clear texture, which SDL's blend premultiplied, so it
+ * goes over with ONE; with none it is copied as it is, alpha ignored, as the
+ * Brick's window shows it. */
 static void show_scaled(void)
 {
 	SDL_SetRenderTarget(ren, NULL);
@@ -238,9 +237,9 @@ static void show_scaled(void)
 	SDL_RenderClear(ren);
 	if (under.on) {
 		static SDL_BlendMode premul;
-		float s = (float)screen_dst.w / ZYPEROS_SCREEN_W;
-		SDL_FRect r = { screen_dst.x + under.dst.x * s, screen_dst.y + under.dst.y * s,
-		                under.dst.w * s, under.dst.h * s };
+		float sx = (float)screen_dst.w / ZYPEROS_SCREEN_W, sy = (float)screen_dst.h / ZYPEROS_SCREEN_H;
+		SDL_FRect r = { screen_dst.x + under.dst.x * sx, screen_dst.y + under.dst.y * sy,
+		                under.dst.w * sx, under.dst.h * sy };
 		SDL_Rect bg = screen_dst;
 
 		if (!premul)
@@ -261,7 +260,7 @@ static void show_scaled(void)
 }
 
 /* The Brick's panel is the screen, so drawing to the screen is drawing to the
- * window (on a panel of another shape, show_scaled). The first present tells
+ * window (on a panel of another size than the canvas, show_scaled). The first present tells
  * the splash first, and goes on the kernel's clock beside the splash's own
  * lines, so the boot from power to shelf reads off one log, as on the
  * Pixel 2. The draw color is put back, as ZyperOS expects it to stay. */
@@ -304,11 +303,11 @@ void plat_present(void)
 	/* The next frame into bend_tex while the curve is on */
 	if (bending()) SDL_SetRenderTarget(ren, screen_target());
 }
-/* The window, or screen_tex on a panel of another shape, or bend_tex */
+/* The window, or screen_tex on a panel of another size, or bend_tex */
 void plat_draw_to_screen(void) { SDL_SetRenderTarget(ren, screen_target()); }
 
 /* The Brick's screen is its panel: the picture goes straight into the frame,
- * and what is drawn after it lands on top of it. On a panel of another shape
+ * and what is drawn after it lands on top of it. On a panel of another size
  * the picture waits for the present (show_scaled), at the panel's own
  * pixels, and the screen is cleared to nothing, so it shows through wherever
  * this frame draws nothing; under CRT Curved it goes into the frame as on the
@@ -342,17 +341,18 @@ bool plat_save_screen(const char *path) { (void)path; return false; }
 
 #ifdef __linux__
 /* Flash Drive's pictures for usbdrive (src/usbdrive_screen.c): the frame
- * just drawn, never shown, read back and made 640x480, the size usbdrive's
- * atlas is laid out in on every device, landscape (the Brick's panel is not
- * turned), as raw XRGB8888. usbdrive's page on the Brick (plastron's
+ * just drawn, never shown, read back and made 0.625 of the canvas, 640x480
+ * on a 4:3 one and 855x480 on the Smart Pro's 1368x768, the size usbdrive's
+ * atlas is laid out in, landscape (the Brick's panel is not turned), as raw
+ * XRGB8888. usbdrive's page on the Brick (plastron's
  * package/usbdrive/src/panel_fb.c) scales it up to the panel again. Each
  * picture is the average of the 1.6 x 1.6 frame pixels under it, two taps a
  * way, so text keeps its weight. A few frames at Flash Drive's start: a
  * read back here costs nothing a game would see. */
-/* usbdrive's pictures' size on every device: src/usbdrive_screen.c's
- * UD_SAVE_W and UD_SAVE_H, the units its atlas is written in (a file's
- * format, not a place on this screen) */
-#define SAVE_W 640
+/* usbdrive's pictures' size: src/usbdrive_screen.c's UD_SAVE_W and
+ * UD_SAVE_H, the units its atlas is written in (a file's format, not a
+ * place on this screen) */
+#define SAVE_W (ZYPEROS_SCREEN_W * 5 / 8)
 #define SAVE_H 480
 bool plat_save_screen_hidden(const char *path)
 {
@@ -437,14 +437,16 @@ bool plat_video_init(void)
 		return true;
 	}
 #endif
-	/* The panel as it is seen, landscape: the screen itself where it is
-	 * the picture's shape; a wider one (the Smart Pro's 1280x720, which its
-	 * kernel turns from the 720x1280 panel) gets the picture scaled to its
-	 * height, in the middle (show_scaled). */
+	/* The panel as it is seen, landscape (the Smart Pro's kernel turns its
+	 * 720x1280 panel into a 1280x720 framebuffer): the canvas itself where
+	 * it is the panel's size, else the canvas scaled onto it (show_scaled).
+	 * A shot's hidden window is the canvas: the shot is the canvas's pixels. */
 	const device_profile *p = plat_profile();
-	bool wide = p->screen.aspect_w * 3 != p->screen.aspect_h * 4;
-	int ww = wide ? (p->screen.turn % 180 ? p->screen.panel_h : p->screen.panel_w) : ZYPEROS_SCREEN_W;
-	int wh = wide ? (p->screen.turn % 180 ? p->screen.panel_w : p->screen.panel_h) : ZYPEROS_SCREEN_H;
+	int pw = p->screen.turn % 180 ? p->screen.panel_h : p->screen.panel_w;
+	int ph = p->screen.turn % 180 ? p->screen.panel_w : p->screen.panel_h;
+	bool scaled = !headless && (pw != ZYPEROS_SCREEN_W || ph != ZYPEROS_SCREEN_H);
+	int ww = scaled ? pw : ZYPEROS_SCREEN_W;
+	int wh = scaled ? ph : ZYPEROS_SCREEN_H;
 
 	win = SDL_CreateWindow("ZyperOS", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, ww, wh,
 	                       headless ? SDL_WINDOW_HIDDEN : SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
@@ -459,20 +461,17 @@ bool plat_video_init(void)
 		return false;
 	}
 	SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
-	if (wide) {
+	if (scaled) {
 		screen_tex = SDL_CreateTexture(ren, PLAT_TARGET_FORMAT, SDL_TEXTUREACCESS_TARGET,
 		                               ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H);
 		if (!screen_tex) {
 			fprintf(stderr, "screen texture: %s\n", SDL_GetError());
 			return false;
 		}
-		screen_dst.h = wh;
-		screen_dst.w = ZYPEROS_SCREEN_W * wh / ZYPEROS_SCREEN_H;
-		screen_dst.x = (ww - screen_dst.w) / 2;
-		screen_dst.y = 0;
+		screen_dst = (SDL_Rect){ 0, 0, ww, wh };
 		SDL_SetRenderTarget(ren, screen_tex);
-		fprintf(stderr, "video: a %dx%d panel, the screen scaled to %dx%d in its middle\n",
-		        ww, wh, screen_dst.w, screen_dst.h);
+		fprintf(stderr, "video: the %dx%d canvas scaled onto a %dx%d panel\n",
+		        ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H, ww, wh);
 	}
 	/* Whether vsync was GRANTED, not whether it was asked for. PRESENTVSYNC
 	 * is a request the driver may decline in silence, and the shelf loop has

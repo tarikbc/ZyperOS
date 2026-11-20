@@ -24,6 +24,7 @@
 #include <SDL.h>
 #include <stdbool.h>
 
+#include "canvas.h"
 #include "ds/glyph.h"
 #include "ds/layout.h"
 #include "menu.h"   /* menu_row, ROW_IS_NOTE */
@@ -84,5 +85,11 @@ void ds_page_meta(SDL_Renderer *r, const ds_page_frame *f, const menu_row *rows,
  * apart where they are wider than the page */
 void ds_page_foot(SDL_Renderer *r, const ds_page_frame *f, const char *const *keys,
                   const char *const *words, int n, int gap, int tight);
+
+/* A page's tile: two share the line from inset to inset, DS_PAGE_TILE_W
+ * on a 4:3 canvas, each half the extra width wider on a wider one (Tarik's
+ * pick, 2026-11-20: the tiles grow). The Scraper's, Achievements', the
+ * Downloads' and the transfer pages' tiles. */
+static inline int ds_page_tile_w(void) { return DS_PAGE_TILE_W + (canvas_w - 1024) / 2; }
 
 #endif

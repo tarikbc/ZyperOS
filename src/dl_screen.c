@@ -79,10 +79,12 @@
 #define DL_MARK     40             /* a kind's mark before its name */
 #define DL_ROW_PAD  DS_SECTION     /* a row's words in from its fill */
 #define DL_COUNT_MS 6              /* the count's share of a frame */
-#define DL_RING     14             /* arrivals kept: the run shows 7, done 14 */
+#define DL_RING     14             /* arrivals kept: the run shows 7 (11 on 16:9), done 14 */
 #define DL_LAND     520            /* an arrival's landing, ms (the Scraper's) */
 #define DL_BIG      360            /* the newest's square */
-#define DL_CELL     168            /* the six before it */
+#define DL_CELL     168            /* the ones before it, two rows */
+#define DL_CELL_MIN_GAP 8          /* between them at least: 3 a row on 4:3, 5 on 16:9 */
+#define DL_CELLS    ((DL_RING - 1) / 2 * 2)   /* the most the grid shows */
 #define DL_CELL_GAP DS_GRID_GAP
 #define DL_WALL     120            /* done's wall, two rows of seven */
 /* A kind page's system slot and its tiles' height: the Scraper's and the
@@ -789,8 +791,8 @@ static void kind_draw(dl_view *v, dl_frame *f, unsigned now)
 		}
 		tiles = ds_flex_add(&F, root, &(ds_box){ .dir = DS_ROW, .justify = DS_J_BETWEEN, .pad = { 0, 8, 0, 0 },
 		                                         .h = 8 + DL_TILE_H });
-		tile0 = ds_flex_add(&F, tiles, &(ds_box){ .w = DS_PAGE_TILE_W, .h = DL_TILE_H });
-		ds_flex_add(&F, tiles, &(ds_box){ .w = DS_PAGE_TILE_W, .h = DL_TILE_H });
+		tile0 = ds_flex_add(&F, tiles, &(ds_box){ .w = ds_page_tile_w(), .h = DL_TILE_H });
+		ds_flex_add(&F, tiles, &(ds_box){ .w = ds_page_tile_w(), .h = DL_TILE_H });
 		ds_flex_solve(&F);
 		for (i = 0; i < 9; i++) sr[i] = ds_flex_rect(&F, slot0 + i);
 		tq[0] = ds_flex_rect(&F, tile0);
@@ -1563,11 +1565,11 @@ static void run_draw(dl_view *v, unsigned now)
 	app *a = v->a;
 	TTF_Font *ft = ui_font(UI_F_TITLE), *fs = ui_font(UI_F_META);
 	ds_page_frame pf = page_top(a, 1.0f);
-	int hx = pf.head_x, m, done, total, cell0 = 0, sq;
+	int hx = pf.head_x, m, done, total, cell0 = 0, sq, nc;
 	float e = v->nring ? ease_out((float)(now - v->land_at) / DL_LAND) : 1.0f;
 	char fit[160], cnt[48], eta[48];
 	static ds_flex F;
-	SDL_FRect cell[6], big;
+	SDL_FRect cell[DL_CELLS], big;
 	const char *title, *folder;
 	ui_glyph km = UI_GLYPH_COVER, src = UI_GLYPH_CLOUD;
 	const dl_sys *s;
@@ -1606,26 +1608,30 @@ static void run_draw(dl_view *v, unsigned now)
 		ds_bar(a->r, bx, DS_PAGE_SUB_Y - UI_BAR_H / 2, w, total > 0 ? (int)((long long)w * (done > total ? total : done) / total) : 0, 255);
 	}
 	ui_text(a->r, fs, cnt, pf.x1, ui_cap_y(fs, DS_PAGE_SUB_Y), 1, UI_TEXT_DIM);
-	/* The body: the newest's square at the left, the six before it three by
-	 * two in what is left (the Scraper's run) */
+	/* The body: the newest's square at the left, the ones before it in two
+	 * rows in what is left, as many a row as it holds: three on a 4:3
+	 * canvas, more on a wider one (the Scraper's run) */
 	{
 		const int root = ds_flex_begin(&F, ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H,
 		                               &(ds_box){ .dir = DS_ROW, .gap = DL_CELL_GAP,
 		                                          .pad = { pf.body.x, pf.body.y, ZYPEROS_SCREEN_W - pf.body.x - pf.body.w,
 		                                                   ZYPEROS_SCREEN_H - pf.body.y - pf.body.h } });
 		const int grid_w = pf.body.w - DL_BIG - DL_CELL_GAP;
+		const int cols = canvas_fit_cols(grid_w, DL_CELL, DL_CELL_MIN_GAP, DL_CELLS / 2);
 		int grid, k;
 
+		nc = 2 * cols;
 		sq = ds_flex_add(&F, root, &(ds_box){ .w = DL_BIG, .h = DL_BIG });
 		grid = ds_flex_add(&F, root, &(ds_box){ .dir = DS_ROW, .wrap = true, .w = grid_w,
-		                                        .gap = (grid_w - 3 * DL_CELL) / 2, .line_gap = DL_CELL_GAP });
-		for (k = 0; k < 6; k++) {
+		                                        .gap = cols > 1 ? (grid_w - cols * DL_CELL) / (cols - 1) : 0,
+		                                        .line_gap = DL_CELL_GAP });
+		for (k = 0; k < nc; k++) {
 			int id = ds_flex_add(&F, grid, &(ds_box){ .w = DL_CELL, .h = DL_CELL });
 
 			if (!k) cell0 = id;
 		}
 		ds_flex_solve(&F);
-		for (k = 0; k < 6; k++) {
+		for (k = 0; k < nc; k++) {
 			SDL_Rect q = ds_flex_rect(&F, cell0 + k);
 
 			cell[k] = (SDL_FRect){ (float)q.x, (float)q.y, (float)q.w, (float)q.h };
@@ -1641,16 +1647,16 @@ static void run_draw(dl_view *v, unsigned now)
 		int k;
 
 		ui_round_rect(a->r, &(SDL_Rect){ (int)big.x, (int)big.y, (int)big.w, (int)big.h }, DS_RADIUS_ROW, ui_col(t->raised, 255));
-		for (k = 0; k < 6; k++)
+		for (k = 0; k < nc; k++)
 			ui_round_rect(a->r, &(SDL_Rect){ (int)cell[k].x, (int)cell[k].y, (int)cell[k].w, (int)cell[k].h }, DS_RADIUS_ROW,
 			              ui_col(t->raised, 160));
 	}
-	for (m = 6; m >= 0; m--) {
+	for (m = nc; m >= 0; m--) {
 		int k = m + 1;
-		SDL_FRect to = cell[m < 6 ? m : 5], from = m == 0 ? big : cell[m - 1];
+		SDL_FRect to = cell[m < nc ? m : nc - 1], from = m == 0 ? big : cell[m - 1];
 
 		if (k >= v->nring) continue;
-		if (m == 6) arrival_draw(v, &v->ring[k], from, (Uint8)(255 * (1.0f - e)), false);
+		if (m == nc) arrival_draw(v, &v->ring[k], from, (Uint8)(255 * (1.0f - e)), false);
 		else arrival_draw(v, &v->ring[k], (SDL_FRect){ from.x + (to.x - from.x) * e, from.y + (to.y - from.y) * e,
 		                                               from.w + (to.w - from.w) * e, from.h + (to.h - from.h) * e },
 		                  255, false);
@@ -3193,7 +3199,8 @@ void downloads_shot(app *a)
 		v.rp.resume_at = plat_now_ms() + 42000;
 		v.run_kind = -1;
 		v.t0 = now;
-		for (i = 6; i >= 0; i--)
+		/* Eleven: what a 16:9 run's grid shows; a 4:3 one shows seven */
+		for (i = 10; i >= 0; i--)
 			ring_add(&v, i == 0 ? DLK_CHEATS : i % 3 == 0 ? DLK_ACH : i % 3 == 1 ? DLK_COVERS : DLK_NAMES, NULL, SHOT_GAMES[i],
 			         SHOT_SYS[i % 9], i == 0 ? 129 : i % 3 ? 0 : 40 + i * 13);
 		v.land_at = now - DL_LAND;

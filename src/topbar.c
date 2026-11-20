@@ -133,11 +133,12 @@ void topbar_draw(SDL_Renderer *r, topbar *t, topbar_drawn *out)
 
 int topbar_half(const topbar_drawn *d)
 {
-	int half = 1024 / 2, gap = DS_GRID * 3;
+	const int mid = canvas_w / 2;
+	int half = mid, gap = DS_GRID * 3;
 
-	if (d->clock.w && 1024 / 2 - (d->clock.x + d->clock.w + gap) < half)
-		half = 1024 / 2 - (d->clock.x + d->clock.w + gap);
-	if (d->marks.w && d->marks.x - gap - 1024 / 2 < half)
-		half = d->marks.x - gap - 1024 / 2;
+	if (d->clock.w && mid - (d->clock.x + d->clock.w + gap) < half)
+		half = mid - (d->clock.x + d->clock.w + gap);
+	if (d->marks.w && d->marks.x - gap - mid < half)
+		half = d->marks.x - gap - mid;
 	return half < 0 ? 0 : half;
 }

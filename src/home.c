@@ -626,9 +626,15 @@ static void restore_state(SDL_Renderer *r,draw_state s)
 #define HOME_GALLERY_STILL 384    /* 1.5 times its 256 cell */
 #define HOME_GALLERY_DOWN  24
 #define HOME_GALLERY_NAME  50
-#define HOME_SELECT_X      784    /* SELECT's hint on the foot (Spotlight) */
-#define HOME_GALLERY_A_X   768    /* the gallery's A, kept there while it ends by the inset */
-static const SDL_FRect FOCUS={ZYPEROS_SCREEN_W-HOME_STILL_IN-HOME_STILL,HOME_TOP+HOME_STILL_DOWN,HOME_STILL,HOME_STILL};
+#define HOME_SELECT_X      (ZYPEROS_SCREEN_W-240) /* SELECT's hint on the foot (Spotlight) */
+#define HOME_GALLERY_A_X   (ZYPEROS_SCREEN_W-256) /* the gallery's A, kept there while it ends by the inset */
+/* The cover's still, by the canvas's right edge (src/canvas.h) */
+static inline SDL_FRect home_focus(void)
+{
+	return (SDL_FRect){ ZYPEROS_SCREEN_W - HOME_STILL_IN - HOME_STILL, HOME_TOP + HOME_STILL_DOWN,
+	                    HOME_STILL, HOME_STILL };
+}
+#define FOCUS (home_focus())
 #define HOME_MID_X       (ZYPEROS_SCREEN_W/2)
 #define HOME_STILL_MID_Y ((int)(FOCUS.y+FOCUS.h/2))                       /* 336 */
 #define HOME_ROW_Y       ((int)(FOCUS.y+FOCUS.h)+HOME_ROW_UNDER)          /* 600 */

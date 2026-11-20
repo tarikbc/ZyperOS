@@ -19,7 +19,7 @@
 #include <string.h>
 
 #define SP_X0        64                     /* the numbers and the bar, from */
-#define SP_X1        960                    /* ...to */
+#define SP_X1        (ZYPEROS_SCREEN_W - 64)   /* ...to (960 on a 4:3 canvas) */
 #define SP_HEAD_X0   200                    /* beside a system's sprite */
 #define SP_HEAD_Y    56                     /* the heading's capitals */
 #define SP_SUM_Y     128                    /* used and free */
@@ -32,7 +32,7 @@
 #define SP_LEG_DOT   20
 #define SP_LEG_GAP   26                     /* between the legend's items */
 #define SP_LIST_X    48
-#define SP_LIST_W    928
+#define SP_LIST_W    (ZYPEROS_SCREEN_W - 96)   /* 928 on a 4:3 canvas */
 #define SP_LIST_Y    266
 #define SP_ROWS      5
 #define SP_RULE_H    16                     /* a rule and its room */
@@ -519,7 +519,7 @@ void sp_draw(SDL_Renderer *r, const sp_page *p, sp_motion *m, unsigned now)
 		 * the walk is in */
 		float bob = 2.0f * sinf((float)(now % DS_MS_ZYPER_BREATHE) * 6.2831853f / DS_MS_ZYPER_BREATHE);
 
-		if (p->zyper) p->zyper(r, 512.0f, 398.0f + bob, 150.0f, ZYPER_TILT_DEG, true);
+		if (p->zyper) p->zyper(r, ZYPEROS_SCREEN_W / 2.0f, 398.0f + bob, 150.0f, ZYPER_TILT_DEG, true);
 		if (p->measure_line)
 			ui_text(r, fm, p->measure_line, ZYPEROS_SCREEN_W / 2, ui_cap_y(fm, 540), 0, UI_TEXT_SOFT);
 		if (p->measure_at[0])

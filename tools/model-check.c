@@ -7,7 +7,8 @@
  * turned 10 degrees), so the drawing that reads them draws the same pixels;
  * and the TrimUI Brick's as src/device/brick_model.c measures them: its outline, its keys on their faces at
  * their places and sizes, the shoulders on the back ledge, and the back
- * view that shows them. No SDL. */
+ * view that shows them; and the TrimUI Smart Pro's (src/device/smartpro_model.c).
+ * No SDL. */
 #include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -129,6 +130,48 @@ static void brick(void)
 	   "brick: its kept boxes (--handheld-box holds them)");
 }
 
+/* The TrimUI Smart Pro's, as src/device/smartpro_model.c measures them on
+ * TrimUI's manual drawing: its 188 x 80 outline, the front's keys on their
+ * sides, the top edge's from left to right, its views */
+static void smartpro(void)
+{
+	const td_model *m = &td_model_smartpro;
+	const td_part *l1 = td_part_of(m, TD_L1), *l2 = td_part_of(m, TD_L2), *r1 = td_part_of(m, TD_R1);
+	const td_part *r2 = td_part_of(m, TD_R2), *pw = td_part_of(m, TD_POWER);
+	const td_part *vd = td_part_of(m, TD_VOLDN), *vu = td_part_of(m, TD_VOLUP);
+	int i, top = 0, front = 0, sides = 0;
+
+	keys_once(m);
+	ck(m->art == TD_ART_SMARTPRO && m->body_w == 188.0f && m->body_h == 80.0f,
+	   "smartpro: its art, its 188 x 80 body");
+	for (i = 0; i < m->n_parts; i++) {
+		const td_part *p = &m->parts[i];
+
+		top += p->face == TD_FACE_TOP;
+		front += p->face == TD_FACE_FRONT;
+		sides += p->face == TD_FACE_LEFT || p->face == TD_FACE_RIGHT || p->face == TD_FACE_LEDGE;
+		ck(fabsf(p->x) + p->r < 94.0f, "smartpro: every key inside the body's width");
+		if (p->face == TD_FACE_FRONT) ck(fabsf(p->z) + p->r < 40.0f, "smartpro: a front key inside its height");
+	}
+	ck(front == 8 && top == 7 && sides == 0, "smartpro: eight keys on the front, seven on the top edge, none on the sides");
+	ck(td_part_of(m, TD_DPAD)->x < -60.0f && td_part_of(m, TD_MENU)->x < -60.0f,
+	   "smartpro: the d-pad and MENU at the left end");
+	ck(td_part_of(m, TD_A)->x > td_part_of(m, TD_Y)->x && td_part_of(m, TD_X)->z > td_part_of(m, TD_B)->z &&
+	   td_part_of(m, TD_A)->x > 60.0f, "smartpro: A B X Y at the right end, A right, X top");
+	ck(td_part_of(m, TD_START)->x > td_part_of(m, TD_SELECT)->x && td_part_of(m, TD_SELECT)->x > 60.0f,
+	   "smartpro: SELECT then START at the right end's foot");
+	ck(l1 && l2 && r1 && r2 && pw && vd && vu && l1->x < pw->x && pw->x < vd->x && vd->x < vu->x &&
+	   vu->x < r1->x && l2->z > l1->z && r2->z > r1->z,
+	   "smartpro: L, POWER, VOL-, VOL+, R along the top, L2 and R2 standing higher");
+	ck(!td_part_of(m, TD_F1) && !td_part_of(m, TD_F2), "smartpro: no F1, F2");
+	ck(m->top.pitch == TD_PITCH_DEG && m->front.pitch == 0.0f && m->tab.pitch == 0.0f,
+	   "smartpro: tilted back for the top edge's keys, level otherwise");
+	ck(m->right.deg > 0.0f && m->left.deg < 0.0f, "smartpro: its sides' turns, for how far it may turn");
+	ck(m->front.s * 188.0f < 620.0f, "smartpro: as wide in the tutorial as its column on a 16:9 canvas");
+	ck(m->keep_tour.w > 0 && m->keep_tour.h > 0 && m->keep_tab.w > 0 && m->keep_tab.h > 0,
+	   "smartpro: its kept boxes (--handheld-box holds them)");
+}
+
 /* td_swing: held on the front, turned round, held on the back, turned
  * back, and again; td_spins only with keys on the back ledge and off it */
 static void spin(void)
@@ -197,6 +240,7 @@ int main(void)
 		   "pixel2: no key on a ledge, its back view the front");
 	}
 	brick();
+	smartpro();
 	spin();
 	if (fails) {
 		printf("model: %d of %d checks failed\n", fails, checks);

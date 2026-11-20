@@ -31,7 +31,7 @@
 #include "status.h"
 
 #define TOPBAR_CLOCK_X 64                       /* the clock's left edge */
-#define TOPBAR_RIGHT   960                      /* the battery's right edge */
+#define TOPBAR_RIGHT   (canvas_w - TOPBAR_CLOCK_X) /* the battery's right edge, as far in as the clock */
 #define TOPBAR_DY      28                       /* the row under status.h's */
 #define TOPBAR_TOP     (STATUS_TOP + TOPBAR_DY) /* 52 */
 #define TOPBAR_MID     (STATUS_MID + TOPBAR_DY) /* 64: the capitals' middle */

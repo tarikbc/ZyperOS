@@ -53,10 +53,10 @@ static SDL_Rect g_load_out;
 static int g_load_out_mid;
 
 #define LOAD_COVER_AREA (368 * 512)  /* the cover's area, any shape (equal area) */
-#define LOAD_COVER_CX   272          /* ...centered here */
+#define LOAD_COVER_CX   (272 + canvas_col_x())   /* ...centered here (the 4:3 column's) */
 #define LOAD_COVER_CY   376
 #define LOAD_MARGIN     40           /* the cover from the screen's edges and the column */
-#define LOAD_COL_X      536          /* the column of words, left aligned */
+#define LOAD_COL_X      (536 + canvas_col_x())   /* the column of words, left aligned */
 #define LOAD_COL_W      456
 #define LOAD_MID        312          /* the block of words is centered on this */
 #define LOAD_BAND_W     48           /* the system's band, DS_BAR high */
@@ -85,7 +85,7 @@ static int g_load_out_mid;
  * most. So splash must copy the still back under his frame before it draws
  * each one, and not fill it with the ground, which would show as a box on the
  * backdrop: that is plastron's, and comes with loading.txt's new corner. */
-#define LOAD_ZYPER_X    504
+#define LOAD_ZYPER_X    (504 + canvas_col_x())
 #define LOAD_ZYPER_Y    528
 #define LOAD_ZYPER_W    192
 #define LOAD_ZYPER_H    186
@@ -113,17 +113,19 @@ static int g_load_out_mid;
  * from the nothing past the grid; the cover at a quarter more than fills the
  * screen always reaches that far. */
 #define BACK_TEXEL 16
-#define BACK_W     (ZYPEROS_SCREEN_W / BACK_TEXEL)   /* 64 x 48 over the screen */
+#define BACK_W     (ZYPEROS_SCREEN_W / BACK_TEXEL)   /* 64 x 48 over a 4:3 screen */
+#define BACK_W_MAX (CANVAS_W_MAX / BACK_TEXEL)       /* the widest canvas's */
 #define BACK_H     (ZYPEROS_SCREEN_H / BACK_TEXEL)
 #define BACK_RAD   2
 #define BACK_PAD   (3 * BACK_RAD)
 #define BACK_GW    (BACK_W + 2 * BACK_PAD)
+#define BACK_GW_MAX (BACK_W_MAX + 2 * BACK_PAD)
 #define BACK_GH    (BACK_H + 2 * BACK_PAD)
 #define BACK_SS    4
 #define BACK_FILL  1.25f                             /* the lab's scale over a cover's fill */
 
 typedef struct {
-	float c[3][BACK_GW * BACK_GH];   /* red, green, blue, 0-255, BACK_GW apart */
+	float c[3][BACK_GW_MAX * BACK_GH];   /* red, green, blue, 0-255, BACK_GW apart */
 } back_grid;
 
 /* The cover, `tw` x `th`, as the backdrop's blurred grid; NULL when it cannot
@@ -133,7 +135,7 @@ static back_grid *back_read(app *a, SDL_Texture *cover, int tw, int th)
 	const int sw = BACK_GW * BACK_SS, sh = BACK_GH * BACK_SS;
 	const ds_rgb g0 = theme()->ground;
 	const float ar = (float)tw / (float)th, k = (float)BACK_SS / BACK_TEXEL;
-	float fw = (float)ZYPEROS_SCREEN_W, fh, line[BACK_GW > BACK_GH ? BACK_GW : BACK_GH];
+	float fw = (float)ZYPEROS_SCREEN_W, fh, line[BACK_GW_MAX > BACK_GH ? BACK_GW_MAX : BACK_GH];
 	back_grid *g = malloc(sizeof *g);
 	Uint8 *px = malloc((size_t)sw * sh * 4);
 	SDL_Texture *t = NULL;
@@ -200,7 +202,7 @@ static void back_draw(app *a, const back_grid *g, SDL_Texture *tex, float floor)
 {
 	const ds_rgb g0 = theme()->ground;
 	const float gc[3] = { g0.r, g0.g, g0.b };
-	Uint32 px[BACK_W * BACK_H];
+	Uint32 px[BACK_W_MAX * BACK_H];
 	int x, y, c;
 
 	if (!g || !tex) {

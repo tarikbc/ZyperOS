@@ -5723,6 +5723,9 @@ int main(int argc, char *argv[])
 	char path[CFG_STR * 2];
 	char startup[CFG_STR];
 
+	/* The canvas of the handheld built for (src/canvas.h); --device below
+	 * makes it another's on the host */
+	canvas_init(plat_profile());
 	if (argc > 1 && !strcmp(argv[1], PORT_MENU_ARG)) return port_menu_main(argc, argv);
 
 	for (int i = 1; i < argc; i++) {
@@ -6101,6 +6104,8 @@ int main(int argc, char *argv[])
 				fprintf(stderr, "--device: no profile \"%s\" (%s)\n", argv[i], ids);
 				return 2;
 			}
+			/* Its panel's shape is the canvas's (src/canvas.h) */
+			canvas_init(plat_profile());
 		}
 		else if (!strcmp(argv[i], "--tour-pick") && i + 1 < argc) {
 			shot_tour_pick = atoi(argv[++i]);

@@ -789,10 +789,14 @@ static void np_video_bar(SDL_Renderer *r, const mu_now *mn, int x, int y, int w,
 	          mn->state != MU_PLAYING ? ui_fade(acc, 0.45f) : acc);
 }
 
-/* The picture under the header, the screen's width at 16:9 */
+/* The picture under the header, the screen's width at 16:9, and no taller
+ * than the room under the header: on a 16:9 canvas the picture is the whole
+ * screen's, so under the header it is a little smaller, in the middle */
 static SDL_Rect np_video_boxed(void)
 {
-	return (SDL_Rect){ 0, NPV_Y, ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_W * 9 / 16 };
+	const int h = ZYPEROS_SCREEN_W * 9 / 16, room = ZYPEROS_SCREEN_H - NPV_Y;
+
+	return (SDL_Rect){ 0, NPV_Y, ZYPEROS_SCREEN_W, h < room ? h : room };
 }
 
 /* Where the player's parts go, laid out by rules from the canvas and what
