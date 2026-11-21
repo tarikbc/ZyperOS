@@ -868,12 +868,33 @@ SHOT_LIB = {"gamemenu-rumble-own-list": {"rumble.N64.Mario Kart 64 (USA).z64": "
 # MENU > Display > Home Systems (src/homesys.h, DESIGN.md 11.48): its row with
 # two systems off ("8 of 10"), its page at the top, and on the one-system card
 # with both its notes; and Recents, the games played last, on the home and as
-# a shelf, from play sessions put in the card's library for the shot alone
+# a shelf, from play sessions put in the card's library for the shot alone.
+# Each game's line says when it was last played (1.1.0-rc.8: "the recents
+# page should show when was it last played"), so the sessions are this
+# morning, last night at 21:40 and three days ago, on the card's clock (its
+# zone as it ships), as the Screenshots shelf's shots are of days near now
+
+
+def _recent_times():
+    import time as _time
+    from datetime import datetime, timedelta
+    try:
+        from zoneinfo import ZoneInfo
+        zone = ZoneInfo("America/New_York")
+    except Exception:          # no zone data: the C library's own
+        zone = None
+    now = datetime.now(zone)
+    at = lambda d, h, m: datetime(d.year, d.month, d.day, h, m, tzinfo=zone).timestamp()
+    today = min(at(now, 9, 12), _time.time() - 60)
+    return (today, at(now - timedelta(days=1), 21, 40), at(now - timedelta(days=3), 18, 5))
+
+
 _HS_OFF = {"home.hidden": "GB,DC"}
-_RECENT_LIB = {"sess.%d.%d.%s\t%s" % (1763000000 - 3600 * _i, 900 + _i, _t, _f): "600\tquit"
-               for _i, (_t, _f) in enumerate((("GBA", "The Legend of Zelda - The Minish Cap (USA).gba"),
-                                              ("SFC", "Super Metroid (USA).sfc"),
-                                              ("PS1", "Metal Gear Solid (USA).chd")))}
+_RECENT_LIB = {"sess.%d.%d.%s\t%s" % (_w, 900 + _i, _t, _f): "600\tquit"
+               for _i, (_w, (_t, _f)) in enumerate(zip(_recent_times(),
+                                                       (("GBA", "The Legend of Zelda - The Minish Cap (USA).gba"),
+                                                        ("SFC", "Super Metroid (USA).sfc"),
+                                                        ("PS1", "Metal Gear Solid (USA).chd"))))}
 EXTRA.setdefault("menu-homesys", ("demo", "PS1", ["--menu-tab", "1", "--menu", "Home Systems"]))
 SHOT_SETTINGS["menu-homesys"] = _HS_OFF
 EXTRA.setdefault("homesys-page", ("demo", "PS1", ["--homesys-page", "4"]))
@@ -883,10 +904,23 @@ EXTRA.setdefault("homesys-last", ("openbor", "OPENBOR", ["--homesys-page", "3"])
 # Pixel 2; nothing over the shelf on the Brick): its page, the cursor on
 # Battery Level, Off as on a new card
 EXTRA.setdefault("lights-page", ("demo", "PS1", ["--lights-page", "2"]))
-for _name, _flags in (("home-recents", []), ("shelf-recents", ["--screen", "games"])):
+for _name, _flags in (("home-recents", []), ("shelf-recents", ["--screen", "games"]),
+                      # when each was last played, under its name, in every View
+                      ("shelf-recents-grid", ["--screen", "games", "--view", "grid"]),
+                      ("shelf-recents-list", ["--screen", "games", "--view", "list"]),
+                      ("shelf-recents-video", ["--screen", "games", "--view", "video"]),
+                      ("shelf-recents-yesterday", ["--screen", "games"]),
+                      ("shelf-recents-days", ["--screen", "games", "--view", "list"])):
     EXTRA.setdefault(_name, ("demo", "RECENT", _flags))
     SHOT_LIB[_name] = _RECENT_LIB
-    CTL_FOCUS[_name] = "The Legend of Zelda - The Minish Cap (USA).gba"
+    # The list's panel is narrow: a system's name as long as "Game Boy
+    # Advance" takes the line to itself, the time under it (gl_fact_origin)
+    # and Played one line, which Spanish's words pass; a SNES game's line
+    # leaves Played the two lines Spanish needs
+    CTL_FOCUS[_name] = {"shelf-recents-yesterday": "Super Metroid (USA).sfc",
+                        "shelf-recents-list": "Super Metroid (USA).sfc",
+                        "shelf-recents-days": "Metal Gear Solid (USA).chd"}.get(
+        _name, "The Legend of Zelda - The Minish Cap (USA).gba")
 
 
 # Collections (src/collect.h, DESIGN.md 11.56): three lists on the card, one

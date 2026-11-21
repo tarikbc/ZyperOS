@@ -126,6 +126,7 @@ case $1 in
 	trap 'echo "follow TERM" >> "{calls}"; exit 0' TERM
 	while :; do sleep 0.05; done ;;
 --port-menu) exit 10 ;;
+--port-played) exit 0 ;;
 esac
 n=$(cat "{d}/runs" 2> /dev/null || echo 0); n=$((n + 1)); echo $n > "{d}/runs"
 echo "launcher $n" >> "{calls}"

@@ -4803,9 +4803,11 @@ bool random_pick(app *a, bool all, int *shelf, int *game)
 		             : i == a->sys_cursor && !is_mp4(s);
 	}
 	/* Never an entry of a shelf's own that is no game (Splore's, PortMaster's
-	 * while it is not on the card): picked again, a few times */
+	 * while it is not on the card): picked again, a few times. By its own
+	 * system's, on Recents too, where Splore is once it was opened */
 	for (i = 0;; i++) {
 		const game_list *gl;
+		int own;
 
 		if (i >= 8 || !rg_pick(count, use, a->sys.count, rg_random(), last_shelf, last_game,
 		                       shelf, game)) {
@@ -4813,9 +4815,9 @@ bool random_pick(app *a, bool all, int *shelf, int *game)
 			return false;
 		}
 		gl = sys_games(&a->view[*shelf]);
-		if (*game < 0 || *game >= gl->count ||
-		    (!splore_is_entry(a, *shelf, &gl->items[*game]) &&
-		     !pm_is_offer(a, *shelf, &gl->items[*game])))
+		if (*game < 0 || *game >= gl->count) break;
+		own = a->view[*shelf].all ? *shelf : shelf_owner(a, *shelf, *game);
+		if (!splore_is_entry(a, own, &gl->items[*game]) && !pm_is_offer(a, own, &gl->items[*game]))
 			break;
 	}
 	last_shelf = *shelf;
@@ -6127,6 +6129,29 @@ static int mp4_follow_main(void)
 	return 0;
 }
 
+/* --port-played (src/stats.h, "a program of its own"): the session of the
+ * program that just ended closed in the library database, from the note the
+ * launcher left as it handed the program over, and the note removed. launch.sh
+ * runs it the moment the program ends, POWER and Auto Off too, before the
+ * power-off, so a cart played on your PICO-8 reaches Recents and Played
+ * however it ended. Nothing more: no systems.cfg, no display, no input. */
+static int port_played_main(void)
+{
+	char dev[CFG_STR * 2], lib[CFG_STR * 2], env[CFG_STR * 2];
+	bool closed;
+
+	paths_init();
+	db_paths_ready(dev, sizeof dev, lib, sizeof lib, env, sizeof env);
+	if (!db_init(dev, lib, env)) {
+		fprintf(stderr, "port: no library database; its play time is not kept\n");
+		return 1;
+	}
+	closed = stats_handed_back(plat_flag(STATS_PORT_NOTE), stats_mono_ms());
+	db_shutdown();
+	fprintf(stderr, "port: %s\n", closed ? "its play time kept" : "no play time to keep");
+	return 0;
+}
+
 /* --port-menu TAG GAME (src/portmenu.h): the in-game menu over a program of
  * its own (OpenBOR, the standalone Flycast, a port from the Ports
  * shelf and PortMaster itself, whose GAME is the port's script), and only
@@ -6308,6 +6333,7 @@ int main(int argc, char *argv[])
 
 	if (argc > 1 && !strcmp(argv[1], PORT_MENU_ARG)) return port_menu_main(argc, argv);
 	if (argc > 1 && !strcmp(argv[1], MP4_FOLLOW_ARG)) return mp4_follow_main();
+	if (argc > 1 && !strcmp(argv[1], STATS_PORT_PLAYED_ARG)) return port_played_main();
 	if (argc > 1 && !strcmp(argv[1], ALSA_TRY_ARG)) return alsa_try_main(argc, argv);
 
 	for (int i = 1; i < argc; i++) {
@@ -7617,6 +7643,12 @@ int main(int argc, char *argv[])
 	 * them and a shelf cannot be built from a list that has not been read. */
 	fav_load();
 
+	/* A program of its own that ended with its session still open, which
+	 * launch.sh closes as it ends (--port-played): closed here, now, before
+	 * stats_recover would call it lost and Recents is built. A shot reads
+	 * the card as it is. */
+	if (!shot_path && stats_handed_back(plat_flag(STATS_PORT_NOTE), stats_mono_ms()))
+		fprintf(stderr, "port: its play time kept at the launcher's start\n");
 	/* Close any session the device never saw end - a power cut, a flat
 	 * battery - at its last checkpoint, before anything reads a total. See
 	 * stats.h: short by up to the checkpoint interval beats lost entirely. */

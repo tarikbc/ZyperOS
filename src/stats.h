@@ -71,6 +71,52 @@ void stats_recover(void);
  * facts the shelf sorts it by. How many rows went. */
 int stats_forget(const char *tag, const char *file);
 
+/* --- a program of its own ----------------------------------------------- *
+ *
+ * A port, PortMaster's or the Ports shelf's, OpenBOR, the standalone Flycast
+ * and your PICO-8 with Splore run with no launcher beside them: the launcher
+ * names the program in a request and EXITS, launch.sh runs it and starts the
+ * launcher again after it (src/launch_screen.c, launch_port_core). So their
+ * session cannot be held in memory from RUN to EXIT, as a Diatom game's is,
+ * and none was kept for them at all: a cart played on your PICO-8 never
+ * reached Recents, Played or the play time (1.1.0-rc.8: "The recents page
+ * is not considering pico-8 games").
+ *
+ * The launcher hands the session over as it hands the program over: its row
+ * in the library database at once, "open" at 0 s - the same marker a power
+ * cut leaves, so a program that never comes back is still on Recents, short
+ * by that session as a crash is - and a note in /tmp of when it began.
+ * launch.sh closes it the moment the program ends, POWER and Auto Off
+ * included, before anything powers off (`zyperos.elf --port-played`), and
+ * the launcher's own start closes one still open (a launch.sh that did not).
+ * Nothing checkpoints it meanwhile: no process of ZyperOS's that runs beside
+ * every program writes this database.
+ *
+ * The seconds are the MONOTONIC clock's (stats_mono_ms), which every process
+ * shares and which a clock set by the network while the program runs does
+ * not move, so the time is the program's and nothing else's. The note is
+ * "<start>\t<key>\t<mono_ms>\t<tag>\t<file>\n", written whole or not at
+ * all: the row's key's number, and the clock the seconds are counted from. */
+#define STATS_PORT_NOTE "/tmp/zyperos_port_played"
+/* What launch.sh runs as the program ends: the launcher with this alone
+ * closes the session and exits, no display, no input (src/main.c) */
+#define STATS_PORT_PLAYED_ARG "--port-played"
+
+/* CLOCK_MONOTONIC in milliseconds: the same in every process of a boot. */
+long long stats_mono_ms(void);
+
+/* The program is about to run: its row "open" and the note at `note` (the
+ * launcher's plat_flag of STATS_PORT_NOTE). `now` is the unix time, `mono_ms`
+ * stats_mono_ms, passed in so the check can place them. False when the note
+ * could not be written, and nothing else is then. */
+bool stats_hand_over(const char *tag, const char *file, const char *note,
+                     long now, long long mono_ms);
+
+/* The program has ended: its session closed at `mono_ms` as a quit, and the
+ * note removed. False with no note, or a note that is not one (removed):
+ * nothing ran, or it was closed already. */
+bool stats_handed_back(const char *note, long long mono_ms);
+
 /* --- reading, for the menu ---------------------------------------------- */
 
 /* Which slice of history a summary covers.
@@ -150,5 +196,11 @@ void stats_format(long seconds, char *out, size_t n);
 
 /* "3h ago", "2d ago", "today", "never". `out` takes at least 16 bytes. */
 void stats_ago(long then, long now, char *out, size_t n);
+
+/* When, as the Screenshots shelf says when a shot was taken (DESIGN.md
+ * 11.68) and Recents when a game was last played (11.48): stats_ago's words,
+ * and for today and yesterday the clock as MENU > Clock has it ("today
+ * 21:40", "yesterday 9:05 PM", "3d ago"). `out` takes at least 32 bytes. */
+void stats_when(long then, long now, bool clock24, char *out, size_t n);
 
 #endif

@@ -1171,14 +1171,35 @@ static void draw_album_views(app *a, sysview *v, const system_cfg *s)
 	}
 }
 
+/* On Recents, its system and when it was last played, "PICO-8 · today
+ * 14:02", in the words the Screenshots shelf says when a shot was taken
+ * (DESIGN.md 11.48; 1.1.0-rc.8: "the recents page should show when was it
+ * last played"). When is the session's start, Recents' own order (Last
+ * Played), so the line never says a game further along was played later.
+ * A game whose last start it has not (none folded for a sort) has its
+ * system alone. */
+static const char *recents_facts(app *a, int owner, const game_entry *g)
+{
+	static char line[CFG_STR + 64];
+	char when[48];
+
+	if (g->last_played <= 0) return a->sys.systems[owner].name;
+	stats_when(g->last_played, (long)time(NULL), g_clock24, when, sizeof when);
+	snprintf(line, sizeof line, "%s \xc2\xb7 %s", a->sys.systems[owner].name, when);
+	return line;
+}
+
 /* The line under the focused entry's name, first: its own system on a
- * shelf of many systems' games (Favorites, Recents, Collections), and on the
- * Screenshots shelf its system and when it was taken (DESIGN.md 11.68); NULL
- * on a console's own shelf, whose heading says it */
+ * shelf of many systems' games (Favorites, Recents, Collections), on
+ * Recents with when it was last played, and on the Screenshots shelf its
+ * system and when it was taken (DESIGN.md 11.68); NULL on a console's own
+ * shelf, whose heading says it */
 static const char *shelf_origin(app *a, int owner, const game_entry *g)
 {
 	if (!g || g->folder) return NULL;
 	if (shots_shelf(a, a->sys_cursor)) return shots_facts(a, owner, g);
+	if (owner != a->sys_cursor && !strcmp(a->sys.systems[a->sys_cursor].tag, HOMESYS_RECENT))
+		return recents_facts(a, owner, g);
 	return owner != a->sys_cursor ? a->sys.systems[owner].name : NULL;
 }
 
@@ -1246,6 +1267,7 @@ static void draw_games(app *a)
 			.playing = si.snap && si.snap_k >= 1,
 			.band = g_shot_band,
 			.foot = shots ? sfoot : NULL, .nfoot = snf,
+			.clear = shots,
 		};
 		/* Somebody watching a snap holds the screensaver; a still shot
 		 * does not */

@@ -256,6 +256,58 @@ static int gl_fact_lines(SDL_Renderer *r, const char *s, int y, SDL_Color c)
 	return y;
 }
 
+/* The first fact, the line under the name elsewhere: on Recents a game's
+ * system and when it was last played, on Screenshots when the shot was
+ * taken ("Game Boy Advance · today 09:12"). Wider than the panel, it takes
+ * two lines at its last dot, the system and then the time, where the facts
+ * after it leave the room (`two`); where they do not, the system's name is
+ * the part cut. The time is never cut. */
+static int gl_fact_origin(SDL_Renderer *r, const char *s, int y, bool two)
+{
+	static const char DOT[] = " \xc2\xb7 ";
+	TTF_Font *f = page_font(PAGE_CHROME);
+	const char *dot = NULL, *p;
+	char head[256], line[512];
+	int tail;
+
+	if (!s || !*s || ui_text_width(f, s) <= GL_PANEL_W) return gl_fact(r, s, y);
+	for (p = s; (p = strstr(p, DOT)); p++) dot = p;
+	if (!dot || dot == s || !dot[sizeof DOT - 1]) return gl_fact(r, s, y);
+	ui_fit_drawn(s);    /* drawn in parts, said whole to the host's check */
+	snprintf(head, sizeof head, "%.*s", (int)(dot - s), s);
+	if (two) {
+		y = gl_fact(r, head, y);
+		return gl_fact(r, dot + sizeof DOT - 1, y);
+	}
+	tail = ui_text_width(f, dot);
+	if (tail >= GL_PANEL_W) return gl_fact(r, s, y);
+	ui_fit_text(f, head, line, sizeof line, GL_PANEL_W - tail);
+	snprintf(line + strlen(line), sizeof line - strlen(line), "%s", dot);
+	ui_text(r, f, line, GL_PANEL_X, ui_cap_y(f, y), -1, UI_TEXT_DIM);
+	return y + GL_FACT_STEP;
+}
+
+/* Played, wider than the panel where `two` leaves room: its word on one
+ * line and the time under it ("Tiempo de juego:" over "12 h 34 min"), as
+ * the string puts the time last in every language; a string with words
+ * after the time is balanced over two lines instead */
+static int gl_fact_played(SDL_Renderer *r, const char *played, int y, bool two)
+{
+	TTF_Font *f = page_font(PAGE_CHROME);
+	const char *fmt = T(S_GAMES_PLAYED), *at = strstr(fmt, "%s");
+	char line[128], head[96];
+	size_t hn;
+
+	snprintf(line, sizeof line, fmt, played);
+	if (!two || ui_text_width(f, line) <= GL_PANEL_W) return gl_fact(r, line, y);
+	if (!at || at[2] || (hn = (size_t)(at - fmt)) == 0) return gl_fact_lines(r, line, y, UI_TEXT_DIM);
+	while (hn > 0 && fmt[hn - 1] == ' ') hn--;
+	snprintf(head, sizeof head, "%.*s", (int)hn, fmt);
+	ui_fit_drawn(line);    /* drawn in lines, said whole to the host's check */
+	y = gl_fact(r, head, y);
+	return gl_fact(r, played, y);
+}
+
 uint32_t gl_draw(gl_motion *m, SDL_Renderer *r, const gl_info *in,
                  cf_tex_fn texture, void *ctx, uint32_t now, uint32_t phase)
 {
@@ -380,14 +432,23 @@ uint32_t gl_draw(gl_motion *m, SDL_Renderer *r, const gl_info *in,
 			snprintf(line, sizeof line, TN(S_SHELF_GAMES, games), games);
 			y = gl_fact(r, line, y);
 		} else {
-			y = gl_fact(r, in->origin, y);
+			/* The panel holds three facts above A: a fact takes a second
+			 * line only where the ones after it still fit */
+			bool cheats = in->cheats && *in->cheats;
+			int later = (cheats ? 1 + in->cheats_crashed : 0) + in->has_achievements;
+			int played = in->played && *in->played;
+			int needs = in->needs && *in->needs ?
+			            1 + (ui_text_width(chrome, in->needs) > GL_PANEL_W) : 0;
+			const int last = GL_FACT_Y + 2 * GL_FACT_STEP;
+
+			y = gl_fact_origin(r, in->origin, y,
+			                   y + (1 + (in->install || in->howto) + needs + played + later) * GL_FACT_STEP <= last);
 			if (in->install || in->howto) y = gl_fact(r, T(S_PORTMASTER_NOT_INSTALLED), y);
 			/* Firmware it cannot start without, in **warning** */
 			y = gl_fact_lines(r, in->needs, y, ui_col(theme()->warning, 255));
-			if (in->played && *in->played) {
-				snprintf(line, sizeof line, T(S_GAMES_PLAYED), in->played);
-				y = gl_fact(r, line, y);
-			}
+			/* Played on two lines where they fit: Spanish's "Tiempo de
+			 * juego: 12 h 34 min" is wider than the panel */
+			if (played) y = gl_fact_played(r, in->played, y, y + (1 + later) * GL_FACT_STEP <= last);
 			if (in->has_achievements) {
 				snprintf(line, sizeof line, T(S_GAMES_ACHIEVEMENTS), in->earned, in->total);
 				y = gl_fact(r, line, y);

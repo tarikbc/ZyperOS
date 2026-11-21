@@ -1715,7 +1715,17 @@ int pm_shelf_offers(const app *a, int sys)
 
 	const game_list *gl = sys_games_c(v);
 
-	if (a->view[sys].owner) return 0;
+	/* A group's, by each entry's own system: Recents has Splore once it was
+	 * opened, and its Games count it no more than the PICO-8 shelf does */
+	if (v->owner) {
+		int n = 0;
+
+		for (int i = 0; !v->all && i < v->list.count; i++)
+			if (splore_is_entry(a, v->owner[i], &v->list.items[i]) ||
+			    pm_is_offer(a, v->owner[i], &v->list.items[i]))
+				n++;
+		return n;
+	}
 	/* Splore's entry is the PICO-8 shelf's own, never a game */
 	if (!strcmp(a->sys.systems[sys].tag, P8_TAG)) return splore_listing_has(gl) ? 1 : 0;
 	if (!g_pm_offer || !is_ports(&a->sys.systems[sys])) return 0;

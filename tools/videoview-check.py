@@ -11,6 +11,14 @@ took the screen over the view with videos of its own, and ate the press
 that ended it (2026-11-19, on the 1.1.0 test build: on full-screen video
 every key "just expands the collapsed bar"). The covers' glide is
 check-games' (vv_draw's frames), the snap held under a page check-snapshelf's.
+
+The Screenshots viewer (DESIGN.md 11.68): at rest nothing covers the shot,
+the band off the foot of the screen with no strip and the name's card off
+the top (2026-11-20: "the top card that contains the name and etc should
+animate and disappear as well ... the collapsed footer can be nothing"); A
+there puts them away at once, held too, and the next press brings them back
+("when clicking A while in play mode, it goes straight to full without
+needing to wait for it to collapse").
 build-native/zyperos must be built (make native)."""
 import json
 import os
@@ -50,7 +58,19 @@ def ask(sock, line, timeout=10):
     return json.loads(out.decode() or '{}')
 
 
-def run(tmp, name, snaps, saver, extra):
+def solid_png(path, w, h, rgb):
+    """A plain RGB PNG, no Pillow, as the Screenshot hotkey writes one"""
+    import struct
+    import zlib
+
+    def chunk(kind, data):
+        return struct.pack('>I', len(data)) + kind + data + struct.pack('>I', zlib.crc32(kind + data) & 0xffffffff)
+    raw = b''.join(b'\0' + bytes(rgb) * w for _ in range(h))
+    path.write_bytes(b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', w, h, 8, 2, 0, 0, 0))
+                     + chunk(b'IDAT', zlib.compress(raw)) + chunk(b'IEND', b''))
+
+
+def run(tmp, name, snaps, saver, extra, setup=None, last='SFC\nAlpha.sfc\n\n'):
     base = tmp / name
     for d in ('ZyperOS', 'Roms', 'userdata', 'shared', 'web'):
         (base / d).mkdir(parents=True)
@@ -72,7 +92,9 @@ def run(tmp, name, snaps, saver, extra):
     with sqlite3.connect(base / 'userdata/zyperos.db') as db:
         db.execute("insert or replace into settings(key,value) values('view.SFC','video')")
         db.execute("insert or replace into settings(key,value) values('saver',?)", (str(saver),))
-    (base / 'ZyperOS/.last').write_text('SFC\nAlpha.sfc\n\n')
+    if setup:
+        setup(base)
+    (base / 'ZyperOS/.last').write_text(last)
     sock = Path(tempfile.gettempdir()) / f'zyperos-vvcheck-{os.getpid()}-{name}.sock'
     env.update(SDL_VIDEODRIVER='dummy', SDL_AUDIODRIVER='dummy', ZYPEROS_DESK_FORCE='1',
                ZYPEROS_DESK_SOCK=str(sock), ZYPEROS_FLAG_DIR=str(tmp / f'{name}-flags'),
@@ -136,6 +158,93 @@ def saver(tmp):
         stop(sock, p, log)
 
 
+SHOT_RGB = (200, 40, 160)
+
+
+def shots(tmp):
+    """The Screenshots viewer's band and card, read off the panel"""
+    try:
+        from PIL import Image
+    except ImportError:
+        check(False, 'the Screenshots viewer: Pillow is missing (pip install pillow)')
+        return
+
+    def setup(base):
+        d = base / 'Screenshots/SNES'
+        d.mkdir(parents=True)
+        solid_png(d / 'Alpha (USA) 2026-11-20 09.12.40.png', 256, 224, SHOT_RGB)
+        solid_png(d / 'Bravo (USA) 2026-11-19 22.05.11.png', 256, 224, SHOT_RGB)
+
+    got = run(tmp, 'shots', False, 0, [], setup, 'SHOT\n\n\n')
+    if not got:
+        return
+    sock, p, log, logfile = got
+    n = [0]
+
+    def look():
+        """(the band's foot clear, the name card gone, the top middle the
+        shot's): read off the panel"""
+        n[0] += 1
+        f = tmp / f'shots-{n[0]}.png'
+        ask(sock, f'shot {f}')
+        im = Image.open(f).convert('RGB')
+        w, h = im.size
+        near = lambda xy: all(abs(c - t) <= 24 for c, t in zip(im.getpixel(xy), SHOT_RGB))
+        return near((w // 2, h - 30)), near((int(w * 0.17), int(h * 0.2))), near((w // 2, int(h * 0.17)))
+
+    def until(ok, secs=4.0):
+        """Looks until `ok` holds or `secs` pass (a busy runner draws late);
+        the last look"""
+        end = time.time() + secs
+        got = look()
+        while not ok(got) and time.time() < end:
+            time.sleep(0.15)
+            got = look()
+        return got
+
+    # A press held until the launcher has drawn two frames with it down, so
+    # a busy runner's slow pass cannot miss it, then let go: the shot's
+    # picture is fetched only while no key is held (shelf_snap's `!held`)
+    def tap(key):
+        ask(sock, f'press {key}')
+        ask(sock, 'wait-frames 2')
+        ask(sock, f'release {key}')
+
+    whole = lambda r: r[2]
+    try:
+        # the shelf's first shot: the viewer (A again if the shelf was still
+        # coming in from the home and let the press go by)
+        for _ in range(4):
+            tap('a')
+            foot, card, top = until(whole, 4)
+            if top:
+                break
+        check(top and not foot and not card, f'the viewer opens with its band and card up '
+              f'(the shot {"whole" if top else "not open"}, the foot {"clear" if foot else "covered"}, '
+              f'the card {"gone" if card else "there"})')
+        tap('right')                                         # a press: the rest starts again
+        until(lambda r: r[2] and not r[0], 10)               # the next shot in, the band up
+        t0 = time.time()
+        tap('a')                                             # A: away at once, not 2 s on
+        foot, card, top = until(lambda r: r[0] and r[1], 1.5)
+        check(foot and card, f'A puts the band and the card away at once, nothing left at the foot '
+              f'(the foot {"clear" if foot else "covered"}, the card {"gone" if card else "there"}, '
+              f'after {time.time() - t0:.1f} s; the rest would take 2 s)')
+        ask(sock, 'press a')                                 # A held: they stay away
+        time.sleep(1.2)
+        foot, card, top = look()
+        ask(sock, 'release a')
+        check(foot and card, 'A held keeps them away')
+        tap('right')                                         # another press: back up
+        foot, card, top = until(lambda r: not r[0] and not r[1])
+        check(not foot and not card, 'the next press brings the band and the card back')
+        tap('b')                                             # B still goes back from the viewer
+        foot, card, top = until(lambda r: not r[2])
+        check(not top, 'B goes back to the shelf from the viewer')
+    finally:
+        stop(sock, p, log)
+
+
 def main():
     if not BINARY.is_file():
         print('check-videoview: build-native/zyperos missing (make native)')
@@ -143,6 +252,7 @@ def main():
     tmp = Path(tempfile.mkdtemp(prefix='zyperos-vvcheck-'))
     try:
         saver(tmp)
+        shots(tmp)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     print(f'videoview: {"all passed" if not fails else f"{len(fails)} failed"}')

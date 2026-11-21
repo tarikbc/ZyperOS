@@ -396,6 +396,118 @@ static void how_long_ago(void)
 	}
 }
 
+/* A program of its own (stats.h): the launcher hands the session over with
+ * the program and exits, launch.sh's --port-played closes it as the program
+ * ends. Its row is "open" from the hand-over, a power cut's marker; the time
+ * is the monotonic clock's, passed in here so it can be placed */
+static char NOTE[64];
+
+static bool note_there(void)
+{
+	return access(NOTE, F_OK) == 0;
+}
+
+static void a_program_of_its_own(void)
+{
+	stats_recent_row r[2];
+	long now = (long)time(NULL), secs = 0, last = 0;
+	FILE *f;
+
+	printf("a program of its own (your PICO-8, OpenBOR, a port):\n");
+	scrub();
+	unlink(NOTE);
+	ck(!stats_handed_back(NOTE, 1000), "nothing handed over, nothing to close");
+	ck(stats_hand_over("PICO8", "celeste.p8", NOTE, now, 5000), "handed over");
+	ck(note_there(), "the note is in /tmp");
+	ck(rows() == 1 && !strcmp(only_value(), "0\topen"),
+	   "its row at once, open at 0 s: a power cut over it still leaves the game on Recents");
+	ck(stats_recent(r, 2) == 1 && !strcmp(r[0].tag, "PICO8") && !strcmp(r[0].file, "celeste.p8") &&
+	   r[0].last == now, "and it is the game played last, from its start");
+	ck(stats_handed_back(NOTE, 5000 + 125400), "closed as it ends");
+	ck(!note_there(), "the note gone");
+	ck(rows() == 1 && !strcmp(only_value(), "125\tquit"), "the same row, 125 s, quit");
+	ck(!stats_handed_back(NOTE, 999999), "closed once: a second close finds nothing");
+	ck(stats_summarize(STATS_ALL, false, now) == 1 && stats_lookup("PICO8", "celeste.p8", &secs, &last) &&
+	   secs == 125 && last == now, "Played and the play time have it");
+
+	printf("  two in one second, a clock gone back, a power cut:\n");
+	ck(stats_hand_over("PICO8", "celeste.p8", NOTE, now, 6000), "the same cart again in the same second");
+	ck(stats_handed_back(NOTE, 66000), "closed");
+	ck(rows() == 2, "two rows, not one written over: the monotonic clock keeps the keys apart");
+	ck(stats_summarize(STATS_ALL, false, now) == 1 && stats_lookup("PICO8", "celeste.p8", &secs, NULL) &&
+	   secs == 185, "185 s in all");
+	scrub();
+	ck(stats_hand_over("OPENBOR", "Beats of Rage.pak", NOTE, now, 90000), "OpenBOR handed over");
+	ck(stats_handed_back(NOTE, 1000), "closed with a clock that went back");
+	ck(!strcmp(only_value(), "0\tquit"), "nothing honest to claim, so 0 s");
+	scrub();
+	ck(stats_hand_over("PRT", "Stardew Valley.sh", NOTE, now, 1000), "a port handed over");
+	db_shutdown();                                  /* the power goes */
+	db_init(DEV, LIB, NULL);
+	unlink(NOTE);                                   /* /tmp with it */
+	stats_recover();
+	ck(rows() == 1 && !strcmp(only_value(), "0\tlost"), "the next start calls it lost, on Recents still");
+
+	printf("  notes that are no note:\n");
+	scrub();
+	ck(!stats_hand_over("PICO8", "a\tb.p8", NOTE, now, 1) && !note_there() && rows() == 0,
+	   "a file with a tab: nothing handed over");
+	ck(!stats_hand_over("", "x.p8", NOTE, now, 1) && !stats_hand_over("PICO8", "", NOTE, now, 1),
+	   "no tag or no file: nothing");
+	f = fopen(NOTE, "w");
+	if (f) { fputs("garbage\n", f); fclose(f); }
+	ck(!stats_handed_back(NOTE, 1) && !note_there() && rows() == 0, "a note cut short: removed, nothing written");
+	f = fopen(NOTE, "w");
+	if (f) { fprintf(f, "%ld\t5\t5\tPICO8\t\n", now); fclose(f); }
+	ck(!stats_handed_back(NOTE, 6000) && rows() == 0, "a note with no file: nothing written");
+	f = fopen(NOTE, "w");
+	if (f) { fprintf(f, "%ld\t7\t-5000\tPICO8\tceleste.p8\n", now); fclose(f); }
+	ck(stats_handed_back(NOTE, 1000) && rows() == 1 && !strcmp(only_value(), "6\tquit"),
+	   "a start before the clock's zero (a check's, on a computer just started): the difference");
+	scrub();
+}
+
+/* When, as Recents and Screenshots say it: the day, and the clock for today
+ * and yesterday */
+static void when_it_was(void)
+{
+	long at[16];
+	char b[32], want[32];
+	int i, n = instants(at);
+
+	printf("when it was played, as Recents says it:\n");
+	stats_when(0, at[0], true, b, sizeof b);
+	ck(!strcmp(b, "never"), "never");
+	for (i = 0; i < n; i++) {
+		long now = at[i], then;
+		time_t t;
+		struct tm tm;
+
+		t = (time_t)now;
+		tm = *localtime(&t);
+		tm.tm_hour = 9; tm.tm_min = 5; tm.tm_sec = 0; tm.tm_isdst = -1;
+		then = (long)mktime(&tm);
+		if (then > now) then = now;
+		t = (time_t)then;
+		tm = *localtime(&t);
+		stats_when(then, now, true, b, sizeof b);
+		snprintf(want, sizeof want, "today %02d:%02d", tm.tm_hour, tm.tm_min);
+		ck(!strcmp(b, want), "today, the clock 24-hour");
+		stats_when(then, now, false, b, sizeof b);
+		snprintf(want, sizeof want, "today %d:%02d %s", tm.tm_hour % 12 ? tm.tm_hour % 12 : 12, tm.tm_min,
+		         tm.tm_hour < 12 ? "AM" : "PM");
+		ck(!strcmp(b, want), "today, 12-hour, no leading zero");
+		then = days_before(now, 1);
+		t = (time_t)then;
+		tm = *localtime(&t);
+		stats_when(then, now, true, b, sizeof b);
+		snprintf(want, sizeof want, "yesterday %02d:%02d", tm.tm_hour, tm.tm_min);
+		ck(!strcmp(b, want), "yesterday with its clock");
+		stats_when(days_before(now, 3), now, true, b, sizeof b);
+		ck(!strcmp(b, "3d ago"), "past yesterday the day alone");
+	}
+}
+
 static void formatting(void)
 {
 	char b[16];
@@ -415,6 +527,7 @@ int main(void)
 	tzset();
 	snprintf(DEV, sizeof DEV, "/tmp/zyperos-stats-%ld-dev.db", (long)getpid());
 	snprintf(LIB, sizeof LIB, "/tmp/zyperos-stats-%ld-lib.db", (long)getpid());
+	snprintf(NOTE, sizeof NOTE, "/tmp/zyperos-stats-%ld-note", (long)getpid());
 	launch_writes_nothing();
 	a_short_session_leaves_no_marker();
 	a_long_session_marks_and_checkpoints();
@@ -426,11 +539,14 @@ int main(void)
 	folding_by_system();
 	the_extras();
 	recent_games();
+	a_program_of_its_own();
 	formatting();
 	how_long_ago();
+	when_it_was();
 	db_shutdown();
 	scrub();
 	db_shutdown();
+	unlink(NOTE);
 
 	if (fails) { printf("\n%d FAILED\n", fails); return 1; }
 	printf("\nok: play time is recorded, and a launch still writes nothing\n");

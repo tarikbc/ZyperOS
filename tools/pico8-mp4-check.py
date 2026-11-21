@@ -148,6 +148,7 @@ case $1 in
 	echo "follow start $$" >> "{calls}"
 	while :; do sleep 0.05; done ;;
 --port-menu) exit 10 ;;
+--port-played) exit 0 ;;
 --alsa-try)
 	echo "alsa-try $ALSA_CONFIG_PATH" >> "{calls}"
 	exit $(cat "{d}/alsa-try-rc") ;;

@@ -1139,7 +1139,9 @@ own shelf, whose heading names it, there is no system. A part that would pass
 x 960 (the right margin, as the left) is left out with the ones after it.
 *(2026-11-07: "In the favorites screen, let's have the system written
 below the game name", then, seeing it at y 664: "have the system right below
-the name. now there is a big margin".)*
+the name. now there is a big margin".)* On **Recents** the line is the system and when the game was last played,
+"SNES · yesterday 21:40" (11.48), as on Screenshots it is when the shot was
+taken (11.68).
 ### 11.2 Rail
 **bar** high, **track**, the marker a window onto every item's color.
 
@@ -4542,7 +4544,13 @@ turning View moves only the middle:
 - The focused entry on the right: its card or box art whole in a box 320
   x 320 from x 640, y 200; its facts under it from cap y 552, 32 apart, in
   **chrome** **text-dim** (its system on Favorites, Played, Achievements,
-  or a folder's "12 games"); A's hint at cap y 664.
+  or a folder's "12 games"); A's hint at cap y 664, so three facts fit. A
+  fact wider than the panel takes a second line where the facts after it
+  still fit in the three: the system's line with its time (Recents,
+  Screenshots) at its dot, the time under the system, and Played with its
+  word over the time ("Tiempo de juego:", "10 min 0 s"); where they do not,
+  the system's name is the part cut, never the time, and Played is cut as
+  before.
 - Up and Down step, Left and Right jump a letter, L1 and R1 a page: the
   row turned, as the cover row's d-pad turns with it. It comes round past
   its ends: a shelf, not a menu (11.3).
@@ -5691,6 +5699,40 @@ Random Game, Sort By, View, and one more, Card Picture (below). With nothing
 played yet there is no Recents card, as an empty Favorites shows none: a
 card should lead somewhere.
 
+**When it was last played** *(1.1.0-rc.8: "the recents page should show when
+was it last played")*: under the focused game's name, its own system and
+when it was last started, "PICO-8 · today 14:02", in the words the Screenshots
+shelf says when a shot was taken (11.68, src/stats.h's `stats_when`): the
+calendar's days as Played says them, "yesterday 21:40", "3d ago" past
+yesterday, the clock for today and yesterday as MENU > Clock has it. The
+start, not the end, so the line agrees with Recents' order: a game further
+along the shelf never says it was played later. In every View, where the
+system line already goes (11.1): on the cover row in the second line's
+place, or leading the line below when it does not fit there; in the Grid's
+band; in the List's panel, on two lines at its dot when the panel is too
+narrow for both ("Game Boy Advance", "today 09:12"), so the time is never
+the part cut; on the Video view's card, the rest of the line (Played) on a
+line of its own when the card is too narrow for it all. Nothing is read for
+it: the time is the session row Recents is built from.
+
+**Every game played**, a program of its own too *(1.1.0-rc.8: "The recents
+page is not considering pico-8 games. Is the play time considering them?")*.
+Your PICO-8 and Splore (11.55), OpenBOR, the standalone Flycast and a port
+run with no launcher beside them, and until 2026-11-20 no session was kept
+for them: a cart played on your PICO-8 was on neither Recents nor Played nor
+the play time, where fake08's was. Now the launcher hands the session over with
+the program: its row in the library at once, open, and a note in `/tmp` of
+when it began; launch.sh closes it the moment the program ends, Quit, POWER,
+Auto Off or a flat battery, before anything powers off (`zyperos.elf
+--port-played`), and the launcher's own start closes one still open. The time
+is the system's monotonic clock's, which a clock set by the network does not
+move. A power cut while the program runs leaves the game on Recents, its time
+short by that session, as a crash is. Splore counts, since its carts are
+played there; Recents' Games and Random Game leave it out, as the PICO-8
+shelf's do. PortMaster itself does not: it installs games and is none.
+A Diatom game run the slow way (no resident Diatom) is timed now as well.
+`make check-recents-played` and `check-stats` hold it.
+
 **Card Picture** *(NextUI's top ten, and my pick in the Library lab,
 2026-11-19: covers on a new card, "allow the user to pick between the two by
 opening the menu in the recents page")*, the fifth row of Recents' MENU,
@@ -6401,6 +6443,9 @@ turned on in the menu over it (its row: On or Off on Left and Right, A its
 page, the same one as over a game) or over a Diatom game; portkeys reads it as
 the menu closes.
 
+**Its play time** is a cart's as fake08's is: the cart lands on Recents and its
+Played counts the session, Splore's too (11.48, "Every game played").
+
 **A cart's own saves** are one set for both players: fake08's `Saves/cdata`,
 bound over PICO-8's `cdata` for the run. PICO-8's settings, Splore's downloads
 and its favourites stay in `Saves/PICO-8`. *(Favourites stay in Splore.)*
@@ -6554,8 +6599,10 @@ mark color as a dot 14 across, then the heading and the place in **meta**,
 **text-soft** ("PlayStation · 3 / 6", the folder path in it as the heading
 has it); under it the game's name in **game-title**, **text**; under that,
 when there are any, its facts in **chrome**, **text-dim**: its own system on
-a shelf of many (Favorites, Recents, Collections), Played, achievements,
-apart by " · ". A name or a line wider than 640 slides (8 Principles).
+a shelf of many (Favorites, Recents, Collections; on Recents with when it was
+last played, 11.48), Played, achievements, apart by " · ". Facts wider than
+640 put the rest after the system's on a line of their own, so the time is
+read whole; a name or a line still wider than 640 slides (8 Principles).
 
 **The band** at the foot, from y 524, on **surface** at 92% so the snap
 shows through a little: the covers in a row, a step of 108 apart, the
@@ -7449,12 +7496,19 @@ Systems, START the next View, X Delete; A's word **View**.
 open; the View the shelf keeps does not change. The shot is whole on the
 screen at its own shape, as large as the screen holds it (on the Pixel 2 a
 SNES shot is 549 x 480 pixels), on ink; the name's card at the top left
-("Screenshots · 3 / 13", the game, its line); the band of shots at the foot,
-down to its strip after **hold-band** with no press. Until the picture is
-in, its card shows whole above the band, as a game's does until its snap.
-Left and Right step, L1 and R1 go to the next or the last game's first shot
-in the shelf's order, B goes back to the View it was opened from, X deletes;
-A and START play **deny**. The viewer is for looking *(my pick)*: no key
+("Screenshots · 3 / 13", the game, its line); the band of shots at the foot.
+After **hold-band** with no press nothing covers the shot: the band goes
+down off the screen with no strip, and the name's card goes up off the top
+with it, in **move** *(my ask, 2026-11-20: "the top card that contains the
+name and etc should animate and disappear as well. so we can see the whole
+image. also the collapsed footer can be nothing")*. **A** puts them away at
+once, without the rest, and A held keeps them away *("it goes straight to
+full without needing to wait for it to collapse")*; any other press brings
+them back up in **quick** and does what it does. Until the picture is in,
+its card shows whole above the band, as a game's does until its snap. Left
+and Right step, L1 and R1 go to the next or the last game's first shot in
+the shelf's order, B goes back to the View it was opened from, X deletes;
+START plays **deny**. The viewer is for looking *(my pick)*: no key
 starts the shot's game there, which starts from its own shelf. The picture
 is asked of the art workers apart from the cards
 (`SHOTS_VIEW_SYS`). On the shelf's own Video View (START) the same, with B

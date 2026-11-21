@@ -135,6 +135,85 @@ void stats_recover(void)
 	}
 }
 
+/* --- a program of its own (stats.h) -------------------------------------- */
+
+long long stats_mono_ms(void)
+{
+	struct timespec ts;
+
+	if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) return 0;
+	return (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
+
+bool stats_hand_over(const char *tag, const char *file, const char *note,
+                     long now, long long mono_ms)
+{
+	char key[STATS_TAG_MAX + STATS_FILE_MAX + 56], tmp[512];
+	FILE *f;
+	bool ok;
+
+	if (!tag || !file || !note || !*tag || !*file) return false;
+	if (strlen(tag) >= STATS_TAG_MAX || strlen(file) >= STATS_FILE_MAX) return false;
+	if (strchr(tag, '\t') || strchr(file, '\t') || strchr(file, '\n')) return false;
+	/* The note first, whole, then renamed in: the row alone would be a
+	 * session nothing could close, and a note cut short a session read
+	 * wrong */
+	snprintf(tmp, sizeof tmp, "%s.tmp", note);
+	f = fopen(tmp, "w");
+	ok = f && fprintf(f, "%ld\t%u\t%lld\t%s\t%s\n", now, (unsigned)mono_ms, mono_ms, tag, file) > 0;
+	if (f && fclose(f) != 0) ok = false;
+	if (!ok || rename(tmp, note) != 0) {
+		remove(tmp);
+		return false;
+	}
+	/* The key's middle number keeps two starts in one second apart, as
+	 * stats_begin's millisecond clock does; this one is the monotonic */
+	session_key(key, sizeof key, now, (unsigned)mono_ms, tag, file);
+	db_set_str(db_lib(), key, "0\topen");
+	return true;
+}
+
+bool stats_handed_back(const char *note, long long mono_ms)
+{
+	char line[STATS_TAG_MAX + STATS_FILE_MAX + 80], key[STATS_TAG_MAX + STATS_FILE_MAX + 56];
+	char val[64], tag[STATS_TAG_MAX];
+	const char *t1, *t2, *t3, *t4;
+	long long t0;
+	unsigned long kn;
+	long start, secs;
+	FILE *f = fopen(note, "r");
+	bool got;
+
+	if (!f) return false;
+	got = fgets(line, sizeof line, f) != NULL;
+	fclose(f);
+	remove(note);
+	if (!got) return false;
+	line[strcspn(line, "\n")] = '\0';
+	/* <start>\t<key>\t<mono_ms>\t<tag>\t<file>: the key's number as the
+	 * row was written, the clock apart from it */
+	if (!(t1 = strchr(line, '\t')) || !(t2 = strchr(t1 + 1, '\t')) || !(t3 = strchr(t2 + 1, '\t')) ||
+	    !(t4 = strchr(t3 + 1, '\t')))
+		return false;
+	if ((size_t)(t4 - t3 - 1) >= STATS_TAG_MAX || t4 == t3 + 1 || !t4[1]) return false;
+	start = strtol(line, NULL, 10);
+	kn = strtoul(t1 + 1, NULL, 10);
+	t0 = strtoll(t2 + 1, NULL, 10);
+	/* The clock is not held to be past zero: a launcher writes it at or
+	 * after boot, and a check that puts the start an hour back on a computer
+	 * up for minutes (CI's Linux runners, 2026-11-21) puts it before boot.
+	 * The seconds are only ever the difference */
+	if (start <= 0) return false;
+	snprintf(tag, sizeof tag, "%.*s", (int)(t4 - t3 - 1), t3 + 1);
+	/* A clock that went back is a boot between the two, which /tmp does
+	 * not outlive: nothing honest to claim, so nothing is */
+	secs = mono_ms >= t0 ? (long)((mono_ms - t0) / 1000) : 0;
+	session_key(key, sizeof key, start, (unsigned)kn, tag, t4 + 1);
+	snprintf(val, sizeof val, "%ld\tquit", secs);
+	db_set_str(db_lib(), key, val);
+	return true;
+}
+
 /* --- a game deleted from the card ---------------------------------------- */
 
 struct gone_row { char key[STATS_TAG_MAX + STATS_FILE_MAX + 56]; struct gone_row *next; };
@@ -430,23 +509,49 @@ void stats_format(long seconds, char *out, size_t n)
 /* Days apart on the CALENDAR, not elapsed hours divided by 24: something
  * played at 11pm was played yesterday when read at 1am, and "2h ago" would be
  * a true sentence that answers the wrong question. */
-void stats_ago(long then, long now, char *out, size_t n)
+static long calendar_days(long then, long now)
 {
 	time_t a = (time_t)then, b = (time_t)now;
 	struct tm ta, tb;
-	long days;
 
-	if (!out || !n) return;
-	if (then <= 0) { snprintf(out, n, "%s", T(S_STATS_NEVER)); return; }
 	ta = *localtime(&a);
 	tb = *localtime(&b);
 	ta.tm_hour = ta.tm_min = ta.tm_sec = 0; ta.tm_isdst = -1;
 	tb.tm_hour = tb.tm_min = tb.tm_sec = 0; tb.tm_isdst = -1;
-	days = ((long)mktime(&tb) - (long)mktime(&ta) + 43200) / 86400;
+	return ((long)mktime(&tb) - (long)mktime(&ta) + 43200) / 86400;
+}
+
+void stats_ago(long then, long now, char *out, size_t n)
+{
+	long days;
+
+	if (!out || !n) return;
+	if (then <= 0) { snprintf(out, n, "%s", T(S_STATS_NEVER)); return; }
+	days = calendar_days(then, now);
 
 	if (days <= 0)     snprintf(out, n, "%s", T(S_STATS_TODAY));
 	else if (days == 1) snprintf(out, n, "%s", T(S_STATS_YESTERDAY));
 	else if (days < 7)  snprintf(out, n, T(S_STATS_DAYS_AGO), days);
 	else if (days < 60) snprintf(out, n, T(S_STATS_WEEKS_AGO), days / 7);
 	else                snprintf(out, n, T(S_STATS_MONTHS_AGO), days / 30);
+}
+
+/* The clock for today and yesterday, as the Screenshots shelf has always put
+ * it after the day (src/shots_screen.c, shots_facts): 24-hour "21:40", or
+ * 12-hour "9:40 PM" with no leading zero */
+void stats_when(long then, long now, bool clock24, char *out, size_t n)
+{
+	char ago[32], clock[16];
+	time_t t = (time_t)then;
+	struct tm tm;
+
+	if (!out || !n) return;
+	stats_ago(then, now, ago, sizeof ago);
+	if (then <= 0 || calendar_days(then, now) > 1) {
+		snprintf(out, n, "%s", ago);
+		return;
+	}
+	localtime_r(&t, &tm);
+	strftime(clock, sizeof clock, clock24 ? "%H:%M" : "%I:%M %p", &tm);
+	snprintf(out, n, "%s %s", ago, clock[0] == '0' && !clock24 ? clock + 1 : clock);
 }

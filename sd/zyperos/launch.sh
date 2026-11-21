@@ -813,6 +813,12 @@ while : ; do
 			;;
 		esac
 		run_port "$PORT" "$GAME" "$TAG" "$DISP" "$KEEP"
+		# Its play time, closed now that it has ended (src/stats.h, "a
+		# program of its own"): the launcher handed the session over as it
+		# handed the program over, and this ends it, before a power-off
+		# below too, so the game is on Recents with its time however it
+		# ended. A start of the launcher with nothing on the screen.
+		"$ZYPEROS_DIR/zyperos.elf" --port-played >> "$LOG" 2>&1
 		# POWER, or the battery run flat, over the port (port_power)
 		[ -f /tmp/zyperos_poweroff ] && break
 		cd "$ZYPEROS_DIR"
