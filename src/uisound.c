@@ -55,6 +55,14 @@ uis_cue uisound_step(uis_steps *st, bool moved, bool repeat)
 	return c;
 }
 
+uis_cue uisound_shot(int setting)
+{
+	uis_cue c = { DS_SOUND_SHUTTER, 1.0f };
+
+	if (setting < 0 || setting >= DS_VOICES) c.level = 0.0f;
+	return c;
+}
+
 /* ---- where ------------------------------------------------------------------- */
 
 const char *uisound_device(const aout_state *s)

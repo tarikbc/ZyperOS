@@ -45,10 +45,17 @@ static uint64_t          g_bar_changed_us;
 static osdbar_look       g_look_told;
 static bool              g_look_said;
 
-/* The rumble as the boost opens, the launcher's: this long, at the game's
- * rumble level, ended on the first frame after (0, none running) */
+/* The rumble as the boost opens, the launcher's, and as a screenshot is
+ * taken: this long, at the game's rumble level, ended on the first frame
+ * after (0, none running) */
 #define BUZZ_MS 40
 static uint64_t g_buzz_until_us;
+
+void diatom_levels_buzz(void)
+{
+	diatom_rumble_buzz(true);
+	g_buzz_until_us = diatom_port_now_us() + BUZZ_MS * 1000ull;
+}
 
 static unsigned g_presses;      /* diatom_levels_presses */
 
@@ -206,7 +213,7 @@ static void step(diatom_level_kind kind, int dir)
  * shown, as it always was), the bar alone for the cells, the boost's effect,
  * the rumble as it opens. A held key's repeat the boost stopped (the key that
  * opened it, still down) moves nothing and only holds the bar up. */
-static void act(diatom_level_kind kind, int dir, int did, uint64_t now)
+static void act(diatom_level_kind kind, int dir, int did)
 {
 	const boost_bar *b = &g_boost[kind].bar;
 
@@ -217,10 +224,7 @@ static void act(diatom_level_kind kind, int dir, int did, uint64_t now)
 		step(kind, dir);
 	else
 		show(kind);
-	if (did & BOOST_OPENED) {
-		diatom_rumble_buzz(true);
-		g_buzz_until_us = now + BUZZ_MS * 1000ull;
-	}
+	if (did & BOOST_OPENED) diatom_levels_buzz();
 }
 
 /* A level key's press (`repeat` false) or a held key's repeat */
@@ -231,7 +235,7 @@ static void key(diatom_level_kind kind, int dir, bool repeat, uint64_t now)
 		step(kind, dir);
 		return;
 	}
-	act(kind, dir, boost_key(&g_boost[kind].bar, dir, repeat, BOOST_OPEN, ms_of(now)), now);
+	act(kind, dir, boost_key(&g_boost[kind].bar, dir, repeat, BOOST_OPEN, ms_of(now)));
 }
 
 /* Holding a level key repeats it at the launcher's pace - ZyperOS's
@@ -291,7 +295,7 @@ void diatom_levels_frame(void)
 		if (g_boost[k].up_was && !up) boost_release(b, ms_of(now));
 		g_boost[k].up_was = up;
 		did = boost_tick(b, up, BOOST_OPEN, ms_of(now));
-		if (did) act((diatom_level_kind)k, +1, did & ~BOOST_LEVEL, now);
+		if (did) act((diatom_level_kind)k, +1, did & ~BOOST_LEVEL);
 	}
 
 	/* A plug in or out closes the volume boost, so the new output starts at

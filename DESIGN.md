@@ -763,11 +763,12 @@ goes on to the end of its beat, so a held key that changes a setting every
 ## 9. Sound
 
 **Soft UI.** Short synthesized sounds, quiet, from the launcher only: never
-over a game or a port. One exception: the sound of the press that starts or
+over a game or a port. Two exceptions. The sound of the press that starts or
 resumes a game, A's accept or Continue's back, is let finish, at most about
 100 ms over the game's first frames; cut, every launch's tick would be
-clipped. They play through the system volume, so the volume keys and the
-mute switch set them too.
+clipped. And the Screenshot hotkey's **shutter** (11.61), heard over the game
+or your PICO-8 as the shot is taken. They play through the system volume, so
+the volume keys and the mute switch set them too.
 
 They play on the speaker, the headphone jack and a USB-C DAC, through the
 same shared output MP4 and Diatom use, in every screen the launcher draws,
@@ -777,9 +778,11 @@ and its fifth of a second of delay would put every tick after the press it
 answers. *(This document's call.)* They follow Audio Channels: mono on one
 side plays them on that side only.
 
-There are three **voices** of the same six sounds, each sound a WAV that
+There are three **voices** of the same seven sounds, each sound a WAV that
 `tools/gensounds.py` synthesizes from the tones below (`make sounds`): Wood,
 soft mallets on wooden bars; Glass, pure high ticks; Bubble, drops that pop.
+The shutter is the same in all three: a camera's two clicks, each a snap of
+band-passed noise over a soft thump, 175 ms.
 **MENU > UI Sounds**, under Audio Channels, picks Wood, Glass, Bubble or Off,
 and a new device has **Wood**. The row plays each voice as it is chosen.
 *(2026-11-04, in the sound lab, docs/design/mock/sound-lab.html:
@@ -797,6 +800,7 @@ audio rows.)*
 | **back** | B, a menu closing | sine 924-880 Hz 60 ms 0.075 at 0; sine 1760 Hz 24 ms 0.018 at 0 | triangle 820 Hz 50 ms 0.08 at 0 | sine 1300-650 Hz 50 ms 0.07 at 0 |
 | **deny** | a press nothing can act on | triangle 466.2 Hz 50 ms 0.08 at 0; triangle 440 Hz 60 ms 0.08 at 85 | square 330 Hz 40 ms 0.04 at 0; square 330 Hz 40 ms 0.04 at 70 | triangle 520-400 Hz 45 ms 0.07 at 0; triangle 520-400 Hz 45 ms 0.07 at 80 |
 | **reward** | something good | sine 1098.83-1046.5 Hz 220 ms 0.08 at 0; sine 4186 Hz 8 ms 0.015 at 0; sine 1646.4-1568 Hz 380 ms 0.07 at 100; sine 6272 Hz 8 ms 0.012 at 100 | triangle 1318.5 Hz 160 ms 0.08 at 0; triangle 1975.5 Hz 260 ms 0.07 at 90 | sine 900-1318.5 Hz 160 ms 0.075 at 0; sine 1300-1975.5 Hz 280 ms 0.065 at 90 |
+| **shutter** | the Screenshot hotkey's shot, over a game or your PICO-8 | noise 5200 Hz 12 ms 0.32 at 0; noise 2600-1800 Hz 40 ms 0.16 at 0; sine 220-160 Hz 45 ms 0.08 at 2; noise 4400 Hz 12 ms 0.22 at 115; noise 2200-1500 Hz 60 ms 0.12 at 115; sine 190-140 Hz 55 ms 0.06 at 117 | noise 5200 Hz 12 ms 0.32 at 0; noise 2600-1800 Hz 40 ms 0.16 at 0; sine 220-160 Hz 45 ms 0.08 at 2; noise 4400 Hz 12 ms 0.22 at 115; noise 2200-1500 Hz 60 ms 0.12 at 115; sine 190-140 Hz 55 ms 0.06 at 117 | noise 5200 Hz 12 ms 0.32 at 0; noise 2600-1800 Hz 40 ms 0.16 at 0; sine 220-160 Hz 45 ms 0.08 at 2; noise 4400 Hz 12 ms 0.22 at 115; noise 2200-1500 Hz 60 ms 0.12 at 115; sine 190-140 Hz 55 ms 0.06 at 117 |
 <!-- /generated:sound -->
 
 - A step that moves plays **move**. A step that cannot, at the end of a list,
@@ -828,6 +832,9 @@ audio rows.)*
   Taking a favorite away plays **back**.
 - On the keyboard A types and plays **accept**, B deletes and plays
   **back**; the grid wraps at every edge, and its wrap plays **move**.
+- The Screenshot hotkey plays **shutter** as the shot is taken, in a game and
+  over your PICO-8 (11.61), and nothing under UI Sounds Off. It is the one
+  sound that plays while a game runs.
 
 ---
 
@@ -1438,7 +1445,9 @@ out of its end; a thin mark in **text-dim** at 70% stands at the top between
 the steps and the cells; the rim flashes in **warning** and fades back to
 **edge** over **boost-flash** (360 ms, fade); and a 40 ms rumble at the
 player's Rumble level is felt, with no sound - a volume press never makes a
-UI sound, the media's own is the feedback. The opening fills the first cell
+UI sound, the media's own is the feedback. Over a port the rumble is
+portkeys's, on the joypad's motor at MENU > Sound > Rumble's level, as the
+launcher's own (tools/pkkeys.h's pk_buzz_pct; `check-pkkeys`). The opening fills the first cell
 and a key still held stops there: each further cell is a press. Each cell is
 a little taller than the one before, 16 to 28 units, so the boost reads by
 its shape too, with any accent (a Red, Orange or Pink accent's ink is near
@@ -1463,7 +1472,12 @@ starts at the top without it.
   only flatter, and the speaker never gets more than a loud game gives it at
   20. It opens in MP4 (MP4, told with a GAIN line), in a game (Diatom) and
   over a port (the zyperos-eq plugin, now in every port's chain, the gain in
-  the shared file that portkeys writes during the port). MP4's lock screen
+  the shared file that portkeys writes during the port). Over your PICO-8
+  with MP4's music behind it (PICO-8 quiet, 11.55), MP4's follower passes
+  that file's gain on to MP4 ten times a second, so the song follows each
+  cell as it does over a Diatom game (`check-pico8-mp4`). *(2026-11-20, on
+  1.1.0-rc.8: "volume boost while in pico 8 is not working. nor i can feel
+  the vibration when entering boost.")* MP4's lock screen
   fills and empties an open one but never opens one: a held key in a pocket
   must not. While MP4 is heard behind the home, a shelf or a menu (playing,
   the menu music quiet for it, as for L2 and R2 in 11.14), the boost there is
@@ -7001,6 +7015,34 @@ carries the shot itself beside "Screenshot saved", the folder under it,
 kept in its shape at the two lines' height (`NOTICE_PICTURE`), for
 **hold-short**, as every pop-up over a game. The shots are on the home's
 Screenshots group (11.68), the first one making it as the game ends.
+
+**A shot is felt and heard** *(2026-11-20, on the PICO-8 hotkeys test: "Can
+we have the screenshot make a photo sound and vibrate?")*, everywhere the
+hotkey works, in a Diatom game and over your PICO-8, as the frame is taken
+and never after the file: the writing waits for neither, and neither waits
+for it. A press that takes no shot (one while the last is being written, or
+with no folder) is neither felt nor heard.
+
+- **The buzz**: one short pulse of the motor, 40 ms, off on the first frame
+  after, the boost's buzz (11.6), never felt as a rumble. At the Rumble level
+  (11.54): Off none, Low 35%, Medium 65%, Full all of it; in a game the
+  level the game's own rumble runs at, its system's share in it (Diatom's
+  `diatom_levels_buzz`); over your PICO-8 MENU's (portkeys's `buzz`). Only on
+  a handheld with a motor ZyperOS runs: the Pixel 2, and the Brick once its
+  motor runs.
+- **The shutter**: the **shutter** sound (9), at its own level, under the
+  volume and the mute switch as every sound is; none under UI Sounds Off. In
+  a game with a Bluetooth headset as its output none, as every UI sound (9);
+  your PICO-8 never plays on one, so over it the shutter is heard where
+  PICO-8 is. Both follow Audio Channels as every UI sound does. It is a
+  player of its own on the mix the game plays into (the system's `default`, a
+  dmix on both handhelds, or the DAC's `usb`), beside the game: the game's
+  sound is never cut, paused, ducked or mixed into, and the volume boost and
+  the Equalizer, which are the game's, do not shape it. It is not in the
+  picture: the shot is the game's own frame. In a game Diatom says HOTKEY
+  key=shot as it takes the frame and the launcher plays it; over your PICO-8
+  portkeys plays it itself, on a thread of its own, the launcher being gone
+  (tools/pkshutter.h). `check-shotfeel` holds both.
 
 ### 11.62 Two cores on a shelf: Gambatte
 *(DoctorIssa on the Discord asked for Gambatte; Tarik: "all good". mGBA

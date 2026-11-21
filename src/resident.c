@@ -1104,8 +1104,13 @@ static int diatom_wait(void)
 				d_apply_levels();
 				return RES_PAUSED;
 			}
-			/* A hotkey of the player's own: a screenshot written, the
-			 * next shader or display mode for the launcher to step */
+			/* A hotkey of the player's own: a screenshot taken (its
+			 * shutter, said at the press, before the file is written),
+			 * a screenshot written, the next shader or display mode for
+			 * the launcher to step */
+			else if (strcmp(l, "HOTKEY\tkey=shot") == 0) {
+				if (d_on_hotkey) d_on_hotkey("shot", NULL);
+			}
 			else if (strncmp(l, "SHOT\tpath=", 10) == 0) {
 				if (d_on_hotkey) d_on_hotkey("shot", l + 10);
 			}

@@ -436,9 +436,10 @@ MOTION = [
 # Synthesized by tools/gensounds.py into res/sounds/<voice>/<sound>.wav, which
 # is what src/uisound.c plays. A tone is (wave, Hz, ms, peak 0-1, start ms),
 # its Hz one pitch or a (from, to) pair that glides over the tone's first
-# third; a chord is several tones. Three voices of the same six sounds: Wood
-# is a new device's, and MENU > UI Sounds picks another or none. my,
-# 2026-11-04, in the sound lab (docs/design/mock/sound-lab.html).
+# third; a chord is several tones, and a "noise" is a band of white noise at
+# the pitch, for what is struck rather than rung. Three voices of the same
+# seven sounds: Wood is a new device's, and MENU > UI Sounds picks another or
+# none. my, 2026-11-04, in the sound lab (docs/design/mock/sound-lab.html).
 
 SOUNDS = [
     ("move",   "a step on a shelf or a list"),
@@ -447,6 +448,20 @@ SOUNDS = [
     ("back",   "B, a menu closing"),
     ("deny",   "a press nothing can act on"),
     ("reward", "something good"),
+    ("shutter", "the Screenshot hotkey's shot, over a game or your PICO-8"),
+]
+
+# The shutter, the same in every voice (2026-11-20, on the PICO-8 hotkeys
+# test: "Can we have the screenshot make a photo sound and vibrate?"): a
+# camera's two clicks, the shutter opening and closing 115 ms apart, each a
+# bright snap of noise, a darker body under it and a soft thump; the second a
+# little softer and lower, as it falls back. 175 ms in all. Louder than a
+# tick, as it is heard over a game's own sound.
+SHUTTER = [
+    ("noise", 5200, 12, 0.32, 0), ("noise", (2600, 1800), 40, 0.16, 0),
+    ("sine", (220, 160), 45, 0.08, 2),
+    ("noise", 4400, 12, 0.22, 115), ("noise", (2200, 1500), 60, 0.12, 115),
+    ("sine", (190, 140), 55, 0.06, 117),
 ]
 
 VOICES = [
@@ -463,6 +478,7 @@ VOICES = [
         "deny":   [("triangle", 466.2, 50, 0.080, 0), ("triangle", 440.0, 60, 0.080, 85)],
         "reward": [("sine", (1098.825, 1046.5), 220, 0.080, 0), ("sine", 4186.0, 8, 0.015, 0),
                    ("sine", (1646.4, 1568.0), 380, 0.070, 100), ("sine", 6272.0, 8, 0.012, 100)],
+        "shutter": SHUTTER,
     }),
     # Pure high ticks and clicks: what the design lab played and DESIGN.md
     # first wrote down.
@@ -473,6 +489,7 @@ VOICES = [
         "back":   [("triangle", 820, 50, 0.08, 0)],
         "deny":   [("square", 330, 40, 0.04, 0), ("square", 330, 40, 0.04, 70)],
         "reward": [("triangle", 1318.5, 160, 0.08, 0), ("triangle", 1975.5, 260, 0.07, 90)],
+        "shutter": SHUTTER,
     }),
     # Drops that pop: forward runs up, back runs down, the end and deny are
     # short falls.
@@ -483,6 +500,7 @@ VOICES = [
         "back":   [("sine", (1300, 650), 50, 0.070, 0)],
         "deny":   [("triangle", (520, 400), 45, 0.070, 0), ("triangle", (520, 400), 45, 0.070, 80)],
         "reward": [("sine", (900, 1318.5), 160, 0.075, 0), ("sine", (1300, 1975.5), 280, 0.065, 90)],
+        "shutter": SHUTTER,
     }),
 ]
 VOICE_DEFAULT = "wood"
@@ -699,7 +717,7 @@ def design_h():
     L.append("\treturn t * t * (3 - 2 * t);")
     L.append("}")
     L.append("")
-    L.append("/* Sound (DESIGN.md 9): six sounds in three voices, each sound a WAV,")
+    L.append("/* Sound (DESIGN.md 9): seven sounds in three voices, each sound a WAV,")
     L.append(" * res/sounds/<voice id>/<sound id>.wav, that tools/gensounds.py")
     L.append(" * synthesizes from the tones in tools/designdef.py. */")
     L.append("typedef enum {")

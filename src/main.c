@@ -1908,6 +1908,23 @@ static void port_quiet_follow(bool force)
 	fprintf(stderr, "quiet: PICO-8 %s\n", q ? "quiet, MP4 plays" : "heard");
 }
 
+/* THE VOLUME BOOST OVER YOUR PICO-8 (src/boost.h, DESIGN.md 11.6), heard on
+ * MP4 behind it. portkeys has the keys over PICO-8 and writes the boost's
+ * gain into the equalizer's shared file, which the plugin in PICO-8's chain
+ * reads; MP4 takes it only from a GAIN line on its socket (the launcher's
+ * src/levels.c sends one with every step), and the launcher is gone. So the
+ * follower, which is MP4's connection beside PICO-8, passes the file's gain
+ * on at its ten a second (mp4c_gain says only a change): a step of the boost
+ * over PICO-8 reaches the song playing as it does over a Diatom game. Before
+ * this, with music over PICO-8 (PICO-8 quiet), the bar's cells moved and the
+ * song stayed as loud as the launcher had left it. */
+static void port_gain_follow(void)
+{
+	const int db = eq_share_gain_get();
+
+	if (db >= 0) mp4c_gain(db);
+}
+
 /* As the launcher hands over to a program (launch_port) and as it starts:
  * your PICO-8 quiet from its first sound when MP4 plays (`pico8`), any other
  * program never, MP4 being stopped for it */
@@ -3421,16 +3438,33 @@ static void on_speed(int half)
 }
 
 /* Called from inside plat_resident_wait for the player's hotkeys the
- * launcher carries out (src/hotkeys.h): a screenshot Diatom wrote, said
- * over the game with the picture small beside "Screenshot saved" and where
- * it went; the next shader or display mode, stepped and kept as the menu's
- * rows do, and named over the game */
+ * launcher carries out (src/hotkeys.h): a screenshot taken, its shutter
+ * heard over the game at once (DESIGN.md 9: the one sound over a game, none
+ * with UI Sounds Off), Diatom buzzing it itself; a screenshot Diatom wrote,
+ * said over the game with the picture small beside "Screenshot saved" and
+ * where it went; the next shader or display mode, stepped and kept as the
+ * menu's rows do, and named over the game */
 static app *g_hotkey_app;   /* main's, for on_hotkey's steps */
 
 static void on_hotkey(const char *key, const char *path)
 {
 	char p[CFG_STR * 2], body[CFG_STR * 2];
 
+	if (!strcmp(key, "shot") && !path) {
+		const uis_cue c = uisound_shot(uisound_setting());
+
+		/* On the mix the game plays into ("default", a dmix on both
+		 * handhelds), beside it: nothing of the game's sound is touched.
+		 * The output is let go once the shutter ends, not kept the usual
+		 * quiet spell over the game. */
+		if (c.level > 0.0f) {
+			uisound_cue(c);
+			uisound_release();
+		}
+		fprintf(stderr, "hotkey: screenshot taken, %s\n",
+		        c.level > 0.0f ? "its shutter" : "no shutter (UI Sounds Off)");
+		return;
+	}
 	if (!strcmp(key, "shot") && path) {
 		const char *folder = strstr(path, "/Screenshots/");
 		const char *end = folder ? strrchr(path, '/') : NULL;
@@ -6115,6 +6149,8 @@ static int mp4_follow_main(void)
 		mp4_poll();
 		/* PICO-8 quiet while MP4 plays, heard again at a pause or the end */
 		port_quiet_follow(false);
+		/* And the boost's steps over PICO-8, portkeys's, on MP4 */
+		port_gain_follow();
 		nanosleep(&nap, NULL);
 	}
 	free(taken);

@@ -102,6 +102,18 @@ static void heard_stick(bool on)
 	stick_last = on;
 }
 
+/* What the on_hotkey callback heard: a shot taken (path NULL, its shutter)
+ * and a shot written (its path), in the order they came */
+static char hotkeys_heard[256];
+
+static void heard_hotkey(const char *key, const char *path)
+{
+	size_t n = strlen(hotkeys_heard);
+
+	snprintf(hotkeys_heard + n, sizeof hotkeys_heard - n, "%s%s:%s", n ? " " : "", key,
+	         path ? "file" : "taken");
+}
+
 /* ---- a Diatom of its own ------------------------------------------------- */
 
 /* What it says to the Nth command line it reads, after READY */
@@ -165,6 +177,10 @@ static const char *const GAME_ANSWERS[] = {
 	/* the menu filled it to three: the first frame's line is from before
 	 * its SETLEVEL, with the one it had; then SETLEVEL's, a press, the end */
 	VOL_LEVEL(1) VOL_LEVEL(3) VOL_LEVEL(4) "EXIT\treason=user\n",
+	/* two screenshots: each said as it is taken (its shutter), the first's
+	 * file once written, between them; then MENU */
+	"HOTKEY\tkey=shot\nSHOT\tpath=/tmp/Screenshots/SNES/Game 2026-11-20 21.40.05.png\n"
+	"HOTKEY\tkey=shot\nPAUSED\n",
 };
 
 static void fake_game(int listener)
@@ -365,6 +381,16 @@ int main(void)
 		      "the first frame's line from before SETLEVEL (1) is never told; SETLEVEL's 3 and a press's 4 are");
 		CHECK(boosts_at_take == 2 && kept_vol_boost == 4, "  ...before the end hands the 4 back");
 	}
+	/* The Screenshot hotkey (DESIGN.md 11.61): the launcher hears each shot
+	 * as Diatom takes it, for its shutter, and again when its file is said */
+	printf("two screenshots in a running game:\n");
+	plat_resident_on_hotkey(heard_hotkey);
+	CHECK(plat_resident_line("RESUME"), "RESUME");
+	CHECK(plat_resident_wait() == RES_PAUSED, "the game plays, then MENU pauses it");
+	CHECK(!strcmp(hotkeys_heard, "shot:taken shot:file shot:taken"),
+	      "each shot is heard as it is taken (its shutter, once), and the first again as its file is said");
+	if (strcmp(hotkeys_heard, "shot:taken shot:file shot:taken")) printf("         heard: %s\n", hotkeys_heard);
+	plat_resident_on_hotkey(NULL);
 	kill(pid, SIGTERM);
 	waitpid(pid, NULL, 0);
 	unlink(path);

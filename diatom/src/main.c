@@ -370,9 +370,11 @@ static bool write_preview(const char *path)
  * frame Diatom already keeps (a GPU core's read back once, gpu_snapshot),
  * copied here between frames and written as a PNG on a thread of its own,
  * so the frame loop never waits on the card or on the encoding. Where it
- * goes is the launcher's (RUN shots=): the time and ".png" are added. SHOT
- * path= once the file is there, said by the loop, which looks once a turn;
- * one at a time, a press while one is being written is said and dropped. */
+ * goes is the launcher's (RUN shots=): the time and ".png" are added. As
+ * it is taken, a short buzz and HOTKEY key=shot, the launcher's shutter
+ * (DESIGN.md 9); SHOT path= once the file is there, said by the loop, which
+ * looks once a turn; one at a time, a press while one is being written is
+ * said and dropped, unfelt and unheard. */
 static char g_shots[1024];
 
 typedef struct {
@@ -536,6 +538,12 @@ static void shot_take(void)
 	strftime(when, sizeof when, "%Y-%m-%d %H.%M.%S", &tm);
 	snprintf(j->path, sizeof j->path, "%s %s.png", g_shots, when);
 	g_shot_state = 1;
+	/* Felt and heard as it is taken, never after the file (DESIGN.md
+	 * 11.61): the buzz here, at the game's rumble level, and the shutter
+	 * the launcher's, told now and played on the mix beside the game's
+	 * sound. Neither touches the frame copied above, nor the game's sound. */
+	diatom_levels_buzz();
+	if (diatom_proto_connected()) diatom_proto_send("HOTKEY\tkey=shot");
 	if (pthread_create(&th, NULL, shot_write, j) != 0) {
 		shot_write(j);
 		return;

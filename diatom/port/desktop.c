@@ -198,7 +198,7 @@ void diatom_port_audio_get(char *out, size_t cap)
 
 /* No motor here. DIATOM_RUMBLE_LOG=path is a pretend one for a test: each
  * level the host asks of it, a line "strong weak" in that file, in the order
- * asked (test/rumble.py). From any thread, as the port contract says, so
+ * asked (test/rumble.py), and the time after them with DIATOM_RUMBLE_LOG_US. From any thread, as the port contract says, so
  * under a lock. */
 static pthread_mutex_t g_rumble_mx = PTHREAD_MUTEX_INITIALIZER;
 static FILE           *g_rumble_log;
@@ -492,6 +492,35 @@ void diatom_port_present(const void *src, int w, int h, size_t pitch,
 	SDL_RenderPresent(g_renderer);
 }
 
+/* DIATOM_AUDIO_LOG=path, for a test: each write the game's sound makes, a
+ * line "frames loudest" (the frames taken, the loudest sample of them), so a
+ * check sees the game's own sound go on as it was, with nothing added to it
+ * (test/shotfeel.py: a screenshot's shutter is the launcher's, beside it).
+ * Written from the frame loop alone. */
+static FILE *g_audio_log;
+static bool  g_audio_log_looked;
+
+static void audio_log(const int16_t *frames, size_t n)
+{
+	int top = 0;
+	size_t i;
+
+	if (!g_audio_log_looked) {
+		const char *e = getenv("DIATOM_AUDIO_LOG");
+
+		g_audio_log_looked = true;
+		if (e && *e) g_audio_log = fopen(e, "w");
+	}
+	if (!g_audio_log) return;
+	for (i = 0; i < 2 * n; i++) {
+		int a = frames[i] < 0 ? -(int)frames[i] : frames[i];
+
+		if (a > top) top = a;
+	}
+	fprintf(g_audio_log, "%zu %d\n", n, top);
+	fflush(g_audio_log);
+}
+
 size_t diatom_port_audio_write(const int16_t *frames, size_t n)
 {
 	size_t queued, room;
@@ -534,6 +563,7 @@ size_t diatom_port_audio_write(const int16_t *frames, size_t n)
 	if (!n) return 0;
 
 	SDL_QueueAudio(g_audio, frames, (Uint32)(n * AUDIO_FRAME_BYTES));
+	audio_log(frames, n);
 	return n;
 }
 
@@ -655,7 +685,12 @@ bool diatom_port_rumble(uint16_t strong, uint16_t weak, float scale)
 	pthread_mutex_lock(&g_rumble_mx);
 	ok = g_rumble_log != NULL;
 	if (ok) {
-		fprintf(g_rumble_log, "%u %u\n", rumble_times(strong, scale), rumble_times(weak, scale));
+		fprintf(g_rumble_log, "%u %u", rumble_times(strong, scale), rumble_times(weak, scale));
+		/* DIATOM_RUMBLE_LOG_US: and when, for a check of a buzz's length
+		 * (test/shotfeel.py) */
+		if (getenv("DIATOM_RUMBLE_LOG_US"))
+			fprintf(g_rumble_log, " %llu", (unsigned long long)diatom_port_now_us());
+		fputc('\n', g_rumble_log);
 		fflush(g_rumble_log);
 	}
 	pthread_mutex_unlock(&g_rumble_mx);

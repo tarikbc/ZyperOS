@@ -235,4 +235,85 @@ int pk_boost_lift(const pk_boost *b);
 /* The bar for `kind` at `now`, as osdbar_render_look draws it */
 void pk_boost_look(pk_boost *b, pk_kind kind, uint32_t now, osdbar_look *l);
 
+/* ---- the boost's buzz as it opens --------------------------------------------
+ *
+ * As the launcher gives it (src/levels.c) and Diatom in a game
+ * (diatom/src/levels.c): a short buzz of the motor as either boost opens, a
+ * press or a hold, PK_BUZZ_MS long, at MENU > Sound > Rumble's share of full
+ * strength (src/rumble.h: Off none, Low 35%, Medium 65%, Full all of it), the
+ * level the launcher's own buzz goes by. portkeys plays it on the joypad's
+ * force feedback (its boost_buzz). Before this, over a port nothing was felt:
+ * BOOST_OPENED came back from pk_press and pk_boost_tick and nothing read it. */
+#define PK_BUZZ_MS 40
+
+/* MENU > Sound > Rumble's share, percent, as src/rumble.c's rumble_menu and
+ * rumble_level_pct give it: the device database's "rumble" ("off" 0, "low"
+ * 35, "medium" 65), and 100 for "full", for none (a card that never chose)
+ * and for a word this release cannot read */
+int pk_rumble_pct(sqlite3 *db);
+
+/* What a step or the clock did (`did`, src/boost.h's BOOST_ flags, from
+ * pk_press or pk_boost_tick) asks of the motor: the share to buzz at when it
+ * says the boost opened, 0 for anything else or with Rumble Off */
+int pk_buzz_pct(sqlite3 *db, int did);
+
+/* The magnitude for the share, 0 to 0xFFFF, as the launcher scales it
+ * (plat_rumble_buzz, src/device/pixel2.c): full at 100, rounded */
+uint16_t pk_buzz_strength(int pct);
+
+/* ---- whose display may be borrowed -------------------------------------------
+ *
+ * portkeys borrows the port's display for the bar, the disc, On-Screen Stats,
+ * the in-game menu and a screenshot by copying the port's own open
+ * /dev/dri/card0 (portkeys.c's master_copy): a copy of a master's file is
+ * master. A copy also keeps the file open. SDL's KMSDRM, as a program starts
+ * (SDL 2.32's get_driindex, twice, then its own open), opens the display,
+ * takes the master, checks it, and closes it again within milliseconds: a
+ * copy taken in those milliseconds keeps that file, and the master with it,
+ * after SDL has closed it, and SDL's next open cannot become master, so the
+ * program fails with "kmsdrm not available". On 1.1.0-rc.9 your PICO-8 failed
+ * to start one time in two that way: portkeys looked for a master once a
+ * second for On-Screen Stats, and a look in SDL's milliseconds copied PICO-8's
+ * (the log's "showing the bar over pid 935" right after its FATAL ERROR).
+ *
+ * So a display file is copied only once it is settled: the same process had
+ * it open under the same number at an earlier look at least PK_SETTLE_MS
+ * before, with no gap of more than PK_LOOK_GAP_MS between the looks - far
+ * longer than SDL's look at the display lasts, so what is open then is the
+ * program's own display - or the process is one whose master has been held
+ * before (pk_looks_trust): a program that has its display. A look reads only
+ * /proc's links and copies nothing, so it cannot be in the way. */
+#define PK_SETTLE_MS    300
+#define PK_LOOK_GAP_MS  1500
+#define PK_LOOKS_MAX    16
+
+typedef struct {
+	int  pid, fd;            /* the process and its number for the display */
+	long first, last;        /* seen first in this run of looks, and last */
+	bool seen;               /* in the look under way */
+} pk_look;
+
+typedef struct {
+	pk_look e[PK_LOOKS_MAX];
+	int     n;
+	int     trusted;         /* the pid whose master was held, 0 none */
+	int     waiting;         /* display files seen in the last look and not settled */
+	long    settles_at;      /* when the first of those settles, -1 none */
+} pk_looks;
+
+void pk_looks_init(pk_looks *l);
+/* A look starting at `now` (ms) */
+void pk_looks_begin(pk_looks *l, long now);
+/* `pid` has the display open as `fd` in this look: whether that file may be
+ * copied (settled, or the pid trusted) */
+bool pk_looks_seen(pk_looks *l, int pid, int fd, long now);
+/* The look ended, `whole` when every process was looked at (a look stopped
+ * at the master it found keeps what it did not reach) */
+void pk_looks_end(pk_looks *l, bool whole);
+/* `pid`'s master held: its display files may be copied at once from now on */
+void pk_looks_trust(pk_looks *l, int pid);
+/* ms from `now` until a display file seen and not settled settles, -1 for
+ * none seen */
+long pk_looks_wait(const pk_looks *l, long now);
+
 #endif

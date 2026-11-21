@@ -489,10 +489,12 @@ diatom_msg_kind diatom_proto_poll(diatom_msg *out, int timeout_ms, bool running)
 		 * shoulders had and five more (shot, shader, display, reset,
 		 * quit), answered HOTKEYS ok=1, or ok=0 with the keys as they
 		 * were. A hotkey of the five says HOTKEY key=shader|display, a
-		 * screenshot SHOT path= once written (or ERROR code=shot_failed),
-		 * and reset and quit pause the game as MENU does, PAUSED for=reset
-		 * or for=quit, for the launcher to ask or to stop. Additive:
-		 * an old Diatom ignores all of it and keeps the shoulders' four. */
+		 * screenshot HOTKEY key=shot as it is taken (the launcher's
+		 * shutter, heard at once) and SHOT path= once written (or ERROR
+		 * code=shot_failed), and reset and quit pause the game as MENU
+		 * does, PAUSED for=reset or for=quit, for the launcher to ask or
+		 * to stop. Additive: an old Diatom ignores all of it and keeps the
+		 * shoulders' four, and an old launcher key=shot. */
 		/* proto=13 moves the speed and adds the quick slot: SELECT+R2 and
 		 * SELECT+L2 step it in halves, so SPEED's x may be "1.5", and MENU+R1
 		 * does nothing; SELECT+R1 and SELECT+L1 send HOTKEY key=save|load,

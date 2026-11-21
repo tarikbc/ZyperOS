@@ -43,6 +43,12 @@ int diatom_levels_boost(diatom_level_kind kind);
  * one came while MENU was held. */
 unsigned diatom_levels_presses(void);
 
+/* The short buzz the boost gives as it opens, and a screenshot as it is taken
+ * (main.c's shot_take, DESIGN.md 11.61): the motor at the game's rumble level
+ * (diatom_rumble_buzz) for 40 ms, ended by the first frame after; nothing
+ * with Rumble Off or on a handheld with no motor Diatom runs. */
+void diatom_levels_buzz(void);
+
 /* Once a frame: a level key's press steps its level, and holding it repeats at
  * the launcher's pace; the boost's clock, the bar's look handed to the port, a
  * plug in or out closing the volume boost. */

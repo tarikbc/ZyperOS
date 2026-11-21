@@ -222,6 +222,57 @@ static void files(void)
 		}
 }
 
+/* The Screenshot hotkey's shutter (DESIGN.md 9 and 11.61): the one sound
+ * heard over a game, a shot's own, at its level under every voice and none
+ * at Off; and the file it plays, in every voice the same short click. */
+static void shutter(void)
+{
+	int16_t *pcm[DS_VOICES] = { NULL };
+	int frames[DS_VOICES] = { 0 }, v, i;
+	char what[160];
+
+	printf("the shutter:\n");
+	for (v = 0; v < DS_VOICES; v++) {
+		snprintf(what, sizeof what, "a shot plays the shutter, at its own level, under %s", DS_VOICE_ID[v]);
+		ck(is(uisound_shot(v), DS_SOUND_SHUTTER, 1.0f), what);
+	}
+	ck(uisound_shot(UIS_OFF).level == 0.0f, "a shot under UI Sounds Off plays nothing");
+	ck(uisound_shot(uisound_setting_parse("off")).level == 0.0f, "...as the database keeps Off");
+	ck(uisound_shot(uisound_setting_parse(NULL)).level == 1.0f,
+	   "a card that never set UI Sounds has the shutter, as it has Wood");
+
+	for (v = 0; v < DS_VOICES; v++) {
+		char path[128];
+		uint8_t *buf;
+		size_t n;
+
+		snprintf(path, sizeof path, "res/sounds/%s/%s.wav", DS_VOICE_ID[v], DS_SOUND_ID[DS_SOUND_SHUTTER]);
+		buf = slurp(path, &n);
+		pcm[v] = buf ? uisound_wav(buf, n, &frames[v]) : NULL;
+		free(buf);
+	}
+	if (!pcm[0]) { ck(0, "res/sounds/wood/shutter.wav reads"); return; }
+	ck(frames[0] >= UIS_RATE * 150 / 1000 && frames[0] <= UIS_RATE * 250 / 1000,
+	   "the shutter is a short click, 150 to 250 ms");
+	{
+		int first = -1, top = 0;
+
+		for (i = 0; i < frames[0]; i++) {
+			int a = abs(pcm[0][i]);
+
+			if (first < 0 && a > 32767 / 100) first = i;
+			if (a > top) top = a;
+		}
+		ck(first >= 0 && first < UIS_RATE * 2 / 1000, "heard from its first 2 ms: the press, not after it");
+		ck(top < 32767 / 2, "under half of full scale, so the game's sound beside it does not clip");
+	}
+	for (v = 1; v < DS_VOICES; v++) {
+		snprintf(what, sizeof what, "the %s shutter is the wood one", DS_VOICE_ID[v]);
+		ck(pcm[v] && frames[v] == frames[0] && !memcmp(pcm[v], pcm[0], (size_t)frames[0] * 2), what);
+	}
+	for (v = 0; v < DS_VOICES; v++) free(pcm[v]);
+}
+
 static void mix(void)
 {
 	static const int16_t a[4] = { 1000, 2000, 3000, 4000 };
@@ -255,6 +306,7 @@ int main(void)
 	setting();
 	where();
 	files();
+	shutter();
 	mix();
 	if (fails) { printf("\n%d interface sound check(s) failed\n", fails); return 1; }
 	printf("\nok: each press plays what DESIGN.md says, where it may be heard\n");

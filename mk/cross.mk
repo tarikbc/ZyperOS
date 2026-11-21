@@ -164,7 +164,10 @@ $(BUILD)/p2d: $(P2D_SRC) $(wildcard src/p2d/*.h) src/httpd.h src/captive.h src/p
 # screenshot (src/p8draw.c, src/dmodefit.c), its Next Shader (src/p8fx.c,
 # src/p8fx_step.c), and the screenshot's crop, its PNG with zlib and its
 # pop-up (tools/pkshot.c), and the pad it gives PICO-8 while it holds the
-# joypad for the hotkeys (tools/pkvpad.c). Developer SSH for the port's length
+# joypad for the hotkeys (tools/pkvpad.c); a screenshot's buzz and shutter
+# (tools/pkfeel.c, the launcher's settings; tools/pkshutter.c, the interface
+# sounds' WAV and mix, src/uisound.c, played through src/pcm_out.c's alsa-lib
+# output on a thread of its own). Developer SSH for the port's length
 # (tools/pkssh.c), on the launcher's own sshlink, its run folder's clean and zyperos.local (src/sshlink.c,
 # src/rmtree.c, src/mdns.c). The bar's colors are src/design.h's,
 # which osdbar.h, theme.h and themefile.h include, so it is listed beside
@@ -179,17 +182,18 @@ PORTKEYS_SRC := tools/portkeys.c tools/pkkeys.c tools/pkset.c src/audioout.c src
                 src/powerhold.c tools/pkssh.c src/sshlink.c src/rmtree.c src/mdns.c src/panelgamma.c src/battempty.c \
                 tools/pkhot.c diatom/src/chord.c tools/pkkbd.c src/idle.c src/p8draw.c src/dmodefit.c \
                 src/p8fx.c src/p8fx_step.c tools/pkover.c src/hud.c src/hudmenu.c src/status.c tools/pkshot.c \
-                tools/pkvpad.c
+                tools/pkvpad.c tools/pkfeel.c tools/pkshutter.c src/uisound.c src/pcm_out.c
 $(BUILD)/portkeys: $(PORTKEYS_SRC) tools/pkkeys.h src/keyrepeat.h tools/pkset.h src/osdbar.h src/theme.h src/themefile.h \
                    src/clock.h src/design.h src/look.h src/audioout.h src/device/pixel2_levels.h src/sidelights.h \
                    src/heat.h src/portmenu.h src/powerhold.h tools/pkssh.h src/sshlink.h src/rmtree.h src/mdns.h \
                    src/panelgamma.h src/boost.h src/eqdsp.h src/battempty.h src/status.h tools/pkhot.h \
                    diatom/src/chord.h tools/pkkbd.h src/idle.h src/p8draw.h src/dmodefit.h src/p8fx.h \
                    tools/pkover.h src/hud.h src/hudglyphs.h src/hudmenu.h tools/pkshot.h tools/pkvpad.h \
-                   src/ctl.h tools/zychord.h
+                   src/ctl.h tools/zychord.h tools/pkfeel.h tools/pkshutter.h src/uisound.h src/pcm_out.h \
+                   src/fileio.h
 	mkdir -p $(BUILD)
 	$(CC) -O2 $(MCPU) -Wall -Wextra -std=gnu11 -Isrc -Idiatom/src -Idiatom/include -I$(SYSROOT)/usr/include \
-	      $(LDFLAGS) -o $@ $(PORTKEYS_SRC) -lsqlite3 -lz -lm
+	      $(LDFLAGS) -o $@ $(PORTKEYS_SRC) -lsqlite3 -lz -lasound -lpthread -lm
 
 # Your PICO-8's Shader and Border (src/p8fx.h, DESIGN.md 11.55): a library
 # pico8_64 loads before the system's SDL2 (LD_PRELOAD, sd/pixel2/PICO-8.sh),

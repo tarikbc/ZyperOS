@@ -13,7 +13,12 @@ VOICES, and nothing is recorded or downloaded. A tone is (wave, Hz, ms, peak,
 start ms): a sine, a triangle or a square, band-limited (a sum of its
 harmonics up to 20 kHz, so a square at 330 Hz does not alias), at one pitch,
 or gliding from the first of two pitches to the second; a chord is several
-tones, each from its own start. Each rises in min(4 ms, a quarter of its
+tones, each from its own start. Or a noise, for what is struck rather than
+rung (the shutter's clicks): white noise, the same on every run (xorshift32
+from a seed of the tone's place in its sound), through a band-pass at the
+pitch (the RBJ cookbook's, 0 dB at its peak, Q NOISE_Q), the band gliding as
+a tone's pitch does, scaled so its loudest sample is the peak as a tone's
+is. Each rises in min(4 ms, a quarter of its
 length) to its peak and falls exponentially from there to 1/10000 of full
 scale at its end - the envelope the mock kit's ZK.sound gave the design lab.
 A glide runs from the first pitch to the second in log frequency over the
@@ -46,6 +51,36 @@ RATE = 48000
 OUT = os.path.join(ROOT, "res", "sounds")
 TOP_HZ = 20000.0
 FLOOR = 1e-4
+NOISE_Q = 1.2
+
+
+def noise_seed(i):
+    """The noise's seed for a sound's tone `i`: never 0, which xorshift keeps."""
+    return ((i + 1) * 0x9E3779B9) & 0xFFFFFFFF or 1
+
+
+def noise(n, f0, f1, seed, rate):
+    """`n` samples of band-passed white noise, its loudest 1. The band's
+    middle glides from f0 to f1 as a tone's pitch does. kit.js's ZK.sound
+    makes the same, from the same seed."""
+    x, out = seed, []
+    x1 = x2 = y1 = y2 = 0.0
+    for i in range(n):
+        x ^= (x << 13) & 0xFFFFFFFF
+        x ^= x >> 17
+        x ^= (x << 5) & 0xFFFFFFFF
+        v = x / 4294967296.0 * 2.0 - 1.0
+        u = min(1.0, 3.0 * i / n)
+        f = f0 * (f1 / f0) ** (1 - (1 - u) ** 2)
+        w = 2 * math.pi * f / rate
+        alpha = math.sin(w) / (2 * NOISE_Q)
+        a0 = 1 + alpha
+        y = (alpha * v - alpha * x2 + 2 * math.cos(w) * y1 - (1 - alpha) * y2) / a0
+        x2, x1 = x1, v
+        y2, y1 = y1, y
+        out.append(y)
+    top = max(abs(s) for s in out) or 1.0
+    return [s / top for s in out]
 
 
 def harmonics(shape, hz):
@@ -68,12 +103,13 @@ def render(tones, rate=RATE):
     """The sound's samples, as floats of full scale."""
     end = max(at + ms for _, _, ms, _, at in tones)
     out = [0.0] * int(round(end * rate / 1000.0))
-    for shape, hz, ms, peak, at in tones:
+    for t, (shape, hz, ms, peak, at) in enumerate(tones):
         f0, f1 = (float(hz), float(hz)) if isinstance(hz, (int, float)) else map(float, hz)
         first = int(round(at * rate / 1000.0))
         n = int(round(ms * rate / 1000.0))
         rise = min(4.0, ms / 4.0) * rate / 1000.0
-        parts = harmonics(shape, max(f0, f1))
+        hiss = noise(n, f0, f1, noise_seed(t), rate) if shape == "noise" else None
+        parts = [] if hiss else harmonics(shape, max(f0, f1))
         phase = [0.0] * len(parts)
         for i in range(n):
             u = min(1.0, 3.0 * i / n)
@@ -82,7 +118,7 @@ def render(tones, rate=RATE):
                 env = peak * i / rise
             else:
                 env = peak * (FLOOR / peak) ** ((i - rise) / (n - rise))
-            s = 0.0
+            s = hiss[i] if hiss else 0.0
             for j, (k, a) in enumerate(parts):
                 s += a * math.sin(phase[j])
                 phase[j] += 2 * math.pi * k * f / rate

@@ -217,16 +217,34 @@
    * a quarter of the tone) to its peak, an exponential fall to 1/10000 at its
    * end, and a glide over its first third. Web Audio's oscillators and ramps
    * are near that and not sample for sample; the sound lab plays the WAVs.
+   * A "noise" tone is gensounds.py's own: the same xorshift32 noise from the
+   * same seed, through the same band-pass, made here as a buffer.
    * Call from a press. */
   let ac = null;
+  function noiseBuffer(t, i) {
+    const n = Math.max(1, Math.round(t.ms * ac.sampleRate / 1000)), b = ac.createBuffer(1, n, ac.sampleRate), d = b.getChannelData(0);
+    const [f0, f1] = Array.isArray(t.hz) ? t.hz : [t.hz, t.hz], Q = 1.2;
+    let x = (Math.imul(i + 1, 0x9E3779B9) >>> 0) || 1, x1 = 0, x2 = 0, y1 = 0, y2 = 0, top = 0;
+    for (let k = 0; k < n; k++) {
+      x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0;
+      const v = x / 4294967296 * 2 - 1, u = Math.min(1, 3 * k / n);
+      const w = 2 * Math.PI * f0 * Math.pow(f1 / f0, 1 - (1 - u) * (1 - u)) / ac.sampleRate, al = Math.sin(w) / (2 * Q);
+      const y = (al * v - al * x2 + 2 * Math.cos(w) * y1 - (1 - al) * y2) / (1 + al);
+      x2 = x1; x1 = v; y2 = y1; y1 = y; d[k] = y; top = Math.max(top, Math.abs(y));
+    }
+    if (top) for (let k = 0; k < n; k++) d[k] /= top;
+    return b;
+  }
   function sound(name, voice) {
     ac = ac || new (window.AudioContext || window.webkitAudioContext)();
     const v = T.sound.voices[voice || T.sound.default] || T.sound.voices[T.sound.default];
-    (v.sounds[name] || []).forEach(t => {
-      const at = ac.currentTime + t.at / 1000, len = t.ms / 1000, o = ac.createOscillator(), g = ac.createGain();
+    (v.sounds[name] || []).forEach((t, i) => {
+      const at = ac.currentTime + t.at / 1000, len = t.ms / 1000, g = ac.createGain();
       const [f0, f1] = Array.isArray(t.hz) ? t.hz : [t.hz, t.hz];
-      o.type = t.wave; o.frequency.setValueAtTime(f0, at);
-      if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, at + len / 3);
+      const o = t.wave === "noise" ? ac.createBufferSource() : ac.createOscillator();
+      if (t.wave === "noise") o.buffer = noiseBuffer(t, i);
+      else { o.type = t.wave; o.frequency.setValueAtTime(f0, at); }
+      if (t.wave !== "noise" && f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, at + len / 3);
       g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(t.peak, at + Math.min(.004, len / 4));
       g.gain.exponentialRampToValueAtTime(.0001, at + len);
       o.connect(g).connect(ac.destination); o.start(at); o.stop(at + len + .02);

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* The interface sounds, DESIGN.md 9: six short sounds in three voices, played
- * by the launcher on a press and never over a game.
+/* The interface sounds, DESIGN.md 9: seven short sounds in three voices,
+ * played by the launcher on a press and never over a game, but for one: the
+ * Screenshot hotkey's shutter (uisound_shot).
  *
  * Two halves. src/uisound.c is the rule and the arithmetic - which press plays
  * what, where it may be heard, the WAV files, the mix - with no SDL, no ALSA
@@ -57,6 +58,14 @@ int         uisound_setting_step(int s, int dir);   /* round the four */
  * A sound and the level to play it at, of its own: 1 is the sound as it was
  * made, 0 is nothing at all. */
 typedef struct { ds_sound sound; float level; } uis_cue;
+
+/* The Screenshot hotkey's shot (DESIGN.md 9 and 11.61): the shutter, the one
+ * sound heard over a game or your PICO-8, at the press, at the sound's own
+ * level, with the volume as every sound is; under UI Sounds Off, nothing
+ * (level 0). The same in every voice. The launcher plays it as Diatom says a
+ * shot is taken (HOTKEY key=shot), portkeys over your PICO-8 (tools/pkshutter.h);
+ * neither waits for the file. */
+uis_cue uisound_shot(int setting);
 
 /* What one list or shelf remembers between steps: whether the last one was
  * held against the end. One per screen, put down when the screen opens. */

@@ -222,6 +222,15 @@ bool eq_share_gain(int db)
 	return true;
 }
 
+int eq_share_gain_get(void)
+{
+	eq_share *map = share_map();
+	int8_t db[EQ_BANDS], gain = 0;
+
+	if (!map || !eq_share_read(map, db, &gain)) return -1;
+	return gain < 0 ? 0 : gain > EQ_GAIN_MAX ? EQ_GAIN_MAX : gain;
+}
+
 bool eq_share_cut(bool cut)
 {
 	eq_share *map = share_map();
