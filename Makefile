@@ -705,7 +705,13 @@ build-native/themefile-check: tools/themefile-check.c src/themefile.c src/themef
 # saved 6 and 6 save 5 and 7 through the launcher's src/db.c. And the boost past
 # the top over a port (src/boost.h): three presses or a hold open it, its gain
 # goes in a scratch copy of the file the port's plugin reads (src/eqdsp.h), and
-# its cells are kept beside the levels. And over your PICO-8, SELECT's
+# its cells are kept beside the levels; and its opening, either boost's, by
+# presses or a hold, asks the motor for the launcher's 40 ms buzz at MENU >
+# Sound > Rumble's share (src/rumble.c's words, read through src/db.c), once,
+# never a step or a cell, none at Off; a boost kept from before shows
+# nothing at the start; and whose display may be borrowed (pk_looks): only a
+# settled file, never one inside SDL's look at the display as a program
+# starts (1.1.0-rc.9's "kmsdrm not available"). And over your PICO-8, SELECT's
 # hotkeys by Diatom's chord rule (tools/pkhot.c), the keyboard's CTRL-R
 # (tools/pkkbd.c), written into a pipe, and the screenshot (tools/pkshot.c):
 # PICO-8's 128 out of the panel in every Display mode's rect, the PNG, the
@@ -721,13 +727,13 @@ build-native/pkkeys-check: tools/pkkeys-check.c tools/pkkeys.c tools/pkkeys.h sr
                            tools/pkhot.c tools/pkhot.h diatom/src/chord.c diatom/src/chord.h \
                            tools/pkkbd.c tools/pkkbd.h tools/pkshot.c tools/pkshot.h src/p8draw.c src/p8draw.h \
                            tools/pkvpad.c tools/pkvpad.h \
-                           src/dmodefit.c src/dmodefit.h \
+                           src/dmodefit.c src/dmodefit.h src/rumble.c src/rumble.h \
                            src/db.c src/db.h src/atomic.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Isrc -Idiatom/src -Idiatom/include \
 	      -o $@ tools/pkkeys-check.c tools/pkkeys.c tools/pkhot.c diatom/src/chord.c tools/pkkbd.c \
-	      tools/pkshot.c tools/pkvpad.c src/p8draw.c src/dmodefit.c src/audioout.c src/db.c src/atomic.c $(I18N_SRC) \
-	      -lsqlite3 -lz -lm
+	      tools/pkshot.c tools/pkvpad.c src/p8draw.c src/dmodefit.c src/audioout.c src/rumble.c src/db.c \
+	      src/atomic.c $(I18N_SRC) -lsqlite3 -lz -lm
 
 # Which theme is on: MENU > Appearance's three settings, Auto's seven to seven
 # by the handheld's clock and the minute it may be late by, and the file the
@@ -792,7 +798,8 @@ check-pico8-wget:
 # follower beside the program and portkeys told of it, ended before the
 # launcher) and the real launcher in desk mode's dummy window against a
 # stand-in daemon: the queue taken on back from PICO-8, the request and the
-# file written as a cart opens, the follower's next track, and SELECT in the
+# file written as a cart opens, the follower's next track and the boost's
+# gain it passes on from the equalizer's file (portkeys's), and SELECT in the
 # in-game menu over it opening Now Playing; PICO-8 quiet while MP4 plays
 # (the equalizer's file's cut, as the launcher, the follower and the menu
 # write it, and the chain every port has, unchanged) and PICO-8 into a
@@ -1872,10 +1879,12 @@ build-native/eqdsp-check: tools/eqdsp-check.c src/eqdsp.h FORCE
 # The ports' equalizer plugin (plastron's zyperos-eq), built for this computer
 # and loaded the way alsa-lib's ladspa PCM loads it: flat untouched, Voice
 # heard, the launcher's file followed, its cut (your PICO-8 quiet while MP4
-# plays) faded to silence and back, and its cost; then, on Linux, a port's
-# whole chain (eq-port.sh) opened as SDL opens it at every rate a program
-# asks, over a stand-in for the dmix (tools/eqchain-check.sh: PICO-8's
-# 22050 Hz was refused on 1.1.0-rc.5, with no sound). tools/eqplugin-alsa.sh
+# plays) faded to silence and back, the volume boost's gain followed and
+# limited, and its cost; then, on Linux, a port's whole chain (eq-port.sh)
+# opened as SDL opens it at every rate a program asks, over a stand-in for
+# the dmix (tools/eqchain-check.sh: PICO-8's 22050 Hz was refused on
+# 1.1.0-rc.5, with no sound), and the boost's gain through it as PICO-8
+# plays (tools/eqchain-gain.c). tools/eqplugin-alsa.sh
 # runs it through the handheld's own alsa-lib, by hand (it needs the SDK).
 check-eqplugin: build-native/eqplugin-check build-native/zyperos_eq.so
 	@./build-native/eqplugin-check build-native/zyperos_eq.so
@@ -2022,7 +2031,8 @@ build-native/devices-check: tools/devices-check.c src/profile.c src/device/profi
 
 # Every device file compiled, the Linux halves the Mac's build never sees (CI
 # job "devices", .github/workflows/check.yml): the launcher's device files,
-# src/profile.c with each device's profile and model, and Diatom's two ports. Syntax
+# src/profile.c with each device's profile and model, Diatom's two ports, and
+# portkeys whole (check-portkeys-flow compiles its reader and loop alone). Syntax
 # only, so it needs the headers and no device. Elsewhere it says it skipped,
 # so it is not in CHECKS (the macOS job would only ever skip it).
 .PHONY: check-device-compile
@@ -2047,6 +2057,8 @@ check-device-compile:
 	echo "  diatom: port/pixel2.c"; \
 	$(CC) $$F $$D $$(pkg-config --cflags sdl2 egl glesv2 gbm libdrm) \
 		diatom/port/pixel2.c diatom/port/rumble_evdev.c diatom/port/panelgamma.c; \
+	echo "  portkeys: tools/portkeys.c, the Pixel 2's keys, bar and motor over a port, whole"; \
+	$(CC) $$F -Isrc -Idiatom/src -Idiatom/include tools/portkeys.c tools/pkkeys.c; \
 	echo "ok: every device file compiles"
 
 # The handhelds' models (src/device/td_model.h): every key once, the GKD

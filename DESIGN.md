@@ -1438,7 +1438,9 @@ out of its end; a thin mark in **text-dim** at 70% stands at the top between
 the steps and the cells; the rim flashes in **warning** and fades back to
 **edge** over **boost-flash** (360 ms, fade); and a 40 ms rumble at the
 player's Rumble level is felt, with no sound - a volume press never makes a
-UI sound, the media's own is the feedback. The opening fills the first cell
+UI sound, the media's own is the feedback. Over a port the rumble is
+portkeys's, on the joypad's motor at MENU > Sound > Rumble's level, as the
+launcher's own (tools/pkkeys.h's pk_buzz_pct; `check-pkkeys`). The opening fills the first cell
 and a key still held stops there: each further cell is a press. Each cell is
 a little taller than the one before, 16 to 28 units, so the boost reads by
 its shape too, with any accent (a Red, Orange or Pink accent's ink is near
@@ -1463,7 +1465,12 @@ starts at the top without it.
   only flatter, and the speaker never gets more than a loud game gives it at
   20. It opens in MP4 (MP4, told with a GAIN line), in a game (Diatom) and
   over a port (the zyperos-eq plugin, now in every port's chain, the gain in
-  the shared file that portkeys writes during the port). MP4's lock screen
+  the shared file that portkeys writes during the port). Over your PICO-8
+  with MP4's music behind it (PICO-8 quiet, 11.55), MP4's follower passes
+  that file's gain on to MP4 ten times a second, so the song follows each
+  cell as it does over a Diatom game (`check-pico8-mp4`). *(2026-11-20, on
+  1.1.0-rc.8: "volume boost while in pico 8 is not working. nor i can feel
+  the vibration when entering boost.")* MP4's lock screen
   fills and empties an open one but never opens one: a held key in a pocket
   must not. While MP4 is heard behind the home, a shelf or a menu (playing,
   the menu music quiet for it, as for L2 and R2 in 11.14), the boost there is

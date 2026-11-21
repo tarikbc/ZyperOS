@@ -81,6 +81,19 @@
  * gave the master up while the bar was up. The next press borrows it again.
  * launch.sh waits for this process to end before it starts the launcher.
  *
+ * And never a file the program has only just opened. SDL's KMSDRM opens the
+ * display as a program starts, takes the master, checks it and closes it
+ * again, twice, in a few milliseconds, before it opens the display it keeps;
+ * a copy taken then keeps that file and its master after SDL closed it, and
+ * SDL's next open is refused the master: "kmsdrm not available", and the
+ * program ends (your PICO-8, one start in two on 1.1.0-rc.9, while this
+ * looked for its display once a second for On-Screen Stats). So a display
+ * file is copied only once settled (tools/pkkeys.h's pk_looks): open under
+ * the same number at a look PK_SETTLE_MS before, or the file of a process
+ * whose master was held before. A look reads /proc's links and copies
+ * nothing. A press in the meantime shows its bar once the file has settled;
+ * MENU and a screenshot wait for it, PK_SETTLE_MS at most.
+ *
  * No exclusive grab: the port and gptokeyb still see every key. */
 #include <dirent.h>
 #include <drm/drm.h>
@@ -553,14 +566,27 @@ static bool overlay_setup(void);
  * that start next. 0 for none. */
 static pid_t gone_pid;
 
+/* What the last look for the port's display found (master_find): 1 a
+ * master's copy, 0 no program with the display, -1 a display file not
+ * settled yet (tools/pkkeys.h's pk_looks: a program starting, SDL looking at
+ * the display, which a copy would take from it) */
+static pk_looks LOOKS;
+static int last_find;
+
 /* Every process but this one with the display open, until one of the copies
  * is the master's: that copy, in G with the pid, its pidfd, the number the
- * port has it under and the CRTC lighting the panel. Nothing made on it yet. */
-static bool master_copy(void)
+ * port has it under and the CRTC lighting the panel. Nothing made on it yet.
+ * Only a settled display file is copied (pk_looks_seen): one the process has
+ * had open since a look PK_SETTLE_MS before, or one of a process whose master
+ * was held before. Returns 1, 0, or -1 as last_find says. */
+static int master_find(void)
 {
 	DIR *proc = opendir("/proc");
 	struct dirent *pe;
 	int self = getpid();
+	long now = now_ms();
+
+	pk_looks_begin(&LOOKS, now);
 
 	while (proc && (pe = readdir(proc))) {
 		int pid = atoi(pe->d_name), pidfd;
@@ -582,6 +608,8 @@ static bool master_copy(void)
 			if ((n = readlink(link, target, sizeof target - 1)) <= 0) continue;
 			target[n] = '\0';
 			if (strcmp(target, CARD)) continue;
+			/* Looked at, not copied, until it has settled */
+			if (!pk_looks_seen(&LOOKS, pid, theirs, now)) continue;
 			if (pidfd < 0 && (pidfd = (int)syscall(SYS_pidfd_open, pid, 0)) < 0) break;
 			fd = (int)syscall(SYS_pidfd_getfd, pidfd, theirs, 0);
 			if (fd < 0) continue;
@@ -595,13 +623,39 @@ static bool master_copy(void)
 			G.their_fd = theirs;
 			closedir(fds);
 			closedir(proc);
-			return true;
+			pk_looks_end(&LOOKS, false);
+			pk_looks_trust(&LOOKS, pid);
+			return last_find = 1;
 		}
 		closedir(fds);
 		if (pidfd >= 0) close(pidfd);
 	}
 	if (proc) closedir(proc);
-	return false;
+	pk_looks_end(&LOOKS, true);
+	return last_find = LOOKS.waiting ? -1 : 0;
+}
+
+static bool master_copy(void)
+{
+	return master_find() == 1;
+}
+
+/* The same for what the player asked for at once (MENU, a screenshot): a
+ * display file not settled yet is waited for, looking again until it is,
+ * PK_SETTLE_MS and a little at most, rather than taken for none - which for
+ * MENU would be the menu over a loading screen the port has already left */
+static bool master_copy_settled(void)
+{
+	long t0 = now_ms();
+	int r;
+
+	while ((r = master_find()) < 0 && now_ms() - t0 < PK_SETTLE_MS + 200) {
+		long w = pk_looks_wait(&LOOKS, now_ms());
+		struct timespec nap = { 0, (w < 5 ? 5 : w > 50 ? 50 : w) * 1000000L };
+
+		nanosleep(&nap, NULL);
+	}
+	return r == 1;
 }
 
 /* The port's display, for the bar: its master copy and two buffers on it */
@@ -737,12 +791,34 @@ static bool put(const osdbar_look *look, float alpha, float rise)
 	return true;
 }
 
+/* A press that found the port's display not settled yet (master_find's
+ * -1): its bar, shown once it has (bar_tick), PK_SETTLE_MS later at most,
+ * and given up a second after the press. Never a copy in the meantime. */
+static struct {
+	bool on;
+	int  kind, level, max;
+	long at, until;
+} PEND;
+
 static void bar_show(int kind, int level, int max)
 {
 	long now = now_ms();
 	float a, rise;
 
-	if (!held() && !borrow()) return;
+	if (!held() && !borrow()) {
+		if (last_find < 0) {
+			const long w = pk_looks_wait(&LOOKS, now);
+
+			if (!PEND.on) PEND.until = now + 1000;
+			PEND.on = true;
+			PEND.kind = kind;
+			PEND.level = level;
+			PEND.max = max;
+			PEND.at = now + (w < 1 ? 1 : w);
+		}
+		return;
+	}
+	PEND.on = false;
 	/* The theme is worked out here, on every press, and not once at start:
 	 * a port can run for hours, and Auto turns at the Night Hours whether the
 	 * launcher is there to say so or not. The setting, read at start, and
@@ -1319,7 +1395,34 @@ static bool scene_put(const osdbar_look *look, float a, float rise, bool disc)
  * the first; but a copy kept between shows keeps the port's master with it
  * (see the top of this file), which only the disc and the line over your
  * PICO-8 do. */
+static int bar_tick_now(void);
+
+/* bar_tick_now, and a press's bar waiting for the port's display (PEND) */
 static int bar_tick(void)
+{
+	long now = now_ms();
+	int w;
+
+	if (PEND.on && now >= PEND.at) {
+		if (now >= PEND.until) {
+			PEND.on = false;
+		} else {
+			const int kind = PEND.kind;
+
+			bar_show(kind, PEND.level, PEND.max);
+			if (kind == OSDBAR_BRIGHT && held()) port_gamma();
+		}
+	}
+	w = bar_tick_now();
+	if (PEND.on) {
+		const long pw = PEND.at > now_ms() ? PEND.at - now_ms() : 1;
+
+		if (w < 0 || pw < w) w = (int)pw;
+	}
+	return w;
+}
+
+static int bar_tick_now(void)
 {
 	long now = now_ms();
 	float a = 0, rise = 0;
@@ -1345,9 +1448,13 @@ static int bar_tick(void)
 		 * and the line here */
 		if (!N.live && now < O.retry) return (int)(O.retry - now);
 		if (!borrow()) {
+			/* A display file not settled yet: looked at again as it
+			 * settles, PK_SETTLE_MS on, and copied only then */
+			const long w = last_find < 0 ? pk_looks_wait(&LOOKS, now) : -1;
+
 			N.live = false;          /* a notice with no display to go on */
-			O.retry = now + 1000;
-			return over_wanted() ? 1000 : -1;
+			O.retry = now + (w >= 0 ? (w < 10 ? 10 : w) : 1000);
+			return over_wanted() ? (int)(O.retry - now) : -1;
 		}
 	} else if (!held()) {
 		O.retry = now + 1000;
@@ -1535,13 +1642,67 @@ static void lift_start(void)
 	release(false);
 }
 
+/* The boost's buzz as it opens (tools/pkkeys.h's pk_buzz_pct), on the
+ * joypad's motor, as the launcher gives it (plat_rumble_buzz,
+ * src/device/pixel2.c): the motor is the joypad's force feedback (PWM0, the
+ * joypad driver's), so the joypad's node, found by its FF_RUMBLE as portkeys
+ * starts (buzz_node), is opened again to write at the first buzz and kept.
+ * The effect is this file's alone: a port's own rumble (SDL's, on its own
+ * file) plays beside it. The joypad held over your PICO-8 (EVIOCGRAB) still
+ * takes it: a grab keeps the joypad's events from other readers, not writes
+ * to it, as px2-input's injected presses show. ff-memless ends it after
+ * PK_BUZZ_MS and tells the driver 0, whatever portkeys does next. Before
+ * this, a boost opened over a port gave no buzz at all. */
+static char buzz_node[300];   /* as the scan's path */
+static int buzz_fd = -1, buzz_id = -1;
+static bool buzz_failed;
+
+static void boost_buzz(int did)
+{
+	const int pct = pk_buzz_pct(db, did);
+	struct ff_effect e;
+	struct input_event ev;
+	const char *why = NULL;
+
+	if (pct <= 0) return;      /* not an opening, or Rumble Off: nothing to feel */
+	if (buzz_fd < 0 && buzz_node[0]) buzz_fd = open(buzz_node, O_RDWR | O_NONBLOCK | O_CLOEXEC);
+	if (buzz_fd < 0) {
+		why = buzz_node[0] ? strerror(errno) : "no joypad with a motor was found";
+	} else {
+		memset(&e, 0, sizeof e);
+		e.type = FF_RUMBLE;
+		e.id = (int16_t)buzz_id;
+		/* The driver runs the motor from the strong one; both, as SDL sends */
+		e.u.rumble.strong_magnitude = pk_buzz_strength(pct);
+		e.u.rumble.weak_magnitude = pk_buzz_strength(pct);
+		e.replay.length = PK_BUZZ_MS;
+		if (ioctl(buzz_fd, EVIOCSFF, &e) < 0) {
+			why = strerror(errno);
+			buzz_id = -1;
+		} else {
+			buzz_id = e.id;
+			memset(&ev, 0, sizeof ev);
+			ev.type = EV_FF;
+			ev.code = (uint16_t)buzz_id;
+			ev.value = 1;
+			if (write(buzz_fd, &ev, sizeof ev) != (ssize_t)sizeof ev) why = strerror(errno);
+		}
+	}
+	if (!why)
+		fprintf(stderr, "portkeys: the boost's buzz, %d ms at %d%%\n", PK_BUZZ_MS, pct);
+	else if (!buzz_failed)
+		fprintf(stderr, "portkeys: no buzz for the boost (%s): %s\n", buzz_node[0] ? buzz_node : "-", why);
+	buzz_failed = buzz_failed || why;
+}
+
 /* One step from tools/pkkeys.c, through the boost past the top (pk_press):
  * the level, saved when it moved, its line in the log, the hardware and the
  * bar. A press writes the hardware even at an end of the scale, as it always
  * has, which puts the level back if the port moved the mixer itself; a repeat
  * that moved nothing writes nothing, and keeps the bar up. The boost's cells
  * moving are kept, and the volume's gain written, by pk_press; their lift is
- * loaded here, on the display the bar has just borrowed. */
+ * loaded here, on the display the bar has just borrowed; and a press that
+ * opens it buzzes (boost_buzz). */
 static void press(const pk_step *s)
 {
 	char line[96];
@@ -1563,14 +1724,15 @@ static void press(const pk_step *s)
 		                       vol ? VOL_MAX : BRIGHT_MAX);
 		side_lights_say_to(SIDE_LIGHTS_FIFO, line);
 	}
+	boost_buzz(did);
 }
 
 /* The boost's clock, on every pass of the loop after its steps
  * (pk_boost_tick): VOL+ let go, a hold on the top charging and, held
  * BOOST_HOLD_MS, opening; presses that stopped draining. A hold that opens it
  * is shown and loaded as a press that does: the bar, and for the backlight
- * the lift; the gain is in the file already. The launcher's rumble as it
- * opens is not given over a port. */
+ * the lift; the gain is in the file already. And the buzz, as the
+ * launcher's as it opens (boost_buzz). */
 static void boost_clock(const pkkeys *k)
 {
 	const uint32_t now = (uint32_t)now_ms();
@@ -1578,8 +1740,9 @@ static void boost_clock(const pkkeys *k)
 
 	for (i = 0; i < 2; i++) {
 		const pk_kind kind = i ? PK_BRIGHT : PK_VOLUME;
+		const int did = pk_boost_tick(db, &BO, k, kind, now);
 
-		if (!(pk_boost_tick(db, &BO, k, kind, now) & BOOST_GAIN)) continue;
+		if (!(did & BOOST_GAIN)) continue;
 		if (kind == PK_BRIGHT) {
 			fprintf(stderr, "portkeys: brightness boost 0 -> %d (MENU+VOL+ held)\n", pk_boost_lift(&BO));
 			bar_show(OSDBAR_BRIGHT, L.bright, BRIGHT_MAX);
@@ -1588,6 +1751,7 @@ static void boost_clock(const pkkeys *k)
 			fprintf(stderr, "portkeys: volume boost +0 -> +%d dB (VOL+ held)\n", pk_boost_gain(&BO));
 			bar_show(OSDBAR_VOLUME, L.vol, VOL_MAX);
 		}
+		boost_buzz(did);
 	}
 }
 
@@ -2152,7 +2316,7 @@ static int menu_show_as(const char *extra)
 	release(false);
 	vbl_close();
 	vpad_let_go();
-	if (!master_copy()) {
+	if (!master_copy_settled()) {
 		/* Still starting, under its loading screen: the menu over that;
 		 * a hotkey's question (`extra`) has no cart to be about yet */
 		if (extra) {
@@ -2421,7 +2585,7 @@ static void shot_take(void)
 	}
 	/* The display borrowed for the bar, or a master's copy for the read */
 	mine = !held();
-	if (mine && !master_copy()) {
+	if (mine && !master_copy_settled()) {
 		fprintf(stderr, "portkeys: screenshot: no program holds the display\n");
 		return;
 	}
@@ -3162,6 +3326,7 @@ int main(int argc, char **argv)
 	 * gain written to the file the port's plugin reads, so the port starts
 	 * with it; the backlight's lift below, with Night Mode's warmth */
 	pk_boost_init(&BO, NULL);
+	pk_looks_init(&LOOKS);
 	if (!pk_boost_load(db, &L, &BO))
 		fprintf(stderr, "portkeys: no file at %s for the volume boost's gain\n", BO.share_path);
 	if (pk_boost_cells(&BO, PK_VOLUME) || pk_boost_cells(&BO, PK_BRIGHT))
@@ -3233,6 +3398,14 @@ int main(int argc, char **argv)
 		if (ioctl(fd, EVIOCSCLOCKID, &clk) < 0 && !clk_err) clk_err = errno ? errno : EINVAL;
 		ioctl(fd, EVIOCGBIT(EV_KEY, sizeof keys), keys);
 		ioctl(fd, EVIOCGBIT(EV_SW, sizeof sw), sw);
+		/* The motor for the boost's buzz (boost_buzz): the first device
+		 * with force feedback that rumbles, the joypad */
+		if (!buzz_node[0]) {
+			unsigned long ff[NLONGS(FF_MAX + 1)] = { 0 };
+
+			if (ioctl(fd, EVIOCGBIT(EV_FF, sizeof ff), ff) >= 0 && HAS(ff, FF_RUMBLE))
+				snprintf(buzz_node, sizeof buzz_node, "%s", path);
+		}
 		/* The power key, on a file of its own (power_read) */
 		if (powfd < 0 && HAS(keys, KEY_POWER))
 			powfd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
