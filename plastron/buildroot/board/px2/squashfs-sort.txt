@@ -35,7 +35,7 @@ usr/lib/libEGL.so.1.0.0 32734
 usr/lib/libgbm.so.1.0.0 32733
 usr/lib/gbm/dri_gbm.so 32732
 usr/lib/libGLESv2.so.2.0.0 32731
-usr/lib/libgallium-25.0.7.so 32730
+usr/lib/libgallium-26.2.6.so 32730
 usr/lib/libstdc++.so.6.0.34 32729
 usr/lib/libavutil.so.58.29.100 32727
 usr/lib/libswresample.so.4.12.100 32726

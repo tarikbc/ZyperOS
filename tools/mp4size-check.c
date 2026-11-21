@@ -18,8 +18,9 @@
  * publishes them and read back by src/mp4video.c itself, built into this
  * check against a frames file of its own. The texture must be as wide as
  * the rows and as high as the picture, so each frame overwrites all of it;
- * each of its planes must fit Mesa's tile buffer as rows (the rule of Mesa
- * 25.0.7's pan_layout.c, the device's, for an 8-bit texture on Bifrost v7);
+ * each of its planes must fit Mesa's tile buffer as rows (the rule for an
+ * 8-bit texture on Bifrost v7, in Mesa 25.0.7's pan_layout.c and the same in
+ * 26.2.6's pan_mod.c, the device's);
  * mp4v_texture must say where the picture is; drawn from there, every pixel
  * is the picture's; mp4v_fit keeps its shape, its pixels' own counted; and
  * nothing may read or write out of bounds: built with UBSan where the

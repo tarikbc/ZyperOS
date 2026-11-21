@@ -1,4 +1,7 @@
-# Locally computed from the release tarball
-sha256  592272df3cf01e85e7db300c449df5061092574d099da275d19e97ef0510f8a6  mesa-25.0.7.tar.xz
+# From the release notes (https://docs.mesa3d.org/relnotes/26.2.6.html, "SHA
+# checksums"); the tarball's own signature, mesa-26.2.6.tar.xz.sig, checked
+# too, against Eric Engestrom's key 57551DE15B968F6341C248F68D8E31AFC32428A6
+# in Mesa's docs/release-maintainers-keys.asc
+sha256  b9436b3e1a8be76fbd4823dc884f90596ab7c6ac5e1867a305e66ffccfb31a92  mesa-26.2.6.tar.xz
 # Computed locally from the extracted tarball
 sha256  0d1a0472ecc81830e75c20d59b0ea02841e3db21255e0ebad97ab682c54d6615  docs/license.rst
