@@ -260,6 +260,7 @@ static char     g_pad_path[32];     /* its node, opened again to rumble */
 static int      g_keys_fd = -1;     /* the volume keys: "gpio-keys" */
 static int      g_jack_fd = -1;     /* the codec's jack switch */
 static uint32_t g_buttons;
+static uint32_t g_pressed;          /* went down during the last poll */
 static bool     g_input_debug;
 
 /* Kernel code -> Diatom button.
@@ -1164,11 +1165,15 @@ static struct {
 void diatom_port_input_poll(void)
 {
 	struct input_event ev[32];
+	const uint32_t before = g_buttons;
 	ssize_t n;
 	size_t i, k;
 
 	gain_jack_poll();
 
+	/* Every press since the last poll, a tap gone up again too
+	 * (diatom_port_input_pressed) */
+	g_pressed = 0;
 	while (g_pad_fd >= 0 && (n = read(g_pad_fd, ev, sizeof ev)) > 0) {
 		for (i = 0; i < (size_t)n / sizeof ev[0]; i++) {
 			if (ev[i].type == EV_SYN && ev[i].code == SYN_DROPPED) {
@@ -1180,11 +1185,17 @@ void diatom_port_input_poll(void)
 				port_logf(DIATOM_LOG_DEBUG, "key %d -> %d", ev[i].code, ev[i].value);
 			for (k = 0; k < sizeof keymap / sizeof keymap[0]; k++) {
 				if (keymap[k].code != ev[i].code) continue;
-				if (ev[i].value) g_buttons |=  DIATOM_BIT(keymap[k].btn);
-				else             g_buttons &= ~DIATOM_BIT(keymap[k].btn);
+				if (ev[i].value) {
+					g_buttons |= DIATOM_BIT(keymap[k].btn);
+					g_pressed |= DIATOM_BIT(keymap[k].btn);
+				} else {
+					g_buttons &= ~DIATOM_BIT(keymap[k].btn);
+				}
 			}
 		}
 	}
+	/* And a key a resync found down whose press was in the events dropped */
+	g_pressed |= g_buttons & ~before;
 
 	/* The volume keys are level keys, never reported as buttons and never
 	 * sent to a core. With MENU held they are brightness instead, the
@@ -1212,6 +1223,7 @@ void diatom_port_input_poll(void)
 }
 
 uint32_t diatom_port_input_state(void) { return g_buttons; }
+uint32_t diatom_port_input_pressed(void) { return g_pressed; }
 
 /* The force feedback's strength is the motor's: the scale multiplies it,
  * rounded, so Full (1) is the core's own number as it always was */
@@ -1237,6 +1249,7 @@ void diatom_port_input_reset(void)
 	while (g_pad_fd >= 0 && read(g_pad_fd, ev, sizeof ev) > 0) { }
 	while (g_keys_fd >= 0 && read(g_keys_fd, ev, sizeof ev) > 0) { }
 	memset(g_level_key, 0, sizeof g_level_key);
+	g_pressed = 0;
 	pad_resync();
 }
 

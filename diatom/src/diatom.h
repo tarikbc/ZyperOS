@@ -166,12 +166,18 @@ void diatom_env_rumble_level(int pct);
 bool diatom_rumble_asked(void);
 void diatom_env_core_quit_reset(void);
 void diatom_env_suppress(uint32_t mask);
-/* Called at every poll the core makes, with the pad just read, before the
- * core reads a button of it: returns what to hide from the core, and sets
- * what the core sees held although it is not (a SELECT given back as it is
- * let go). SELECT's chords (chord.h, main.c). NULL for none; set per game. */
-typedef uint32_t (*diatom_poll_hook)(uint32_t pad, uint32_t *give);
+/* Called at every poll the core makes, with the pad just read and what went
+ * down in it (diatom_port_input_pressed: a tap let go again before the poll
+ * too), before the core reads a button of it: returns what to hide from the
+ * core, and sets what the core sees held although it is not (a SELECT given
+ * back as it is let go). SELECT's chords (chord.h, main.c). NULL for none;
+ * set per game. */
+typedef uint32_t (*diatom_poll_hook)(uint32_t pad, uint32_t pressed, uint32_t *give);
 void diatom_env_poll_hook(diatom_poll_hook fn);
+/* What went down at the core's polls since the last call, a tap let go
+ * again too, gathered over all of a turn's frames (a fast turn runs several):
+ * the frame loop's own keys, read once a turn. Each call starts it again. */
+uint32_t diatom_env_pressed(void);
 
 /* The libretro pointer the core reads this frame: the stylus's, from
  * screens.h, in the whole frame's -0x7fff..0x7fff. See env.c. */

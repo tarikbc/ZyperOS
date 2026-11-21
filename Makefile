@@ -53,7 +53,7 @@ CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-task
          check-systemart check-linebreak check-portload check-portout check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages \
          check-tour check-tour-shots check-tour-previews check-textfade check-glyphs check-scale check-shaderdemo check-shaderpic check-screenfx check-ds check-layout-ratchet check-flex check-hover check-hover-sweep check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pico8 check-pico8-wget check-pico8-mp4 check-pico8-display check-pico8-keys check-p8fx check-p8fx-gl check-gpu-upright check-pmhelper check-portlibs check-pmart check-portdoc check-boottheme check-splashbright check-bootbright check-seed-version check-panelgamma check-panelgamma-sunxi check-nightmode check-autotheme check-displayback check-px2-push check-wifi-watch check-launch-start check-crashlog check-captive check-mdns check-linksteps check-usbrole check-usbdrive check-gauge check-start-soc check-usbpower check-phonelink check-usblog check-clients check-keyhints check-pace check-qr \
          check-home check-home-shots check-games check-cardpaint check-putpace check-favorites-shots check-homesys-groups check-lateskip-launch check-np-footer check-vidtry check-menu-rows check-layout-shots check-artbadge check-artbadge-shots check-cardart-shots checkmark \
-         check-installer check-from-rogue check-importers check-diatom check-simulator check-qemu-image check-desk check-homekeys check-videoview check-inrepeat check-keymap check-handhelds check-px2sim check-building-doc check-blog check-discord-release \
+         check-installer check-from-rogue check-importers check-diatom check-menu-tap check-simulator check-qemu-image check-desk check-homekeys check-videoview check-inrepeat check-keymap check-handhelds check-px2sim check-building-doc check-blog check-discord-release \
          check-release-devices check-strings check-i18n-shots check-rootswitch check-datapart check-brick-closed check-hwreport check-kitbuild check-kitwalk check-ingame-colors
 
 # All of them at once, as many at a time as there are cores (CHECK_JOBS=1 for
@@ -93,6 +93,19 @@ check-diatom:
 		./build-native/gamezone-check diatom/build/desktop/diatom; \
 	else \
 		echo "check-diatom: skipped, no SDL2"; \
+	fi
+
+# Diatom's own keys pressed quickly in a slow game (diatom/test/menutap.py):
+# the stub core at 10 fps, a Saturn game's rate on the Pixel 2, where an 80 ms
+# MENU never opened the menu (2026-11-20). Diatom's desktop port and the stub
+# are built into a folder of their own, so this never shares objects with
+# check-diatom's build running beside it. Skipped without SDL2.
+check-menu-tap:
+	@if pkg-config --exists sdl2 2>/dev/null || command -v sdl2-config > /dev/null; then \
+		$(MAKE) --no-print-directory -C diatom $(NATIVE_J) BUILD=build/menutap all stub && \
+		python3 diatom/test/menutap.py diatom/build/menutap; \
+	else \
+		echo "check-menu-tap: skipped, no SDL2"; \
 	fi
 
 # zyperos.com's blog (mk/blog.py): the whole site built in a scratch folder as

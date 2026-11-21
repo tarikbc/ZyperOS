@@ -6939,6 +6939,16 @@ A player who sets none sends what was always sent: RUN carries `hotkeys=`
 only when the hotkeys in force differ from ZyperOS's own. Home (MENU+START
 held a second) and POWER are no hotkeys and never change.
 
+**A quick press counts in a slow game** *(the 1.1.0-rc.8 device test,
+2026-11-20: an 80 ms MENU in a Saturn game at 10 fps never opened the menu)*.
+Diatom reads the pad once a frame, and a press that goes down and up between
+two reads is still one press of MENU, of a hotkey's button under a held
+SELECT, of the stick's Stick On/Off button and of a DS game's L2 and R2, as
+the volume keys' presses always were: Diatom holds it for the frame of the
+read and lets it go at the next, so the menu opens one frame after the tap.
+The game's own buttons stay as the core reads them, SELECT alone too
+(`diatom_port_input_pressed`, `chord_view`, `make check-menu-tap`).
+
 **The list** is **MENU > System > Hotkeys** (Every Game's, over the shelf)
 and a game's **Controls tab > Hotkeys** (over the paused game), in the widest
 panel (menu_most_w): a row an action, its keys at its right drawn as this

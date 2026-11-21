@@ -370,6 +370,17 @@ void diatom_port_audio_get(char *out, size_t cap);
 void     diatom_port_input_poll(void);
 uint32_t diatom_port_input_state(void);
 
+/* The buttons that went down during the last poll, whether they are held now
+ * or were let go again before it ended: a tap that went down and up between
+ * two polls is here and not in diatom_port_input_state. A slow game polls
+ * ten times a second (a Saturn game at 10 fps, 2026-11-20: an 80 ms press of
+ * MENU never opened the menu), and a quick press fits between two polls.
+ * The host reads it for its own keys alone (MENU, a hotkey under SELECT, the
+ * stick's turn, the DS's screens), as the level keys are latched below; a
+ * core reads the state only, as libretro polls it. Each poll starts it again
+ * and diatom_port_input_reset clears it. */
+uint32_t diatom_port_input_pressed(void);
+
 /* Called when a pause ends, before the next poll. While paused nothing polls,
  * and the launcher's menu was time somebody spent pressing buttons: a port
  * whose input queues (evdev, SDL's event queue) would read it all back on the

@@ -119,6 +119,22 @@ uint32_t chord_keys(const chord *c);
 /* An act's key as a mask, 0 for none */
 uint32_t chord_key_of(const chord *c, chord_act a);
 
+/* The pad as the chords see it at a turn: `held`, and, when SELECT was held
+ * at the last turn (`was`: the pad as it was, not as this said), a hotkey's
+ * key in `live` that went down since and is up again (`pressed`,
+ * diatom_port_input_pressed), held for this one turn with SELECT and let go
+ * at the next. A slow game polls ten times a second (Saturn, 2026-11-20), and
+ * a quick press of R1 under a held SELECT fits between two polls: so it is
+ * its hotkey once, even when SELECT was let go in the same moment. Nothing is
+ * added with no SELECT held before: the key is the game's then, and a SELECT
+ * pressed in that same turn may have come after it was let go. SELECT itself
+ * is never added on its own: it is a game button too, and a tap of it between
+ * two polls stays the game's as libretro polls it. The core sees the view's
+ * buttons only through chord_turn's hide and give, and a key added here is
+ * one it never had. Feed chord_turn the view, and its `was` the last view. */
+uint32_t chord_view(chord *c, uint32_t held, uint32_t was, uint32_t pressed,
+                    uint32_t live);
+
 /* One turn. `held` is the pad now, `was` the pad at the last turn, `now_ms`
  * a clock in milliseconds, and `live` which of the acts' keys (chord_keys)
  * are hotkeys now (a game whose core keeps no state has no save or load, and

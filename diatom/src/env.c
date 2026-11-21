@@ -55,6 +55,8 @@ static uint32_t          g_suppress;
 /* What the poll hook said at the last poll: hidden, and given */
 static diatom_poll_hook  g_poll_hook;
 static uint32_t          g_hook_hide, g_hook_give;
+/* What went down at the polls since the frame loop last asked */
+static uint32_t          g_pressed;
 /* GET_GAME_INFO_EXT's answer, while a game out of a zip loads */
 static struct retro_game_info_ext g_ext;
 static bool              g_ext_on;
@@ -792,9 +794,20 @@ static void cb_input_poll(void)
 	if (g_polled) return;
 	g_polled = true;
 	diatom_port_input_poll();
-	if (g_poll_hook) g_hook_hide = g_poll_hook(diatom_port_input_state(), &g_hook_give);
+	g_pressed |= diatom_port_input_pressed();
+	if (g_poll_hook)
+		g_hook_hide = g_poll_hook(diatom_port_input_state(), diatom_port_input_pressed(),
+		                          &g_hook_give);
 	turbo_tick();
 	if (p2_on()) p2_pads((unsigned)(diatom_port_now_us() / 1000), g_p2_pad);
+}
+
+uint32_t diatom_env_pressed(void)
+{
+	const uint32_t p = g_pressed;
+
+	g_pressed = 0;
+	return p;
 }
 
 uint32_t diatom_env_p2_pad(void)

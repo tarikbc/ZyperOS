@@ -112,6 +112,7 @@ static SDL_AudioDeviceID g_audio;
 static int               g_pad_fd = -1;  /* "Brick Gamepad": every button */
 static bool              g_quit;
 static uint32_t          g_buttons;
+static uint32_t          g_pressed;     /* went down during the last poll */
 static bool              g_input_debug;
 
 /* Opaque value for the framebuffer's alpha channel, zero if it has none.
@@ -2789,6 +2790,7 @@ void diatom_port_input_poll(void)
 {
 	struct input_event ev[32];
 	SDL_Event sev;
+	const uint32_t before = g_buttons;
 	ssize_t n;
 	size_t i, k;
 
@@ -2800,6 +2802,9 @@ void diatom_port_input_poll(void)
 	while (SDL_PollEvent(&sev))
 		if (sev.type == SDL_QUIT) g_quit = true;
 
+	/* Every press since the last poll, a tap gone up again too
+	 * (diatom_port_input_pressed) */
+	g_pressed = 0;
 	while (g_pad_fd >= 0 && (n = read(g_pad_fd, ev, sizeof ev)) > 0) {
 		for (i = 0; i < (size_t)n / sizeof ev[0]; i++) {
 			if (ev[i].type == EV_SYN && ev[i].code == SYN_DROPPED) {
@@ -2817,14 +2822,21 @@ void diatom_port_input_poll(void)
 			if (level_button(ev[i].code, ev[i].value != 0)) continue;
 			for (k = 0; k < sizeof keymap / sizeof keymap[0]; k++) {
 				if (keymap[k].code != ev[i].code) continue;
-				if (ev[i].value) g_buttons |=  DIATOM_BIT(keymap[k].btn);
-				else             g_buttons &= ~DIATOM_BIT(keymap[k].btn);
+				if (ev[i].value) {
+					g_buttons |= DIATOM_BIT(keymap[k].btn);
+					g_pressed |= DIATOM_BIT(keymap[k].btn);
+				} else {
+					g_buttons &= ~DIATOM_BIT(keymap[k].btn);
+				}
 			}
 		}
 	}
+	/* And a key a resync found down whose press was in the events dropped */
+	g_pressed |= g_buttons & ~before;
 }
 
 uint32_t diatom_port_input_state(void) { return g_buttons; }
+uint32_t diatom_port_input_pressed(void) { return g_pressed; }
 
 /* No motor yet: GPIO 227 and the bldo3 rail wait for the tester's buzz
  * (the Brick parity plan's item 14), and `scale` will set the voltage */
@@ -2844,6 +2856,7 @@ void diatom_port_input_reset(void)
 	SDL_FlushEvents(SDL_FIRSTEVENT, SDL_LASTEVENT);
 	while (g_pad_fd >= 0 && read(g_pad_fd, ev, sizeof ev) > 0) { }
 	g_level_down = g_level_pressed = 0;
+	g_pressed = 0;
 	pad_resync();
 }
 

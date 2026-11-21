@@ -42,6 +42,7 @@ static diatom_filter g_tex_filter;
 static SDL_AudioDeviceID g_audio;
 static bool          g_quit;
 static uint32_t      g_buttons;
+static uint32_t      g_pressed;     /* went down during the last poll */
 
 /* DIATOM_DESKFB (diatom_deskfb.h): the frames into a file ZyperOS's desk mode
  * shows in its own window, the buttons from it */
@@ -572,9 +573,14 @@ static const struct { SDL_Scancode key; int btn; } keymap[] = {
  *
  *     DIATOM_INPUT_SCRIPT='300:start;306:;400:l2;406:;420:r2;426:'
  *
+ * A button with `~` before its name is a tap: it went down and up again
+ * before that poll, so the poll has it pressed (diatom_port_input_pressed)
+ * and never held, as a quick press between two polls of a slow game is;
+ * `500:select+~r1` holds SELECT and taps R1.
+ *
  * A poll is a frame: the core polls once in each. OR'd with the keyboard,
  * so a script and a person can share a window. Read once, at the first poll. */
-static struct { long at; uint32_t held; } g_script[64];
+static struct { long at; uint32_t held, tap; } g_script[64];
 static int  g_script_n = -1;
 static long g_polls;
 
@@ -593,29 +599,38 @@ static void script_load(void)
 	for (step = strtok_r(buf, ";", &save); step && g_script_n < 64;
 	     step = strtok_r(NULL, ";", &save)) {
 		char *colon = strchr(step, ':'), *b, *bs = NULL;
-		uint32_t held = 0;
+		uint32_t held = 0, tap = 0;
 		int k;
 
 		if (!colon) continue;
 		*colon = '\0';
-		for (b = strtok_r(colon + 1, "+", &bs); b; b = strtok_r(NULL, "+", &bs))
+		for (b = strtok_r(colon + 1, "+", &bs); b; b = strtok_r(NULL, "+", &bs)) {
+			const bool t = *b == '~';
+
 			for (k = 0; k < DIATOM_BTN_COUNT; k++)
-				if (!strcmp(b, names[k])) held |= DIATOM_BIT(k);
+				if (!strcmp(b + t, names[k])) *(t ? &tap : &held) |= DIATOM_BIT(k);
+		}
 		g_script[g_script_n].at = strtol(step, NULL, 10);
 		g_script[g_script_n].held = held;
+		g_script[g_script_n].tap = tap;
 		g_script_n++;
 	}
 	fprintf(stderr, "desktop: input script of %d step(s)\n", g_script_n);
 }
 
-static uint32_t script_held(void)
+/* The script's buttons held at this poll, and in *tap those it taps at it */
+static uint32_t script_held(uint32_t *tap)
 {
 	uint32_t held = 0;
 	int i;
 
 	if (g_script_n < 0) script_load();
 	g_polls++;
-	for (i = 0; i < g_script_n && g_script[i].at <= g_polls; i++) held = g_script[i].held;
+	*tap = 0;
+	for (i = 0; i < g_script_n && g_script[i].at <= g_polls; i++) {
+		held = g_script[i].held;
+		*tap = g_script[i].at == g_polls ? g_script[i].tap : 0;
+	}
 	return held;
 }
 
@@ -624,20 +639,29 @@ void diatom_port_input_poll(void)
 	const Uint8 *keys;
 	SDL_Event ev;
 	size_t i;
-	uint32_t s = 0;
+	uint32_t s = 0, down = 0, tap;
+	const uint32_t before = g_buttons;
 
-	while (SDL_PollEvent(&ev))
+	/* A key pressed since the last poll, though let go again before this
+	 * one: the keyboard's state alone would miss it */
+	while (SDL_PollEvent(&ev)) {
 		if (ev.type == SDL_QUIT) g_quit = true;
+		if (ev.type == SDL_KEYDOWN && !ev.key.repeat)
+			for (i = 0; i < sizeof keymap / sizeof keymap[0]; i++)
+				if (ev.key.keysym.scancode == keymap[i].key) down |= DIATOM_BIT(keymap[i].btn);
+	}
 
 	keys = SDL_GetKeyboardState(NULL);
 	for (i = 0; i < sizeof keymap / sizeof keymap[0]; i++)
 		if (keys[keymap[i].key]) s |= DIATOM_BIT(keymap[i].btn);
 
-	g_buttons = s | script_held() |
+	g_buttons = s | script_held(&tap) |
 	            (g_fb ? __atomic_load_n(&g_fb->buttons, __ATOMIC_ACQUIRE) : 0);
+	g_pressed = (g_buttons & ~before) | down | tap;
 }
 
 uint32_t diatom_port_input_state(void) { return g_buttons; }
+uint32_t diatom_port_input_pressed(void) { return g_pressed; }
 
 /* The pretend motor writes down what a motor of the Pixel 2's kind would
  * run at: each strength times the scale, rounded (test/rumble.py) */
@@ -662,8 +686,9 @@ bool diatom_port_rumble(uint16_t strong, uint16_t weak, float scale)
 	return ok;
 }
 
-/* Nothing queues here: the poll reads the keyboard as it is now. */
-void     diatom_port_input_reset(void) { }
+/* Nothing queues here: the poll reads the keyboard as it is now, and its
+ * presses are the poll's own, started again at each. */
+void     diatom_port_input_reset(void) { g_pressed = 0; }
 
 bool     diatom_port_should_quit(void) { return g_quit; }
 

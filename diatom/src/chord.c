@@ -153,6 +153,16 @@ static void owe(chord *c, int n)
 	else c->owed = n;
 }
 
+uint32_t chord_view(chord *c, uint32_t held, uint32_t was, uint32_t pressed,
+                    uint32_t live)
+{
+	uint32_t tap;
+
+	if (!c->keyed) chord_reset(c);
+	tap = pressed & ~held & live & chord_keys(c);
+	return (was & SEL) && tap ? held | tap | SEL : held;
+}
+
 chord_out chord_turn(chord *c, uint32_t held, uint32_t was, uint64_t now_ms,
                      uint32_t live)
 {
