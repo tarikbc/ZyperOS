@@ -5,15 +5,8 @@
 # the offline checks, a host build of the launcher, the cores, and the assets.
 # docs/building.md says how to work on a device.
 
-.PHONY: all clean native desk desk-brick handhelds px2-payload vendor boot system-art checkmark \
-        check check-cheevos check-hare check-portal check-httpd check-idle check-taskhold check-saver check-rahash check-flacdec check-achtab check-signin check-search \
-        check-raset check-xfer check-sshlink check-usblink check-devmode check-devices check-devicegen check-model check-ctl check-menus check-status check-battery check-corner check-artscrape check-artrun check-sgdb check-snapshelf check-snaps check-audioout \
-        check-db check-coreopts check-mp4keys check-gpuframes check-gamedel check-gamern check-esmedia check-corepins check-targets yuvtarget check-storage check-stats check-sort check-bt check-ss check-titles check-dsv check-sidelights check-osdbar check-boost check-levels check-hud check-dmodefit check-themefile check-pkkeys check-pkover check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-bios check-gamefile check-startfail check-kbnav check-tween check-menumotion check-menusnap check-cardgen check-cardart check-focusfx check-blur check-gridrule check-screencard check-focusgeo check-roundrect check-rowmacro check-emptyhome check-zyperrig check-randgame check-shelfdir \
-        check-sysmark check-flip check-menushots check-controls-shots check-design check-systemart check-linebreak check-portload check-portout \
-        check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages check-tour check-tour-shots check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pico8 check-pico8-wget check-pico8-mp4 check-pico8-display check-pico8-keys check-p8fx check-p8fx-gl check-gpu-upright check-pmhelper check-portdoc check-boottheme check-splashbright check-bootbright check-seed-version check-px2-push check-wifi-watch check-launch-start check-crashlog check-captive check-mdns check-linksteps check-usbrole check-usbdrive check-gauge check-usbpower check-phonelink check-usblog check-clients check-keyhints check-pace check-qr check-autozone \
-        check-home check-home-shots check-games check-cardpaint check-putpace landbench check-favorites-shots check-homesys-groups check-lateskip-launch check-np-footer check-vidtry check-menu-rows check-layout-shots check-artbadge check-artbadge-shots check-cardart-shots design sounds strings cjk-font check-strings check-i18n-shots check-rootswitch check-datapart check-brick-closed check-hwreport check-kitwalk \
-        check-tour-previews tour-previews check-prep check-diatom check-simulator check-px2sim check-building-doc check-blog check-discord-release \
-        check-release-devices check-installer release check-site-devices
+.PHONY: all clean native desk desk-brick handhelds px2-payload vendor boot system-art check yuvtarget \
+        landbench design sounds strings cjk-font tour-previews check-prep release check-site-devices check-linux building-doc
 
 all: check
 
@@ -44,17 +37,17 @@ src/i18n_tables.c: $(wildcard res/strings/*.txt) tools/i18n.py
 # had to be remembered by name, which is a suite in the same sense that a list
 # of good intentions is a plan. A check nobody runs is a check that does not
 # exist, and check-menus was about to join eight others in that state.
-CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-taskhold check-saver check-rahash check-flacdec check-achtab check-rasubmit check-raoffline check-radl check-dlq check-dl-recent check-dl-look check-cheatsdl check-cheats check-signin check-noticeq check-badges check-badge-shots \
-         check-raset check-xfer check-sshlink check-usblink check-devmode check-devices check-devicegen check-model check-ctl check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-snaps check-audioout \
-         check-db check-coreopts check-mp4keys check-gamedel check-gamern check-esmedia check-media check-snapsize check-corepins check-targets check-storage check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
-         check-mp4lib check-mp4queue check-mp4art check-mp4lock check-mp4look check-mp4views check-mp4resume check-bands check-covercolor check-mp4frame check-mp4size check-p2share check-webtheme check-p2ws check-p2codec check-p2d check-play check-p2 check-resident check-spawn check-controls check-remap check-hotkeys check-rumble check-eq check-eqdsp check-eqplugin check-controls-shots check-logpack \
-         check-clock check-autozone check-status check-battery check-battery-eta check-dslang check-pacing check-sgbmode check-border check-handframe check-gpuframes check-dsresume check-corestate check-core-stamp check-core-room check-px2-perf check-px2-snap check-px2 check-lowbatt check-battempty check-powerhold check-homesys check-collect check-shotname check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-boost check-levels check-hud check-dmodefit check-themefile check-pkkeys check-pkover check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-bios check-gamefile check-startfail check-kbnav check-randgame check-shelfdir check-look \
-         check-tween check-menumotion check-menusnap check-cardgen check-cardart check-focusfx check-blur check-gridrule check-screencard check-focusgeo check-roundrect check-rowmacro check-emptyhome check-zyperrig check-sysmark check-flip check-menushots check-design \
-         check-systemart check-linebreak check-portload check-portout check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages \
-         check-tour check-tour-shots check-tour-previews check-textfade check-glyphs check-scale check-shaderdemo check-shaderpic check-screenfx check-ds check-layout-ratchet check-flex check-hover check-hover-sweep check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pico8 check-pico8-wget check-pico8-mp4 check-pico8-display check-pico8-keys check-p8fx check-p8fx-gl check-gpu-upright check-pmhelper check-portlibs check-pmart check-portdoc check-boottheme check-splashbright check-bootbright check-seed-version check-panelgamma check-panelgamma-sunxi check-nightmode check-autotheme check-displayback check-px2-push check-wifi-watch check-launch-start check-crashlog check-captive check-mdns check-linksteps check-usbrole check-usbdrive check-gauge check-start-soc check-usbpower check-phonelink check-usblog check-clients check-keyhints check-pace check-qr \
-         check-home check-home-shots check-games check-cardpaint check-putpace check-favorites-shots check-homesys-groups check-lateskip-launch check-np-footer check-vidtry check-menu-rows check-layout-shots check-artbadge check-artbadge-shots check-cardart-shots checkmark \
-         check-installer check-from-rogue check-importers check-diatom check-simulator check-qemu-image check-desk check-homekeys check-videoview check-inrepeat check-keymap check-handhelds check-px2sim check-building-doc check-blog check-discord-release \
-         check-release-devices check-strings check-i18n-shots check-rootswitch check-datapart check-brick-closed check-hwreport check-kitbuild check-kitwalk check-ingame-colors
+# Each check registers itself in a file of its own, mk/checks/NAME.mk: its
+# name added to CHECKS, and to CHECKS_LINUX_SKIP while it does not pass on
+# Linux yet, and its row of docs/building.md's table as #| lines, which make
+# building-doc writes the table from (tools/building-doc.py). Its rule is
+# here beside the ones like it, or in the file. Two pull requests that each
+# add a check add a file each, and meet nowhere; the two lists here and the
+# table, which each such PR added a line to the end of, conflicted every
+# time (2026-11-20: #421 twice, #422 and #428 once).
+CHECKS :=
+CHECKS_LINUX_SKIP :=
+include $(sort $(wildcard mk/checks/*.mk))
 
 # All of them at once, as many at a time as there are cores (CHECK_JOBS=1 for
 # one after another), each into build-native/check-logs/: tools/check-run.py
@@ -67,6 +60,12 @@ CHECKS_SKIP ?=
 check: check-prep
 	@$(if $(strip $(CHECKS_SKIP)),echo "check: left out (CHECKS_SKIP): $(strip $(CHECKS_SKIP))")
 	@python3 tools/check-run.py $(filter-out $(CHECKS_SKIP),$(CHECKS))
+
+# CI's Linux job (.github/workflows/check.yml, check-linux): make check but
+# for the checks that do not pass on Linux yet, which macOS still runs; each
+# says so in its mk/checks file (CHECKS_LINUX_SKIP)
+check-linux:
+	@$(MAKE) --no-print-directory check CHECKS_SKIP="$(strip $(CHECKS_LINUX_SKIP) $(CHECKS_SKIP))"
 
 # What more than one check builds, built once before any of them starts: the
 # host launcher, which nine checks draw with, and the ScreenScraper header it
@@ -122,10 +121,15 @@ check-discord-release:
 check-release-devices:
 	@sh tools/release-devices.sh check
 
-# docs/building.md's table names every check in CHECKS and nothing else:
-# the table had 32 of 91 rows (2026-11-06) and said nothing of the rest.
+# docs/building.md's table of checks is what mk/checks/*.mk say: a row for
+# every check, in the names' order, and every check a rule. It had 32 of 91
+# rows when a hand kept it (2026-11-06) and said nothing of the rest.
 check-building-doc:
-	@python3 tools/building-doc-check.py
+	@python3 tools/building-doc.py --check
+
+# The table written again from mk/checks/*.mk
+building-doc:
+	@python3 tools/building-doc.py --write
 
 # Desk mode (docs/building.md, "Work on the UI without a device"): the
 # launcher in a window as the Pixel 2, or as the Brick, on a sample card, a
