@@ -523,6 +523,93 @@ static void m3u_discs(void)
 	lib_free(&list);
 }
 
+/* 2026-11-21 (DoctorIssa): a game's details show its file whole, the brackets
+ * lib_title leaves out of its title, and a set's discs (DESIGN.md 11.69). On
+ * the folders disc_folders and m3u_discs made. */
+static void file_shown(void)
+{
+	char out[LIB_PATH + 1];
+	game_list list = {0};
+	int i;
+
+	/* The name, whole: every bracket the title cuts, less the extension, as
+	 * Rename has it */
+	lib_file_shown("Final Fantasy VII (USA) (Disc 1).chd", 0, false, out, sizeof out);
+	CHECK(!strcmp(out, "Final Fantasy VII (USA) (Disc 1)"));
+	lib_title("Final Fantasy VII (USA) (Disc 1)", out, sizeof out);
+	CHECK(!strcmp(out, "Final Fantasy VII"));
+	/* ...less the folders the shelf only keeps it in */
+	lib_file_shown("Rom Hacks/Translations/Mother 3 (English) (v1.3).gba", 22, false, out, sizeof out);
+	CHECK(!strcmp(out, "Mother 3 (English) (v1.3)"));
+	/* A set in a folder of its own: the folder, which is the game, and the
+	 * file it starts by, whichever of the two has the brackets */
+	lib_file_shown("FF7/Final Fantasy VII (USA) (Disc 1).cue", 0, false, out, sizeof out);
+	CHECK(!strcmp(out, "FF7/Final Fantasy VII (USA) (Disc 1)"));
+	lib_file_shown("RPGs/Xeno/Xenogears (USA) (Disc 1).cue", 4, false, out, sizeof out);
+	CHECK(!strcmp(out, "Xeno/Xenogears (USA) (Disc 1)"));
+	lib_file_shown("God of War/God of War - Chains of Olympus (USA).iso", 0, false, out, sizeof out);
+	CHECK(!strcmp(out, "God of War/God of War - Chains of Olympus (USA)"));
+	/* A dot in a folder's name is no extension; one leading a name keeps it */
+	lib_file_shown("Vol. 2 (Japan)/Disc", 0, false, out, sizeof out);
+	CHECK(!strcmp(out, "Vol. 2 (Japan)/Disc"));
+	lib_file_shown(".hack", 0, false, out, sizeof out);
+	CHECK(!strcmp(out, ".hack"));
+	lib_file_shown("Super Mario Bros. 3 (USA) (Rev 1).nes", 0, false, out, sizeof out);
+	CHECK(!strcmp(out, "Super Mario Bros. 3 (USA) (Rev 1)"));
+	/* A ScummVM game: its folder, never the hook or the file the core is handed */
+	lib_file_shown("Flight of the Amazon Queen (CD DOS)/queen.scummvm", 0, true, out, sizeof out);
+	CHECK(!strcmp(out, "Flight of the Amazon Queen (CD DOS)"));
+	lib_file_shown("Adventures/Soltys/readme.txt", 10, true, out, sizeof out);
+	CHECK(!strcmp(out, "Soltys"));
+	/* A `dir` that is no run of folders leaves the path whole */
+	lib_file_shown("Game (USA).zip", 9, false, out, sizeof out);
+	CHECK(!strcmp(out, "Game (USA)"));
+	lib_file_shown("Tetris (World) (Rev 1).gb", 0, false, out, 8);
+	CHECK(!strcmp(out, "Tetris "));
+
+	/* Discs: a loose game is one, read nothing; a set's folder its images,
+	 * a sheet's tracks not counted; an .m3u what it names */
+	CHECK(lib_discs(root, "PS", "RPGs/Vagrant Story (USA).chd", 4, false) == 1);
+	CHECK(lib_discs(root, "PS", "FF7/Final Fantasy VII (USA) (Disc 1).cue", 0, false) == 2);
+	CHECK(lib_discs(root, "PS", "Pol/Disc 1.chd", 0, false) == 2);
+	CHECK(lib_discs(root, "PS", "Tracks/Game.cue", 0, false) == 1);
+	CHECK(lib_discs(root, "PS", "RPGs/Xeno/Xenogears (USA) (Disc 1).cue", 4, false) == 1);
+	CHECK(lib_discs(root, "PS", "Mixed/Mixed.m3u", 0, false) == 1);   /* an empty playlist */
+	CHECK(lib_discs(root, "PS1", "Final Fantasy VII (USA).m3u", 0, false) == 3);
+	CHECK(lib_discs(root, "PS1", "Chrono Cross (USA).m3u", 0, false) == 2);
+	CHECK(lib_discs(root, "PS1", "Vagrant Story (USA).m3u", 0, false) == 2);
+	CHECK(lib_discs(root, "PS1", "Mana.m3u", 0, false) == 1);
+	CHECK(lib_discs(root, "DC", "Game/Game.gdi", 0, false) == 1);
+	CHECK(lib_discs(root, "DOOM", "Sigil.m3u", 0, false) == 1);      /* WADs, no discs */
+	CHECK(lib_discs(root, "PSP", "Cave Story/EBOOT.PBP", 0, false) == 1);
+	CHECK(lib_discs(root, "PS", "Gone/Disc 1.chd", 0, false) == 1);
+	/* A folder with a playlist inside: what the playlist names */
+	text("PS/Mixed/Mixed.m3u", "A.chd\nB.chd\n");
+	CHECK(lib_discs(root, "PS", "Mixed/Mixed.m3u", 0, false) == 2);
+	/* A ScummVM game's folder holds no discs, whatever its data is called */
+	directory("SCUMM"); directory("SCUMM/Loom");
+	touch("SCUMM/Loom/DISK01.LEC"); touch("SCUMM/Loom/a.img"); touch("SCUMM/Loom/b.img");
+	CHECK(lib_discs(root, "SCUMM", "Loom/a.img", 0, true) == 1);
+
+	/* As a scan makes them: a set's entry and a loose disc's */
+	CHECK(lib_scan(root, "PS", "cue,chd,m3u", &list));
+	i = lib_find_entry(&list, NULL, 0, "FF7/Final Fantasy VII (USA) (Disc 1).cue");
+	CHECK(i >= 0);
+	if (i >= 0) {
+		lib_file_shown(list.items[i].file, list.items[i].dir, false, out, sizeof out);
+		CHECK(!strcmp(out, "FF7/Final Fantasy VII (USA) (Disc 1)"));
+		CHECK(lib_discs(root, "PS", list.items[i].file, list.items[i].dir, false) == 2);
+	}
+	i = lib_find_entry(&list, NULL, 0, "RPGs/Chrono Cross (USA) (Disc 1).chd");
+	CHECK(i >= 0);
+	if (i >= 0) {
+		lib_file_shown(list.items[i].file, list.items[i].dir, false, out, sizeof out);
+		CHECK(!strcmp(out, "Chrono Cross (USA) (Disc 1)"));
+		CHECK(lib_discs(root, "PS", list.items[i].file, list.items[i].dir, false) == 1);
+	}
+	lib_free(&list);
+}
+
 static int rm_one(const char *path, const struct stat *st, int flag, struct FTW *ftw)
 {
 	(void)st; (void)flag; (void)ftw;
@@ -534,10 +621,10 @@ int main(void)
 	CHECK(mkdtemp(root) != NULL);
 	snprintf(libpath, sizeof libpath, "%s/library.db", root);
 	snprintf(devpath, sizeof devpath, "%s/device.db", root);
-	parse_titles(); upgrade(); runner(); library(); disc_folders(); m3u_discs(); db_shutdown();
+	parse_titles(); upgrade(); runner(); library(); disc_folders(); m3u_discs(); file_shown(); db_shutdown();
 	/* A unique fixture tree (mkdtemp's), removed whole */
 	nftw(root, rm_one, 16, FTW_DEPTH | FTW_PHYS);
 	if (failures) return 1;
-	puts("ok: parsed titles survive upgrades, cover failures and library scans");
+	puts("ok: parsed titles survive upgrades, cover failures and library scans; a game's file is shown whole");
 	return 0;
 }

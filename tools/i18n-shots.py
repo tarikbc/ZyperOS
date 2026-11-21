@@ -715,19 +715,55 @@ def border_png(path):
     R.png_rgb(path, 320, 240, rows)
 
 
+# The folders a shot's files made on a card, by the card, taken away with
+# them: a disc set's folder left empty would be a folder the next shot's scan
+# reads (and counts as left out)
+MADE_DIRS = {}
+
+
+def make_parent(card, path):
+    """path's folder on the card, made with each folder above it it lacks,
+    which are kept to go after the shot (drop_parents)"""
+    missing = []
+    d = path.parent
+    while d != card and not d.exists():
+        missing.append(d)
+        d = d.parent
+    path.parent.mkdir(parents=True, exist_ok=True)
+    MADE_DIRS.setdefault(card, []).extend(missing)
+
+
+def drop_parents(card):
+    """The folders make_parent made on the card, the deepest first, each once
+    it is empty; one still holding a file (SHOT_TEXT's, taken after
+    SHOT_FILES') is kept for the next call"""
+    kept = []
+    for d in sorted(set(MADE_DIRS.pop(card, [])), key=lambda p: len(p.parts), reverse=True):
+        try:
+            d.rmdir()
+        except FileNotFoundError:
+            pass
+        except OSError:
+            kept.append(d)
+    if kept:
+        MADE_DIRS[card] = kept
+
+
 def set_files(card, files, on):
     """A shot's files (SHOT_FILES) on the card, empty, or off it; a .png
     under Borders/ a real picture (border_png)"""
     for f in files or []:
         path = card / f
         if on:
-            path.parent.mkdir(parents=True, exist_ok=True)
+            make_parent(card, path)
             if f.startswith("Borders/") and f.endswith(".png"):
                 border_png(path)
                 continue
             path.touch()
         elif path.exists():
             path.unlink()
+    if not on:
+        drop_parents(card)
 
 
 # The in-game menu's Shader at each old screen, so each name is drawn and fit
@@ -841,9 +877,10 @@ CTL_FOCUS = {"gamemenu-pak": "Mario Kart 64 (USA).z64",
              "gamemenu-rumble-own-list": "Mario Kart 64 (USA).z64",
              "gamemenu-controls-n64-end": "Mario Kart 64 (USA).z64",
              **{"gamemenu-controls-" + _n: _SONIC for _n in ("dc", "dc-end", "dc-place", "dc-mixed")}}
-# A game's details with its own buttons (Buttons, This Game), and the page that
-# row opens
-EXTRA.setdefault("info-buttons", ("demo", "PS1", ["--screen", "games", "--info"]))
+# A game's details with its own buttons (Buttons, This Game), the cursor on
+# the row (below the first screenful since File, DESIGN.md 11.69), and the
+# page that row opens
+EXTRA.setdefault("info-buttons", ("demo", "PS1", ["--screen", "games", "--info-on-buttons"]))
 EXTRA.setdefault("info-buttons-page", ("demo", "PS1", ["--screen", "games", "--info-buttons"]))
 SHOT_LIB = {"gamemenu-rumble-own-list": {"rumble.N64.Mario Kart 64 (USA).z64": "low"},
             "info-buttons": {_MGS: "1;b:y,y:b"},
@@ -936,13 +973,15 @@ def set_text(card, files, on):
     for f, text in (files or {}).items():
         path = card / f
         if on:
-            path.parent.mkdir(parents=True, exist_ok=True)
+            make_parent(card, path)
             if isinstance(text, bytes):
                 path.write_bytes(text)
             else:
                 path.write_text(text)
         elif path.exists():
             path.unlink()
+    if not on:
+        drop_parents(card)
 
 
 def scene_rgb(x, y, w, h, sky, ground, hue):
@@ -1086,6 +1125,26 @@ EXTRA.setdefault("launch-zip-method", ("demo", "SFC", ["--screen", "games", "--z
 # on Core, and a game's details with its Core fact
 EXTRA.setdefault("system-menu-core-gb", ("demo", "GB", ["--screen", "games", "--menu", "Core"]))
 EXTRA.setdefault("info-core-gb", ("demo", "GB", ["--screen", "games", "--info"]))
+# A game's file on its details (DESIGN.md 11.69), the brackets its title
+# leaves out: a long tagged name, sliding in every language (as it is drawn
+# at --phase 3200, and at rest at its start); a disc set in a folder of its
+# own, its folder and first disc and how many discs; and an .m3u beside its
+# discs. The files are made for the shot and taken away after it.
+_PSX = "Roms/PlayStation/"
+_LONG = "Final Fantasy VII (USA) (Rev 1) (Disc 1).chd"
+_SET = "Final Fantasy IX (USA)"
+_M3U = ["Final Fantasy VIII (USA) (Disc %d).chd" % k for k in range(1, 5)]
+for _name, _flags in (("info-file-long", []), ("info-file-long-start", ["--phase", "0"])):
+    EXTRA.setdefault(_name, ("demo", "PS1", ["--screen", "games", "--info", *_flags]))
+    SHOT_FILES[_name] = [_PSX + _LONG]
+    CTL_FOCUS[_name] = _LONG
+EXTRA.setdefault("info-file-discs", ("demo", "PS1", ["--screen", "games", "--info"]))
+SHOT_FILES["info-file-discs"] = [_PSX + "%s/%s (Disc %d).chd" % (_SET, _SET, k) for k in range(1, 5)]
+CTL_FOCUS["info-file-discs"] = "%s/%s (Disc 1).chd" % (_SET, _SET)
+EXTRA.setdefault("info-file-m3u", ("demo", "PS1", ["--screen", "games", "--info"]))
+SHOT_FILES["info-file-m3u"] = [_PSX + _d for _d in _M3U]
+SHOT_TEXT["info-file-m3u"] = {_PSX + "Final Fantasy VIII (USA).m3u": "".join(_d + "\n" for _d in _M3U)}
+CTL_FOCUS["info-file-m3u"] = "Final Fantasy VIII (USA).m3u"
 
 
 def set_lib(card, settings, on):

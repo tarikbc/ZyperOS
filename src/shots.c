@@ -1843,7 +1843,8 @@ static void shot_compose_once(app *a)
 	if (shot_info == 4) info_buttons_preview(a, shot_gm_pick);
 	else if (shot_info) info_preview(a, true, shot_info == 2 ? T(S_GAMEMENU_DELETE)
 	                                     : shot_info == 3 ? T(S_GAMEMENU_RENAME)
-	                                     : shot_info == 5 ? T(S_COLLECT_ADD) : NULL);
+	                                     : shot_info == 5 ? T(S_COLLECT_ADD)
+	                                     : shot_info == 6 ? T(S_GAMEMENU_BUTTONS) : NULL);
 	if (shot_delete_ask) delete_ask_preview(a);
 	if (shot_collect_page >= 0) collect_page_preview(a, shot_collect_page);
 	if (shot_collect_delete) collect_delete_preview(a);

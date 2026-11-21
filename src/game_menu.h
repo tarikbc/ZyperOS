@@ -95,7 +95,7 @@ const char *gm_pak_other(const char *value);           /* the one it steps to */
 const char *gm_pak_name(const char *value);            /* "Rumble Pak" ... */
 void gm_pak_key(const char *tag, const char *file, char *out, size_t n);
 
-#define GI_MAX 11         /* five facts at most, Favorite, Add to Collection, Buttons and three actions */
+#define GI_MAX 13         /* seven facts at most, Favorite, Add to Collection, Buttons and three actions */
 
 /* The genre line, from the scrape. Sized from the card rather than guessed:
  * measured 2026-09-17 over 1,704 rows, the whole comma-separated value has a
@@ -158,6 +158,14 @@ typedef struct {
 	 * Game Boys', the N64's, the Dreamcast's): a fact, so a person asking
 	 * for help can say which ran; "" for a shelf of one core */
 	char  core[64];
+	/* The game's file on the card (lib_file_shown), with the brackets its
+	 * title leaves out, "(USA) (Rev 1)", "(Disc 2)", by which one copy is
+	 * told from another (DESIGN.md 11.69); "" for an entry that is no file
+	 * on the card (Install PortMaster, Splore), which has no File row */
+	char  file[LIB_PATH + 1];
+	/* How many discs it is (lib_discs), "3", as the Discs fact under File;
+	 * "" for a game of one disc or none, which has no such row */
+	char  discs[12];
 	/* The game has a key of its own on the card (rms_game): its buttons
 	 * differ from the system's, so the Buttons row shows them */
 	bool  own_buttons;

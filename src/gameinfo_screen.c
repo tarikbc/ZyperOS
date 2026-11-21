@@ -61,6 +61,18 @@ static void gi_gather(app *a, int owner, const game_entry *g, game_info *gi)
 
 		snprintf(gi->core, sizeof gi->core, "%s", core_label(s->core, lb, sizeof lb));
 	}
+	/* Its file, brackets and all (DESIGN.md 11.69), and a set's discs.
+	 * Only a file that is on the card: Install PortMaster's entry and
+	 * Splore's are ZyperOS's own, with no file behind them to name. One
+	 * stat, and for a set its folder or its .m3u read, as the page opens. */
+	snprintf(p, sizeof p, "%s/%s/%s", P_ROMS, s->folder, g->file);
+	if (s->folder[0] && access(p, F_OK) == 0) {
+		bool hooked = lib_shelf_hooked(s->exts);
+		int discs = lib_discs(P_ROMS, s->folder, g->file, g->dir, hooked);
+
+		lib_file_shown(g->file, g->dir, hooked, gi->file, sizeof gi->file);
+		if (discs > 1) snprintf(gi->discs, sizeof gi->discs, "%d", discs);
+	}
 	/* Collections take every game a favorite can be (src/collect.h) */
 	gi->can_collect = gi->can_favorite && s->folder[0];
 	if (gi->can_collect) collect_value(s->folder, g->file, gi->collected, sizeof gi->collected);
@@ -371,8 +383,9 @@ void info_preview(app *a, bool net, const char *on_row)
 	 * until the rows were reordered and then was Saves - so the shot showed a
 	 * highlight on a dead row, which the real screen cannot do. */
 	sel = rows[0].live ? 0 : menu_step_sel(rows, n, 0, +1);
-	/* --info-delete and --info-rename: the cursor on Delete Game or Rename,
-	 * by its label as info_key finds it */
+	/* --info-delete, --info-rename, --info-collect and --info-on-buttons:
+	 * the cursor on Delete Game, Rename, Add to Collection or Buttons, by its
+	 * label as info_key finds it */
 	for (int i = 0; on_row && i < n; i++)
 		if (!strcmp(rows[i].label, on_row)) sel = i;
 

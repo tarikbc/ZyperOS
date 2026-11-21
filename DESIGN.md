@@ -1055,7 +1055,7 @@ count. Missing metadata is omitted rather than invented.
 A is **Resume** only when the existing resume path is available, otherwise
 **Play**. B returns to systems, START steps the shelf's View on, Covers to Grid
 to List to Video and round (11.39, 11.47, 11.57), Y starts the game from the start, and X opens game details, whose
-last row is Delete Game (11.31). The foot spreads their hints from B at the
+facts end with the game's File, brackets and all (11.69), and whose last row is Delete Game (11.31). The foot spreads their hints from B at the
 left to X at the right (11.4).
 Long titles wrap or fit within their region, clear of the action and footer.
 **A game with no art** gets a card of its own (src/cardart.h, drawn by
@@ -7492,3 +7492,48 @@ shots made up as PNGs), with `--shots-delete`, `--shots-said` and
 `check-homesys-groups` the shelf with its system turned off, OpenBOR's shots
 by their files' times, A in the viewer starting nothing, and Delete
 Screenshot.
+
+### 11.69 A game's file on its details
+*(DoctorIssa on the Discord, 2026-11-21, under "Option to show (brackets) on
+filenames": the tags tell versions apart, v1.1, regions, discs, and "Even if
+we can't show them on the list, at least have them appear when you look at
+the details of a game?"; my OK, for 1.1.0.)*
+
+A shelf's title stops at the first bracket after a space (src/library.c's
+`lib_title`: "Final Fantasy VII (USA) (Disc 1).chd" is "Final Fantasy VII"),
+and the shelves, Recents, Favorites and the in-game menu stay so. A game's
+details (X on the shelf) give the brackets back:
+
+- **File**, the last of the facts, after Genre and Core and before
+  Achievements, in the facts' quiet style: the game's file as it is on the
+  card, every bracket in it, less its extension, as Rename has the name, and
+  less the folders the shelf only keeps it in ("Rom Hacks/"): "Final Fantasy
+  VII (USA) (Disc 1)", "Mother 3 (English) (v1.3)".
+- **A game in a folder of its own** (a disc set, a PSP game) is its folder
+  and the file it starts by, "FF7/Final Fantasy VII (USA) (Disc 1)", "God of
+  War/God of War - Chains of Olympus (USA)": the brackets are in one or the
+  other, and neither is left out. A ScummVM game is its folder alone: the
+  file in it is only what the core is handed.
+- **Discs**, under File, for a game on more than one: how many, "4". A set's
+  folder counts its discs as the scan does (a sheet's tracks not counted); an
+  `.m3u`, loose or in its folder, the discs it names (its File is the
+  `.m3u`'s name).
+- **Long names slide**, never cut: the row is a fact the cursor never stops
+  on, so a name too long for it moves as the page's other long facts do
+  (`menu_row_moves`), from its start.
+- **No file, no row**: Install PortMaster's entry and Splore's are ZyperOS's
+  own, with no file of the card's behind them.
+
+Read as the page opens, with the rest (src/gameinfo_screen.c's `gi_gather`):
+one stat, and a set's folder or its `.m3u` read for Discs; nothing more for
+a game on its own, and nothing per frame. The File row was on this page once
+and went as the title a second time; it came back for the brackets.
+
+Host shots: `info-file-long` (a long tagged name, as it slides) and
+`info-file-long-start` (at rest, its start), `info-file-discs` (a set of
+four in a folder of its own) and `info-file-m3u` (an `.m3u` beside its four
+discs), with every other details shot now showing File; `info-buttons` has
+its cursor on Buttons (`--info-on-buttons`), which File put below the first
+screenful. `check-titles` holds
+the names and the counts of discs on real folders, `check-menus` the rows'
+order.

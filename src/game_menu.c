@@ -45,6 +45,16 @@ int gi_rows(menu_row *out, const game_info *gi, bool net)
 	/* The core, a fact, where the shelf offers more than one (1.0.7) */
 	if (gi->core[0])
 		out[n++] = (menu_row){ T(S_SYSMENU_CORE), gi->core, false };
+	/* The file, brackets and all, the last fact (DESIGN.md 11.69): the
+	 * shelf's title stops at the first bracket, and the brackets are how
+	 * one copy is told from another - "(USA)" from "(Europe)", "(Rev 1)",
+	 * "(Disc 2)", a hack's "(v1.1)". A fact, so too long for the row it
+	 * slides as the page's other facts do (menu_row_moves), never cut. A
+	 * set of discs says how many under it. */
+	if (gi->file[0])
+		out[n++] = (menu_row){ T(S_GAMEMENU_FILE), gi->file, false };
+	if (gi->file[0] && gi->discs[0])
+		out[n++] = (menu_row){ T(S_GAMEMENU_DISCS), gi->discs, false };
 	/* The count opens the same list the in-game menu opens - which is where it
 	 * comes from. Reading "4/54" and having nowhere to go with it is the
 	 * question half-answered: which four, and what are the other fifty. A game
@@ -69,12 +79,10 @@ int gi_rows(menu_row *out, const game_info *gi, bool net)
 	/* WHAT THIS SCREEN NO LONGER SAYS, and why, because each was removed on a
 	 * reason rather than to make the list shorter:
 	 *
-	 * File. The panel is headed by the game's name and the shelf behind it is
-	 * showing the same game, so the row spent its width repeating what was
-	 * already on screen twice over, plus a region tag and an extension. What
-	 * goes with it is the one place the exact bytes of a filename could be
-	 * read, which is a real loss on the day a scrape misses - and still not
-	 * worth a permanent row that every player reads past every time.
+	 * (File was here once, and went as the game's name a second time with
+	 * a region tag and an extension. It came back on 2026-11-21 for those
+	 * tags: with them cut from every title, this page is the one place
+	 * left to tell two copies of a game apart. See the File row above.)
 	 *
 	 * Size. The size of a cartridge ROM has no consequence on a card with room
 	 * for a thousand of them, and it is not a number anybody acts on.

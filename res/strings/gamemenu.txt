@@ -48,6 +48,28 @@ de = Genre
 ja = ジャンル
 it = Genere
 
+[gamemenu.file]
+note = The game info screen's row, the last of its facts: the game's file name on the card, with the brackets the shelf leaves out of the title ("Final Fantasy VII (USA) (Disc 1)"). Short: a long name slides beside it.
+en = File
+zh-Hans = 文件
+es = Archivo
+pt-BR = Arquivo
+fr = Fichier
+de = Datei
+ja = ファイル
+it = File
+
+[gamemenu.discs]
+note = The game info screen's row under File, for a game on more than one disc (a set in a folder of its own, or an .m3u): how many discs it has, as a number. Short: its value sits beside it.
+en = Discs
+zh-Hans = 光盘数
+es = Discos
+pt-BR = Discos
+fr = Disques
+de = Discs
+ja = ディスク枚数
+it = Dischi
+
 [gamemenu.delete]
 note = The game info screen's row under the art action: delete the game, its saves, states, cover and video (DESIGN.md 11.31). Also the heading of its question, wait and messages. tight: a row label beside no value
 en = Delete Game

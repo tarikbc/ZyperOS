@@ -6469,6 +6469,9 @@ int main(int argc, char *argv[])
 		else if (!strcmp(argv[i], "--info-art")) shot_info_art = true;
 		/* The Buttons page a game with its own buttons opens from its details */
 		else if (!strcmp(argv[i], "--info-buttons")) shot_info = 4;
+		/* ...and the details with the cursor on its Buttons row, which a
+		 * scraped game's facts and its File put below the first screenful */
+		else if (!strcmp(argv[i], "--info-on-buttons")) shot_info = 6;
 		else if (!strcmp(argv[i], "--delete-ask")) shot_delete_ask = 1;
 		/* --gm-said K: Delete Game's and Rename's messages (shots.c's
 		 * GM_SAID: 0 the delete's wait, 1-6 Delete Game's, 7-10 Rename's) */

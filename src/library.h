@@ -121,6 +121,24 @@ void lib_title(const char *name, char *out, size_t n);
  * entries or change the launch path, stem, stats, or disc-folder grouping. */
 void lib_display_title(db *d, const char *folder, const char *file,
                        const char *name, char *out, size_t n);
+
+/* A game's file as its details page shows it (DESIGN.md 11.69), with the
+ * brackets lib_title leaves out: its launch path `file` less the folders its
+ * shelf only keeps it in (game_entry.dir) and less the extension, as Rename
+ * has the name, so "Final Fantasy VII (USA) (Disc 1)", or a disc set's in a
+ * folder of its own, the folder and the file it starts by, "FF7/Final
+ * Fantasy VII (USA) (Disc 1)": whichever of the two has the brackets. On a
+ * hooked shelf (ScummVM's) a game in a folder is the folder alone,
+ * "Soltys": the file in it is only what the core is handed. Pure. `out`
+ * should take LIB_PATH + 1. */
+void lib_file_shown(const char *file, unsigned dir, bool hooked, char *out, size_t n);
+/* How many discs the game whose launch path is `file` in Roms/<folder> has,
+ * for its details' Discs fact: the disc images its .m3u names, or a disc
+ * set's in a folder of its own as the scan counts them (a sheet's tracks not
+ * counted); 1 for every other game, and for any game on a hooked shelf.
+ * Reads the .m3u or the set's folder, and nothing for a loose game. */
+int lib_discs(const char *roms_root, const char *folder, const char *file,
+              unsigned dir, bool hooked);
 bool lib_refresh_title(db *d, const char *folder, game_entry *entry);
 
 /* Shared by scans and every sort. Equal display names retain deterministic

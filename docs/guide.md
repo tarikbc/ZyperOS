@@ -2071,6 +2071,15 @@ only when you look closer. The row's value says what is missing: `No cover` or
 </table>
 </div>
 
+**File**, the last of a game's facts in its details, is the game's file name
+as it is on the card, with the brackets the shelf leaves out of the title:
+"Final Fantasy VII (USA) (Disc 1)", "Mother 3 (English) (v1.3)". It is how you
+tell two copies of a game apart, a region, a revision, a disc or a hack's
+version. A game in a folder of its own shows the folder and the file it starts
+by ("FF7/Final Fantasy VII (USA) (Disc 1)"), and a ScummVM game its folder. A
+game on more than one disc, a set in its own folder or an `.m3u`, has
+**Discs** under it: how many. A name too long for the row slides along it.
+
 **Rename**, above Delete Game, gives the game a new name. A opens the
 keyboard with the game's name as its file has it. START renames. The game's
 file takes the new name, with its extension. A disc set or ScummVM game in a

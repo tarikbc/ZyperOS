@@ -193,7 +193,7 @@ something once broke in a way nothing noticed:
 | `check-snapshelf` | when the shelf's cover turns into its video snap and back, on a clock the check moves by hand; the Video view's snap held on its picture under a page or a menu, and the cover row's going back to its cover |
 | `check-ss` | whether this build can reach ScreenScraper, and whether an account survives a restart |
 | `check-savedlib` | the saved library a start shows first: a listing written, read and finished is the scan, and nothing but a whole file is read as one; four headless starts of the launcher, with a game added before the third, rebuilt in place |
-| `check-titles` | scraped display names: the database upgrade, the real parser and runner, the library's fallback, and main.c's refresh hooks |
+| `check-titles` | scraped display names: the database upgrade, the real parser and runner, the library's fallback, and main.c's refresh hooks; and a game's File and Discs on its details, from real folders (DESIGN.md 11.69) |
 | `check-search` | Search Games' matching: what a query finds and in what order |
 | `check-mp4lib` | MP4's view of the Music folder: the two shapes it reads, the litter a Mac leaves beside every track, and where an album's cover is kept |
 | `check-mp4queue` | the order MP4 plays in: the last track, the first, a shuffle running out, a track that will not open, and the mode changed under a playing track; videos' Repeat as Y on a video turns it (Off, One, All and round) |
@@ -480,7 +480,8 @@ of his first blink. `--poweroff` draws the power-off animation's frame
 now, and say which flag has it.
 
 `--info` draws a game's details over the shelf, `--info-delete` the same with
-the cursor on Delete Game, and `--delete-ask` Delete Game's question, the
+the cursor on Delete Game (`--info-on-buttons` on a game's own Buttons row,
+DESIGN.md 11.45), and `--delete-ask` Delete Game's question, the
 cursor on Cancel (DESIGN.md 11.31). `--gm-said K` draws one of Delete Game's
 and Rename's messages over the shelf, as it shows once it has arrived
 (src/shots.c's GM_SAID: 0 the frame a delete runs under, 1-6 Delete Game's,

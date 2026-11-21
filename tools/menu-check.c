@@ -1948,13 +1948,15 @@ static void what_scrolls(void)
  * is asserted rather than assumed, which is also how the old order got pinned
  * and had to be unpinned here.
  *
- * What is NOT here is as deliberate as what is: no File, no Size, no Box Art
- * byte count, no Favorite, which Y does from the shelf, and no Saves, which
- * the carousel shows with the frames themselves. A row is easy to put back by
- * habit. */
-/* Every row of a scraped game but Rename, Buttons, Add to Collection and
- * Core: GI_MAX less those four */
-#define INFO_FULL (GI_MAX - 4)
+ * What is NOT here is as deliberate as what is: no Size, no Box Art byte
+ * count, and no Saves, which the carousel shows with the frames themselves. A
+ * row is easy to put back by habit. File came back on 2026-11-21 for the
+ * brackets every title leaves out (DESIGN.md 11.69): an entry with no file
+ * of the card's has none, and the rows below are such an entry's until
+ * info_file_rows. */
+/* Every row of a scraped game but Rename, Buttons, Add to Collection, Core,
+ * File and Discs: GI_MAX less those six */
+#define INFO_FULL (GI_MAX - 6)
 
 static void info_rows(void)
 {
@@ -1980,7 +1982,8 @@ static void info_rows(void)
 	ck(!strcmp(rows[2].label, "Delete Game"), "Delete Game last");
 	ck(rows[2].live && !rows[2].value, "live, with no value: the question says what goes");
 	for (i = 0; i < n; i++) {
-		ck(strcmp(lbl(&rows[i]), "File") != 0, "no File row");
+		ck(strcmp(lbl(&rows[i]), "File") != 0, "no File row for an entry with no file");
+		ck(strcmp(lbl(&rows[i]), "Discs") != 0, "and no Discs row");
 		ck(strcmp(lbl(&rows[i]), "Size") != 0, "no Size row");
 		ck(strcmp(lbl(&rows[i]), "Box Art") != 0, "no Box Art row");
 		ck(strcmp(lbl(&rows[i]), "Favorite") != 0, "no Favorite row");
@@ -2100,6 +2103,8 @@ static void info_rows(void)
 		rg.has_synopsis = true;
 		snprintf(rg.year, sizeof rg.year, "1995");
 		snprintf(rg.genre, sizeof rg.genre, "Platform");
+		snprintf(rg.file, sizeof rg.file, "Final Fantasy VII (USA)/Final Fantasy VII (USA) (Disc 1)");
+		snprintf(rg.discs, sizeof rg.discs, "3");
 		rn = gi_rows(rr, &rg, true);
 		printf("game info, a game that can be renamed:\n");
 		ck(rn == GI_MAX, "every row at once fits GI_MAX");
@@ -2117,6 +2122,70 @@ static void info_rows(void)
 		for (j = 0; j < rn && strcmp(rr[j].label, "Add to Collection"); j++) {}
 		ck(j < rn && !rr[j].value, "in none: no value");
 	}
+}
+
+/* A game's file, whole, on its details (DESIGN.md 11.69): the last fact, after
+ * the core and before Achievements, a fact the cursor never stops on (so a
+ * long name slides rather than being cut, menu_row_moves); a set's Discs
+ * under it, and no Discs for a game of one disc. The value is the file as
+ * the gatherer gives it (lib_file_shown, check-titles), never cut here. */
+static void info_file_rows(void)
+{
+	static const char LONG[] = "Final Fantasy VII (USA) (Rev 1) (Disc 1) [!] (v1.1)";
+	game_info gi;
+	menu_row rows[GI_MAX];
+	int got[GI_MAX], n, k, j, base;
+
+	memset(&gi, 0, sizeof gi);
+	snprintf(gi.cheevos, sizeof gi.cheevos, "12 of 78");
+	gi.has_cheevos = true;
+	gi.has_art = true;
+	gi.can_delete = true;
+	gi.can_favorite = true;
+	base = gi_rows(rows, &gi, true);
+	k = reachable(rows, base, got, GI_MAX);
+
+	snprintf(gi.file, sizeof gi.file, "%s", LONG);
+	n = gi_rows(rows, &gi, true);
+	printf("game info, a game's file:\n");
+	ck(n == base + 1, "one row more: File");
+	ck(!strcmp(rows[0].label, "File") && !strcmp(val(&rows[0]), LONG),
+	   "File leads an unscraped game, its name whole, every bracket in it");
+	ck(!rows[0].live, "a fact: the cursor never stops on it");
+	ck(menu_row_moves(rows[0], false, false), "so a name too long for the row slides, never cut");
+	ck(!strcmp(rows[1].label, "Achievements"), "Achievements after it");
+	for (j = 0; j < n; j++) ck(strcmp(lbl(&rows[j]), "Discs") != 0, "one disc: no Discs row");
+	ck(reachable(rows, n, got, GI_MAX) == k, "and nothing more to stop on");
+
+	snprintf(gi.discs, sizeof gi.discs, "3");
+	n = gi_rows(rows, &gi, true);
+	printf("game info, a set of three discs:\n");
+	ck(n == base + 2, "two rows more: File and Discs");
+	ck(!strcmp(rows[1].label, "Discs") && !strcmp(val(&rows[1]), "3") && !rows[1].live,
+	   "Discs right under File, how many, a fact");
+	ck(reachable(rows, n, got, GI_MAX) == k, "still nothing more to stop on");
+
+	gi.scraped = true;
+	gi.has_synopsis = true;
+	snprintf(gi.year, sizeof gi.year, "1997");
+	snprintf(gi.genre, sizeof gi.genre, "Role-playing");
+	snprintf(gi.core, sizeof gi.core, "gambatte");
+	n = gi_rows(rows, &gi, true);
+	printf("game info, scraped, on a shelf of two cores:\n");
+	for (j = 0; j < n && strcmp(rows[j].label, "File"); j++) {}
+	ck(j < n && j > 0 && !strcmp(rows[j - 1].label, "Core"), "File after the core");
+	ck(j + 2 < n && !strcmp(rows[j + 1].label, "Discs") && !strcmp(rows[j + 2].label, "Achievements"),
+	   "then Discs, then Achievements: the last of the facts");
+	ck(!strcmp(rows[0].label, "Synopsis") && !strcmp(rows[1].label, "Year") &&
+	   !strcmp(rows[2].label, "Genre"), "the scrape's facts still lead");
+
+	/* An entry that is no file of the card's (Install PortMaster, Splore):
+	 * no File, and so no Discs, whatever else is set */
+	gi.file[0] = '\0';
+	n = gi_rows(rows, &gi, true);
+	for (j = 0; j < n; j++)
+		ck(strcmp(lbl(&rows[j]), "File") && strcmp(lbl(&rows[j]), "Discs"),
+		   "no file: neither File nor Discs");
 }
 
 /* A game with a key of its own (rms_game) shows its buttons on its details:
@@ -3754,6 +3823,7 @@ int main(void)
 	window_returns();
 	what_scrolls();
 	info_rows();
+	info_file_rows();
 	gi_buttons_row_only_when_own();
 	ingame_rows();
 	quick_slot();
