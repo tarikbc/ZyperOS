@@ -294,9 +294,13 @@ bool shots_keys(app *a, sysview *v)
 		games_reset(&v->row, v->cursor, v->list.count, plat_now_ms());
 		return true;
 	}
-	/* A in the viewer: nothing to do there; the shot's game starts from
-	 * its own shelf (pick 6) */
-	uisound_play(DS_SOUND_DENY);
+	/* A in the viewer: the whole shot at once, the band and the name's
+	 * card off the screen without waiting for the rest (2026-11-20: "when
+	 * clicking A while in play mode, it goes straight to full without
+	 * needing to wait for it to collapse"); the next press brings them
+	 * back. The shot's game still starts only from its own shelf (pick 6) */
+	uisound_play(DS_SOUND_ACCEPT);
+	vv_rest(&v->vm, plat_now_ms());
 	return true;
 }
 

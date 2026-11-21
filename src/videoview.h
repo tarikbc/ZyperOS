@@ -76,6 +76,12 @@ typedef struct {
 	 * shelf's, DESIGN.md 11.68); NULL and 0 for a games shelf's */
 	const key_hint *foot;
 	int nfoot;
+	/* A shot: at rest nothing covers the picture. The band goes down off
+	 * the screen with no strip, and the name's card goes up off the top
+	 * with it (2026-11-20: "the top card that contains the name and etc
+	 * should animate and disappear as well. so we can see the whole image.
+	 * also the collapsed footer can be nothing") */
+	bool clear;
 } vv_info;
 
 /* Reset: the band up, rested from `now` */
@@ -83,6 +89,12 @@ void vv_reset(vv_motion *m, uint32_t now);
 
 /* A press: the band back up in quick, the rest from `now` */
 void vv_touch(vv_motion *m, uint32_t now);
+
+/* At rest now: the band down in move at once, as the rest would take it
+ * after hold-band (A in the Screenshots viewer, 2026-11-20: "it goes
+ * straight to full without needing to wait for it to collapse"); the next
+ * press brings it back up */
+void vv_rest(vv_motion *m, uint32_t now);
 
 /* Where the band is at `now`, 0 up to 1 down, eased */
 float vv_band(const vv_motion *m, uint32_t now);

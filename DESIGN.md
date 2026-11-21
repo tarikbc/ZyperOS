@@ -7449,12 +7449,19 @@ Systems, START the next View, X Delete; A's word **View**.
 open; the View the shelf keeps does not change. The shot is whole on the
 screen at its own shape, as large as the screen holds it (on the Pixel 2 a
 SNES shot is 549 x 480 pixels), on ink; the name's card at the top left
-("Screenshots · 3 / 13", the game, its line); the band of shots at the foot,
-down to its strip after **hold-band** with no press. Until the picture is
-in, its card shows whole above the band, as a game's does until its snap.
-Left and Right step, L1 and R1 go to the next or the last game's first shot
-in the shelf's order, B goes back to the View it was opened from, X deletes;
-A and START play **deny**. The viewer is for looking *(my pick)*: no key
+("Screenshots · 3 / 13", the game, its line); the band of shots at the foot.
+After **hold-band** with no press nothing covers the shot: the band goes
+down off the screen with no strip, and the name's card goes up off the top
+with it, in **move** *(my ask, 2026-11-20: "the top card that contains the
+name and etc should animate and disappear as well. so we can see the whole
+image. also the collapsed footer can be nothing")*. **A** puts them away at
+once, without the rest, and A held keeps them away *("it goes straight to
+full without needing to wait for it to collapse")*; any other press brings
+them back up in **quick** and does what it does. Until the picture is in,
+its card shows whole above the band, as a game's does until its snap. Left
+and Right step, L1 and R1 go to the next or the last game's first shot in
+the shelf's order, B goes back to the View it was opened from, X deletes;
+START plays **deny**. The viewer is for looking *(my pick)*: no key
 starts the shot's game there, which starts from its own shelf. The picture
 is asked of the art workers apart from the cards
 (`SHOTS_VIEW_SYS`). On the shelf's own Video View (START) the same, with B

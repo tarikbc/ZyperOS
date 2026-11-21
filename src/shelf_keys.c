@@ -379,8 +379,13 @@ void update_games(app *a)
 	 * what it does */
 	if (v->video) {
 		bool any = false;
+		/* but not A in the Screenshots viewer: A puts the band down there
+		 * (shots_keys), and A still held the next pass would bring it
+		 * straight back up */
+		in_button skip = shots_shelf(a, a->sys_cursor) ? IN_ACCEPT : IN_NONE;
 
-		for (int b = 0; b < IN_COUNT && !any; b++) any = a->in.pressed[b] || a->in.down[b];
+		for (int b = 0; b < IN_COUNT && !any; b++)
+			any = b != (int)skip && (a->in.pressed[b] || a->in.down[b]);
 		if (any) vv_touch(&v->vm, plat_now_ms());
 	}
 	/* The Screenshots shelf (DESIGN.md 11.68, src/shots_screen.h): in its

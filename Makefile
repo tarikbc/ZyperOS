@@ -148,7 +148,7 @@ check-homekeys: native
 
 # The Video view in desk mode: its snap playing holds the screensaver
 check-videoview: native
-	@python3 tools/videoview-check.py
+	@'$(PYIMG)' tools/videoview-check.py
 
 # No button read twice by in_repeat in one step (a held one turned round)
 check-inrepeat:

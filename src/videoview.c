@@ -71,6 +71,12 @@ void vv_touch(vv_motion *m, uint32_t now)
 	slide(m, 0, DS_MS_QUICK, now);
 }
 
+void vv_rest(vv_motion *m, uint32_t now)
+{
+	if (!m->set) vv_reset(m, now);
+	slide(m, 1, DS_MS_MOVE, now);
+}
+
 /* A picture whole inside `box`, at its own shape, its middle on the box's */
 static SDL_FRect fit(float w, float h, SDL_FRect box)
 {
@@ -97,15 +103,16 @@ static void top_fade(SDL_Renderer *r, float k)
 	SDL_RenderGeometry(r, NULL, v, 4, idx, 6);
 }
 
-/* The name's card: the shelf and the place in it, the name, its facts */
-static uint32_t name_card(SDL_Renderer *r, const vv_info *in, uint32_t phase)
+/* The name's card: the shelf and the place in it, the name, its facts;
+ * `gone` 0 in its place up to 1 off the top of the screen (a shot's) */
+static uint32_t name_card(SDL_Renderer *r, const vv_info *in, uint32_t phase, float gone)
 {
 	TTF_Font *meta = page_font(PAGE_META), *title = page_font(PAGE_GAME_TITLE);
 	TTF_Font *chrome = page_font(PAGE_CHROME);
 	char head[512], facts[256] = "";
 	const char *name = in->count > 0 && in->title && in->title[0] ? in->title : T(S_SHELF_NO_GAMES);
 	uint32_t wait = UINT32_MAX;
-	int dot = 14, w, tw, x, y, h;
+	int dot = 14, w, tw, x, y, h, dy;
 	SDL_Rect q;
 
 	snprintf(head, sizeof head, "%s \xc2\xb7 %d / %d", in->heading ? in->heading : "",
@@ -142,12 +149,14 @@ static uint32_t name_card(SDL_Renderer *r, const vv_info *in, uint32_t phase)
 	if (facts[0] && ui_text_width(chrome, facts) > w)
 		w = ui_text_width(chrome, facts) < VV_CARD_TEXT ? ui_text_width(chrome, facts) : VV_CARD_TEXT;
 	h = VV_CARD_PAD_Y * 2 + DS_LINE_META + 12 + ui_font_line(UI_F_TITLE) + (facts[0] ? DS_LINE_META : 0);
-	q = (SDL_Rect){ VV_CARD_X, VV_CARD_Y, w + 2 * VV_CARD_PAD_X, h };
+	if (gone >= 1) return wait;
+	dy = -(int)lroundf((float)(VV_CARD_Y + h) * gone);
+	q = (SDL_Rect){ VV_CARD_X, VV_CARD_Y + dy, w + 2 * VV_CARD_PAD_X, h };
 	ui_round_rect(r, &q, DS_RADIUS_CARD, ui_col(theme()->edge, VV_BAND_ALPHA));
 	q = (SDL_Rect){ q.x + UI_PANEL_BORDER, q.y + UI_PANEL_BORDER, q.w - 2 * UI_PANEL_BORDER, q.h - 2 * UI_PANEL_BORDER };
 	ui_round_rect(r, &q, DS_RADIUS_CARD - UI_PANEL_BORDER, ui_col(theme()->surface, VV_BAND_ALPHA));
 	x = VV_CARD_X + VV_CARD_PAD_X;
-	y = VV_CARD_Y + VV_CARD_PAD_Y + DS_LINE_META / 2;
+	y = VV_CARD_Y + dy + VV_CARD_PAD_Y + DS_LINE_META / 2;
 	/* The shelf's color as a dot before its name, as the lab drew it: its
 	 * mark, which meets its contrast on the card (ui_sys_mark) */
 	{
@@ -193,7 +202,8 @@ static void ring(SDL_Renderer *r, SDL_FRect f, float fade)
 }
 
 /* The band, its top at `top`: the covers in a row, the focused one ringed,
- * and the keys; the strip's rail in it at `strip` (0 to 1) */
+ * and the keys; the strip's rail in it at `strip` (0 to 1), none for a
+ * shot's, whose band goes off the screen (`in->clear`) */
 static void band(SDL_Renderer *r, const games_row *row, const vv_info *in, cf_tex_fn texture,
                  void *ctx, uint32_t now, int top, float strip)
 {
@@ -254,7 +264,7 @@ static void band(SDL_Renderer *r, const games_row *row, const vv_info *in, cf_te
 		              KEYHINTS_SPREAD, true, (Uint8)lroundf(255 * fade));
 	}
 	/* The strip's rail: where the game is in the shelf (DESIGN.md 11.2) */
-	if (strip > 0 && in->count > 1) {
+	if (strip > 0 && in->count > 1 && !in->clear) {
 		const int x0 = DS_MARGIN, tw = ZYPEROS_SCREEN_W - 2 * DS_MARGIN;
 		int mw = tw / in->count, mx;
 		Uint8 al = (Uint8)lroundf(255 * strip);
@@ -301,7 +311,7 @@ uint32_t vv_draw(vv_motion *m, const games_row *row, SDL_Renderer *r, const vv_i
 	 * the band, half faded, for up to a second after the press (2026-11-19,
 	 * on the 1.1.0 test build: "a black box stays on the side") */
 	if (row_moving(&row->motion, now)) wait = 0;
-	top = (int)lroundf(VV_BAND_TOP + (VV_STRIP_TOP - VV_BAND_TOP) * down);
+	top = (int)lroundf(VV_BAND_TOP + ((in->clear ? ZYPEROS_SCREEN_H : VV_STRIP_TOP) - VV_BAND_TOP) * down);
 
 	/* The focused game's card, whole above the band, until its snap is in */
 	if (k < 1 && in->count > 0) {
@@ -332,11 +342,11 @@ uint32_t vv_draw(vv_motion *m, const games_row *row, SDL_Renderer *r, const vv_i
 		SDL_SetTextureAlphaMod(in->snap, (Uint8)lroundf(255 * k));
 		SDL_RenderCopyF(r, in->snap, in->snap_src.w > 0 ? &in->snap_src : NULL, &dst);
 		SDL_SetTextureAlphaMod(in->snap, 255);
-		top_fade(r, k);
+		top_fade(r, in->clear ? k * (1 - down) : k);
 	}
-	next = name_card(r, in, phase);
+	next = name_card(r, in, phase, in->clear ? down : 0);
 	if (next < wait) wait = next;
-	band(r, row, in, texture, ctx, now, top, down);
+	if (top < ZYPEROS_SCREEN_H) band(r, row, in, texture, ctx, now, top, down);
 	SDL_SetRenderDrawColor(r, red, green, blue, alpha);
 	SDL_SetRenderDrawBlendMode(r, blend);
 	return wait;
