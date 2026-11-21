@@ -14,10 +14,16 @@
 #                                px2-snap
 #   log [-f]                     the launcher's log of this boot (zyperos.log)
 #   ssh [COMMAND...]             a command, or a shell
-#   deploy [DIR]                 tools/px2-deploy.sh: DIR (build/px2/payload/ZyperOS,
-#                                or build/px2/programs/ZyperOS when only it is built)
-#   restore [--status]           tools/px2-deploy.sh --restore: the card as before
-#                                the first deploy (--status: what it would put back)
+#   deploy [--system PIECES] [--no-restart] [DIR]
+#                                tools/px2-deploy.sh: DIR (build/px2/programs/ZyperOS,
+#                                or build/px2/payload/ZyperOS when it is the newer),
+#                                and the system's PIECES (zyperos_eq.so,gauge,... or all)
+#   restore [--status | --from-system] [--no-restart]
+#                                tools/px2-deploy.sh --restore: the card as before
+#                                the first deploy and the system's own files
+#                                (--status: what it would put back)
+#   find                         the Pixel 2 on this computer's network: its
+#                                address for PX2_HOST (tools/px2-find.py)
 #
 # Every command first takes the device's lock on this computer, a folder
 # made with mkdir (atomic, so two sessions never both have it) with an owner
@@ -61,7 +67,7 @@ LOG=/mnt/SDCARD/.userdata/$DEVICE/logs/zyperos.log
 OPTS="-o ConnectTimeout=8 -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR"
 
 die() { echo "px2: $*" >&2; exit 1; }
-usage() { sed -n '5,20p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
+usage() { sed -n '5,25p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
 
 real_card= wait_s=0 vm=
 while [ $# -gt 0 ]; do
@@ -95,6 +101,25 @@ elif [ "$PORT" = 22 ] && [ "$HOST" != 127.0.0.1 ] && [ "$HOST" != localhost ]; t
 else LOCK=/tmp/px2-lock-$HOST-$PORT
 fi
 
+# deploy's words: --system PIECES once, --no-restart, and one folder at most
+# (dir: the folder, or none)
+deploy_args() {
+	dir= sys_seen=
+	while [ $# -gt 0 ]; do
+		case $1 in
+		--system)
+			[ $# -ge 2 ] && [ -z "$sys_seen" ] || usage
+			case $2 in '' | -*) usage ;; esac
+			sys_seen=1
+			shift ;;
+		--no-restart) ;;
+		-*) usage ;;
+		*) [ -z "$dir" ] || usage; dir=$1 ;;
+		esac
+		shift
+	done
+}
+
 # What each command needs, checked before the lock is taken or the device
 # reached
 case $CMD in
@@ -119,10 +144,13 @@ snap)
 	esac ;;
 log) [ $# -eq 0 ] || { [ $# -eq 1 ] && [ "$1" = -f ]; } || usage ;;
 ssh) ;;
-deploy)
-	[ $# -le 1 ] || usage
-	case ${1:-} in -*) usage ;; esac ;;
-restore) [ $# -eq 0 ] || { [ $# -eq 1 ] && [ "$1" = --status ]; } || usage ;;
+deploy) deploy_args "$@" ;;
+restore)
+	for a in "$@"; do
+		case $a in --status | --from-system | --no-restart) ;; *) usage ;; esac
+	done
+	case " $* " in *" --status "*) [ $# -eq 1 ] || usage ;; esac ;;
+find) [ $# -eq 0 ] || usage ;;
 *) echo "px2: unknown command $CMD" >&2; usage ;;
 esac
 
@@ -215,6 +243,12 @@ tool() {
 	fi
 }
 
+# find looks for the device before anything can be locked for it, and only
+# reads two files on what answers
+if [ "$CMD" = find ]; then
+	exec python3 "$REPO/tools/px2-find.py"
+fi
+
 take_lock "$@"
 check_card
 
@@ -263,7 +297,6 @@ ssh)
 	;;
 deploy | restore)
 	if [ "$CMD" = deploy ]; then
-		dir=${1:-}
 		if [ -z "$dir" ]; then
 			# The whole payload, or the programs alone where only they were
 			# built since (tools/px2-payload.sh --programs)
@@ -272,10 +305,13 @@ deploy | restore)
 			if [ -f "$p/zyperos.elf" ] && { [ ! -f "$dir/zyperos.elf" ] || [ "$p/zyperos.elf" -nt "$dir/zyperos.elf" ]; }; then
 				dir=$p
 			fi
+			set -- "$@" "$dir"
 		fi
-		set -- "$dir"
 	else
-		set -- "${1:---restore}"
+		case " $* " in
+		*" --status "*) set -- --status ;;
+		*) set -- --restore "$@" ;;
+		esac
 	fi
 	PX2_HOST=$HOST PX2_PORT=$PORT PX2_KEY=$KEY PX2_SSH=$SSH_BIN sh "$REPO/tools/px2-deploy.sh" "$@"
 	;;

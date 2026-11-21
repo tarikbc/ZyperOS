@@ -181,7 +181,7 @@ something once broke in a way nothing noticed:
 | `check-noticeq` | the pop-ups over a game, one after another (src/noticeq.h) |
 | `check-badges` | achievement badges (src/rabadge.h) through the real fetch with a stand-in for curl: kept beside the set; one curl for what is missing and nothing else; starting it and drawing 4,000 icons while it runs never wait for it; a badge that has not come is a plain one of the same 64 pixels, never a hole; a 404 page is never kept as a badge; then the plain badge and Zyper as pixels (src/noticeart.h), in both themes, his shadow on Beard only. No network (needs SDL2 and SDL2_image; skips without them) |
 | `check-badge-shots` | the unlock notice with Zyper at its right end and its badge, or the plain one where the card has none; a count's notice with the plain one and no Zyper; the set's arrival with neither; the achievements list with a badge in every row, plain until the art is there, and the rows' words not moving when it comes; an achievement's card with its badge centered under the heading, or the plain one, and a long description moving under a still footer; in both themes (builds the host launcher; skips without SDL2) |
-| `check-sshlink` | USB File Transfer's SSH: what it counts in dropbear's log (sign-ins, wrong PINs, a port it cannot have), names that try to say otherwise, and the shadow it gives dropbear; Developer Mode's choice between the cable's SSH and SSH over Wi-Fi for every combination of cable, radio, choice and a spent plug (the password never with a radio), dropbear's words for each (`-s` and every address over Wi-Fi, the cable's address alone on the cable), and what counts as a key; over a port, portkeys' SSH keys only on every link and none in the in-game menu |
+| `check-sshlink` | USB File Transfer's SSH: what it counts in dropbear's log (sign-ins, wrong PINs, a port it cannot have), names that try to say otherwise, and the shadow it gives dropbear; Developer Mode's choice between the cable's SSH and SSH over Wi-Fi for every combination of cable, radio, choice and a spent plug (the password never with a radio), dropbear's words for each (`-s` and every address over Wi-Fi, the cable's address alone on the cable), and what counts as a key; over a port, portkeys' SSH keys only on every link and none in the in-game menu; a development image's `zyperos.local` over Wi-Fi only with an address and only while File Transfer does not have the name |
 | `check-usblink` | USB charges only until asked: a computer is asked about once per plug and a charger never, every choice ends with its screen or its cable, and Developer Mode keeps the link |
 | `check-devmode` | developer mode on a release image: the unlock hold (L2 and R2 for five seconds, a bar that only rises, and letting go early, another page or holding on starting again), the setting kept in the card's database (and SSH over Wi-Fi, only while Developer Mode is on and off with it), a random one-time password in its alphabet, and only public keys without options taken from the card's key file, once each |
 | `check-devices` | the device profiles (src/device/profile.h): each one whole (named, its folders, a 4:3 screen with its glass in millimetres, every control printed once), today's answers for the GKD Pixel 2, the TrimUI Brick and the host's desktop (their battery's empty voltages among them: 3.45 V, 3.40 V and none), and the choice of one by its id, as `--device` makes it |
@@ -230,7 +230,7 @@ something once broke in a way nothing noticed:
 | `check-core-room` | the libretro cores systems.cfg names against the resident Diatom's room for them (`DIATOM_MAX_RESIDENT`): more cores than that, and the last in folder order would start every game in the one-off Diatom (1.0.5 had 34 for 32) |
 | `check-px2-perf` | px2-perf's arithmetic: percentiles as a spreadsheet gives them, the frame-time spread from the times new frames were seen, a process's CPU ticks from a /proc stat line whose name has spaces and parentheses, and the speed against the clock from two of Diatom's now files, refused across two games or a Diatom started again |
 | `check-px2-snap` | px2-snap on a scratch card: a game's .srm, states, slots and pictures, fbneo's, a NAOMI game's and a ScummVM game's own files, never another game's that starts with its name; its play sessions, favorite and Pak through the host launcher's `--game-rows`, and no other game's; a test's changes undone byte for byte, the files it made removed; an open game, a name that is a path, a name taken, another game's rows and a launcher with no `--game-rows` refused or said (builds the host launcher; skips without SDL2 or sqlite3) |
-| `check-px2` | tools/px2 with a stand-in for ssh: wrong uses refused before the lock or the device, the test card and a VM's card go ahead and any other only with `--real-card`, the lock's owner file, a lock held refused or waited for, the lock let go after a failure, a TERM and a Ctrl-C, and each argument one word on the device; `deploy` and `restore` against a card that is a folder here: only what changed sent, the card's own files kept once however many deploys, a restore that puts them back and deletes what was added, ZyperOS restarted or, for a `launch.sh`, the device |
+| `check-px2` | tools/px2 with a stand-in for ssh: wrong uses refused before the lock or the device, the test card and a VM's card go ahead and any other only with `--real-card`, the lock's owner file, a lock held refused or waited for, the lock let go after a failure, a TERM and a Ctrl-C, and each argument one word on the device; `deploy` and `restore` against a device that is folders here (the card, `/tmp`, the image's own ZyperOS and system files, `/proc`, its commands): only what changed sent, in one copy, each program asked about by a stand-in loader as `ldd -r` asks and never run, a library or symbol the system lacks refused naming it and the SDK, a file spoiled on the way, a game open, a port and Flash Drive refused with the card unchanged, `--no-restart`, the card's own files kept once however many deploys with the system they were kept on, a restore that gives the card back byte for byte and says each file is the system's own, kept on another system, or by an older deploy with no system written down, refused until `--from-system`; the launcher restarted the way it restarts itself and seen running the new build, Diatom stopped before it, the device restarted for a `launch.sh` and waited for, nothing for a port's script; `--system` binding a stand-in in init's namespace (with initns from a namespace of its own), taken off for a newer one and at restore, gauge started again on it, bound again after the device's restart; and `find`, the Pixel by dropbear's greeting and its key on a stand-in network |
 | `check-powerhold` | MENU > Power Button's rule: a press turns the handheld off on Press, a hold of one second on Hold, once per time down, a hold the charging screen took never, even one it took after the second, and the pill's segments and the waits that move them |
 | `check-homesys` | MENU > Display > Home Systems' setting: the word of the shelves that are off, read and written back, a hand edit's spaces and repeats, whole tags only when it is cut |
 | `check-collect` | Collections on the card (src/collect.h): the lists read in their every form and kept as written, added to and taken from, made, renamed and deleted, a game's rename and delete followed into every list |
@@ -637,37 +637,118 @@ QEMU; another handheld's VM is plastron's to make ([simulator](simulator.md),
 
 ## On device
 
-A change to ZyperOS goes onto a Pixel 2 as a payload, without a new image:
+A change to ZyperOS goes onto a Pixel 2 for a test in seconds, without a new
+image:
 
 ```sh
-make px2-programs                                  # a change to the code: the programs alone
-make px2-payload                                   # or the whole payload (res/, launch.sh, cores)
-tools/px2 deploy                                   # the newer of the two, under the device's lock
-tools/px2 restore                                  # when done: the card as it was before
+make px2-programs                                  # the programs and the card's scripts: 20 s from nothing, 2 to 5 s after a change
+tools/px2 deploy                                   # what differs from the card, under the device's lock; then what must start again
+tools/px2 deploy --system zyperos_eq.so            # and a system file a fix changes, until the next restart
+tools/px2 restore                                  # when done: the card and the system as the slot has them
 ```
+
+`make px2-programs` (`tools/px2-payload.sh --programs`) builds the launcher,
+MP4, portkeys, zyhome, System Update's program, p2d, your PICO-8's
+`pico8/p8fx.so` and Diatom into `build/px2/programs/ZyperOS`, with the
+card's scripts as the payload has them (`mk/card-scripts.sh`: `launch.sh`,
+`device.sh`, `eq-port.sh`, `pico8/PICO-8.sh` and its `wget`,
+`openbor/OpenBOR.sh`), and nothing else: no cores, so no main checkout's
+`vendor/`, whose patched cores' stamps a whole payload holds to
+`mk/patches`, and no `VERSION`, so a boot never takes the card for another
+version. A change to `res/`, `systems.cfg` or a core needs `make
+px2-payload` (below), which `tools/px2 deploy` takes when it is the newer.
+Both also build `build/px2/system`, the system image's files our fixes
+change, built as plastron's packages build them (the ports' equalizer
+`/usr/lib/ladspa/zyperos_eq.so` from `src/eqdsp.h`, the side lights'
+`/usr/sbin/gauge`, the sound's `/etc/asound.conf`), and `build/px2/initns`
+(`tools/initns.c`), and write `BUILT` beside `ZyperOS/`: the commit and the
+SDK it was built against. Everything is stripped as Buildroot strips what an
+image carries (`.comment` and `.note` gone too), so built from the same source
+against the SDK of the image's own build, a program is the image's byte for
+byte, and a deploy sends only what a change changed. Pack that SDK in
+plastron from the output the Pixel's system came from (`sh scripts/sdk.sh
+plastron-work plastron-builder output px2`, a few seconds; another output's
+name for another) and build with `PX2_SDK=plastron-sdk-px2-<id>`: without
+`PX2_SDK` the newest SDK volume is taken, which can be older than the
+system, and then every program differs.
 
 `tools/px2 deploy` is `tools/px2-deploy.sh` behind `tools/px2`'s door: the
 device's lock (`/tmp/px2-lock`, refused while another session holds it, or
 `--wait`) and the card check (the 32 GB test card, or `--real-card`). It
-sends only the files whose checksums differ from the card's, and first keeps
-the card's own copy of each file it replaces, and the name of each it adds,
-in `/mnt/SDCARD/.px2-deploy` (outside `ZyperOS/`, so nothing on the card
-reads it). A later deploy keeps what the first kept, so `tools/px2 restore`
-always puts back the card from before the session's first deploy, deletes
-what the deploys added, restarts ZyperOS (or the device, for a `launch.sh`)
-and forgets it; `tools/px2 restore --status` says what it would put back.
-`make px2-programs` (`tools/px2-payload.sh --programs`) builds the launcher,
-MP4, portkeys, zyhome, System Update's program, p2d, your PICO-8's
-`pico8/p8fx.so` and Diatom into `build/px2/programs/ZyperOS` and nothing else: no cores, so no main
-checkout's `vendor/`, whose patched cores' stamps a whole payload holds to
-`mk/patches`. A change to `res/`, `launch.sh` or a core needs `make
-px2-payload`.
+asks the card for the checksums of the files the build has, sends the ones
+that differ in one copy to `/tmp` (compressed off the cable), and says each
+one it sends. Then one step on the device, which changes nothing until every
+file is checked:
+
+- each as it was sent (its SHA-256);
+- each program and library against the running system, by the system's own
+  dynamic loader as `ldd -r` asks it (`LD_TRACE_LOADED_OBJECTS`: the loader
+  maps it and its libraries, binds every symbol and stops before any of its
+  code runs). A library the system lacks, or a symbol or symbol version it
+  does not have, is a refusal (exit 6) that names them and the SDK the
+  programs were built against (`BUILT`): they would not start there. Build
+  them against that system's SDK (plastron's `make sdk` after its build,
+  then `PX2_SDK`), or put a system built with this SDK on the Pixel. The
+  SDK's id itself is not what is compared: no image records the one it would
+  pack to, and a release's never equals a development build's, whose output
+  path is in its binaries;
+- nothing a restart would cut short: a game open in Diatom (`tools/px2
+  quit` first), a port, ZyperOS not running. `--no-restart` puts the files
+  anyway and restarts nothing. The card lent to a computer (Flash Drive) is
+  refused either way.
+
+Each file then goes onto the card under a new name and is renamed over the
+old one, so a cable pulled halfway leaves the old file or the new, never half
+of one. The first time a deploy replaces a file, the card's own copy is kept,
+and the name of each file it adds, in `/mnt/SDCARD/.px2-deploy` (outside
+`ZyperOS/`, so nothing on the card reads it), with the system it was kept on
+(the image's own ZyperOS, by the SHA-256 of
+`/usr/share/zyperos/card/ZyperOS/.files`). A later deploy keeps what the
+first kept, so `tools/px2 restore` always puts back the card from before the
+session's first deploy, deletes what the deploys added, says for each file
+whether it is the system's own copy, and forgets it; `tools/px2 restore
+--status` says what it would put back. Kept on another system (System Update
+or a slot pushed since), or by an older `tools/px2-deploy.sh` that wrote no
+system down, is a refusal (exit 7) before anything is sent, until `tools/px2
+restore --from-system`, which takes the files from the running image's own
+ZyperOS instead (or the folder is moved aside by hand).
+
+Then only what must start again does, the way ZyperOS restarts itself, never
+with `zyperos stop` (which ends SSH, with nothing to start ZyperOS again):
+
+| changed | what starts again |
+| --- | --- |
+| `zyperos.elf`, `res/`, anything else the launcher reads | the launcher, as the charging screen's restart does it: `/tmp/zyperos_restart`, then TERM, and `launch.sh` starts it again at once and counts no failure |
+| `diatom`, a core | Diatom first (`launch.sh` starts the new one), then the launcher |
+| `mp4d`, `p2d` | that program; the launcher starts it again when it needs it |
+| `launch.sh`, `device.sh`, `zyhome`, `scummvm/`, `ppsspp/`, `freej2me/`, `prboom/` | the device: the shell running `launch.sh` keeps reading the file it opened, and `launch.sh` copies those folders at its start |
+| `eq-port.sh`, `portkeys`, `pico8/`, `openbor/`, `portmaster/`, `zyperos-update` | nothing: read at the next port, or System Update |
+| `/usr/sbin/gauge` | gauge, which init starts again |
+| `/etc/asound.conf` | Diatom, MP4 and the launcher, which opened the sound with the old one |
+| `/usr/lib/ladspa/zyperos_eq.so` | nothing: a port loads it as it starts |
+
+After a restart the deploy waits for SSH (`PX2_DEPLOY_WAIT`, 90 s) and says
+which build each restarted program runs, from `/proc/<pid>/exe`.
+
+The system's files are in the read-only image, so `--system` (a comma list
+of their names, or `all`) binds a copy in `/tmp` over each, in init's mount
+namespace, so the launcher, a port and what init starts again see it: on a
+release image Developer Mode's SSH has a namespace of its own
+(`src/sshlink.c`), and the deploy sends `build/px2/initns` to make the bind
+there. A copy goes at the next restart of the device, or at `tools/px2
+restore`; a deploy that restarts the device binds its copies again once SSH
+is back. Only a file the image has can be stood in for. What needs an image
+all the same: the kernel and its device tree (the battery's patches, the
+screen's colors), the boot partition, `/etc/init.d/zyperos` and System
+Update's `update-apply.sh` (they run before anything could bind), a library
+the image lacks, and the splash, `usbdrive` and the other system programs
+until someone adds them to `build/px2/system`.
 
 The same without the lock, and to other places:
 
 ```sh
 tools/px2-deploy.sh build/px2/payload/ZyperOS      # the device on the USB cable
-PX2_HOST=192.168.1.23 tools/px2-deploy.sh build/px2/payload/ZyperOS   # or over Wi-Fi
+PX2_HOST=192.168.1.23 tools/px2-deploy.sh build/px2/programs/ZyperOS   # or over Wi-Fi
 tools/px2-deploy.sh --restore                      # what it kept, back
 tools/qemu-run.sh deploy -n mine build/px2/payload/ZyperOS   # or a VM (docs/qemu.md)
 ```
@@ -676,7 +757,8 @@ Every tool that reaches the device (`tools/px2-deploy.sh`, `tools/px2` and
 plastron's `scripts/px2-push.sh`) takes its address from `PX2_HOST`, 10.42.0.1 (the USB cable) when it is
 not set, its port from `PX2_PORT` (22) and its key from `PX2_KEY`
 (`~/.ssh/zyperos_pixel2`). Over Wi-Fi, `PX2_HOST` is the address Developer
-Mode's page shows with SSH over Wi-Fi on (below), or `zyperos.local`.
+Mode's page shows with SSH over Wi-Fi on (below), `zyperos.local`, or what
+`tools/px2 find` prints.
 
 `make px2-payload` (`tools/px2-payload.sh`) builds the launcher, MP4,
 portkeys, System Update's program, p2d (NES Player 2's server), p8fx.so (the
@@ -708,11 +790,22 @@ contents, so the same source from another worktree is not built twice
 (`plastron/README.md`). Without `DEV=1` a build is as it always was, and a
 release never is one.
 
-On a plastron development build, SSH runs over the USB cable with the key
-from `plastron/local/authorized_keys` (ignored by git): `ssh root@10.55.0.2` reaches the
-Brick and `ssh root@10.42.0.1` the Pixel 2. Copy files with `scp -O`, since no
-SFTP server runs, and into `/tmp` first; check that the checksums match on
-both sides before you move a file into `/mnt/SDCARD/ZyperOS/`. Release builds
+On a plastron development build (every build but a release, `DEV=1` or
+not), SSH runs from the first boot with the key from
+`plastron/local/authorized_keys` (ignored by git, so a worktree has none of
+its own, and a build from one takes the main checkout's): `ssh
+root@10.55.0.2` reaches the Brick and `ssh root@10.42.0.1`
+the Pixel 2 on the cable. Its dropbear listens on port 22 of every address,
+so it answers over Wi-Fi too, keys only (root has no password, and dropbear
+turns an empty one down), with nothing to switch on: a test build is reached
+without the cable once the Wi-Fi adapter is in its port and on a network.
+The launcher answers `zyperos.local` on the Wi-Fi address while it has one
+(`sshlink_dev_image_name`; not during a port, when the launcher is not
+running, and not while File Transfer has the name) and writes the address in
+its log (`devmode: development image: SSH over Wi-Fi at ...`). Copy files
+with `scp -O`, since no SFTP server runs, and into `/tmp` first; check that
+the checksums match on both sides before you move a file into
+`/mnt/SDCARD/ZyperOS/` (`tools/px2 deploy` does all of that). Release builds
 carry no key and run no SSH server until Developer Mode is on (MENU > About).
 
 ### Developer mode
@@ -756,6 +849,19 @@ ssh -i ~/.ssh/zyperos_pixel2 root@zyperos.local
 
 `tools/px2` takes `/tmp/px2-lock` for any device on port 22 whatever its
 address, so a session over Wi-Fi and one on the cable wait for each other.
+
+When `zyperos.local` does not resolve (a network that drops multicast, or
+the Pixel's lossy radio losing its probes), `tools/px2 find`
+(`tools/px2-find.py`) looks for the Pixel as a person would: it tries the
+name, then every address on this computer's own IPv4 networks (up to a /22,
+or `--net CIDR`) that takes a connection on port 22 and greets it as
+dropbear does, and on each of those reads, with the Pixel's key, the card's
+size and ZyperOS's version. It writes nothing, runs nothing else, and prints
+the `PX2_HOST=` line for the Pixel it found. Other ways, without it: the
+address on the Developer page (a release image), the router's list of
+clients, or the launcher's log from the last time on Wi-Fi, read over the
+cable (`tools/px2 log | grep 'SSH over Wi-Fi at'`): a network's DHCP gives
+the same adapter the same address again, as a rule.
 
 ### SSH while a port runs
 

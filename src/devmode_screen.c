@@ -103,6 +103,47 @@ static void dev_ssh_poll(unsigned now)
 	if (sshlink_sessions() > 0) task_note(TASK_SSH, now);
 }
 
+/* A development image's name over Wi-Fi (sshlink_dev_image_name): its own
+ * dropbear already answers there with the image's key; the name and the
+ * address in the log are what this adds. Followed every two seconds, the
+ * address too (a new one starts the name again there); File Transfer's
+ * name, while it has one, left to it. Started again a minute after a name
+ * that was given up (another host claiming every one it tried), not at
+ * every look. */
+static struct {
+	bool     run;
+	char     ip[64];
+	unsigned at, started;
+} g_dimg;
+
+static void dev_image_name(unsigned now)
+{
+	char ifn[16], wip[64];
+
+	if (g_dimg.run) mdns_poll(now);
+	if (g_dimg.at && now - g_dimg.at < 2000u) return;
+	g_dimg.at = now ? now : 1;
+	wip[0] = '\0';
+	if (!g_xs.on) sshlink_radio(ifn, sizeof ifn, wip, sizeof wip);
+	if (!sshlink_dev_image_name(true, g_xs.on, wip)) {
+		/* File Transfer's now, or no address: ours stops, and File
+		 * Transfer's stays its own */
+		if (g_dimg.run && !g_xs.on) mdns_stop();
+		if (g_dimg.ip[0] && !g_xs.on) fprintf(stderr, "devmode: development image: Wi-Fi's address gone, no zyperos.local\n");
+		memset(&g_dimg, 0, sizeof g_dimg);
+		g_dimg.at = now ? now : 1;
+		return;
+	}
+	if (g_dimg.run && !strcmp(wip, g_dimg.ip) &&
+	    (mdns_name() || now - g_dimg.started < 60000u)) return;
+	if (strcmp(wip, g_dimg.ip))
+		fprintf(stderr, "devmode: development image: SSH over Wi-Fi at %s, keys only (the image's dropbear and key), zyperos.local on %s\n",
+		        wip, ifn);
+	snprintf(g_dimg.ip, sizeof g_dimg.ip, "%s", wip);
+	g_dimg.run = mdns_start(ifn, wip, true);
+	g_dimg.started = now ? now : 1;
+}
+
 void dev_ssh_tick(void)
 {
 	unsigned now = plat_now_ms();
@@ -114,6 +155,7 @@ void dev_ssh_tick(void)
 	 * Developer SSH is portkeys' then (tools/pkssh.c), and a start here
 	 * would end its sessions, as this menu's exit would end its own */
 	if (sshlink_owner_of(false, g_port_menu) != SSHLINK_BY_LAUNCHER) return;
+	if (usblink_dev_image()) dev_image_name(now);
 	if (usblink_dev_image() || !devmode_unlocked(db_dev())) {
 		/* Off. File Transfer over the cable may have SSH of its own with
 		 * its PIN, which took ours over: left to it. */
@@ -181,6 +223,7 @@ void dev_ssh_tick(void)
 		 * no address takes it away. Every two seconds. */
 		if (!g_dv.addr_at || now - g_dv.addr_at >= 2000u || strcmp(wip, g_dv.ip)) {
 			g_dv.addr_at = now ? now : 1;
+			if (wip[0] && strcmp(wip, g_dv.ip)) fprintf(stderr, "devmode: SSH over Wi-Fi at %s\n", wip);
 			snprintf(g_dv.ip, sizeof g_dv.ip, "%s", wip);
 			snprintf(g_dv.ifn, sizeof g_dv.ifn, "%s", ifn);
 			if (wip[0]) mdns_start(ifn, wip, true);
@@ -206,8 +249,9 @@ void dev_ssh_tick(void)
 		snprintf(g_dv.ifn, sizeof g_dv.ifn, "%s", ifn);
 		g_dv.up = sshlink_start_net(keydir);
 	}
-	fprintf(stderr, "devmode: SSH %s%s, %d key%s from the card\n",
+	fprintf(stderr, "devmode: SSH %s%s%s%s, %d key%s from the card\n",
 	        g_dv.up ? "on" : "did not start", want == SSHLINK_NET ? " over Wi-Fi (keys only)" : "",
+	        want == SSHLINK_NET && wip[0] ? " at " : "", want == SSHLINK_NET ? wip : "",
 	        g_dv.nkeys > 0 ? g_dv.nkeys : 0, g_dv.nkeys == 1 ? "" : "s");
 	if (g_dv.up) {
 		g_dv.run = true;

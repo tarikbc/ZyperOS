@@ -137,6 +137,11 @@ sshlink_mode sshlink_want_port(const sshlink_facts *f, bool devmode)
 	return f->cable ? SSHLINK_CABLE_KEYS : SSHLINK_OFF;
 }
 
+bool sshlink_dev_image_name(bool dev_image, bool xfer_on, const char *wifi_addr)
+{
+	return dev_image && !xfer_on && wifi_addr && wifi_addr[0];
+}
+
 int sshlink_argv(sshlink_mode mode, const char *listen, const char *key, const char **argv)
 {
 	int n = 0;

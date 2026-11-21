@@ -7,11 +7,14 @@
 #   tools/px2-payload.sh --programs  the programs alone (make px2-programs)
 #
 # --programs: build/px2/programs/ZyperOS with the launcher, MP4, portkeys,
-# zyhome, System Update's program, p2d and Diatom and nothing else, for a
-# change to the code: no cores, so no main checkout's vendor/ (whose patched
-# cores' stamps must be fresh for a whole payload), and tools/px2-deploy.sh
-# sends only those of them that changed. A change to res/ or launch.sh needs
-# the whole payload.
+# zyhome, System Update's program, p2d, p8fx.so and Diatom, and the card's
+# scripts (launch.sh, device.sh, eq-port.sh, PICO-8's and OpenBOR's,
+# mk/card-scripts.sh), and nothing else, for a change to the code: no cores,
+# so no main checkout's vendor/ (whose patched cores' stamps must be fresh
+# for a whole payload), and tools/px2-deploy.sh sends only those of them that
+# changed. A change to res/, systems.cfg or a core needs the whole payload.
+# Both builds also leave build/px2/system (the system image's files a deploy's
+# --system stands in for until the next restart) and build/px2/initns.
 #
 # Out: build/px2/payload/ZyperOS - the launcher, MP4, portkeys, System
 # Update's program and Diatom, with the cores, cards and fonts, as plastron's
@@ -90,8 +93,14 @@ set -- --rm -e "JOBS=${JOBS:-4}" -e "PROGRAMS_ONLY=$PROGRAMS" \
 [ -f "$SS_ENV" ] && set -- "$@" -v "$SS_ENV:/zyperos-ss.env:ro"
 echo "px2-payload: against $sdk"
 docker run "$@" "$IMAGE" sh /zyperos/mk/px2-sdk-build.sh
-if [ -n "$PROGRAMS" ]; then
-	echo "px2-payload: $REPO/build/px2/programs/ZyperOS"
-else
-	echo "px2-payload: $REPO/build/px2/payload/ZyperOS"
-fi
+if [ -n "$PROGRAMS" ]; then OUTDIR=$REPO/build/px2/programs; else OUTDIR=$REPO/build/px2/payload; fi
+# What it was built from and against, beside ZyperOS/ (not in it, so it never
+# goes onto a card): tools/px2-deploy.sh says it, and its loader check on the
+# device names the SDK when a program needs what the system does not have
+{
+	echo "zyperos=$(git -C "$REPO" describe --always --dirty --abbrev=12 2> /dev/null || echo unknown)"
+	echo "sdk=$sdk"
+	sed 's/^/sdk./' "$REPO/build/px2/sdk-manifest"
+	echo "built=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+} > "$OUTDIR/BUILT"
+echo "px2-payload: $OUTDIR/ZyperOS"

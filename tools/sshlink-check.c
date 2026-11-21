@@ -419,6 +419,13 @@ int main(void)
 		CHECK(at_cable, "over a port the cable's SSH is not on its address alone");
 	}
 
+	printf("  a development image's name over Wi-Fi (sshlink_dev_image_name):\n");
+	CHECK(sshlink_dev_image_name(true, false, "192.168.1.23"), "a development image with a Wi-Fi address has no zyperos.local");
+	CHECK(!sshlink_dev_image_name(false, false, "192.168.1.23"), "a release image answers the name with Developer Mode's SSH off");
+	CHECK(!sshlink_dev_image_name(true, true, "192.168.1.23"), "the name taken from File Transfer while it has it");
+	CHECK(!sshlink_dev_image_name(true, false, "") && !sshlink_dev_image_name(true, false, NULL),
+	      "the name with no address to give");
+
 	printf("  keys in authorized_keys (sshlink_key_lines):\n");
 	CHECK(sshlink_key_lines(NULL) == 0 && sshlink_key_lines("") == 0, "nothing read as a key");
 	CHECK(sshlink_key_lines("\n  \n# a comment\n\t# another\n") == 0, "blanks and comments read as keys");
@@ -437,6 +444,7 @@ int main(void)
 	       "run folder goes whole, whatever a session left in ~, the card's keys untouched; "
 	       "the password never with a radio, SSH over Wi-Fi only with the choice on and keys "
 	       "alone (-s, every address), a lockout held until a replug; over a port portkeys' SSH, keys "
-	       "only on every link, and none in the in-game menu\n");
+	       "only on every link, and none in the in-game menu; a development image's zyperos.local over "
+	       "Wi-Fi while it has an address and File Transfer does not have the name\n");
 	return 0;
 }

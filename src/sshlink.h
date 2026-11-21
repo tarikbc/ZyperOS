@@ -203,6 +203,21 @@ sshlink_owner sshlink_owner_of(bool port_running, bool port_menu);
  * shows, and with keys alone there is nothing to guess and nothing to lock. */
 sshlink_mode sshlink_want_port(const sshlink_facts *f, bool devmode);
 
+/* ---- a development image over Wi-Fi ------------------------------------
+ *
+ * A development image (plastron's, any build but a release) starts its own
+ * dropbear at boot on port 22 of every address, with the key the image was
+ * built with (plastron's local/authorized_keys) and no password (root has
+ * none, and dropbear turns an empty one down): SSH over Wi-Fi, keys only,
+ * from the first boot, with nothing of Developer Mode's in it. What it
+ * lacked was the name: zyperos.local on the Wi-Fi address, as Developer
+ * Mode's SSH over Wi-Fi answers it on a release image (src/mdns.h), so a
+ * computer on the same network reaches a test build without the cable.
+ * Whether to answer it now: on a development image, with an address on the
+ * radio, and not while File Transfer has the name. devmode_screen.c follows
+ * it every two seconds. */
+bool sshlink_dev_image_name(bool dev_image, bool xfer_on, const char *wifi_addr);
+
 /* What dropbear is started with for `mode` (CABLE or NET) into `argv`, at
  * most SSHLINK_ARGV entries with its NULL: `listen` is the cable's
  * "addr:22" for CABLE, unused for NET, which takes port 22 on every

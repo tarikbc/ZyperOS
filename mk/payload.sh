@@ -72,11 +72,10 @@ cp "$MP4D_ELF" "$P/mp4d"                  # the audio player's engine; MP4 canno
 # P_ROOT/p2d (src/main.c's p2_setup). It serves the page from res/web/play,
 # below.
 [ -n "${P2D_ELF:-}" ] && cp "$P2D_ELF" "$P/p2d"
-cp "$ROOT/sd/zyperos/launch.sh" "$P/launch.sh"
-# The equalizer's config for a port (launch.sh's run_port), on every device:
-# a device whose device.sh names no EQ_SLAVE never runs it
-cp "$ROOT/sd/zyperos/eq-port.sh" "$P/eq-port.sh"
-cp "$DEVICE_SH" "$P/device.sh"
+# The card's scripts: launch.sh, eq-port.sh, the device's device.sh and the
+# helpers' own (OpenBOR's, your PICO-8's, the headsets' ALSA config), one
+# list with make px2-programs (mk/card-scripts.sh)
+DEVICE=$DEVICE sh "$ROOT/mk/card-scripts.sh" "$P"
 # Which ZyperOS this is, for plastron: the Pixel's image copies its ZyperOS/ over
 # the card's only when it is newer than the card's (/etc/init.d/zyperos), so a
 # system-only update brings the new ZyperOS with it. Only when the build says:
@@ -263,10 +262,6 @@ chmod +x "$P/launch.sh" "$P/zyperos.elf" "$P/diatom" "$P/mp4d"
 [ -f "$P/zyperos-update" ] && chmod +x "$P/zyperos-update"
 [ -f "$P/p2d" ] && chmod +x "$P/p2d"
 
-# The headsets' ALSA config: the Brick's device.sh sources it at boot, and
-# ZyperOS runs it after a pair or a forget. The devices with Bluetooth sound.
-has_helper btalsa && cp "$ROOT/sd/zyperos/bt-alsa.sh" "$P/"
-
 # PortMaster's control.txt for the Ports shelf, which launch.sh puts in place
 # before each port, and the installer the shelf runs when PortMaster is not on
 # the card (src/pminstall.h), with its entry's covers and its page's icon
@@ -278,25 +273,22 @@ if has_helper ports; then
 	   "$ROOT/res/portmaster/mod_ZyperOS.txt" "$ROOT/res/portmaster/pm-install.py" \
 	   "$ROOT/res/portmaster/cover-light.png" "$ROOT/res/portmaster/cover-dark.png" \
 	   "$ROOT/res/portmaster/icon.png" "$P/portmaster/"
-	# OpenBOR, the OpenBOR shelf's program (mk/build-openbor.sh), and the
-	# script its "run:" names. The Pixel 2 only, as its ports are: only its
-	# device.sh has launch.sh run a shelf's script.
+	# OpenBOR, the OpenBOR shelf's program (mk/build-openbor.sh), beside the
+	# script its "run:" names (mk/card-scripts.sh put it there). The Pixel 2
+	# only, as its ports are: only its device.sh has launch.sh run a shelf's
+	# script.
 	[ -f "$VENDOR_DIR/openbor/OpenBOR" ] ||
 		{ echo "payload: no OpenBOR in vendor/; run mk/build-openbor.sh" >&2; exit 1; }
 	mkdir -p "$P/openbor"
 	cp "$VENDOR_DIR/openbor/OpenBOR" "$VENDOR_DIR/openbor/LICENSE" \
-	   "$VENDOR_DIR/openbor/LICENSE.libvpx" "$ROOT/sd/pixel2/OpenBOR.sh" "$P/openbor/"
-	chmod +x "$P/openbor/OpenBOR" "$P/openbor/OpenBOR.sh"
-	# Your PICO-8's script, which the PICO-8 shelf's first core names
-	# (config/systems.cfg), and Splore's entry art (tools/genpico8-art.py).
-	# Never PICO-8 itself: the player brings it into Bios/PICO-8 (src/pico8.h)
+	   "$VENDOR_DIR/openbor/LICENSE.libvpx" "$P/openbor/"
+	chmod +x "$P/openbor/OpenBOR"
+	# Splore's entry art (tools/genpico8-art.py), beside your PICO-8's script
+	# (mk/card-scripts.sh). Never PICO-8 itself: the player brings it into
+	# Bios/PICO-8 (src/pico8.h)
 	mkdir -p "$P/pico8/bin"
-	cp "$ROOT/sd/pixel2/PICO-8.sh" "$ROOT/res/pico8/cover-light.png" \
+	cp "$ROOT/res/pico8/cover-light.png" \
 	   "$ROOT/res/pico8/cover-dark.png" "$ROOT/res/pico8/icon.png" "$P/pico8/"
-	# and the wget its Splore downloads with: curl, with HTTPS, which the
-	# system's busybox wget lacks (sd/pixel2/PICO-8-wget.sh)
-	cp "$ROOT/sd/pixel2/PICO-8-wget.sh" "$P/pico8/bin/wget"
-	chmod +x "$P/pico8/PICO-8.sh" "$P/pico8/bin/wget"
 	# and the library it loads before SDL, which draws PICO-8's screen
 	# through the shelf's Shader with its Border (src/p8fx.h)
 	if has_helper p8fx; then cp "$P8FX_SO" "$P/pico8/p8fx.so"; fi

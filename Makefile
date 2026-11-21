@@ -2512,7 +2512,9 @@ px2-payload:
 	sh tools/px2-payload.sh
 
 # The programs alone, for a change to the code: build/px2/programs/ZyperOS,
-# no cores (tools/px2-payload.sh --programs). tools/px2 deploy sends them.
+# the programs and the card's scripts, no cores (tools/px2-payload.sh
+# --programs), and build/px2/system, the system's files a deploy's --system
+# stands in for. tools/px2 deploy sends what differs from the card.
 .PHONY: px2-programs
 px2-programs:
 	sh tools/px2-payload.sh --programs

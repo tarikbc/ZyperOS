@@ -23,6 +23,13 @@ ZYPEROS_VENDOR ?= $(or $(ZYPEROS_MAIN),$(ZYPEROS_SRC))/vendor
 ZYPEROS_SS_ENV ?= $(or $(ZYPEROS_MAIN),$(ZYPEROS_SRC))/.screenscraper.env
 SOURCES := -v $(ZYPEROS_SRC):/zyperos:ro -v $(ZYPEROS_VENDOR):/zyperos-vendor:ro \
 	$(if $(wildcard $(ZYPEROS_SS_ENV)),-v $(ZYPEROS_SS_ENV):/zyperos-ss.env:ro)
+# The developer's SSH key for a development image (board/*/post-build.sh):
+# local/authorized_keys, which git ignores, so a worktree has none of its own.
+# The main checkout's then, so a development build from a worktree is not one
+# nobody can sign in to, on the cable or over Wi-Fi. A release takes the key
+# out whichever it is, and QEMU's image never keeps one.
+DEV_KEYS := $(if $(wildcard $(CURDIR)/local/authorized_keys),,$(wildcard $(ZYPEROS_MAIN)/plastron/local/authorized_keys))
+SOURCES += $(if $(DEV_KEYS),-v $(DEV_KEYS):/plastron-keys/authorized_keys:ro)
 # Which plastron builds, and who: build.sh writes the first beside its output,
 # for the SDK make sdk packs from it, and a build waiting on the same output
 # shows the second (scripts/lock.sh)

@@ -158,8 +158,11 @@ path_line=$(grep -n 'export PATH="$HERE/bin:$PATH"' "$S" | cut -d: -f1)
 exec_line=$(grep -n 'exec "$P8/pico8_64"' "$S" | head -n 1 | cut -d: -f1)
 [ -n "$path_line" ] && [ -n "$exec_line" ] && [ "$path_line" -lt "$exec_line" ] &&
 	ok "PICO-8.sh: bin/ first on PATH before pico8_64" || bad "PICO-8.sh: no PATH line before pico8_64"
-grep -q 'cp "$ROOT/sd/pixel2/PICO-8-wget.sh" "$P/pico8/bin/wget"' mk/payload.sh &&
-	grep -q 'chmod +x .*"$P/pico8/bin/wget"' mk/payload.sh &&
+# (the card's scripts, mk/card-scripts.sh, which mk/payload.sh and make
+# px2-programs both lay out with)
+grep -q 'cp "$ROOT/sd/pixel2/PICO-8-wget.sh" "$P/pico8/bin/wget"' mk/card-scripts.sh &&
+	grep -q 'chmod +x .*"$P/pico8/bin/wget"' mk/card-scripts.sh &&
+	grep -q 'sh "$ROOT/mk/card-scripts.sh" "$P"' mk/payload.sh &&
 	ok "mk/payload.sh: ZyperOS/pico8/bin/wget, runnable" || bad "mk/payload.sh: no pico8/bin/wget"
 
 if [ $fails -ne 0 ]; then

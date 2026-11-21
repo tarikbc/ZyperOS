@@ -7,6 +7,9 @@
 # down an empty one.
 set -eu
 KEYS=$BR2_EXTERNAL_PX2_PATH/../local/authorized_keys
+# A worktree has no local/ of its own: the main checkout's key, which
+# plastron's Makefile mounts here for it
+[ -f "$KEYS" ] || KEYS=/plastron-keys/authorized_keys
 
 if [ "${PLASTRON_RELEASE:-0}" = 1 ]; then
 	rm -rf "$TARGET_DIR/root/.ssh"

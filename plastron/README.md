@@ -156,7 +156,11 @@ and the firmware from
 Only those copies match the checksums the build checks them against.
 
 To get SSH access, put a public key in `local/authorized_keys` before
-building. `local/` is not tracked. A release build carries no key and starts
+building. `local/` is not tracked, so a worktree has none of its own: a
+build from one takes the main checkout's (the Makefile mounts it at
+`/plastron-keys`). A development image's dropbear listens on every address,
+the cable's and Wi-Fi's, and takes that key alone (root has no password,
+and dropbear turns an empty one down). A release build carries no key and starts
 no SSH server at boot. It keeps the dropbear program: on the Pixel 2,
 ZyperOS's USB File Transfer screen starts it while the screen is open, on
 the cable's address alone, with the PIN the screen shows as root's password
