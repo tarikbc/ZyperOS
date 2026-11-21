@@ -216,50 +216,53 @@ const char *gm_tab_name(int t)
 	}
 }
 
+int gm_tab_count(const gm_ui *u)
+{
+	return u->port ? GT_ACHIEVEMENTS : GT_TABS;
+}
+
+bool gm_ctltab(const gm_ui *u)
+{
+	return !u->port || u->port_buttons;
+}
+
 int gm_tab_rows(const gm_ui *u, gm_tab t, gm_row *ids)
 {
 	int n = 0;
 
-	/* Over a port: what a stopped program can still be asked, on no tabs */
-	if (u->port) {
-		ids[n++] = GM_CONTINUE;
-		if (u->port_display) ids[n++] = GM_DISPLAY;
-		if (u->port_hud) ids[n++] = GM_HUD;
-		/* Over your PICO-8, the Display tab's picture rows after those, in
-		 * its order, drawn by its shim (src/p8fx.h): Border where the mode
-		 * leaves room, Shader, and Strength under an old screen */
-		if (u->port_display) {
-			if (u->border) ids[n++] = GM_BORDER;
-			ids[n++] = GM_SHADER;
-			if (u->strength) ids[n++] = GM_STRENGTH;
-		}
-		ids[n++] = GM_CONTROLS;
-		if (u->port_reset) ids[n++] = GM_RESET;
-		ids[n++] = GM_QUIT;
-		return n;
-	}
+	/* Over a program of its own (u->port), a game's tabs and places, with
+	 * only what the stopped program can do: no states, discs, Player 2,
+	 * cheats or achievements; Reset over your PICO-8 once it has drawn
+	 * (CTRL-R, src/portmenu.h) */
 	if (t == GT_GAME) {
 		ids[n++] = GM_CONTINUE;
-		ids[n++] = GM_SAVE;
-		ids[n++] = GM_LOAD;
-		if (u->undo) ids[n++] = GM_UNDO;
-		if (u->quick) ids[n++] = GM_QUICK;
-		if (u->discs > 1) ids[n++] = GM_DISC;
-		if (u->player2) ids[n++] = GM_PLAYER2;
-		if (u->cheats) ids[n++] = GM_CHEATS;
-		ids[n++] = GM_CHEEVOS;
-		ids[n++] = GM_RESET;
+		if (!u->port) {
+			ids[n++] = GM_SAVE;
+			ids[n++] = GM_LOAD;
+			if (u->undo) ids[n++] = GM_UNDO;
+			if (u->quick) ids[n++] = GM_QUICK;
+			if (u->discs > 1) ids[n++] = GM_DISC;
+			if (u->player2) ids[n++] = GM_PLAYER2;
+			if (u->cheats) ids[n++] = GM_CHEATS;
+			ids[n++] = GM_CHEEVOS;
+		}
+		if (!u->port || u->port_reset) ids[n++] = GM_RESET;
 		ids[n++] = GM_QUIT;
 	} else if (t == GT_DISPLAY) {
-		ids[n++] = GM_DISPLAY;
-		/* What fills the room the mode leaves, under it (src/border.h) */
-		if (u->border) ids[n++] = GM_BORDER;
-		if (u->border && u->border_color) ids[n++] = GM_BORDER_COLOR;
-		ids[n++] = GM_SHADER;
-		/* Under its shader, and only while that is an old screen */
-		if (u->strength) ids[n++] = GM_STRENGTH;
+		/* The picture's own rows: a game's, and your PICO-8's, whose script
+		 * and shim draw them (u->port_display); no other program's picture
+		 * is ZyperOS's to change */
+		if (!u->port || u->port_display) {
+			ids[n++] = GM_DISPLAY;
+			/* What fills the room the mode leaves, under it (src/border.h) */
+			if (u->border) ids[n++] = GM_BORDER;
+			if (u->border && u->border_color) ids[n++] = GM_BORDER_COLOR;
+			ids[n++] = GM_SHADER;
+			/* Under its shader, and only while that is an old screen */
+			if (u->strength) ids[n++] = GM_STRENGTH;
+		}
 		/* A DS game's three belong with the picture */
-		if (u->screens) {
+		if (u->screens && !u->port) {
 			ids[n++] = GM_SCREENS;
 			ids[n++] = GM_SWAP;
 			ids[n++] = GM_STYLUS;
@@ -267,11 +270,17 @@ int gm_tab_rows(const gm_ui *u, gm_tab t, gm_row *ids)
 		/* The whole screen's colors (DESIGN.md 11.42): after the game's
 		 * own picture rows, the last of the picture, since they are the
 		 * panel's and not this game's; a page, as On-Screen Stats under
-		 * it has one */
+		 * it has one. The panel's over any program too */
 		if (u->screen_colors) ids[n++] = GM_SCREEN_COLORS;
 		/* How fast it runs, over the game: last, as it is about the
-		 * game's speed and not its picture */
-		ids[n++] = GM_HUD;
+		 * game's speed and not its picture; over your PICO-8 where
+		 * portkeys draws it (u->port_hud) */
+		if (!u->port || u->port_hud) ids[n++] = GM_HUD;
+	} else if (t == GT_CONTROLS && !gm_ctltab(u)) {
+		/* Over a program whose buttons are its own: its read-only pages
+		 * (src/controls.c, src/portdoc.h), which a game's All Controls
+		 * opens and the program's Controls row opened before its tabs */
+		ids[n++] = GM_CONTROLS;
 	}
 	return n;
 }
@@ -317,7 +326,7 @@ int gm_rows(const gm_ui *u, gm_tab t, menu_row *out, gm_bufs *b)
 {
 	static const str_id label[GM_MAX_ROWS] = {
 		S_GAMEMENU_CONTINUE, S_GAMEMENU_SAVE, S_GAMEMENU_LOAD, S_GAMEMENU_QUICK,
-		S_GAMEMENU_DISPLAY, S_GAMEMENU_SHADER, S_SYSMENU_CONTROLS, S_SYSMENU_CHEEVOS,
+		S_GAMEMENU_DISPLAY, S_GAMEMENU_SHADER, S_HOTKEYS_ALL_CONTROLS, S_SYSMENU_CHEEVOS,
 		S_GAMEMENU_RESET,
 		S_GAMEMENU_QUIT, S_GAMEMENU_SCREENS, S_GAMEMENU_SWAP, S_GAMEMENU_STYLUS,
 		S_GAMEMENU_PAK, S_PLAYER2_ROW, S_GAMEMENU_DISC, S_GAMEMENU_STRENGTH,

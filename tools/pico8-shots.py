@@ -4,18 +4,24 @@
 draws the PICO-8 shelf with Splore first, before and after your PICO-8 is on
 the card, a cart with Splore beside it, the shelf's menu with its Core row,
 and the page A opens on Splore while PICO-8 is not on the card, in both
-themes. The card is made here: carts that are a line of text each, and in
+themes. And the in-game menu over your PICO-8 (1.1.0-rc.8: a game's tabs),
+its Game, Display and Controls tabs beside a Game Boy Advance game's, in
+both themes (menu-sheet.png: a row a tab and theme, PICO-8 at the left).
+The card is made here: carts that are a line of text each, and in
 Bios/PICO-8 two files of made-up bytes standing in for the player's own
 (never Lexaloffle's).
 
-    make pico8-shots     build-native/pico8-shots/*.png and sheet.png"""
+    make pico8-shots     build-native/pico8-shots/*.png, sheet.png and menu-sheet.png
+    python3 tools/pico8-shots.py --out DIR    the same into DIR"""
+import sys
 import shutil
+import sqlite3
 import subprocess
 from pathlib import Path
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / 'build-native/pico8-shots'
+OUT = Path(sys.argv[sys.argv.index('--out') + 1]).resolve() if '--out' in sys.argv else ROOT / 'build-native/pico8-shots'
 BIN = ROOT / 'build-native/zyperos'
 STATUS = '10:08 24h wifi=3 bt batt=82'
 CARTS = ['Cloud Hopper.p8', 'Ember Keep.p8.png', 'Moss Garden.p8']
@@ -67,10 +73,10 @@ def run(env, *args):
     return r.stderr
 
 
-def shot(base, env, name, theme, game=None, *more):
+def shot(base, env, name, theme, game=None, *more, tag='PICO8'):
     last = base / 'ZyperOS/.last'
     if game:
-        last.write_text(f'PICO8\n{game}\n')
+        last.write_text(f'{tag}\n{game}\n')
     elif last.exists():
         last.unlink()
     file = OUT / f'{name}.png'
@@ -95,11 +101,33 @@ shots.append(f)
 shots.append(shot(base, env, 'cart-light', 'light', 'Cloud Hopper.p8')[0])
 shots.append(shot(base, env, 'core-row-dark', 'dark', 'Cloud Hopper.p8', '--menu', 'Core')[0])
 
-ims = [Image.open(s).convert('RGB') for s in shots]
-w, h = ims[0].size
-cols = 2
-sheet = Image.new('RGB', (w * cols, h * ((len(ims) + cols - 1) // cols)), 'white')
-for i, im in enumerate(ims):
-    sheet.paste(im, ((i % cols) * w, (i // cols) * h))
-sheet.save(OUT / 'sheet.png')
-print('pico8-shots:', ', '.join(s.name for s in shots), '->', OUT / 'sheet.png')
+
+def sheet_of(files, name, cols=2):
+    ims = [Image.open(s).convert('RGB') for s in files]
+    w, h = ims[0].size
+    sheet = Image.new('RGB', (w * cols, h * ((len(ims) + cols - 1) // cols)), 'white')
+    for i, im in enumerate(ims):
+        sheet.paste(im, ((i % cols) * w, (i // cols) * h))
+    sheet.save(OUT / name)
+    return OUT / name
+
+
+print('pico8-shots:', ', '.join(s.name for s in shots), '->', sheet_of(shots, 'sheet.png'))
+
+# The in-game menu over your PICO-8 (--gamemenu ROW port: the menu portkeys
+# starts, src/portmenu.h) and over a GBA game, each tab, in both themes, at
+# Sharp Pixels with CRT 70% and Blur, so every Display row a game would show
+# is there; the cursor on a row each tab has
+with sqlite3.connect(base / 'userdata/zyperos.db') as db:
+    for tag in ('PICO8', 'GBA'):
+        for key, value in (('display', 'integer'), ('shader', 'crt'), ('shader_strength', '70'),
+                           ('border', 'blur')):
+            db.execute('INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)', (f'{key}.{tag}', value))
+menus = []
+for theme in ('light', 'dark'):
+    for tab, row, what in (('0', '0', 'game'), ('1', '0', 'display'), ('2', '1', 'controls')):
+        menus.append(shot(base, env, f'menu-pico8-{what}-{theme}', theme, 'Cloud Hopper.p8',
+                          '--gamemenu', row, 'port', '--gm-tab', tab, '--device', 'pixel2')[0])
+        menus.append(shot(base, env, f'menu-gba-{what}-{theme}', theme, 'Pocket Quest.gba',
+                          '--gamemenu', row, '--gm-tab', tab, '--device', 'pixel2', tag='GBA')[0])
+print('pico8-shots:', ', '.join(s.name for s in menus), '->', sheet_of(menus, 'menu-sheet.png'))

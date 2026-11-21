@@ -178,9 +178,11 @@ int gi_rows(menu_row *out, const game_info *gi, bool net);
  * from, 1 to GM_SLOTS, kept per system; a system whose core keeps no state
  * (controls.h, ctl_has_states) has no such row. Shader (2026-11-12) is how
  * the picture is drawn at its last step, kept for the game's system.
- * GM_CONTROLS is in no tab now: Controls is a tab of its own, whose rows are
- * src/ctltab.c's, and the read-only pages the row opened are behind that
- * tab's Hotkeys row. A port's menu (OpenBOR) still has the Controls row.
+ * GM_CONTROLS is in no game's tab now: Controls is a tab of its own, whose
+ * rows are src/ctltab.c's, and the read-only pages the row opened are behind
+ * that tab's Hotkeys row (All Controls). Over a program whose buttons
+ * ZyperOS does not hand it (OpenBOR, a port, PortMaster) it is the Controls
+ * tab's one row, All Controls, those pages.
  *
  * After GM_ROWS, the rows only some games have, so that every other game's
  * rows keep their ids: a DS game's Screens (the layout), Swap Screens and
@@ -264,9 +266,10 @@ typedef struct {
 	int         layout;   /* into gm_layout_names */
 	bool        swap;
 	bool        stylus;
-	/* A program of its own under the menu, not a game Diatom runs: OpenBOR
-	 * (src/portmenu.h). Paused by stopping it, so there is nothing to save,
-	 * load, reset or show differently, and no achievements. */
+	/* A program of its own under the menu, not a game Diatom runs: OpenBOR,
+	 * a port, your PICO-8 (src/portmenu.h). Paused by stopping it, so there
+	 * is nothing to save or load, and no achievements; what more it answers
+	 * to, the flags below say. */
 	bool        port;
 	/* ...that has not drawn yet: Continue reads Keep Waiting (1.0.6) */
 	bool        waiting;
@@ -283,6 +286,10 @@ typedef struct {
 	/* ...that restarts a cart on a key of its own (your PICO-8, src/portmenu.h's
 	 * port_resets) and has drawn: the Reset row, before Quit, asked first */
 	bool        port_reset;
+	/* ...whose buttons ZyperOS hands it as it starts (your PICO-8,
+	 * src/p8pad.h): the Controls tab is a game's, src/ctltab.c's rows. Over
+	 * any other program it is All Controls alone, the read-only pages */
+	bool        port_buttons;
 	/* The quick slot, 1 to GM_SLOTS; 0 where the system keeps no states */
 	int         quick;
 	/* The game has a state from before its last load (SLOT_UNDO): the Undo
@@ -338,15 +345,34 @@ int gm_disc_step(int disc, int discs, int d);
  *             that says why there is none, are src/achtab.c's (1.0.5).
  *             The Game tab's Achievements row stays, its count at a
  *             glance, and A on it turns to this tab, the one L1 would
- * GM_CONTROLS and GM_PAK are in no tab: Controls is a tab now and Pak is one
- * of its rows. A port's menu (u->port) has no tabs and is Continue, Controls
- * and Quit whichever tab is asked for; over your PICO-8 (u->port_display,
- * u->port_hud, u->port_reset) Continue, Display, On-Screen Stats, Border,
- * Shader, Strength, Controls, Reset and Quit, the Display tab's rows where
- * that tab is, after the Game tab's first row (Border and Strength where
- * they would show in a game: u->border, u->strength), and Reset before
- * Quit, as in a game's Game tab. */
+ * GM_PAK is in no tab: Pak is one of the Controls tab's rows.
+ *
+ * Over a program of its own (u->port: your PICO-8, OpenBOR, a port,
+ * PortMaster, the standalone Flycast) the same tabs, the rows the stopped
+ * program can answer to in a game's places, and no Achievements tab
+ * (gm_tab_count), as none earns any (1.1.0-rc.8, mine: "why pico 8 menu has
+ * no tabs? we should use the same component as in other systems", "openbor
+ * is also missing the menu as we have in other systems", "yeah have the
+ * same menu in ports as well"):
+ *   Game      Continue (Keep Waiting while it starts), Reset (your PICO-8
+ *             once it has drawn: u->port_reset), Quit
+ *   Display   your PICO-8's picture rows (u->port_display): Display, Border
+ *             and Strength where they would show in a game, Shader; Screen
+ *             Colors (a display with a table), the panel's, over any
+ *             program; On-Screen Stats where portkeys draws it (u->port_hud)
+ *   Controls  src/ctltab.c's over your PICO-8 (u->port_buttons); over any
+ *             other program All Controls (GM_CONTROLS), its read-only pages
+ * What a program cannot do is not there at all, not greyed: Save, Load,
+ * Undo Load, Quick Slot, Disc, Player 2, Cheats, Achievements. */
 typedef enum { GT_GAME, GT_DISPLAY, GT_CONTROLS, GT_ACHIEVEMENTS, GT_TABS } gm_tab;
+
+/* How many tabs L1 and R1 go round, from GT_GAME: all of them over a game,
+ * all but Achievements over a program of its own (the last, so the others
+ * keep their places) */
+int gm_tab_count(const gm_ui *u);
+/* Whether the Controls tab's rows are src/ctltab.c's, the buttons to change:
+ * a game's, and your PICO-8's; else they are gm_tab_rows's All Controls */
+bool gm_ctltab(const gm_ui *u);
 
 /* On-Screen Stats' switch in the device's database, kept per player and
  * not per game: 1 draws the line over every game (src/hud.h, Diatom's

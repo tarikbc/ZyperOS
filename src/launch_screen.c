@@ -405,6 +405,9 @@ static void launch_port_core(app *a, const system_cfg *s, const char *file, cons
 	 * for the shot, in both themes, as Diatom's pop-up has it (on_hotkey) */
 	unlink(plat_flag(PORT_KEYS_FILE));
 	unlink(plat_flag(P8_PAD_FILE));
+	/* ...and its in-game menu opening on Game, on Continue, at its first
+	 * MENU, as a game's does after launch's gm_mem_reset */
+	unlink(plat_flag(PORT_MENU_MEM));
 	if (!strcmp(core, P8_CORE) && port_hotkeys(s->tag)) {
 		char shots[CFG_STR * 4], name[LIB_NAME] = "PICO-8", folder[CFG_STR * 2];
 		const sysview *v = &a->view[a->sys_cursor];

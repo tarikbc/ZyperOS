@@ -6151,6 +6151,13 @@ static int port_menu_main(int argc, char **argv)
 	signal(SIGTERM, on_sigterm);
 	signal(SIGINT, on_sigterm);
 	t_boot0 = plat_now_ms();
+	/* --device ID after the game: a handheld's profile on a computer, as
+	 * the launcher's own --device, for a check of what the menu shows there
+	 * (Screen Colors where the display has a table); a device build has its
+	 * own alone, and finds no other */
+	for (i = 4; i + 1 < argc; i++)
+		if (!strcmp(argv[i], "--device") && !plat_profile_select(argv[i + 1]))
+			fprintf(stderr, "port menu: no profile \"%s\"\n", argv[i + 1]);
 	paths_init();
 	{
 		char dev[CFG_STR * 2], lib[CFG_STR * 2], env[CFG_STR * 2], tz[64];
@@ -6614,10 +6621,8 @@ int main(int argc, char *argv[])
 			/* --gm-restart buttons: the question for new buttons */
 			if (i + 1 < argc && !strcmp(argv[i + 1], "buttons")) shot_gm_restart = 2, i++;
 		}
-		/* --gm-reset: over your PICO-8, Reset's question; and
-		 * --gm-port-controls, the Controls list its row opens */
+		/* --gm-reset: over your PICO-8, Reset's question */
 		else if (!strcmp(argv[i], "--gm-reset")) shot_gm_reset = 1;
-		else if (!strcmp(argv[i], "--gm-port-controls")) shot_gm_port_controls = 1;
 		/* --hud-page ROW: the On-Screen Stats page (src/hudmenu_screen.h)
 		 * over the paused game, the cursor on ROW, with --gamemenu;
 		 * --hud-items, its Shows list instead; --hud-pick ROW, that row's

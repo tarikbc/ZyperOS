@@ -179,7 +179,6 @@ extern int shot_key;
 extern int shot_gm_choose;     /* --gm-choose */
 extern int shot_gm_restart;    /* --gm-restart */
 extern int shot_gm_reset;      /* --gm-reset */
-extern int shot_gm_port_controls; /* --gm-port-controls */
 extern int shot_hud_page;      /* --hud-page ROW, -1 for none */
 extern bool shot_hud_items;    /* --hud-items */
 extern int  shot_hud_pick;     /* --hud-pick ROW */

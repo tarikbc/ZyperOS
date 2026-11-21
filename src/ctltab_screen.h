@@ -96,12 +96,6 @@ void ctlscr_shot_pick(app *a, const ctlscr_game *g, int id);
 void ctlscr_page(app *a, const system_cfg *owner, const char *file,
                  const char *title, unsigned accent);
 
-/* The Controls list as a page over a program's in-game menu (your PICO-8's,
- * whose menu has no tabs): `g` as the menu gives it (Applies To free, nothing
- * running to send to), `title` its heading, drawn over g->over's backdrop
- * with its power rule. Returns when B goes back. */
-void ctlscr_over(app *a, const ctlscr_game *g, const char *title);
-
 /* One frame of that page over the shelf, the cursor on row `sel`, for a shot */
 void ctlscr_page_shot(app *a, const system_cfg *owner, const char *file,
                       const char *title, unsigned accent, int sel);

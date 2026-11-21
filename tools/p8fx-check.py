@@ -13,8 +13,9 @@
    says so.
 3. The real launcher in desk mode's dummy window (build-native/zyperos, make
    native), as portkeys starts it over the program (--port-menu PICO8 CART):
-   the rows Continue, Display, On-Screen Stats, Border, Shader, Controls and
-   Quit, Strength under an old screen; Shader stepped is shader.PICO8 kept and the look
+   its Display tab (R1 from Game, a game's tabs since 1.1.0-rc.8) Display,
+   Border, Shader and On-Screen Stats in a game's order, Strength under an
+   old screen; Shader stepped is shader.PICO8 kept and the look
    file written for the shim, Strength and Border the same; Your Own's
    picture made into its DTOV file; no Border where the mode covers the
    screen; over OpenBOR none of them. And a cart opened on your PICO-8 from
@@ -214,16 +215,16 @@ def launcher(tmp):
     procs = []
 
     def start(name, args):
-        """The launcher on the desk's socket: its walk (tools/deskwalk.py)"""
+        """The launcher on the desk's socket: its walk (tools/deskwalk.py),
+        the menu on Game, on Continue, as a cart's first (no memory of the
+        last, src/portmenu.h's PORT_MENU_MEM)"""
         if dsock.exists():
             dsock.unlink()
+        (flags / 'zyperos-port-menu-mem').unlink(missing_ok=True)
         log = open(tmp / f'{name}.log', 'w')
         p = subprocess.Popen([str(BINARY)] + args, env=env, stdout=log, stderr=subprocess.STDOUT)
         procs.append(p)
         return dw.Walk(dsock, p, tmp / f'{name}.log')
-
-    def order(seen, words):
-        return all(w in seen for w in words) and [seen.index(w) for w in words] == sorted(seen.index(w) for w in words)
 
     def kept(key, word, line, lineword):
         """`key` kept as `word` and the look file's `line` saying `lineword`"""
@@ -233,23 +234,23 @@ def launcher(tmp):
     try:
         print('the in-game menu over your PICO-8, at Sharp Pixels:')
         m = start('menu', ['--port-menu', 'PICO8', cart])
-        check(m.up('', 'Continue') and dw.until(lambda: 'Quit' in m.drawn()), 'it is up')
-        seen = m.drawn()
-        check(order(seen, ['Continue', 'Display', 'On-Screen Stats', 'Border', 'Shader', 'Controls', 'Quit']),
-              'Continue, Display, On-Screen Stats, Border, Shader, Controls, Quit: the Display tab\'s order')
-        check('Strength' not in seen, 'no Strength while the shader is Off')
-        m.to('down', 'Shader', '')
+        check(m.up('Game', 'Continue') and m.step('r1', 'Display', 'Display'), 'it is up, R1 its Display tab')
+        rows = m.rows()
+        check(rows == ['Display', 'Border', 'Shader', 'On-Screen Stats'],
+              f'Display, Border, Shader, On-Screen Stats: a game\'s Display tab\'s order ({rows})')
+        check('Strength' not in rows, 'no Strength while the shader is Off')
+        m.to('down', 'Shader', 'Display')
         m.press('right')                                      # Shader: Off -> Sharp-Shimmerless
         check(kept('shader.PICO8', 'shimmerless', 'shader', 'shimmerless'),
               f'Right on Shader: shader.PICO8 kept, and the look file says it ({value("shader.PICO8")}, {look_lines()})')
         m.press('right')                                      # Sharp-Shimmerless -> CRT
         check(kept('shader.PICO8', 'crt', 'shader', 'crt'), 'Right again: CRT')
         check(dw.until(lambda: 'Strength' in m.drawn()), '...and Strength under it')
-        m.step('down', '', 'Strength')
+        m.step('down', 'Display', 'Strength')
         m.press('left')                                       # Strength 100 -> 90
         check(kept('shader_strength.PICO8', '90', 'strength', '90'),
               f'Left on Strength: 90%, kept and in the file ({value("shader_strength.PICO8")}, {look_lines()})')
-        m.to('up', 'Border', '')
+        m.to('up', 'Border', 'Display')
         m.press('right')                                      # Border: Off -> Blur
         check(kept('border.PICO8', 'blur', 'border', 'blur'),
               f'Right on Border: Blur, kept and in the file ({value("border.PICO8")}, {look_lines()})')
@@ -259,8 +260,9 @@ def launcher(tmp):
         (card / 'Borders/PICO-8').mkdir(parents=True, exist_ok=True)
         png(card / 'Borders/PICO-8/frame.png', 64, 48)
         m = start('own', ['--port-menu', 'PICO8', cart])
-        m.up('', 'Continue')
-        m.to('down', 'Border', '')
+        m.up('Game', 'Continue')
+        m.step('r1', 'Display', 'Display')
+        m.to('down', 'Border', 'Display')
         m.press('right')                                      # Border: Blur -> Your Own
         kept('border.PICO8', 'own', 'border', 'picture')
         lines = look_lines()
@@ -281,14 +283,14 @@ def launcher(tmp):
         print('at Full Screen, which covers the screen:')
         setting('display.PICO8', 'stretch')
         m = start('stretch', ['--port-menu', 'PICO8', cart])
-        ok = m.up('', 'Continue') and dw.until(lambda: 'Quit' in m.drawn())
-        seen = m.drawn()
-        check(ok and 'Shader' in seen and 'Border' not in seen, 'Shader, and no Border')
+        ok = m.up('Game', 'Continue') and m.step('r1', 'Display', 'Display')
+        rows = m.rows() if ok else []
+        check('Shader' in rows and 'Border' not in rows, f'Shader, and no Border ({rows})')
         m.ends('b')
 
         print('over OpenBOR:')
         m = start('openbor', ['--port-menu', 'OPENBOR', f'{card}/Roms/OpenBOR/x.pak'])
-        ok = m.up('', 'Continue') and dw.until(lambda: 'Quit' in m.drawn())
+        ok = m.up('Game', 'Continue') and dw.until(lambda: 'Quit' in m.drawn())
         seen = m.drawn()
         check(ok and 'Continue' in seen and 'Shader' not in seen and 'Border' not in seen,
               'no Shader and no Border')

@@ -831,11 +831,13 @@ static void shot_draw_gamemenu(app *a)
 		if (bg) SDL_DestroyTexture(bg);
 		return;
 	}
-	tabs.at = tabs.from = shot_gamemenu_tab % GT_TABS;
+	/* Over a program of its own a game's tabs but Achievements (gm_tab_count) */
+	tabs.count = gm_tab_count(&u);
+	tabs.at = tabs.from = shot_gamemenu_tab % tabs.count;
 	/* The tab move a shot pressed (shot_motion), from where it was */
 	if (shot_gm_t0 && shot_gm_from >= 0) {
-		tabs.from = shot_gm_from % GT_TABS;
-		tabs.dir = (tabs.at - tabs.from + GT_TABS) % GT_TABS == 1 ? +1 : -1;
+		tabs.from = shot_gm_from % tabs.count;
+		tabs.dir = (tabs.at - tabs.from + tabs.count) % tabs.count == 1 ? +1 : -1;
 		tabs.t0 = shot_gm_t0;
 	}
 	/* The On-Screen Stats page, which A on the Display tab's row opens */
@@ -846,38 +848,10 @@ static void shot_draw_gamemenu(app *a)
 	}
 	gm_backdrop(a, &(gm_ctx){ .a = a, .bg = bg }, 1.0f);
 	gm_preview_frame(bg);
-	if (!u.port && tabs.at == GT_CONTROLS) {
+	/* The Controls tab of buttons, a game's and your PICO-8's alike; a
+	 * program's All Controls is drawn below as the other tabs are */
+	if (gm_ctltab(&u) && tabs.at == GT_CONTROLS) {
 		shot_draw_ctltab(a, &tabs);
-		if (bg) SDL_DestroyTexture(bg);
-		return;
-	}
-	/* --gm-port-controls: over your PICO-8, the Controls list its Controls
-	 * row opens (port_controls, ctlscr_over), the cursor on --gamemenu's
-	 * row, the handheld beside it, headed Controls and no tab row */
-	if (shot_gm_port_controls && u.port_reset) {
-		static menu_row crows[CT_MAX_ROWS];
-		unsigned vcol[CT_MAX_ROWS];
-		menu_style over = { .fixed_w = menu_most_w(), .follow_tint = true };
-		menu_style st = over;
-		ctlscr_game g;
-		int cn, sel;
-
-		gm_ctl_game(a, NULL, &g);
-		g.running = false;
-		g.over = &over;
-		g_gm_mem.scope_all = shot_gm_all;
-		if (!shot_gm_open) ctlscr_open();
-		shot_gm_open = true;
-		cn = ctlscr_rows(a, &g, crows, vcol, NULL, NULL);
-		sel = shot_gamemenu_sel < cn ? shot_gamemenu_sel : cn - 1;
-		if (!crows[sel].live) {
-			sel = menu_step_sel(crows, cn, sel, +1);
-			if (!crows[sel].live) sel = menu_step_sel(crows, cn, sel, -1);
-		}
-		st.side = ctlscr_side;
-		st.side_w = CTLSCR_SIDE_W;
-		st.vcolors = vcol;
-		menu_draw_styled(a, &st, gm_tab_name(GT_CONTROLS), crows, cn, sel);
 		if (bg) SDL_DestroyTexture(bg);
 		return;
 	}
@@ -912,9 +886,9 @@ static void shot_draw_gamemenu(app *a)
 	}
 	n = gm_rows(&u, (gm_tab)tabs.at, rows, &b);
 	if (n == 0) rows[n++] = MENU_NOTE("");
-	g_menu_tabs = u.port ? NULL : &tabs;
-	/* The handheld leaving with the Controls tab's name */
-	g_menu_side = u.port ? NULL : ctlscr_side;
+	g_menu_tabs = &tabs;
+	/* The handheld leaving with the Controls tab's name, where it has one */
+	g_menu_side = gm_ctltab(&u) ? ctlscr_side : NULL;
 	/* --gm-choose: A on the row, as the runner answers an option row of
 	 * more than two (menu_choose): its list over the paused game. Over your
 	 * PICO-8 the Display row's own list (port_display_pick), its picture
@@ -943,8 +917,8 @@ static void shot_draw_gamemenu(app *a)
 		menu_row ask[DEL_ASK_LINES + 2];
 		int k = shot_pick_at >= 0 && shot_pick_at < DMODE_COUNT ? shot_pick_at : DMODE_COUNT - 1, nq;
 
-		/* --gm-restart buttons: the same question after a button changed
-		 * in the Controls list over it (port_controls) */
+		/* --gm-restart buttons: the same question as the menu closes with
+		 * a button changed on its Controls tab (port_buttons_close) */
 		if (shot_gm_restart == 2) snprintf(q, sizeof q, "%s", T(S_PICO8_RESTART_BUTTONS));
 		else snprintf(q, sizeof q, T(S_PICO8_RESTART_DISPLAY), dmode_label(k));
 		nq = store_ask_rows(a, q, lines, ask);
@@ -971,7 +945,7 @@ static void shot_draw_gamemenu(app *a)
 		if (bg) SDL_DestroyTexture(bg);
 		return;
 	}
-	menu_draw(a, u.port ? NULL : gm_tab_name(tabs.at), rows, n,
+	menu_draw(a, gm_tab_name(tabs.at), rows, n,
 	          shot_gamemenu_sel < n ? shot_gamemenu_sel : n - 1,
 	          gm_width(a), a->tint);
 	g_menu_side = NULL;
@@ -1223,7 +1197,6 @@ static const char *shot_pick_heading;
 int shot_gm_choose;     /* --gm-choose: an option row's list, A pressed on it */
 int shot_gm_restart;    /* --gm-restart: over your PICO-8, a Display mode's question; 2 the buttons' */
 int shot_gm_reset;      /* --gm-reset: over your PICO-8, Reset's question */
-int shot_gm_port_controls; /* --gm-port-controls: over your PICO-8, its Controls list */
 int shot_hud_page = -1; /* --hud-page ROW: the On-Screen Stats page */
 bool shot_cheats;          /* --cheats: the cursor's game as the running one */
 int  shot_cheats_page = -1; /* --cheats-page ROW: its cheat list */

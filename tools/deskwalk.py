@@ -126,6 +126,33 @@ class Walk:
                 return False
         return self.at(screen, focus)
 
+    def rows(self, most=16):
+        """The stops of the panel up, in order from the row under the
+        cursor: Down, each press waited for, until the cursor is back where
+        it began (a list goes round on a fresh press, DESIGN.md 11.3). A
+        string drawn is said once a run (drawn_lines), so a tab's rows, whose
+        names the tab row may have drawn already, are read off the cursor.
+        A press is waited for by the launcher's loop going round twice after
+        its let-go: `state` is answered as the loop reads its events, and
+        the pass that read the let-go acts on the press, so the second
+        answer after it says where the cursor went, or that it stayed (a
+        tab of one row)"""
+        first = self.state().get('focus')
+        out = [first]
+        for _ in range(most):
+            was = self.state().get('cursor')
+            if not self.press('down'):
+                break
+            self.state()
+            s = self.state()
+            if self.proc.poll() is not None or s.get('cursor') == was:
+                break
+            focus = s.get('focus')
+            if focus == first:
+                break
+            out.append(focus)
+        return out
+
     def ends(self, key=None):
         """`key` (when given), then the launcher's end: its exit status, or
         None if it never ends"""

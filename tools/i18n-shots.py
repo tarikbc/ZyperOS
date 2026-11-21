@@ -1581,46 +1581,77 @@ EXTRA["pico8-splore-video"] = ("pico8", "PICO8", ["--screen", "games", "--view",
 EXTRA["pico8-page"] = ("pico8", "PICO8", ["--screen", "games", "--pico8-page"])
 for _k in range(7):
     EXTRA["pico8-said-%d" % _k] = ("pico8", "PICO8", ["--screen", "games", "--pico8-said", str(_k)])
-# The in-game menu over your PICO-8 (src/portmenu.h's port_menu_display): its
-# Display row, on Sharp Pixels; the Display list A opens there, the cursor on
-# Actual Size; and the question a mode other than the one on asks before
-# PICO-8 starts again in it, the cursor on Cancel, for each mode it can name.
-# The Pixel 2's alone in effect: the Brick has no PICO-8 of its own yet
-EXTRA["pico8-menu-display"] = ("pico8", "PICO8", ["--screen", "games", "--gamemenu", "1", "port"])
-EXTRA["pico8-display-list"] = ("pico8", "PICO8", ["--screen", "games", "--gamemenu", "1", "port",
+# The in-game menu over your PICO-8 (src/portmenu.h's port_menu_display): a
+# game's tabs, Game, Display and Controls (gm_tab_count: no Achievements),
+# with the rows a stopped PICO-8 answers to (1.1.0-rc.8). The Game tab, on
+# Continue and on Reset, and the question Reset asks (the Reset Game
+# hotkey's too), the cursor on Cancel. The Pixel 2's alone in effect: the
+# Brick has no PICO-8 of its own yet
+EXTRA["pico8-menu-game"] = ("pico8", "PICO8", ["--screen", "games", "--gamemenu", "0", "port"])
+EXTRA["pico8-menu-reset"] = ("pico8", "PICO8", ["--screen", "games", "--gamemenu", "1", "port"])
+EXTRA["pico8-reset-ask"] = ("pico8", "PICO8", ["--screen", "games", "--gamemenu", "1", "port", "--gm-reset"])
+# The Display tab, on Sharp Pixels: its Display row; the Display list A
+# opens there, the cursor on Actual Size; and the question a mode other than
+# the one on asks before PICO-8 starts again in it, the cursor on Cancel,
+# for each mode it can name
+EXTRA["pico8-menu-display"] = ("pico8", "PICO8", ["--screen", "games", "--gamemenu", "0", "port", "--gm-tab", "1"])
+EXTRA["pico8-display-list"] = ("pico8", "PICO8", ["--screen", "games", "--gamemenu", "0", "port", "--gm-tab", "1",
                                                   "--gm-choose", "--pick-at", "7"])
 for _k, _m in enumerate(("stretch", "aspect", "square", "integer", "tall", "overscale", "fill", "native")):
-    EXTRA["pico8-restart-" + _m] = ("pico8", "PICO8", ["--screen", "games", "--gamemenu", "1", "port",
-                                                       "--gm-restart", "--pick-at", str(_k)])
-for _name in ["pico8-menu-display", "pico8-display-list"] + ["pico8-restart-" + _m for _m in (
-        "stretch", "aspect", "square", "integer", "tall", "overscale", "fill", "native")]:
-    SHOT_SETTINGS[_name] = {"display.PICO8": "integer"}
-# ...and its On-Screen Stats row, after Display, Off and On
-EXTRA["pico8-menu-hud"] = ("pico8", "PICO8", ["--screen", "games", "--gamemenu", "2", "port"])
-EXTRA["pico8-menu-hud-on"] = ("pico8", "PICO8", ["--screen", "games", "--gamemenu", "2", "port"])
-SHOT_SETTINGS["pico8-menu-hud"] = {"display.PICO8": "integer"}
-SHOT_SETTINGS["pico8-menu-hud-on"] = {"display.PICO8": "integer", "hud": "1"}
-# ...and its picture's other rows, drawn by its shim (src/p8fx.h): Border,
-# Shader and Strength after On-Screen Stats in the Display tab's order, the
-# cursor on Shader at CRT 70% with Blur round it; and Border's list, the
-# cursor on Blur
-EXTRA["pico8-menu-shader"] = ("pico8", "PICO8", ["--screen", "games", "--gamemenu", "4", "port"])
-EXTRA["pico8-border-list"] = ("pico8", "PICO8", ["--screen", "games", "--gamemenu", "3", "port",
+    EXTRA["pico8-restart-" + _m] = ("pico8", "PICO8", ["--screen", "games", "--gamemenu", "0", "port",
+                                                       "--gm-tab", "1", "--gm-restart", "--pick-at", str(_k)])
+# ...its picture's rows, drawn by its shim (src/p8fx.h), in the Display tab's
+# order: the cursor on Shader at CRT 70% with Blur round it, Strength under
+# it; and Border's list, the cursor on Blur
+EXTRA["pico8-menu-shader"] = ("pico8", "PICO8", ["--screen", "games", "--gamemenu", "2", "port", "--gm-tab", "1"])
+EXTRA["pico8-border-list"] = ("pico8", "PICO8", ["--screen", "games", "--gamemenu", "1", "port", "--gm-tab", "1",
                                                  "--gm-choose", "--pick-at", "1"])
-for _name in ("pico8-menu-shader", "pico8-border-list"):
+# ...its Screen Colors row (1.1.0, the whole panel's), at Custom, its longest
+# value, right over On-Screen Stats, and the page A opens over the paused
+# cart; and On-Screen Stats, the tab's last, Off and On
+EXTRA["pico8-menu-colors"] = ("pico8", "PICO8", ["--screen", "games", "--gamemenu", "4", "port", "--gm-tab", "1"])
+EXTRA["pico8-colors-page"] = ("pico8", "PICO8", ["--screen", "games", "--gamemenu", "0", "port",
+                                                 "--look-page", "screen", "1"])
+EXTRA["pico8-menu-hud"] = ("pico8", "PICO8", ["--screen", "games", "--gamemenu", "5", "port", "--gm-tab", "1"])
+EXTRA["pico8-menu-hud-on"] = ("pico8", "PICO8", ["--screen", "games", "--gamemenu", "5", "port", "--gm-tab", "1"])
+# ...and the Controls tab, a game's, the cursor on the A cap's row, the
+# handheld beside it; and the start again new buttons ask for as the menu
+# closes back to the cart
+EXTRA["pico8-controls"] = ("pico8", "PICO8", ["--screen", "games", "--gamemenu", "1", "port", "--gm-tab", "2"])
+EXTRA["pico8-restart-buttons"] = ("pico8", "PICO8", ["--screen", "games", "--gamemenu", "0", "port",
+                                                     "--gm-restart", "buttons"])
+for _name in [n for n in EXTRA if n.startswith("pico8-") and n not in (
+        "pico8-splore", "pico8-splore-video", "pico8-page") and not n.startswith("pico8-said-")]:
+    SHOT_SETTINGS[_name] = {"display.PICO8": "integer"}
+for _name in ("pico8-menu-shader", "pico8-border-list", "pico8-menu-colors", "pico8-colors-page",
+              "pico8-menu-hud", "pico8-menu-hud-on"):
     SHOT_SETTINGS[_name] = {"display.PICO8": "integer", "shader.PICO8": "crt", "shader_strength.PICO8": "70",
                             "border.PICO8": "blur"}
-# ...and its Reset row, the cursor on it, and the question it asks (the Reset
-# Game hotkey's too), the cursor on Cancel; the Controls list its Controls row
-# opens, the cursor on the A cap's row; and the start again new buttons ask for
-EXTRA["pico8-menu-reset"] = ("pico8", "PICO8", ["--screen", "games", "--gamemenu", "6", "port"])
-EXTRA["pico8-reset-ask"] = ("pico8", "PICO8", ["--screen", "games", "--gamemenu", "6", "port", "--gm-reset"])
-EXTRA["pico8-controls"] = ("pico8", "PICO8", ["--screen", "games", "--gamemenu", "1", "port",
-                                              "--gm-port-controls"])
-EXTRA["pico8-restart-buttons"] = ("pico8", "PICO8", ["--screen", "games", "--gamemenu", "2", "port",
-                                                     "--gm-restart", "buttons"])
-for _name in ("pico8-menu-reset", "pico8-reset-ask", "pico8-controls", "pico8-restart-buttons"):
-    SHOT_SETTINGS[_name] = {"display.PICO8": "integer"}
+for _name in ("pico8-menu-colors", "pico8-colors-page"):
+    SHOT_SETTINGS[_name].update(SHOT_SETTINGS["screen-colors-custom"])
+SHOT_SETTINGS["pico8-menu-hud-on"]["hud"] = "1"
+
+
+# The in-game menu over OpenBOR and over a port (src/portmenu.h), a game's
+# tabs since 1.1.0-rc.8 (the README's 'openbor' and 'ports-menu' are their
+# Game tabs): the Display tab's Screen Colors alone, at Custom, its longest
+# value, and its page over the program; and the Controls tab's All
+# Controls, the read-only pages behind it (port-<script>-<page>, above)
+for _name, _shot in (("openbor-menu-display", ("openbor", "OPENBOR", ["--screen", "games", "--gamemenu", "0",
+                                                                      "port", "--gm-tab", "1"])),
+                     ("openbor-menu-controls", ("openbor", "OPENBOR", ["--screen", "games", "--gamemenu", "0",
+                                                                       "port", "--gm-tab", "2"])),
+                     ("openbor-colors-page", ("openbor", "OPENBOR", ["--screen", "games", "--gamemenu", "0",
+                                                                     "port", "--look-page", "screen", "1"])),
+                     ("ports-menu-display", ("portdocs", "PRT", ["--screen", "games", "--gamemenu", "0", "port",
+                                                                 "--gm-tab", "1"])),
+                     ("ports-menu-controls", ("portdocs", "PRT", ["--screen", "games", "--gamemenu", "0", "port",
+                                                                  "--gm-tab", "2"]))):
+    EXTRA[_name] = _shot
+for _name in ("openbor-menu-display", "openbor-colors-page", "ports-menu-display"):
+    SHOT_SETTINGS[_name] = dict(SHOT_SETTINGS["screen-colors-custom"])
+for _name in ("ports-menu-display", "ports-menu-controls"):
+    PORT_FOCUS[_name] = "Star Farm.sh"
 
 
 # The demonstration card with one game in each system that has none (a name

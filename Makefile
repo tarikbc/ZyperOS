@@ -7,7 +7,7 @@
 
 .PHONY: all clean native desk desk-brick handhelds px2-payload vendor boot system-art checkmark \
         check check-cheevos check-hare check-portal check-httpd check-idle check-taskhold check-saver check-rahash check-flacdec check-achtab check-signin check-search \
-        check-raset check-xfer check-sshlink check-usblink check-devmode check-devices check-devicegen check-model check-ctl check-menus check-status check-battery check-corner check-artscrape check-artrun check-sgdb check-snapshelf check-snaps check-audioout \
+        check-raset check-xfer check-sshlink check-usblink check-devmode check-devices check-devicegen check-model check-ctl check-menus check-port-menu check-status check-battery check-corner check-artscrape check-artrun check-sgdb check-snapshelf check-snaps check-audioout \
         check-db check-coreopts check-mp4keys check-gpuframes check-gamedel check-gamern check-esmedia check-corepins check-targets yuvtarget check-storage check-stats check-sort check-bt check-ss check-titles check-dsv check-sidelights check-osdbar check-boost check-levels check-hud check-dmodefit check-themefile check-pkkeys check-pkover check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-bios check-gamefile check-startfail check-kbnav check-tween check-menumotion check-menusnap check-cardgen check-cardart check-focusfx check-blur check-gridrule check-screencard check-focusgeo check-roundrect check-rowmacro check-emptyhome check-zyperrig check-randgame check-shelfdir \
         check-sysmark check-flip check-menushots check-controls-shots check-design check-systemart check-linebreak check-portload check-portout \
         check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages check-tour check-tour-shots check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pico8 check-pico8-wget check-pico8-mp4 check-pico8-display check-pico8-keys check-p8fx check-p8fx-gl check-gpu-upright check-pmhelper check-portdoc check-boottheme check-splashbright check-bootbright check-seed-version check-px2-push check-wifi-watch check-launch-start check-crashlog check-captive check-mdns check-linksteps check-usbrole check-usbdrive check-gauge check-usbpower check-phonelink check-usblog check-clients check-keyhints check-pace check-qr check-autozone \
@@ -45,7 +45,7 @@ src/i18n_tables.c: $(wildcard res/strings/*.txt) tools/i18n.py
 # of good intentions is a plan. A check nobody runs is a check that does not
 # exist, and check-menus was about to join eight others in that state.
 CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-taskhold check-saver check-rahash check-flacdec check-achtab check-rasubmit check-raoffline check-radl check-dlq check-dl-recent check-dl-look check-cheatsdl check-cheats check-signin check-noticeq check-badges check-badge-shots \
-         check-raset check-xfer check-sshlink check-usblink check-devmode check-devices check-devicegen check-model check-ctl check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-snaps check-audioout \
+         check-raset check-xfer check-sshlink check-usblink check-devmode check-devices check-devicegen check-model check-ctl check-menus check-port-menu check-artscrape check-artrun check-sgdb check-snapshelf check-snaps check-audioout \
          check-db check-coreopts check-mp4keys check-gamedel check-gamern check-esmedia check-media check-snapsize check-corepins check-targets check-storage check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
          check-mp4lib check-mp4queue check-mp4art check-mp4lock check-mp4look check-mp4views check-mp4resume check-bands check-covercolor check-mp4frame check-mp4size check-p2share check-webtheme check-p2ws check-p2codec check-p2d check-play check-p2 check-resident check-spawn check-controls check-remap check-hotkeys check-rumble check-eq check-eqdsp check-eqplugin check-controls-shots check-logpack \
          check-clock check-autozone check-status check-battery check-battery-eta check-dslang check-pacing check-sgbmode check-border check-handframe check-gpuframes check-dsresume check-corestate check-core-stamp check-core-room check-px2-perf check-px2-snap check-px2 check-lowbatt check-battempty check-powerhold check-homesys check-collect check-shotname check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-boost check-levels check-hud check-dmodefit check-themefile check-pkkeys check-pkover check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-bios check-gamefile check-startfail check-kbnav check-randgame check-shelfdir check-look \
@@ -808,10 +808,11 @@ check-pico8-mp4: build-native/mp4hand-check native
 # the restart file and USR2 (the program ended and started again with the
 # new Display, portkeys and the follower going on, a bad word a plain Quit, a
 # file from before none, POWER meanwhile starting nothing), then the real
-# launcher in desk mode's dummy window as portkeys starts it: the row, its
-# list, the question with the cursor on Cancel, Start Again's exit and what
-# it keeps, none over OpenBOR, and --display, the Next Display hotkey's
-# question alone (tools/pico8-display-check.py)
+# launcher in desk mode's dummy window as portkeys starts it: a game's tabs,
+# the Display tab's row, its list, the question with the cursor on Cancel,
+# Start Again's exit and what it keeps, X from that tab Quit, none over
+# OpenBOR, and --display, the Next Display hotkey's question alone
+# (tools/pico8-display-check.py)
 check-pico8-display: native
 	@python3 tools/pico8-display-check.py
 
@@ -820,8 +821,9 @@ check-pico8-display: native
 # stand-in pico8_64; then the real launcher in desk mode's dummy window: a
 # cart opened handing portkeys the hotkeys and the screenshot's folder,
 # PICO-8.sh the pad's line and the pop-up's slab with its empty square; the
-# menu's Reset row and question, --reset's question alone, and Controls over
-# it changing a button, with the start again it asks for
+# menu's Game tab and its Reset row and question, --reset's question alone,
+# and its Controls tab changing a button, with the start again it asks for
+# as the menu closes back to the cart, and the next menu where it was left
 check-pico8-keys: native
 	@python3 tools/pico8-keys-check.py
 
@@ -830,8 +832,8 @@ check-pico8-keys: native
 # shelf) and Next Shader on a scratch database, its picture out of PICO-8's
 # preblit (build-native/p8fx-check); sd/pixel2/PICO-8.sh loading p8fx.so
 # first, with a stand-in pico8_64; and the real launcher in desk mode's dummy
-# window as portkeys starts it over PICO-8: the Border, Shader and Strength
-# rows in the Display tab's order, each kept and written for the shim, Your
+# window as portkeys starts it over PICO-8: its Display tab's Border, Shader
+# and Strength rows in a game's order, each kept and written for the shim, Your
 # Own's picture file, none over OpenBOR, and the look file written as a cart
 # opens from the shelf (tools/p8fx-check.py)
 check-p8fx: build-native/p8fx-check native
@@ -973,9 +975,21 @@ build-native/nightmode-check: tools/nightmode-check.c src/nightmode.c src/nightm
 # game against a Diatom of the check's own, the menu up: the Display tab's
 # Screen Colors row, A opening MENU's page over the paused game, a step kept
 # and on the panel (desk mode's stand-in for the table) with the game still
-# paused, B back to the menu and B again to the game; no row without a table
+# paused, B back to the menu and B again to the game; no row without a table;
+# and over your PICO-8 and OpenBOR (--port-menu, as portkeys starts it), the
+# same row on their Display tab and the page over the program
 check-ingame-colors: native
 	@python3 tools/ingame-colors-check.py
+
+# The in-game menu over OpenBOR, a PortMaster port and PortMaster itself, a
+# game's tabs since 1.1.0-rc.8: the real launcher in desk mode's dummy window
+# as portkeys starts it, as the host and as the Pixel 2: Game's Continue and
+# Quit, Display's Screen Colors alone where the display has a table,
+# Controls' All Controls opening the program's read-only pages, X Quit from
+# any tab, the next menu where the last was left, Keep Waiting while it
+# starts (tools/port-menu-check.py)
+check-port-menu: native
+	@python3 tools/port-menu-check.py
 
 # The display taken back after a game, a crashed one too (src/displayback.h):
 # master asked for until a dying Diatom lets go, and a CRTC left with nothing

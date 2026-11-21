@@ -23,16 +23,18 @@ it asks for, since PICO-8 draws its picture where it was told as it started.
    on the shelf's own row, "stretch" in the request.
 3. The real launcher in desk mode's dummy window (build-native/zyperos, make
    native), as portkeys starts it over the program (--port-menu PICO8 CART):
-   the rows Continue, Display (the mode on, from display.PICO8), Controls and
-   Quit; Left and Right on Display step nothing; A opens the Display list,
+   a game's tabs, on Game's Continue, and R1 the Display tab on its Display
+   row (the mode on, from display.PICO8), as over a game since 1.1.0-rc.8;
+   Left and Right on Display step nothing; A opens the Display list,
    and a mode other than the one on asks "Start the cart again?" with the
    cursor on Cancel: A there is Cancel (the menu, nothing kept, no file), B
    Continue; the yes ends the menu with PORT_MENU_RESTART (14), display.PICO8
    kept and the restart file saying the mode; over OpenBOR no Display row;
    and --display (PORT_MENU_DISPLAY_ARG, the Next Display hotkey's) asks for
    the next mode with no menu, Cancel 10 and nothing kept, Start Again 14;
-   and On-Screen Stats after Display, Off, Right turning it On in the
-   device's database (portkeys reads it as the menu closes).
+   and On-Screen Stats the Display tab's last row, Off, Right turning it On
+   in the device's database (portkeys reads it as the menu closes); over
+   OpenBOR no Display row and no On-Screen Stats.
 Every wait in the walks is for an event, never a time or a count of frames
 (tools/deskwalk.py): the panel a key lands on, as desk's `state` says it, a
 setting, a file, the launcher's end. On a runner busy with other checks the
@@ -385,9 +387,12 @@ def launcher(tmp):
             return f'<{e}>'
 
     def start(name, args):
-        """The launcher on the desk's socket: its walk (tools/deskwalk.py)"""
+        """The launcher on the desk's socket: its walk (tools/deskwalk.py),
+        its menu opening on Game, on Continue, as a cart's first does (no
+        memory of the last menu, src/portmenu.h's PORT_MENU_MEM)"""
         if dsock.exists():
             dsock.unlink()
+        (flags / 'zyperos-port-menu-mem').unlink(missing_ok=True)
         log = open(tmp / f'{name}.log', 'w')
         p = subprocess.Popen([str(BINARY)] + args, env=env, stdout=log, stderr=subprocess.STDOUT)
         procs.append(p)
@@ -398,19 +403,15 @@ def launcher(tmp):
     try:
         print('the in-game menu over your PICO-8:')
         m = start('menu', ['--port-menu', 'PICO8', cart])
-        check(m.up('', 'Continue') and dw.until(lambda: 'Quit' in m.drawn()), 'it is up')
-        seen = m.drawn()
-        check('Display' in seen and 'Sharp Pixels' in seen, 'a Display row, its value the mode on (Sharp Pixels)')
-        check(seen.index('Continue') < seen.index('Display') < seen.index('Controls') < seen.index('Quit')
-              if all(w in seen for w in ('Continue', 'Display', 'Controls', 'Quit')) else False,
-              'Continue, Display, Controls, Quit')
+        check(m.up('Game', 'Continue') and dw.until(lambda: 'Quit' in m.drawn()), 'it is up, on the Game tab')
+        check(m.step('r1', 'Display', 'Display') and dw.until(lambda: 'Sharp Pixels' in m.drawn()),
+              'R1: the Display tab, on its Display row, its value the mode on (Sharp Pixels)')
         # Right and Left on Display, then Down and Up: the cursor's move says
         # the two before it were read
-        m.to('down', 'Display', '')
         m.press('right')
         m.press('left')
-        m.step('down', '', 'On-Screen Stats')
-        m.step('up', '', 'Display')
+        m.to('down', 'Shader', 'Display')
+        m.to('up', 'Display', 'Display')
         check(display() == 'integer' and not restart.exists(), 'Left and Right on Display step nothing')
         check(m.step('a', 'Display', 'Sharp Pixels') and
               dw.until(lambda: 'Full Screen' in m.drawn() and 'Original Shape' in m.drawn()),
@@ -418,10 +419,10 @@ def launcher(tmp):
         m.to('down', 'Actual Size', 'Display')
         check(m.step('a', ASK, 'Cancel') and dw.until(lambda: any('starts again in Actual Size' in l for l in m.drawn())),
               'a mode other than the one on asks, naming it, the cursor on Cancel')
-        check(m.step('a', '', 'Display') and m.proc.poll() is None and display() == 'integer' and not restart.exists(),
-              'A on the question\'s first stop is Cancel: the menu, nothing kept, no file')
+        check(m.step('a', 'Display', 'Display') and m.proc.poll() is None and display() == 'integer' and
+              not restart.exists(), 'A on the question\'s first stop is Cancel: the menu, nothing kept, no file')
         m.step('a', 'Display', 'Sharp Pixels')
-        check(m.step('a', '', 'Display') and m.proc.poll() is None and not restart.exists(),
+        check(m.step('a', 'Display', 'Display') and m.proc.poll() is None and not restart.exists(),
               'picking the mode on asks nothing: the menu again')
         m.step('a', 'Display', 'Sharp Pixels')
         m.to('down', 'Actual Size', 'Display')
@@ -435,7 +436,7 @@ def launcher(tmp):
         print('a menu that ends otherwise, a file left from before:')
         restart.write_text('fill\n')
         m = start('menu-b', ['--port-menu', 'PICO8', cart])
-        m.up('', 'Continue')
+        m.up('Game', 'Continue')
         rc = m.ends('b')
         check(rc == 10 and not restart.exists(), f'B is Continue, and no restart file is left ({rc})')
 
@@ -443,13 +444,12 @@ def launcher(tmp):
         hud = lambda: (lambda c: (c.execute("SELECT value FROM settings WHERE key='hud'").fetchone() or [None])[0])(
             sqlite3.connect(str(db)))
         m = start('menu-hud', ['--port-menu', 'PICO8', cart])
-        ok = m.up('', 'Continue') and dw.until(lambda: 'Quit' in m.drawn())
-        seen = m.drawn()
-        check(ok and 'On-Screen Stats' in seen and seen.index('Display') < seen.index('On-Screen Stats') <
-              seen.index('Controls') if all(w in seen for w in ('Display', 'On-Screen Stats', 'Controls')) else False,
-              'a row after Display, before Controls')
+        ok = m.up('Game', 'Continue') and m.step('r1', 'Display', 'Display')
+        tab = m.rows() if ok else []
+        check(ok and tab[:1] == ['Display'] and tab[-1:] == ['On-Screen Stats'],
+              f'the Display tab\'s last row, as over a game ({tab})')
         check(hud() in (None, '0'), 'Off')
-        m.to('down', 'On-Screen Stats', '')
+        m.to('down', 'On-Screen Stats', 'Display')
         m.press('right')
         check(dw.until(lambda: hud() == '1'), f'Right turns it On, kept for portkeys ({hud()!r})')
         m.press('left')
@@ -457,12 +457,20 @@ def launcher(tmp):
         rc = m.ends('b')
         check(rc == 10, f'B is Continue ({rc})')
 
+        print('X from the Display tab:')
+        m = start('menu-x', ['--port-menu', 'PICO8', cart])
+        m.up('Game', 'Continue')
+        m.step('r1', 'Display', 'Display')
+        rc = m.ends('x')
+        check(rc == 11 and not restart.exists(), f'Quit, from any tab, as over a game ({rc})')
+
         print('over OpenBOR:')
         m = start('openbor', ['--port-menu', 'OPENBOR', f'{card}/Roms/OpenBOR/x.pak'])
-        ok = m.up('', 'Continue') and dw.until(lambda: 'Quit' in m.drawn())
+        ok = m.up('Game', 'Continue') and dw.until(lambda: 'Quit' in m.drawn())
+        m.step('r1', 'Display')
         seen = m.drawn()
-        check(ok and 'Continue' in seen and 'Display' not in seen and 'On-Screen Stats' not in seen,
-              'no Display row and no On-Screen Stats')
+        check(ok and 'Continue' in seen and 'Sharp Pixels' not in seen and 'On-Screen Stats' not in seen,
+              'its Display tab has no Display row and no On-Screen Stats (its picture is its own)')
         m.ends('b')
 
         print('--display, the Next Display hotkey\'s question alone:')

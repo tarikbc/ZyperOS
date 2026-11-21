@@ -22,6 +22,19 @@ as the Brick:
   - B: back to the menu, the game still paused (no RESUME);
   - B again: the menu closes and the game goes on (RESUME).
 And as the host's own profile, which has no table: no Screen Colors row.
+
+Over your PICO-8 too (1.1.0-rc.8, its menu on the game's tabs): the real
+launcher as portkeys starts it over the program (--port-menu PICO8 CART),
+wearing the Pixel 2's and the Brick's profile (--device after the game):
+  - R1 to the Display tab: Screen Colors right over On-Screen Stats, its
+    last row, as over a game;
+  - A on it: the same page over the paused cart's frame;
+  - Right on its Look: Vivid kept in the device's database at once and on
+    the panel (desk mode's `colors`);
+  - B: back to the menu, on the row; B again: Continue (10);
+as the host's own profile no row. And over OpenBOR, whose picture is its
+own (1.1.0-rc.8, its menu on the game's tabs too), Screen Colors is its
+Display tab's one row, A the page, a step kept, B back, B Continue.
 """
 import argparse
 import importlib.machinery
@@ -226,6 +239,100 @@ def walk(binary, desk, tmp, card, device):
     return logp
 
 
+def pico8_walk(binary, desk, tmp, base, device):
+    """The menu over your PICO-8 as portkeys starts it, as `device`, and
+    its Screen Colors"""
+    dw = module('deskwalk', ROOT / 'tools/deskwalk.py')
+    card = tmp / f'p8-{device}'
+    shutil.copytree(base, card, symlinks=True)
+    (card / 'Roms/PICO-8').mkdir(parents=True, exist_ok=True)
+    (card / 'Roms/PICO-8/celeste.p8').write_text('pico-8 cartridge\n')
+    (card / 'Bios/PICO-8').mkdir(parents=True, exist_ok=True)
+    for f in ('pico8_64', 'pico8.dat'):
+        (card / 'Bios/PICO-8' / f).write_bytes(b'stand-in')
+    (card / 'ZyperOS/pico8').mkdir(parents=True, exist_ok=True)
+    (card / 'ZyperOS/pico8/PICO-8.sh').write_text('#!/bin/sh\n')
+    (card / 'Roms/OpenBOR').mkdir(parents=True, exist_ok=True)
+    (card / 'Roms/OpenBOR/x.pak').write_bytes(b'')
+    sock = Path(tempfile.gettempdir()) / f'zyperos-gmcolors-{os.getpid()}-p8{device}.sock'
+    flags = tmp / f'p8-{device}-flags'
+    flags.mkdir(exist_ok=True)
+    env = desk.card_env(card, None)
+    env.update(SDL_VIDEODRIVER='dummy', SDL_AUDIODRIVER='dummy', ZYPEROS_DESK_FORCE='1',
+               ZYPEROS_DESK_SOCK=str(sock), ZYPEROS_FLAG_DIR=str(flags))
+    env.pop('ZYPEROS_HEADLESS', None)
+    table = device != 'desktop'
+    procs = []
+
+    def start(name, args):
+        """The menu as portkeys starts it, opening on Game, on Continue, as
+        a game's first does: no memory of the last menu (src/portmenu.h's
+        PORT_MENU_MEM, which the launcher removes at each hand-over)"""
+        if sock.exists():
+            sock.unlink()
+        (flags / 'zyperos-port-menu-mem').unlink(missing_ok=True)
+        log = open(tmp / f'p8-{device}-{name}.log', 'w')
+        p = subprocess.Popen([str(binary)] + args + ['--device', device], env=env, stdout=log,
+                             stderr=subprocess.STDOUT)
+        procs.append(p)
+        return dw.Walk(sock, p, tmp / f'p8-{device}-{name}.log')
+
+    name = f'{device}, over your PICO-8'
+    try:
+        m = start('menu', ['--port-menu', 'PICO8', f'{card}/Roms/PICO-8/celeste.p8'])
+        ok = m.up('Game', 'Continue') and m.step('r1', 'Display', 'Display')
+        rows = m.rows() if ok else []
+        if not table:
+            check(ok and 'Screen Colors' not in rows, f'{name}: no table, no Screen Colors row ({rows})')
+            m.ends('b')
+        else:
+            check(rows[-2:] == ['Screen Colors', 'On-Screen Stats'],
+                  f'{name}: R1, the Display tab: Screen Colors right over On-Screen Stats ({rows})')
+            m.to('down', 'Screen Colors', 'Display')
+            check(m.step('a', 'Screen Colors', 'Look') and
+                  dw.until(lambda: 'Temperature' in m.drawn() and 'Gamma' in m.drawn()),
+                  f'{name}: A on it: the Screen Colors page over the cart, its rows drawn')
+            m.press('right')
+            check(dw.until(lambda: kept(card) == VIVID), f'{name}: Right on Look: Vivid kept at once ({kept(card)})')
+            colors = m.state().get('colors')
+            check(isinstance(colors, dict) and colors.get('kept') is True and
+                  [colors.get(k) for k in ('temp', 'tint', 'contrast', 'saturation', 'gamma')] == VIVID,
+                  f'{name}: and on the panel\'s table ({colors})')
+            check(m.step('b', 'Display', 'Screen Colors') and m.proc.poll() is None,
+                  f'{name}: B: back to the menu, on the row, PICO-8 still stopped')
+            rc = m.ends('b')
+            check(rc == 10, f'{name}: B again: Continue ({rc})')
+        # Over OpenBOR, a program whose picture is its own: the panel's
+        # Screen Colors is its Display tab's one row, as over a port
+        name = f'{device}, over OpenBOR'
+        m = start('openbor', ['--port-menu', 'OPENBOR', f'{card}/Roms/OpenBOR/x.pak'])
+        ok = m.up('Game', 'Continue') and m.step('r1', 'Display')
+        if not table:
+            check(ok and 'Screen Colors' not in m.drawn(), f'{name}: no table, no Screen Colors row')
+            m.ends('b')
+        else:
+            rows = m.rows() if ok else []
+            check(rows == ['Screen Colors'], f'{name}: R1, the Display tab: Screen Colors, its one row ({rows})')
+            check(m.step('a', 'Screen Colors', 'Look') and
+                  dw.until(lambda: 'Temperature' in m.drawn() and 'Gamma' in m.drawn()),
+                  f'{name}: A on it: the Screen Colors page over the program')
+            m.press('left')
+            check(dw.until(lambda: kept(card) != VIVID), f'{name}: Left on Look: another look kept at once ({kept(card)})')
+            check(m.step('b', 'Display', 'Screen Colors') and m.proc.poll() is None,
+                  f'{name}: B: back to the menu, on the row')
+            rc = m.ends('b')
+            check(rc == 10, f'{name}: B again: Continue ({rc})')
+    except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError) as e:
+        check(False, f'{name}: the launcher answered its socket ({e})')
+    finally:
+        for p in procs:
+            if p.poll() is None:
+                p.kill()
+                p.wait()
+        if sock.exists():
+            sock.unlink()
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--binary', default=str(ROOT / 'build-native/zyperos'))
@@ -249,13 +356,15 @@ def main():
             shutil.copytree(base, card, symlinks=True)
             game_left_running(card)
             walk(binary, desk, tmp, card, device)
+            pico8_walk(binary, desk, tmp, base, device)
     finally:
         if not fails:
             shutil.rmtree(tmp, ignore_errors=True)
     if fails:
         print(f'check-ingame-colors: {len(fails)} failed (logs in {tmp})')
         return 1
-    print('ok: Screen Colors from the in-game menu, its page over the paused game, kept and on the panel at once')
+    print('ok: Screen Colors from the in-game menu, its page over the paused game, over your PICO-8 and '
+          'over OpenBOR, kept and on the panel at once')
     return 0
 
 

@@ -100,6 +100,17 @@ static inline bool port_menu_overlays(const char *tag)
  * question over the frame, then PORT_MENU_RESTART or PORT_MENU_CONTINUE */
 #define PORT_MENU_DISPLAY_ARG "--display"
 
+/* Where the menu over your PICO-8 was left, for the next MENU over the same
+ * cart, as a game's in-game menu opens where it was closed (DESIGN.md 11.28,
+ * "Where it opens"): each menu over PICO-8 is a process of its own, where a
+ * game's is the launcher's and remembers it (g_gm_mem). One line, the tab,
+ * the row each tab was on (its gm_row or ct_row) and Applies To's scope:
+ * "tab row0 row1 row2 row3 scope", written whole and renamed in as the menu
+ * ends. The launcher removes it as it hands a cart over (launch_port), so a
+ * cart's first MENU opens on Game, on Continue; a start again (a Display
+ * mode, new buttons) keeps it. A file it cannot read is none. */
+#define PORT_MENU_MEM "/tmp/zyperos-port-menu-mem"
+
 /* The menu's process to the kernel when memory runs out: the first to go,
  * its oom_score_adj at the top of the scale */
 #define PORT_MENU_OOM "1000"
