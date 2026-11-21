@@ -330,10 +330,22 @@ port_procs() {
 # stuck in the kernel, a GPU hang, a read from the card), leaves the reason
 # there, in Download logs, and not only on a player's description (1.0.6,
 # ports stuck on their loading screen).
+#
+# A script that execs its program is that program: your PICO-8's PICO-8.sh
+# execs pico8_64, and OpenBOR.sh OpenBOR, so the group's leader is no shell
+# and nothing else is in the group. It is the game, and it is TERMed at once
+# with the rest. It used to be left for the group's TERM 2 s later, the cart
+# going on meanwhile, so MENU then X seemed not to take, and a second MENU in
+# those 2 s opened the menu again (1.1.0-rc.8, "menu and then X on the pico 8
+# has to be done twice"; tools/pico8-quit-check.py).
 port_end() {
-	local procs
+	local procs comm=
 	[ -n "$PORT_PID" ] || return
 	procs=$(port_procs)
+	if [ -z "$procs" ]; then
+		read -r comm < "/proc/$PORT_PID/comm" 2> /dev/null
+		case $comm in ''|bash|sh|ash|dash|busybox) ;; *) procs=$PORT_PID ;; esac
+	fi
 	[ -n "$procs" ] && kill -TERM $procs 2> /dev/null
 	kill -CONT -"$PORT_PID" 2> /dev/null
 	( sleep 2; kill -TERM -"$PORT_PID" 2> /dev/null; kill -CONT -"$PORT_PID" 2> /dev/null
