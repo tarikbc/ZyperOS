@@ -1908,6 +1908,23 @@ static void port_quiet_follow(bool force)
 	fprintf(stderr, "quiet: PICO-8 %s\n", q ? "quiet, MP4 plays" : "heard");
 }
 
+/* THE VOLUME BOOST OVER YOUR PICO-8 (src/boost.h, DESIGN.md 11.6), heard on
+ * MP4 behind it. portkeys has the keys over PICO-8 and writes the boost's
+ * gain into the equalizer's shared file, which the plugin in PICO-8's chain
+ * reads; MP4 takes it only from a GAIN line on its socket (the launcher's
+ * src/levels.c sends one with every step), and the launcher is gone. So the
+ * follower, which is MP4's connection beside PICO-8, passes the file's gain
+ * on at its ten a second (mp4c_gain says only a change): a step of the boost
+ * over PICO-8 reaches the song playing as it does over a Diatom game. Before
+ * this, with music over PICO-8 (PICO-8 quiet), the bar's cells moved and the
+ * song stayed as loud as the launcher had left it. */
+static void port_gain_follow(void)
+{
+	const int db = eq_share_gain_get();
+
+	if (db >= 0) mp4c_gain(db);
+}
+
 /* As the launcher hands over to a program (launch_port) and as it starts:
  * your PICO-8 quiet from its first sound when MP4 plays (`pico8`), any other
  * program never, MP4 being stopped for it */
@@ -6115,6 +6132,8 @@ static int mp4_follow_main(void)
 		mp4_poll();
 		/* PICO-8 quiet while MP4 plays, heard again at a pause or the end */
 		port_quiet_follow(false);
+		/* And the boost's steps over PICO-8, portkeys's, on MP4 */
+		port_gain_follow();
 		nanosleep(&nap, NULL);
 	}
 	free(taken);

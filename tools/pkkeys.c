@@ -444,3 +444,109 @@ void pk_boost_look(pk_boost *b, pk_kind kind, uint32_t now, osdbar_look *l)
 
 	boost_look(&b->bar[bright], bright ? OSDBAR_BRIGHT : OSDBAR_VOLUME, BOOST_OPEN, now, l);
 }
+
+/* ---- the boost's buzz as it opens ------------------------------------------------ */
+
+/* src/rumble.c's words and shares: the launcher's IDS and PCT, in its order.
+ * tools/pkkeys-check.c holds the two the same through the launcher's own
+ * rumble_level_parse and rumble_level_pct. */
+static const char *const RUMBLE_WORD[] = { "off", "low", "medium", "full" };
+static const int RUMBLE_PCT[] = { 0, 35, 65, 100 };
+
+int pk_rumble_pct(sqlite3 *db)
+{
+	sqlite3_stmt *st;
+	int pct = 100;
+	unsigned i;
+
+	if (db && sqlite3_prepare_v2(db, "SELECT value FROM settings WHERE key='rumble';", -1, &st, NULL) ==
+	          SQLITE_OK) {
+		if (sqlite3_step(st) == SQLITE_ROW) {
+			const char *v = (const char *)sqlite3_column_text(st, 0);
+
+			for (i = 0; v && i < sizeof RUMBLE_WORD / sizeof RUMBLE_WORD[0]; i++)
+				if (!strcmp(v, RUMBLE_WORD[i])) pct = RUMBLE_PCT[i];
+		}
+		sqlite3_finalize(st);
+	}
+	return pct;
+}
+
+int pk_buzz_pct(sqlite3 *db, int did)
+{
+	return (did & BOOST_OPENED) ? pk_rumble_pct(db) : 0;
+}
+
+uint16_t pk_buzz_strength(int pct)
+{
+	if (pct <= 0) return 0;
+	if (pct >= 100) return 0xFFFF;
+	return (uint16_t)((float)0xFFFF * ((float)pct / 100.0f) + 0.5f);
+}
+
+/* ---- whose display may be borrowed --------------------------------------------- */
+
+void pk_looks_init(pk_looks *l)
+{
+	memset(l, 0, sizeof *l);
+	l->settles_at = -1;
+}
+
+void pk_looks_begin(pk_looks *l, long now)
+{
+	int i;
+
+	(void)now;
+	for (i = 0; i < l->n; i++) l->e[i].seen = false;
+	l->waiting = 0;
+	l->settles_at = -1;
+}
+
+bool pk_looks_seen(pk_looks *l, int pid, int fd, long now)
+{
+	pk_look *e = NULL;
+	bool ok;
+	int i;
+
+	for (i = 0; i < l->n && !e; i++)
+		if (l->e[i].pid == pid && l->e[i].fd == fd) e = &l->e[i];
+	if (!e && l->n < PK_LOOKS_MAX) {
+		e = &l->e[l->n++];
+		e->pid = pid;
+		e->fd = fd;
+		e->first = e->last = now;
+	}
+	if (!e) return pid == l->trusted && pid > 0;
+	/* A gap in the looks, and what was open then may have closed and opened
+	 * again: from now on */
+	if (now - e->last > PK_LOOK_GAP_MS) e->first = now;
+	e->last = now;
+	e->seen = true;
+	ok = (pid == l->trusted && pid > 0) || now - e->first >= PK_SETTLE_MS;
+	if (!ok) {
+		l->waiting++;
+		if (l->settles_at < 0 || e->first + PK_SETTLE_MS < l->settles_at) l->settles_at = e->first + PK_SETTLE_MS;
+	}
+	return ok;
+}
+
+void pk_looks_end(pk_looks *l, bool whole)
+{
+	int i, k = 0;
+
+	if (!whole) return;
+	for (i = 0; i < l->n; i++)
+		if (l->e[i].seen) l->e[k++] = l->e[i];
+	l->n = k;
+}
+
+void pk_looks_trust(pk_looks *l, int pid)
+{
+	l->trusted = pid;
+}
+
+long pk_looks_wait(const pk_looks *l, long now)
+{
+	if (!l->waiting || l->settles_at < 0) return -1;
+	return l->settles_at > now ? l->settles_at - now : 0;
+}

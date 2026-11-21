@@ -1153,8 +1153,11 @@ fills as you hold or press; let go early and it drains back. Full, it opens
 red boost cells past the top, each a little taller than the last, and you
 feel a short buzz (at your Rumble level). Each cell makes the sound 3 dB
 louder, up to six cells, +18 dB; a limiter keeps the loudest moments from
-clipping, so a quiet film gets louder and a loud one only gets flatter. A
-held key stops at the first cell: press for each next one. **VOL-** empties
+clipping, so a quiet film gets louder and a loud one only gets flatter. The
+top three cells compress harder, so a game or a cart that is loud already
+gets louder too: cells 1 to 3 sound as clean as ever, and cells 4 to 6 trade
+some of the sound's cleanness for loudness, a little at cell 4 and plainly
+at cell 6. A held key stops at the first cell: press for each next one. **VOL-** empties
 the cells one by one, stops at the top, and the next press folds them away.
 
 The boost works in a game, in MP4 and over a port, and stays as the volume

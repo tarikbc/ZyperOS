@@ -36,7 +36,14 @@
  * goes back up over EQ_LIM_REL_MS, both channels together. So a quiet film
  * gets louder and a loud one gets no louder than full scale, only flatter.
  * No gain, nothing of it runs. MP4 and a game take it; the menu music never
- * does (its eq_state's gain stays 0). */
+ * does (its eq_state's gain stays 0).
+ *
+ * In the top cells, above EQ_COMP_FROM (the three cells under it are the
+ * gain and the limiter alone, as they always were), a compressor and a soft
+ * clip come between the gain and the limiter, harder with each cell: a loud
+ * game or cart, whose peaks the limiter already holds, gets louder too, by
+ * giving up some of its cleanness (Tarik, 2026-11-20, on 1.1.0-rc.8, of a
+ * loud PICO-8 cart: "Yes, compress harder"). See eq_comp_block. */
 
 #include <math.h>
 #include <stdint.h>
@@ -71,11 +78,66 @@ typedef struct {
 	int     gain_left;              /* frames left in the move, 0 at rest */
 	float   lim;                    /* the limiter's envelope, 16-bit scale */
 	float   lim_rel;                /* how much of it is left after a frame */
+	/* The top cells' compressor and soft clip (eq_comp_block): where the gain
+	 * is among them, 0 at EQ_COMP_FROM and under, 1 at cell 4, 3 at cell 6,
+	 * moving with the gain */
+	float   comp_s, comp_s_want, comp_s_step;
+	float   comp_env;               /* the compressor's envelope, 16-bit scale */
+	float   comp_att, comp_rel;     /* how much of a rise it takes, of a fall it keeps, a frame */
+	float   comp_g, comp_g_step;    /* its gain (with the make-up) now, and its step a frame */
+	float   clip_k;                 /* where the soft clip starts, 16-bit scale */
+	int     comp_n;                 /* frames left until the gain computer looks again */
 } eq_state;
 
 #define EQ_GAIN_MAX    18           /* dB: src/boost.h's six cells of 3 dB */
 #define EQ_LIM_T       (0.8913f * 32768.0f)   /* -1 dB of full scale */
 #define EQ_LIM_REL_MS  100
+
+/* The top cells (my pick, 2026-11-20: "compressing harder only in the top
+ * cells, so cells 1 to 3 sound as clean as now, and cells 4 to 6 trade some
+ * cleanness for loudness"). Above EQ_COMP_FROM dB of gain, src/boost.h's
+ * first three cells of EQ_COMP_CELL dB, the gain goes through two more
+ * stages before the limiter, each harder a cell (EQ_COMP_TAB):
+ *
+ *   a compressor  a threshold under the limiter's ceiling, a ratio, a soft
+ *                 knee EQ_COMP_KNEE dB wide and a make-up gain; both
+ *                 channels by the louder (stereo-linked); its envelope a
+ *                 peak taken in EQ_COMP_ATT_MS and let go over
+ *                 EQ_COMP_REL_MS, so the waves of a held note move it a
+ *                 tenth of a dB and a run of notes about two
+ *   a soft clip   from a point under the ceiling, what is past it bent into
+ *                 the room left to the ceiling, its slope 1 where it starts
+ *                 and 0 at the ceiling, which no sample passes (both
+ *                 channels by the louder, again)
+ *
+ * The make-up and the clip are what make a loud cart louder: its peaks are
+ * at the ceiling already, so only a flatter wave is louder. Measured on
+ * PICO-8-like chip voices (tools/eqdsp-check.c), a three-voice tune is
+ * about 6, 7.3 and 8.8 dB louder at cells 4, 5 and 6 (4.6 at cell 3), all
+ * the voices at full about 3.5, 4.5 and 5.7 (1.6); a sine at -12 dB of full
+ * scale comes out with about 3%, 11% and 32% THD+N. Between two cells (a
+ * gain moving, or a GAIN of no cell's) the table is read in a straight
+ * line. The gain computer looks every EQ_COMP_BLOCK frames (one log, two
+ * powers), and the gain moves there in a straight line: no power or
+ * exponential a sample. tools/eqdsp-check.c holds the cells 1 to 3 to the
+ * sample, and the top cells to their loudness, their peaks, their pumping,
+ * silence and their cost. */
+#define EQ_COMP_CELL     3          /* dB: src/boost.h's BOOST_DB_CELL */
+#define EQ_COMP_FROM     (3 * EQ_COMP_CELL)   /* cells 1 to 3: the gain and the limiter alone */
+#define EQ_COMP_KNEE     6.0f       /* dB wide */
+#define EQ_COMP_ATT_MS   5
+#define EQ_COMP_REL_MS   300
+#define EQ_COMP_BLOCK    16
+
+/* Each top cell's stages: the compressor's threshold (dB under the
+ * ceiling), its ratio, its make-up (dB), and where the soft clip starts (dB
+ * under the ceiling); the first row is none, cell 3's */
+static const float EQ_COMP_TAB[4][4] = {
+	{  0.0f, 1.0f,  0.0f,   0.0f },     /* cell 3 and under: none */
+	{ -3.0f, 2.0f,  0.0f,  -4.5f },     /* cell 4 */
+	{ -4.0f, 2.5f,  3.5f,  -5.0f },     /* cell 5 */
+	{ -5.0f, 3.0f, 12.0f, -10.0f },     /* cell 6 */
+};
 
 /* Band `band`'s filter at `db`, its centre's cosine and sine at the rate
  * given (eq_init works them out once) */
@@ -137,6 +199,10 @@ static inline void eq_init(eq_state *e, int rate)
 	e->tick = e->rate / 1000 > 0 ? e->rate / 1000 : 1;
 	e->gain_now = e->gain_want = 1.0f;
 	e->lim_rel = expf(-1000.0f / ((float)EQ_LIM_REL_MS * (float)e->rate));
+	e->comp_att = 1.0f - expf(-1000.0f / ((float)EQ_COMP_ATT_MS * (float)e->rate));
+	e->comp_rel = expf(-1000.0f / ((float)EQ_COMP_REL_MS * (float)e->rate));
+	e->comp_g = 1.0f;
+	e->clip_k = EQ_LIM_T;
 	for (b = 0; b < EQ_BANDS; b++) {
 		const float w0 = 2.0f * 3.14159265358979f * EQ_FREQ[b] / (float)e->rate;
 
@@ -157,10 +223,18 @@ static inline int eq_bands_active(const eq_state *e)
 	return 0;
 }
 
-/* Whether the boost's gain would: some gain, or a move */
+/* Whether the boost's gain would: some gain, or a move (the top cells'
+ * strength moves with the gain, so it is on only while this is) */
 static inline int eq_gain_active(const eq_state *e)
 {
 	return e->gain_left > 0 || e->gain_now != 1.0f;
+}
+
+/* Where `d` dB of gain is among the top cells: 0 to EQ_COMP_FROM, 1 at
+ * cell 4, up to 3 at cell 6 (EQ_GAIN_MAX) */
+static inline float eq_comp_of(int d)
+{
+	return d <= EQ_COMP_FROM ? 0.0f : (float)(d - EQ_COMP_FROM) / (float)EQ_COMP_CELL;
 }
 
 /* Whether eq_run would touch the samples at all */
@@ -180,6 +254,9 @@ static inline void eq_gain(eq_state *e, int db)
 	e->gain_want = want;
 	e->gain_step = (want - e->gain_now) / (float)frames;
 	e->gain_left = frames;
+	/* The top cells' strength over the same frames, in step with it */
+	e->comp_s_want = eq_comp_of(d);
+	e->comp_s_step = (e->comp_s_want - e->comp_s) / (float)frames;
 }
 
 /* The same at once: for a stream that is starting */
@@ -188,6 +265,8 @@ static inline void eq_gain_jump(eq_state *e, int db)
 	eq_gain(e, db);
 	e->gain_now = e->gain_want;
 	e->gain_left = 0;
+	e->comp_s = e->comp_s_want;
+	e->comp_n = 0;
 }
 
 static inline void eq_boost_of(eq_state *e)
@@ -281,13 +360,117 @@ static inline void eq_band_run(eq_state *e, int b, float *f, int n)
 	e->x1[b][1] = rx1; e->x2[b][1] = rx2; e->y1[b][1] = ry1; e->y2[b][1] = ry2;
 }
 
-/* The boost's gain and the limiter over `n` frames of `f`, in place */
+/* The top cells' gain computer, every EQ_COMP_BLOCK frames: the
+ * compressor's gain for its envelope now, at the cell e->comp_s is at, with
+ * the make-up (a soft knee: Giannoulis, Massberg and Reiss, "Digital
+ * Dynamic Range Compressor Design", 2012), which the frames until the next
+ * look move to in a straight line; and where the soft clip starts. */
+static inline void eq_comp_block(eq_state *e)
+{
+	const float at = e->comp_s < 0.0f ? 0.0f : e->comp_s > 3.0f ? 3.0f : e->comp_s;
+	const int row = at >= 3.0f ? 2 : (int)at;
+	const float w = at - (float)row;
+	const float *a = EQ_COMP_TAB[row], *b = EQ_COMP_TAB[row + 1];
+	const float th = a[0] + w * (b[0] - a[0]), ratio = a[1] + w * (b[1] - a[1]);
+	const float makeup = a[2] + w * (b[2] - a[2]), clip = a[3] + w * (b[3] - a[3]);
+	const float x = e->comp_env > 1.0f ? 20.0f * log10f(e->comp_env / EQ_LIM_T) : -120.0f;
+	const float over = x - th;
+	float gr = 0.0f;
+
+	if (2.0f * over > EQ_COMP_KNEE) {
+		gr = (1.0f / ratio - 1.0f) * over;
+	} else if (2.0f * over > -EQ_COMP_KNEE) {
+		const float k = over + EQ_COMP_KNEE / 2.0f;
+
+		gr = (1.0f / ratio - 1.0f) * k * k / (2.0f * EQ_COMP_KNEE);
+	}
+	e->comp_g_step = (powf(10.0f, (gr + makeup) / 20.0f) - e->comp_g) / (float)EQ_COMP_BLOCK;
+	e->clip_k = clip < 0.0f ? EQ_LIM_T * powf(10.0f, clip / 20.0f) : EQ_LIM_T;
+	e->comp_n = EQ_COMP_BLOCK;
+}
+
+/* The top cells over `n` frames of `f`, between the gain and the limiter:
+ * the compressor, then the soft clip, both channels by the louder. Where it
+ * is among the cells moves as the gain does (eq_gain), each frame. */
+static inline void eq_comp_run(eq_state *e, float *f, int n)
+{
+	float env = e->comp_env, g = e->comp_g;
+	const float att = e->comp_att, rel = e->comp_rel;
+	int i;
+
+	for (i = 0; i < n; i++) {
+		float l = f[i * 2], r = f[i * 2 + 1], p, q;
+
+		if (e->comp_s != e->comp_s_want) {
+			e->comp_s += e->comp_s_step;
+			if ((e->comp_s_step > 0) == (e->comp_s > e->comp_s_want)) e->comp_s = e->comp_s_want;
+		}
+		p = fabsf(l) > fabsf(r) ? fabsf(l) : fabsf(r);
+		env = p > env ? env + att * (p - env) : env * rel;
+		if (e->comp_n <= 0) {
+			e->comp_env = env;
+			e->comp_g = g;
+			eq_comp_block(e);
+		}
+		e->comp_n--;
+		g += e->comp_g_step;
+		l *= g;
+		r *= g;
+		/* The soft clip: past clip_k, u rooms in, out as u - u*u/4, a
+		 * room at u = 2 and on, its slope 1 at the start and 0 there; with
+		 * no clip (cell 3's row), none, the limiter's */
+		p *= g;
+		if (p > e->clip_k && e->clip_k < EQ_LIM_T) {
+			const float room = EQ_LIM_T - e->clip_k, u = (p - e->clip_k) / room;
+
+			q = (u >= 2.0f ? EQ_LIM_T : e->clip_k + room * (u - 0.25f * u * u)) / p;
+			l *= q;
+			r *= q;
+		}
+		f[i * 2] = l;
+		f[i * 2 + 1] = r;
+	}
+	/* Silence lets the envelope fall towards 0: no denormal is kept */
+	e->comp_env = env < 1e-3f ? 0.0f : env;
+	e->comp_g = g;
+}
+
+/* The boost's gain and the limiter over `n` frames of `f`, in place; in the
+ * top cells, the compressor and the soft clip between the two (eq_comp_run,
+ * which the frames under EQ_COMP_FROM never reach: they are the gain and
+ * the limiter alone, to the sample, as before the top cells had them) */
 static inline void eq_gain_run(eq_state *e, float *f, int n)
 {
 	float g = e->gain_now, env = e->lim;
 	const float rel = e->lim_rel;
 	int i;
 
+	if (e->comp_s > 0.0f || e->comp_s_want > 0.0f) {
+		/* The gain first, then the top cells, then the limiter, a run at a
+		 * time: each frame's gain as the loop below gives it */
+		for (i = 0; i < n; i++) {
+			if (e->gain_left > 0) g = --e->gain_left ? g + e->gain_step : e->gain_want;
+			f[i * 2] *= g;
+			f[i * 2 + 1] *= g;
+		}
+		e->gain_now = g;
+		eq_comp_run(e, f, n);
+		for (i = 0; i < n; i++) {
+			float l = f[i * 2], r = f[i * 2 + 1], p;
+
+			p = fabsf(l) > fabsf(r) ? fabsf(l) : fabsf(r);
+			env *= rel;
+			if (p > env) env = p;
+			if (env > EQ_LIM_T) {
+				const float k = EQ_LIM_T / env;
+
+				f[i * 2] = l * k;
+				f[i * 2 + 1] = r * k;
+			}
+		}
+		e->lim = env < 1.0f ? 0.0f : env;
+		return;
+	}
 	for (i = 0; i < n; i++) {
 		float l, r, p;
 

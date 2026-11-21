@@ -32,6 +32,7 @@
 #include "pkshot.h"
 #include "pkvpad.h"
 #include "../src/p8draw.h"
+#include "../src/rumble.h"
 
 #include <zlib.h>
 
@@ -71,7 +72,21 @@ typedef struct {
 	pk_boost *bo;               /* when set, the steps go through the boost (pk_press) */
 	int       did;              /* what the boost did, every step and tick ORed */
 	int       opened;           /* how often it opened */
+	int       buzzes;           /* how often portkeys would buzz for it (pk_buzz_pct) */
+	int       buzz_pct;         /* and at what share, the last time */
 } rig;
+
+/* What portkeys's press() and boost_clock() hand boost_buzz: each step's and
+ * each tick's `did`, the share pk_buzz_pct asks of the motor for it */
+static void buzz_of(rig *r, int did)
+{
+	const int pct = pk_buzz_pct(r->db, did);
+
+	if (pct > 0) {
+		r->buzzes++;
+		r->buzz_pct = pct;
+	}
+}
 
 static void rig_init(rig *r, int vol, int bright)
 {
@@ -92,6 +107,7 @@ static void take(rig *r, const pk_step *s, int m)
 
 			r->did |= did;
 			r->opened += !!(did & BOOST_OPENED);
+			buzz_of(r, did);
 		} else {
 			pk_apply(r->db, &r->l, &s[i], line, sizeof line);
 		}
@@ -121,6 +137,7 @@ static void pass(rig *r, const pk_key *ev, int n, int64_t cutoff)
 
 			r->did |= did;
 			r->opened += !!(did & BOOST_OPENED);
+			buzz_of(r, did);
 		}
 	}
 }
@@ -1152,6 +1169,240 @@ static void the_boost_closing(void)
 	scratch_drop(&sc);
 }
 
+/* The launcher's own buzz length, the number src/levels.c hands
+ * plat_rumble_buzz as its boost opens; -1 when it cannot be read */
+static long launcher_buzz_ms(void)
+{
+	FILE *f = fopen("src/levels.c", "r");
+	char line[256];
+	long ms = -1;
+
+	if (!f) return -1;
+	while (fgets(line, sizeof line, f)) {
+		char *at = strstr(line, "plat_rumble_buzz("), *comma;
+
+		if (at && (comma = strrchr(at, ',')) && sscanf(comma + 1, " %ld", &ms) == 1) break;
+		ms = -1;
+	}
+	fclose(f);
+	return ms;
+}
+
+/* The boost's buzz as it opens (pk_buzz_pct), as the launcher gives its
+ * own (src/levels.c): at MENU > Sound > Rumble's share, the word written and
+ * read back through the launcher's src/db.c and src/rumble.c; once for each
+ * opening of either boost, by presses or by a hold; never for a step, a cell
+ * filled or emptied or a fold; none with Rumble Off. Its length is the
+ * launcher's and Diatom's, its strength the launcher's scale. On 1.1.0-rc.8
+ * portkeys gave none: nothing read BOOST_OPENED. */
+static void the_boost_buzz(void)
+{
+	static const char *const words[] = { NULL, "off", "low", "medium", "full", "louder" };
+	unsigned w;
+	int pct;
+
+	for (w = 0; w < sizeof words / sizeof words[0]; w++) {
+		const char *name = words[w] ? words[w] : "(none)";
+		const int want = rumble_level_pct(rumble_level_parse(words[w], RUMBLE_DEFAULT));
+		const int felt = want > 0 ? 1 : 0;
+		pk_boost bo;
+		scratch sc;
+		rig r;
+		db *d;
+		int i;
+
+		if (!scratch_make(&sc, VOL_MAX, BRIGHT_MAX, -1, -1) || !(d = db_open(sc.db, DB_DEVICE))) {
+			ck(0, "buzz: a scratch database");
+			return;
+		}
+		if (words[w]) db_set_str(d, "rumble", words[w]);
+		db_close(d);
+		if (!rig_boost(&r, &bo, &sc)) {
+			ck(0, "buzz: portkeys over the scratch database");
+			scratch_drop(&sc);
+			return;
+		}
+		ck(pk_rumble_pct(r.db) == want, "buzz: Rumble %s is %d%%, as the launcher reads it; got %d%%", name,
+		   want, pk_rumble_pct(r.db));
+		ck(!pk_buzz_pct(r.db, BOOST_LEVEL) && !pk_buzz_pct(r.db, BOOST_GAIN) &&
+		   !pk_buzz_pct(r.db, BOOST_LEVEL | BOOST_GAIN) && pk_buzz_pct(r.db, BOOST_GAIN | BOOST_OPENED) == want,
+		   "buzz: Rumble %s, only an opening asks the motor", name);
+
+		/* Three presses on the top: one buzz */
+		for (i = 0; i < BOOST_TAPS; i++) hold(&r, PK_KEY_VOLUMEUP, 80, 200);
+		ck(r.opened == 1 && r.buzzes == felt && (!felt || r.buzz_pct == want),
+		   "buzz: Rumble %s, three presses open the volume's, %d buzz at %d%%; got %d at %d%%", name, felt,
+		   want, r.buzzes, r.buzz_pct);
+		/* Filled by a held key, emptied, folded under the top: none more */
+		hold(&r, PK_KEY_VOLUMEUP, REPEAT_DELAY_MS + 3 * REPEAT_RATE_MS + 20, 200);
+		for (i = 0; i <= BOOST_VOL_CELLS; i++) hold(&r, PK_KEY_VOLUMEDOWN, 80, 150);
+		hold(&r, PK_KEY_VOLUMEUP, 80, 200);
+		ck(r.l.vol == VOL_MAX && !bo.bar[PK_VOLUME].open && r.buzzes == felt,
+		   "buzz: Rumble %s, the cells filled, emptied and folded, and a step back to the top: no buzz; "
+		   "got %d", name, r.buzzes - felt);
+		/* A hold on the top: the second */
+		key(&r, PK_KEY_VOLUMEUP, 1);
+		frames_to(&r, r.now + BOOST_HOLD_MS + 20);
+		key(&r, PK_KEY_VOLUMEUP, 0);
+		frames_to(&r, r.now + 200);
+		ck(r.opened == 2 && r.buzzes == 2 * felt,
+		   "buzz: Rumble %s, held on the top it opens again, buzzing again; got %d buzzes", name, r.buzzes);
+		/* MENU+VOL+ three times on the top rung: the backlight's, the third */
+		for (i = 0; i < BOOST_TAPS; i++) {
+			menu_chord(&r, PK_KEY_VOLUMEUP, i & 1, BOTH);
+			frames_to(&r, r.now + 200);
+		}
+		ck(r.opened == 3 && pk_boost_lift(&bo) == 1 && r.buzzes == 3 * felt,
+		   "buzz: Rumble %s, the backlight's opening buzzes as the volume's; got %d buzzes", name, r.buzzes);
+		rig_done(&r);
+		scratch_drop(&sc);
+	}
+	ck(pk_rumble_pct(NULL) == rumble_level_pct(RUMBLE_DEFAULT),
+	   "buzz: with no database, the launcher's own default, %d%%", rumble_level_pct(RUMBLE_DEFAULT));
+
+	/* As long as the launcher's and Diatom's, as strong as the launcher's */
+	ck(launcher_buzz_ms() == PK_BUZZ_MS && define_in("diatom/src/levels.c", "BUZZ_MS") == PK_BUZZ_MS,
+	   "buzz: %d ms, as the launcher's (src/levels.c, %ld) and Diatom's (BUZZ_MS, %ld)", PK_BUZZ_MS,
+	   launcher_buzz_ms(), define_in("diatom/src/levels.c", "BUZZ_MS"));
+	for (pct = 0; pct <= 100; pct++) {
+		const float scale = (float)pct / 100.0f;
+		const uint16_t v = pct <= 0 ? 0 : scale >= 1.0f ? 0xFFFF : (uint16_t)((float)0xFFFF * scale + 0.5f);
+
+		if (pk_buzz_strength(pct) != v) break;
+	}
+	ck(pct > 100 && pk_buzz_strength(100) == 0xFFFF && pk_buzz_strength(0) == 0 && pk_buzz_strength(1) > 0,
+	   "buzz: the strength at every share as plat_rumble_buzz scales it; first apart at %d%%", pct);
+}
+
+/* ---- whose display may be borrowed (pk_looks) ---------------------------------
+ *
+ * A display file is copied only once settled: seen open by the same process
+ * under the same number at a look PK_SETTLE_MS before, with no gap longer
+ * than PK_LOOK_GAP_MS, or of a process whose master was held. And the rc.9
+ * failure as a timeline: SDL 2.32's two looks at the display as a program
+ * starts (open, take the master, check, close; a few ms each), then its own
+ * file for good; portkeys looking once a second, or as a sighting settles:
+ * at no start phase is a copy allowed inside SDL's looks, and the program's
+ * own file is copied within PK_SETTLE_MS and a look of its opening. */
+static void the_display_looks(void)
+{
+	pk_looks l;
+	bool ok;
+	int t0, bad = 0, late = 0, worst = 0;
+
+	pk_looks_init(&l);
+	pk_looks_begin(&l, 1000);
+	ok = pk_looks_seen(&l, 935, 7, 1000);
+	pk_looks_end(&l, true);
+	ck(!ok && pk_looks_wait(&l, 1000) == PK_SETTLE_MS,
+	   "looks: a display file seen once is not copied, settling in %d ms; got %ld", PK_SETTLE_MS,
+	   pk_looks_wait(&l, 1000));
+	pk_looks_begin(&l, 1000 + PK_SETTLE_MS);
+	ok = pk_looks_seen(&l, 935, 7, 1000 + PK_SETTLE_MS);
+	pk_looks_end(&l, true);
+	ck(ok && pk_looks_wait(&l, 1000 + PK_SETTLE_MS) == -1, "looks: still open %d ms on, it is", PK_SETTLE_MS);
+
+	/* Gone at a look, then open again: from the start again */
+	pk_looks_init(&l);
+	pk_looks_begin(&l, 1000);
+	pk_looks_seen(&l, 935, 7, 1000);
+	pk_looks_end(&l, true);
+	pk_looks_begin(&l, 1300);
+	pk_looks_end(&l, true);
+	pk_looks_begin(&l, 1600);
+	ok = pk_looks_seen(&l, 935, 7, 1600);
+	pk_looks_end(&l, true);
+	ck(!ok && l.n == 1, "looks: closed at a look and open again, it settles afresh");
+
+	/* A gap in the looks longer than PK_LOOK_GAP_MS: afresh too */
+	pk_looks_init(&l);
+	pk_looks_begin(&l, 1000);
+	pk_looks_seen(&l, 935, 7, 1000);
+	pk_looks_end(&l, true);
+	pk_looks_begin(&l, 1001 + PK_LOOK_GAP_MS);
+	ok = pk_looks_seen(&l, 935, 7, 1001 + PK_LOOK_GAP_MS);
+	pk_looks_end(&l, true);
+	ck(!ok, "looks: after a gap of more than %d ms between looks, afresh", PK_LOOK_GAP_MS);
+
+	/* A process whose master was held: at once; any other: not */
+	pk_looks_trust(&l, 935);
+	pk_looks_begin(&l, 5000);
+	ok = pk_looks_seen(&l, 935, 9, 5000) && !pk_looks_seen(&l, 1051, 7, 5000);
+	pk_looks_end(&l, true);
+	ck(ok, "looks: the process whose master was held at once, another one not");
+
+	/* A look stopped at the master it found keeps what it did not reach */
+	pk_looks_init(&l);
+	pk_looks_begin(&l, 1000);
+	pk_looks_seen(&l, 700, 4, 1000);
+	pk_looks_seen(&l, 935, 7, 1000);
+	pk_looks_end(&l, true);
+	pk_looks_begin(&l, 1400);
+	pk_looks_seen(&l, 700, 4, 1400);
+	pk_looks_end(&l, false);
+	pk_looks_begin(&l, 1500);
+	ok = pk_looks_seen(&l, 935, 7, 1500);
+	pk_looks_end(&l, true);
+	ck(ok, "looks: one a stopped look did not reach keeps its time");
+
+	/* The timeline, at every start phase to the millisecond: portkeys's
+	 * looks from 0, once a second or as a sighting settles; the program's
+	 * SDL looks at t0 (3 ms) and t0 + 3 (3 ms), its own file from t0 + 8 */
+	for (t0 = 0; t0 < 2000; t0++) {
+		long t = 0, copied = -1;
+		int guard = 0;
+
+		pk_looks_init(&l);
+		while (t < t0 + 4000 && copied < 0 && guard++ < 1000) {
+			const bool probe = (t >= t0 && t < t0 + 6), real = t >= t0 + 8;
+			long w;
+
+			pk_looks_begin(&l, t);
+			/* splash's file, open all the while and never the master */
+			pk_looks_seen(&l, 600, 5, t);
+			if ((probe || real) && pk_looks_seen(&l, 935, 7, t)) {
+				if (probe) bad++;
+				else copied = t;
+			}
+			pk_looks_end(&l, true);
+			w = pk_looks_wait(&l, t);
+			t += w >= 0 ? (w < 10 ? 10 : w) : 1000;
+		}
+		if (copied < 0) late++;
+		else if (copied - (t0 + 8) > worst) worst = (int)(copied - (t0 + 8));
+	}
+	ck(!bad, "looks: at no start phase a copy inside SDL's look at the display; got %d", bad);
+	ck(!late && worst <= 1000 + PK_SETTLE_MS + 10,
+	   "looks: the program's own display copied within a look and %d ms of its opening; worst %d ms, %d never",
+	   PK_SETTLE_MS, worst, late);
+}
+
+/* A boost kept from before, as portkeys starts over it (pk_boost_load): it
+ * is open, its gain in the file, and nothing of it moves or opens - no
+ * charge, no flash, no buzz - so nothing asks for the bar or the display
+ * until a key is pressed (on 1.1.0-rc.9 the display was looked for at the
+ * start, for On-Screen Stats, not for this; the_display_looks holds that) */
+static void the_kept_boost_at_start(void)
+{
+	pk_boost bo;
+	scratch sc;
+	rig r;
+
+	if (!scratch_make(&sc, VOL_MAX, BRIGHT_MAX, BOOST_VOL_CELLS, BOOST_BRIGHT_CELLS) || !rig_boost(&r, &bo, &sc)) {
+		ck(0, "kept: a scratch database");
+		return;
+	}
+	ck(pk_boost_cells(&bo, PK_VOLUME) == BOOST_VOL_CELLS && pk_boost_lift(&bo) == BOOST_BRIGHT_CELLS &&
+	   file_gain(sc.share, NULL) == BOOST_VOL_CELLS * BOOST_DB_CELL,
+	   "kept: both boosts back as portkeys starts, the gain in the file");
+	ck(!pk_boost_moving(&bo, (uint32_t)r.now), "kept: nothing of them moves at the start");
+	frames_to(&r, r.now + 3000);
+	ck(!r.did && !r.opened && !r.buzzes && !pk_boost_moving(&bo, (uint32_t)r.now) && r.n == 0,
+	   "kept: 3 s with no key: no step, no opening, no buzz, nothing to draw; got did %d", r.did);
+	rig_done(&r);
+	scratch_drop(&sc);
+}
+
 /* ---- over your PICO-8: SELECT's hotkeys, and its keyboard ------------------
  *
  * tools/pkhot.c, Diatom's chord rule on the joypad's events with the table
@@ -1511,6 +1762,9 @@ int main(void)
 	the_boost_hold();
 	the_boost_bright();
 	the_boost_closing();
+	the_boost_buzz();
+	the_kept_boost_at_start();
+	the_display_looks();
 	the_hotkeys();
 	the_keyboard();
 	the_game_pad();

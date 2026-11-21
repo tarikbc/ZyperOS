@@ -28,6 +28,10 @@ over a Diatom game: it keeps playing, and MENU then SELECT opens it.
      Continue, and the file is written back; the follower, let go on, takes
      that queue and plays on from it;
    - and over a program MP4 is stopped for (no file), SELECT opens nothing.
+   - the volume boost over PICO-8: the gain portkeys writes into the
+     equalizer's shared file (ZYPEROS_EQ_FILE) reaches the daemon from the
+     follower as a GAIN line, once for each change, as the launcher's steps
+     do (src/levels.c), so the song behind PICO-8 follows the boost;
 3. Your PICO-8 quiet while MP4 plays, as a Diatom game is: the equalizer's
    shared file's cut (ZYPEROS_EQ_FILE), set by the launcher as it hands
    over with MP4 playing, cleared at a pause and set again as MP4 plays by
@@ -458,6 +462,15 @@ def wait_for(cond, seconds=CEILING):
 drawn_lines = module('deskwalk', ROOT / 'tools/deskwalk.py').drawn_lines
 
 
+def boost_db_cell():
+    """src/boost.h's BOOST_DB_CELL: the dB of one boost cell"""
+    for line in (ROOT / 'src/boost.h').read_text().splitlines():
+        f = line.split()
+        if len(f) >= 3 and f[:2] == ['#define', 'BOOST_DB_CELL']:
+            return int(f[2])
+    raise SystemExit('pico8-mp4: no BOOST_DB_CELL in src/boost.h')
+
+
 def hand_text(card, pos):
     """The file as the launcher writes it: the album, in order, at `pos`"""
     return ('ZMQ1\nstate\tplaying\nat\t12.0\nmode\t0\nseed\t1\nbook\t0\nvideos\t0\nnames\t0\nall\t0\n'
@@ -515,6 +528,14 @@ def launcher(tmp):
         b = bytearray(eq_file.read_bytes())
         b[14] = v
         eq_file.write_bytes(bytes(b))
+
+    def set_gain(db):
+        """the volume boost's gain, as portkeys writes it over PICO-8 (byte
+        13 of eq_share): in place, the file never cut short under the
+        follower's map, its sequence left even"""
+        with open(eq_file, 'r+b') as fh:
+            fh.seek(13)
+            fh.write(bytes([db]))
 
     def start(name, args):
         if dsock.exists():
@@ -608,6 +629,21 @@ def launcher(tmp):
         daemon.end()
         check(wait_for(lambda: daemon.plays()[-1:] == [str(card / TRACKS[2])]) and cut() == '1',
               'an END: the next track, PICO-8 still quiet')
+        # The volume boost over PICO-8 (src/boost.h): portkeys has the keys
+        # and writes its gain into the equalizer's file, for the plugin in
+        # PICO-8's chain; MP4 hears it only from a GAIN line, and the follower
+        # is its connection. On 1.1.0-rc.8 nothing passed it on: the cells
+        # moved and the song stayed as loud
+        two = 2 * boost_db_cell()
+        n = len(daemon.got)
+        set_gain(two)
+        check(wait_for(lambda: f'GAIN\tdb={two}' in daemon.got[n:]),
+              f'two cells of the boost over PICO-8 (+{two} dB in the file, as portkeys writes it): '
+              f'MP4 told GAIN db={two}')
+        n = len(daemon.got)
+        set_gain(0)
+        check(wait_for(lambda: 'GAIN\tdb=0' in daemon.got[n:]), 'and emptied (0 dB): MP4 told GAIN db=0')
+        check(daemon.got.count(f'GAIN\tdb={two}') == 1, 'each gain said once, not ten times a second')
 
         print('MENU over PICO-8, the follower stopped as portkeys stops it:')
         f.send_signal(signal.SIGSTOP)

@@ -59,6 +59,18 @@ static void set_cut(int cut)
 	fclose(f);
 }
 
+/* The volume boost's gain byte, as portkeys writes it (eq_share_put; one
+ * byte, whole) */
+static void set_gain(int db)
+{
+	FILE *f = fopen(share_file, "r+b");
+
+	if (!f) return;
+	fseek(f, (long)offsetof(eq_share, gain), SEEK_SET);
+	fputc(db, f);
+	fclose(f);
+}
+
 /* A second through the plugin, a period at a time */
 static void run_through(const LADSPA_Descriptor *d, LADSPA_Handle h, float *il, float *ir, float *ol,
                         float *or_)
@@ -204,6 +216,45 @@ int main(int argc, char **argv)
 		d->activate(h);
 		run_through(d, h, il, ir, fl, fr);
 		report(!memcmp(fl, il, sizeof fl), "no_cut_flat_touches_nothing_again", 0);
+	}
+
+	/* The volume boost's gain (the file's `gain`, which portkeys writes while
+	 * a port runs, src/boost.h): written while it runs, the tone 6 dB louder
+	 * once its 20 ms move is over; at cell 3, the last before the top cells,
+	 * 9 dB louder, the gain alone (the tone, a quarter of full scale, stays
+	 * under the ceiling); at the most, cell 6, louder again through the top
+	 * cells' compressor and soft clip (src/eqdsp.h's EQ_COMP_TAB), and every
+	 * peak still under -1 dB of full scale; back to 0, the sound as it came,
+	 * to the bit.
+	 * The plugin's part of the boost over a port, your PICO-8's included
+	 * (1.1.0-rc.8: "volume boost while in pico 8 is not working") */
+	{
+		static float fl[RATE], fr[RATE];
+		const int ramp = RATE / 1000 * EQ_RAMP_MS;
+		float peak = 0;
+		int i;
+
+		put_bands(12, flat);
+		run_through(d, h, il, ir, fl, fr);
+		set_gain(6);
+		run_through(d, h, il, ir, fl, fr);
+		g = rms_db(fl + RATE / 2, RATE / 2);
+		report(g > 5.95 && g < 6.05, "gain_written_while_it_runs_6_db_louder", g);
+		set_gain(EQ_COMP_FROM);
+		run_through(d, h, il, ir, fl, fr);
+		g = rms_db(fl + RATE / 2, RATE / 2);
+		report(g > 8.95 && g < 9.05, "cell_3_the_gain_alone_9_db_louder", g);
+		set_gain(EQ_GAIN_MAX);
+		run_through(d, h, il, ir, fl, fr);
+		for (i = 0; i < RATE; i++)
+			if (fabsf(fl[i]) > peak) peak = fabsf(fl[i]);
+		g = rms_db(fl + RATE / 2, RATE / 2);
+		report(peak <= EQ_LIM_T / 32768.0f + 1e-6f && g > 12.0 && g < 15.0,
+		       "the_most_gain_the_top_cells_louder_still_and_every_peak_under_minus_1_db", g);
+		set_gain(0);
+		run_through(d, h, il, ir, fl, fr);
+		report(!memcmp(fl + PERIOD + ramp, il + PERIOD + ramp, (size_t)(RATE - PERIOD - ramp) * sizeof *fl),
+		       "gain_back_to_0_the_sound_as_it_came_after_the_move", rms_db(fl + RATE / 2, RATE / 2));
 	}
 
 	/* What it costs: Voice over a second, a period at a time */
