@@ -282,11 +282,19 @@ diatom_running() {
 }
 
 start_resident() {
+	local lang=en
 	diatom_running && return
 	[ -e "$ZYPEROS_DIATOM_SOCKET" ] && rm -f "$ZYPEROS_DIATOM_SOCKET"
+	# MENU > Language's code (src/i18n.h LANG_FILE), for intl core-option labels
+	if [ -f "$USERDATA_PATH/language" ]; then
+		read -r lang < "$USERDATA_PATH/language" || lang=en
+		lang=${lang%%[$'\r\n']*}
+		[ -n "$lang" ] || lang=en
+	fi
 	"$ZYPEROS_DIR/diatom" --socket "$ZYPEROS_DIATOM_SOCKET" \
 		--cores "$CORES_PATH" \
-		--save "$SAVES_PATH" --system "$BIOS_PATH" >> "$LOG" 2>&1 &
+		--save "$SAVES_PATH" --system "$BIOS_PATH" \
+		--language "$lang" >> "$LOG" 2>&1 &
 	echo $! > /tmp/diatom.pid
 }
 

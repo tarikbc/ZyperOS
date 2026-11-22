@@ -750,16 +750,24 @@ def drop_parents(card):
 
 
 def set_files(card, files, on):
-    """A shot's files (SHOT_FILES) on the card, empty, or off it; a .png
-    under Borders/ a real picture (border_png)"""
+    """A shot's files (SHOT_FILES) on the card, empty, or off it.
+    Each entry is a path, or (path, text) to write that text; a .png
+    under Borders/ a real picture (border_png)."""
     for f in files or []:
-        path = card / f
+        if isinstance(f, (tuple, list)):
+            name, text = f[0], f[1]
+            path = card / name
+        else:
+            name, text = f, None
+            path = card / f
         if on:
             make_parent(card, path)
-            if f.startswith("Borders/") and f.endswith(".png"):
+            if isinstance(name, str) and name.startswith("Borders/") and name.endswith(".png"):
                 border_png(path)
-                continue
-            path.touch()
+            elif text is None:
+                path.touch()
+            else:
+                path.write_text(text)
         elif path.exists():
             path.unlink()
     if not on:
@@ -824,6 +832,18 @@ SHOT_SETTINGS["screen-colors-look-custom"] = dict(SHOT_SETTINGS["screen-colors-c
 # Smooth, the default, is drawn in every GBA system menu shot
 EXTRA.setdefault("system-menu-timing-exact", ("demo", "GBA", ["--screen", "games", "--menu", "Timing"]))
 SHOT_SETTINGS["system-menu-timing-exact"] = {"pace.GBA": "exact"}
+# Core Settings (DESIGN.md 11.68): the page with a cache of OPTION lines, and
+# empty when the core has never been launched (No options.)
+_COREOPTS_CACHE = (
+    "userdata/coreopt-defs/fceumm.txt",
+    "OPTION\tkey=fceumm_palette\tvalue=default\tdefault=default\t"
+    "values=default|asqrealc|nintendo-vc\tdesc=Color Palette\n"
+    "OPTION\tkey=fceumm_nospritelimit\tvalue=disabled\tdefault=disabled\t"
+    "values=disabled|enabled\tdesc=No Sprite Limit\n"
+)
+EXTRA.setdefault("coreopts-page", ("demo", "NES", ["--screen", "games", "--coreopts-page", "0"]))
+SHOT_FILES["coreopts-page"] = [_COREOPTS_CACHE]
+EXTRA.setdefault("coreopts-page-empty", ("demo", "PS1", ["--screen", "games", "--coreopts-page", "0"]))
 
 # The in-game menu's Controls tab (src/ctltab.c), beside the handheld: its
 # end (Reset Buttons, Hotkeys), a button's choices, the system over a game

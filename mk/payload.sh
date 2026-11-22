@@ -92,6 +92,8 @@ fi
 # down reads it to create the ROM folders. Both run on the host, before any
 # database exists.
 cp "$ROOT/config/systems.cfg" "$P/"
+# Which core options Core Settings shows (empty / absent = all); src/coreopt_defs.c
+cp "$ROOT/config/coreopts-show.cfg" "$P/coreopts-show.cfg"
 cp "$ROOT/res/system-icons/"*.png "$P/system-icons/" # pixel home atlases and stills
 cp "$ROOT/res/fonts/menu.ttf" "$P/"       # the UI face, and the in-game menu's
 cp "$ROOT/res/fonts/title.ttf" "$P/"      # its SemiBold, the title role's, found beside it

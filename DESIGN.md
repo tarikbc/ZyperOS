@@ -3381,8 +3381,9 @@ and R1 go round them, and the panel is the same size on every tab:
 
 | Tab | Rows |
 |---|---|
-| **Game** | Continue, Save, Load, Undo Load (after a load, below), Quick Slot, Disc (a game on more than one disc), Player 2 (an NES game, 11.43), Achievements, Reset, Quit |
+| **Game** | Continue, Save, Load, Undo Load (after a load, below), Quick Slot, Disc (a game on more than one disc), Player 2 (an NES game, 11.43), Core Settings (11.70), Cheats (11.66), Achievements, Reset, Quit |
 | **Display** | Display, Border and Handheld Color (11.59), Shader, Strength (11.50), a DS game's Screens, Swap Screens, Stylus, Screen Colors (a display with a table, 11.42), On-Screen Stats (11.52) |
+
 | **Controls** | Applies To, D-pad as Stick, Pak, Rumble (11.54), Face Buttons, one row a button, Reset Buttons, Hotkeys (11.45) |
 | **Achievements** | the game's achievements, or the sentence that says why it has none (11.46) |
 
@@ -7698,3 +7699,23 @@ its cursor on Buttons (`--info-on-buttons`), which File put below the first
 screenful. `check-titles` holds
 the names and the counts of discs on real folders, `check-menus` the rows'
 order.
+### 11.70 Core Settings
+The in-game menu's Game-tab **Core Settings** row opens one page while a
+game is running: every option that core offers (mapper, palette, sound
+cart, …), or only the keys listed for it in `config/coreopts-show.cfg`
+when that file names some. There is no shelf row: without a running core
+there is nothing to ask.
+
+**Where the list comes from.** Diatom's `OPTIONS` lines fill it live over
+the paused game. With none, the page says **No options.** Values the
+player picks are kept as `coreopt.<TAG>.<key>` in the library, sent to the
+resident with `SETOPT`, and dropped again when they match the option's
+default so a later device default can still apply.
+
+**The page.** Heading **Core Settings**, one option a row (its description
+at the left, the current value at the right). Left and Right step the value;
+A opens the list when there are more than two, as every option row does
+(11.3). B closes. Each option's allowed values live as one heap string
+(`codef.blob`), not a fixed `vals[64][128]` table, so opening the page no
+longer stacks nearly a megabyte. Host shots: `--coreopts-page ROW`
+(tools/i18n-shots.py: `coreopts-page`, `coreopts-page-empty`).

@@ -2,11 +2,13 @@
 /* The Diatom transport: the launcher's side of the socket to the resident
  * emulator. Nothing in it knows which device it runs on. */
 #include "device.h"
+#include "i18n.h"
 #include "levels.h"
 #include "platform.h"
 #include "powerhold.h"
 
 #include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
 #include <signal.h>
@@ -295,6 +297,57 @@ bool plat_resident_wait_gone(unsigned max_ms)
 		usleep(20000);
 	}
 	return true;
+}
+
+/* Stop the resident Diatom (SIGTERM), wait for it to go, then start another
+ * with --language for the UI tongue. The option tables a core declared were
+ * for GET_LANGUAGE at its load; a new process is how they follow MENU >
+ * Language. launch_screen.c's respawn_resident is the same start, after a
+ * game or a crash. */
+void plat_resident_restart(void)
+{
+	char elf[512], save[512], bios[512], cores[512];
+	char *argv[12];
+	pid_t pid;
+	long started;
+	const char *sock;
+
+	pid = diatom_pid();
+	dclose();
+	if (pid > 0) {
+		kill(pid, SIGTERM);
+		if (!plat_resident_wait_gone(3000)) {
+			kill(pid, SIGKILL);
+			plat_resident_wait_gone(1000);
+		}
+	}
+
+	snprintf(elf, sizeof elf, "%s/diatom", P_ROOT);
+	if (access(elf, X_OK) != 0) return;
+	sock = plat_resident_socket();
+	if (sock && sock[0]) unlink(sock);
+	snprintf(save, sizeof save, "%s/Saves", P_CARD);
+	snprintf(bios, sizeof bios, "%s/Bios", P_CARD);
+	snprintf(cores, sizeof cores, "%s/cores", P_ROOT);
+	argv[0] = elf;
+	argv[1] = (char *)"--socket";
+	argv[2] = (char *)plat_resident_socket();
+	argv[3] = (char *)"--cores";  argv[4] = cores;
+	argv[5] = (char *)"--save";   argv[6] = save;
+	argv[7] = (char *)"--system"; argv[8] = bios;
+	argv[9] = (char *)"--language";
+	argv[10] = (char *)lang_code(i18n_lang());
+	argv[11] = NULL;
+	started = plat_spawn_detached_pid(argv, NULL, P_ROOT);
+	if (started <= 0)
+		fprintf(stderr, "resident emulator: would not restart: %s\n",
+		        strerror(errno));
+	else if (!plat_resident_note_pid(started))
+		fprintf(stderr, "resident emulator: restarted (pid %ld), but could "
+		        "not write %s\n", started, plat_resident_pidfile());
+	else
+		fprintf(stderr, "resident emulator: restarted (pid %ld, language %s)\n",
+		        started, lang_code(i18n_lang()));
 }
 
 /* A game resumed at boot launches about as soon as the resident Diatom is up
@@ -991,6 +1044,49 @@ bool plat_resident_sync_line(const char *prefix, char *out, size_t n, int timeou
 	}
 	return false;
 }
+
+bool plat_resident_options(void (*fn)(const char *line, void *ctx), void *ctx,
+                           int timeout_ms)
+{
+	unsigned t0 = SDL_GetTicks();
+	char *l;
+	int want = -1, got = 0;
+
+	if (!fn || dsock < 0) return false;
+	if (!plat_resident_line("OPTIONS")) return false;
+	while ((int)(SDL_GetTicks() - t0) < timeout_ms) {
+		int left = timeout_ms - (int)(SDL_GetTicks() - t0);
+		const char *next = dpeek(left > 0 ? left : 0);
+
+		if (!next) break;
+		if (strncmp(next, "EXIT", 4) == 0) break;
+		l = dline(0);
+		if (!l) break;
+		if (strncmp(l, "OPTIONS\t", 8) == 0) {
+			const char *c = strstr(l, "count=");
+
+			want = c ? atoi(c + 6) : 0;
+			if (want <= 0) return false;
+			continue;
+		}
+		if (strncmp(l, "OPTION\t", 7) == 0) {
+			fn(l, ctx);
+			got++;
+			if (want >= 0 && got >= want) return got > 0;
+			continue;
+		}
+		if (strncmp(l, "DISPLAY\t", 8) == 0) d_note_display(l);
+		else if (strncmp(l, "PREVIEW\tpath=", 13) == 0)
+			snprintf(d_preview, sizeof d_preview, "%s", l + 13);
+		else if (strncmp(l, "STYLUS\t", 7) == 0) d_note_stylus(l);
+		else if (strncmp(l, "SCREENS\t", 8) == 0) d_note_screens(l);
+		else if (strncmp(l, "LEVEL\t", 6) == 0) d_note_level(l);
+		else if (strncmp(l, "AUDIO\t", 6) == 0) d_note_audio(l);
+		else if (strncmp(l, "STICK\ton=", 9) == 0) d_note_stick(l);
+	}
+	return got > 0;
+}
+
 
 static void d_apply_levels(void)
 {
