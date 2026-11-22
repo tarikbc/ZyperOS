@@ -248,7 +248,7 @@ check-px2sim:
 # page (its package/zyperos/zyperos.mk), and ZyperOS Installer has it too.
 # ZyperOS counts from 0.1.0. Change it with
 # tools/set-version.sh, which sets the installer's with it.
-VERSION ?= 1.1.0
+VERSION ?= 1.1.0-mesa26.3
 
 # A release, from this Mac (tools/release.sh): the card image of each device
 # in config/devices built clean by plastron from this commit; PUBLISH=1 then
