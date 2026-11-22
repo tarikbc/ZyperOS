@@ -1915,6 +1915,14 @@ build-native/hotkeys-check: tools/hotkeys-check.c src/hotkeys.c src/hotkeys.h sr
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
 	      -o $@ tools/hotkeys-check.c src/hotkeys.c src/hkstore.c src/db.c src/atomic.c -lsqlite3
 
+# The Brick's rumble motor (diatom/port/brick_motor.h): its duty cycle, holds,
+# quiet wishes and buzzes, on a clock moved by hand
+.PHONY: check-brickmotor
+check-brickmotor:
+	@mkdir -p build-native
+	@$(CC) -std=gnu11 -Wall -Wextra -Werror -O1 -g -o build-native/brickmotor-check tools/brickmotor-check.c
+	@./build-native/brickmotor-check
+
 # Rumble's levels, the share a game is sent, and what is kept for a game, a
 # system and MENU (src/rumble.h)
 check-rumble: build-native/rumble-check

@@ -114,17 +114,22 @@ static void brick(void)
 	   "brick: its own model, Bluetooth, GPU shaders and frames (from 1.1.0), two speakers, no Player 2, built-in Wi-Fi");
 	ck(p->screen_colors, "brick: Screen Colors, on its display's own gamma table");
 	{
-		/* Its core options: some, and none of the Pixel 2's rumble until a
-		 * tester has felt its motor (src/device/brick_coreopts.c) */
+		/* Its core options: some, and the Pixel 2's rumble, as its motor
+		 * runs (src/device/brick_coreopts.c): both N64 cores' Rumble Pak
+		 * and PrBoom's rumble */
 		const dev_default *d = p->coreopts;
-		bool any = false, rumble = false;
+		bool any = false;
+		int rumble = 0;
 
 		for (; d && d->key; d++) {
 			any = true;
-			if (strstr(d->key, "rumble") || strstr(d->key, "pak1")) rumble = true;
+			if ((strstr(d->key, "pak1") && !strcmp(d->value, "rumble")) ||
+			    (strstr(d->key, "prboom-rumble") && !strcmp(d->value, "enabled")))
+				rumble++;
 		}
-		ck(any && !rumble, "brick: its own core options, no rumble in them");
+		ck(any && rumble == 3, "brick: its own core options, the N64's Rumble Pak and Doom's rumble in them");
 	}
+	ck(p->rumble, "brick: a motor games run (PH3, felt by two testers)");
 	ck(menu && !strcmp(menu->label, "MENU") && menu->icon == DEV_ICON_NONE,
 	   "brick: MENU is the word (no vendor mark as an icon)");
 	ck(label_is(p, IN_BRIGHTDN, "F1") && label_is(p, IN_BRIGHTUP, "F2"),

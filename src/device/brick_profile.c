@@ -39,11 +39,14 @@ const device_profile device_profile_brick = {
 	 * tester checked it on the brick. it's all good. cant we enabled it?") */
 	.gpu_shaders = true,
 	.gpu_frames = true,
-	/* The Pixel 2's, but its rumble, until a Brick's own are measured
+	/* The Pixel 2's, its rumble too, until a Brick's own are measured
 	 * (src/device/brick_coreopts.c) */
 	.coreopts = dev_coreopts_brick,
 	.speaker_mono = false,
-	.rumble = false,   /* GPIO 227 on bldo3, not run until the tester's buzz (Brick parity item 14) */
+	/* PH3 (GPIO 227) on BLDO3: two testers felt kit v1.0.7-kit.1's
+	 * Hardware Check buzz it (a white and a red Brick, 2026-11-20 and 21),
+	 * so games run it, as a duty cycle (diatom/port/brick_motor.h) */
+	.rumble = true,
 	.player2 = false,
 	.usb_shared_port = false,
 	/* The A133's TCON has a gamma table, set through /dev/disp

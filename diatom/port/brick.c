@@ -34,6 +34,7 @@
 #include <GLES3/gl3.h>
 #include <GLES2/gl2ext.h>
 
+#include <dirent.h>
 #include <dlfcn.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -50,6 +51,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "brick_motor.h"
 #include "diatom_port.h"
 #include "ladder.h"
 #include "hud.h"
@@ -68,6 +70,10 @@
 #define AUDIO_FRAME_BYTES   (2 * (int)sizeof(int16_t))
 
 #define FB_PAGES 3
+
+/* The rumble motor (below, at diatom_port_rumble), opened with the port */
+static bool motor_open(void);
+static void motor_close(void);
 
 /* The GPU path's state, shared with the Pixel 2's port (port/gles_state.h):
  * the EGL objects, the frames' mailbox the presenting thread draws, the GL
@@ -1440,7 +1446,7 @@ bool diatom_port_init(diatom_port_caps *out)
 	out->refresh_hz          = panel_refresh_hz();
 	if (out->refresh_hz > 0) g_vbl_nominal = g_vbl_period = 1e6 / out->refresh_hz;
 	refresh_log(out->refresh_hz);
-	out->rumble              = false;
+	out->rumble              = motor_open();
 	return true;
 }
 
@@ -1448,6 +1454,8 @@ void diatom_port_shutdown(void)
 {
 	int i;
 
+	/* The motor stopped and its pin low, whatever the game left asked */
+	motor_close();
 	/* The GPU path first: its thread hands pages to the flip thread */
 	gl_quit();
 	for (i = 0; i < MAILBOX_FRAMES; i++) free(g_frames[i].pixels);
@@ -2838,14 +2846,207 @@ void diatom_port_input_poll(void)
 uint32_t diatom_port_input_state(void) { return g_buttons; }
 uint32_t diatom_port_input_pressed(void) { return g_pressed; }
 
-/* No motor yet: GPIO 227 and the bldo3 rail wait for the tester's buzz
- * (the Brick parity plan's item 14), and `scale` will set the voltage */
+/* ---- the rumble motor ----------------------------------------------------
+ *
+ * PH3 (GPIO 227), on the AXP2202's BLDO3 rail, which two testers' Bricks
+ * buzzed from kit v1.0.7-kit.1's Hardware Check (port/brick_motor.h says
+ * what they logged). The pin is on or off, so a level is a duty cycle
+ * (bm_duty), run by a thread of this file's that wakes at each edge: a core
+ * calls diatom_port_rumble from its own thread or the game's, and only says
+ * what it wants here. The rail is read and never written: its voltage is
+ * U-Boot's, 3.3 V on both Bricks.
+ *
+ * Safety, the Brick parity plan's rule: the pin is never high unasked. It
+ * is made an output that starts low only when this port says it has a
+ * motor (diatom_port_init, with the rail on), it goes high only for a
+ * core's wish over Off, a hold or a stop sets it low, a wish nobody repeats
+ * stops after BM_QUIET_MS, and the shutdown and an exit leave it low. A
+ * crash can leave it high: the launcher sets it low when it takes the
+ * display back (src/device/brick.c, motor_safe). */
+#define MOTOR_GPIO  227
+#define MOTOR_RAIL  "axp2202-bldo3"
+
+static pthread_mutex_t g_motor_mx = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t  g_motor_cv;
+static pthread_t       g_motor_thread;
+static bool            g_motor_running, g_motor_quit;
+static bm_motor        g_motor;
+static int             g_motor_fd = -1;     /* gpio227/value, written only */
+
+static unsigned motor_now(void)
+{
+	struct timespec ts;
+
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	return (unsigned)((uint64_t)ts.tv_sec * 1000u + (uint64_t)ts.tv_nsec / 1000000u);
+}
+
+static int sys_put(const char *path, const char *text)
+{
+	int fd = open(path, O_WRONLY | O_CLOEXEC), ok;
+
+	if (fd < 0) return -1;
+	ok = write(fd, text, strlen(text)) == (ssize_t)strlen(text) ? 0 : -1;
+	close(fd);
+	return ok;
+}
+
+static void sys_get(const char *path, char *out, size_t n)
+{
+	int fd = open(path, O_RDONLY | O_CLOEXEC);
+	ssize_t r = fd >= 0 ? read(fd, out, n - 1) : -1;
+
+	if (fd >= 0) close(fd);
+	out[r > 0 ? r : 0] = 0;
+	out[strcspn(out, "\n")] = 0;
+}
+
+/* BLDO3 on, at the microvolts U-Boot left: the motor's supply, read only */
+static long motor_rail_uv(void)
+{
+	DIR *d = opendir("/sys/class/regulator");
+	struct dirent *e;
+	long uv = -1;
+
+	while (d && (e = readdir(d))) {
+		char path[300], v[48];
+
+		if (e->d_name[0] == '.') continue;
+		snprintf(path, sizeof path, "/sys/class/regulator/%s/name", e->d_name);
+		sys_get(path, v, sizeof v);
+		if (strcmp(v, MOTOR_RAIL)) continue;
+		snprintf(path, sizeof path, "/sys/class/regulator/%s/state", e->d_name);
+		sys_get(path, v, sizeof v);
+		if (!strcmp(v, "enabled")) {
+			snprintf(path, sizeof path, "/sys/class/regulator/%s/microvolts", e->d_name);
+			sys_get(path, v, sizeof v);
+			uv = atol(v);
+		} else {
+			uv = 0;
+		}
+		break;
+	}
+	if (d) closedir(d);
+	return uv;
+}
+
+static void motor_write(bool high)
+{
+	if (g_motor_fd >= 0 && pwrite(g_motor_fd, high ? "1" : "0", 1, 0) != 1) {
+		static bool said;
+
+		if (!said) port_logf(DIATOM_LOG_WARN, "brick: rumble: gpio%d refused a write: %s",
+		                     MOTOR_GPIO, strerror(errno));
+		said = true;
+	}
+}
+
+static void *motor_main(void *arg)
+{
+	bool high = false;
+
+	(void)arg;
+	pthread_mutex_lock(&g_motor_mx);
+	while (!g_motor_quit) {
+		unsigned now = motor_now(), wake;
+		bool want = bm_pin(&g_motor, now);
+		struct timespec ts;
+
+		wake = bm_wake(&g_motor, now);
+		if (want != high) {
+			pthread_mutex_unlock(&g_motor_mx);
+			motor_write(want);
+			pthread_mutex_lock(&g_motor_mx);
+			high = want;
+			continue;           /* the wish may have changed meanwhile */
+		}
+		if (wake == BM_NEVER) {
+			pthread_cond_wait(&g_motor_cv, &g_motor_mx);
+			continue;
+		}
+		clock_gettime(CLOCK_MONOTONIC, &ts);
+		ts.tv_sec  += wake / 1000u;
+		ts.tv_nsec += (long)(wake % 1000u) * 1000000L;
+		if (ts.tv_nsec >= 1000000000L) { ts.tv_sec++; ts.tv_nsec -= 1000000000L; }
+		pthread_cond_timedwait(&g_motor_cv, &g_motor_mx, &ts);
+	}
+	pthread_mutex_unlock(&g_motor_mx);
+	motor_write(false);
+	return NULL;
+}
+
+/* The pin made an output, low, and the thread started: only with the rail
+ * on. False, and nothing touched, without one. */
+static bool motor_open(void)
+{
+	char path[64], n[8];
+	long uv = motor_rail_uv();
+	pthread_condattr_t ca;
+
+	if (uv <= 0) {
+		port_logf(DIATOM_LOG_INFO, "brick: rumble off: %s %s", MOTOR_RAIL,
+		          uv < 0 ? "not found" : "off");
+		return false;
+	}
+	snprintf(path, sizeof path, "/sys/class/gpio/gpio%d/value", MOTOR_GPIO);
+	if (access(path, F_OK) != 0) {
+		snprintf(n, sizeof n, "%d", MOTOR_GPIO);
+		sys_put("/sys/class/gpio/export", n);
+	}
+	snprintf(path, sizeof path, "/sys/class/gpio/gpio%d/direction", MOTOR_GPIO);
+	/* "low": an output that starts low, in one step */
+	if (sys_put(path, "low") != 0) {
+		port_logf(DIATOM_LOG_WARN, "brick: rumble off: gpio%d would not be an output", MOTOR_GPIO);
+		return false;
+	}
+	snprintf(path, sizeof path, "/sys/class/gpio/gpio%d/value", MOTOR_GPIO);
+	if ((g_motor_fd = open(path, O_WRONLY | O_CLOEXEC)) < 0) {
+		port_logf(DIATOM_LOG_WARN, "brick: rumble off: %s: %s", path, strerror(errno));
+		return false;
+	}
+	bm_init(&g_motor);
+	g_motor_quit = false;
+	pthread_condattr_init(&ca);
+	pthread_condattr_setclock(&ca, CLOCK_MONOTONIC);
+	pthread_cond_init(&g_motor_cv, &ca);
+	pthread_condattr_destroy(&ca);
+	if (pthread_create(&g_motor_thread, NULL, motor_main, NULL) != 0) {
+		close(g_motor_fd);
+		g_motor_fd = -1;
+		port_logf(DIATOM_LOG_WARN, "brick: rumble off: no motor thread");
+		return false;
+	}
+	g_motor_running = true;
+	port_logf(DIATOM_LOG_INFO, "brick: rumble on PH3 (gpio%d), %s at %ld uV, as a duty cycle of %u ms",
+	          MOTOR_GPIO, MOTOR_RAIL, uv, BM_PERIOD_MS);
+	return true;
+}
+
+/* The motor stopped and the pin low, at the port's end */
+static void motor_close(void)
+{
+	if (!g_motor_running) return;
+	pthread_mutex_lock(&g_motor_mx);
+	bm_off(&g_motor, motor_now());
+	g_motor_quit = true;
+	pthread_cond_signal(&g_motor_cv);
+	pthread_mutex_unlock(&g_motor_mx);
+	pthread_join(g_motor_thread, NULL);
+	g_motor_running = false;
+	close(g_motor_fd);
+	g_motor_fd = -1;
+}
+
+/* A wish from the core, through the player's level; strengths 0 are a hold
+ * or the core's own stop. The thread makes it so. */
 bool diatom_port_rumble(uint16_t strong, uint16_t weak, float scale)
 {
-	(void)strong;
-	(void)weak;
-	(void)scale;
-	return false;
+	if (!g_motor_running) return false;
+	pthread_mutex_lock(&g_motor_mx);
+	bm_set(&g_motor, bm_duty(strong, weak, scale), motor_now());
+	pthread_cond_signal(&g_motor_cv);
+	pthread_mutex_unlock(&g_motor_mx);
+	return true;
 }
 
 void diatom_port_input_reset(void)

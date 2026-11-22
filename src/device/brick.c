@@ -475,13 +475,175 @@ void plat_input_settle(in_state *st)
 /* The descriptors stay open: they are display-independent. */
 void plat_input_quit(void) { }
 
-/* No motor yet: GPIO 227 on the bldo3 rail waits for the tester's buzz (the
- * Brick parity plan's item 14), and the profile says none (rumble false) */
+/* The rumble motor's buzz, for a Rumble row's step: PH3 (GPIO 227) on the
+ * AXP2202's BLDO3 rail, which testers' Bricks buzzed from kit
+ * v1.0.7-kit.1's Hardware Check. The same duty cycle as a game's
+ * (diatom/port/brick_motor.h: the pin is on or off, so a level is part of
+ * each 20 ms), run by a thread of its own so the page never waits, and the
+ * buzz ends by itself. The rail is read once and never written. In a game
+ * Diatom's port drives the pin; the launcher only buzzes over a paused one,
+ * which Diatom holds still. */
+#ifdef __linux__
+#include <pthread.h>
+#include "../../diatom/port/brick_motor.h"
+
+#define MOTOR_VALUE "/sys/class/gpio/gpio227/value"
+
+static pthread_mutex_t motor_mx = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t  motor_cv = PTHREAD_COND_INITIALIZER;
+static bm_motor        motor;
+static int             motor_fd = -1;
+static int             motor_state;     /* 0 not tried, 1 ready, -1 none */
+
+static unsigned motor_ms(void)
+{
+	struct timespec ts;
+
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	return (unsigned)((uint64_t)ts.tv_sec * 1000u + (uint64_t)ts.tv_nsec / 1000000u);
+}
+
+static int motor_put(const char *path, const char *text)
+{
+	FILE *f = fopen(path, "w");
+	int ok;
+
+	if (!f) return -1;
+	ok = fputs(text, f) >= 0 ? 0 : -1;
+	if (fclose(f) != 0) ok = -1;
+	return ok;
+}
+
+static void motor_get(const char *path, char *out, size_t n)
+{
+	FILE *f = fopen(path, "r");
+
+	out[0] = 0;
+	if (f) {
+		if (!fgets(out, (int)n, f)) out[0] = 0;
+		fclose(f);
+	}
+	out[strcspn(out, "\n")] = 0;
+}
+
+/* BLDO3's microvolts when it is on, 0 when off, -1 when there is none */
+static long motor_rail(void)
+{
+	DIR *d = opendir("/sys/class/regulator");
+	struct dirent *e;
+	long uv = -1;
+
+	while (d && (e = readdir(d))) {
+		char path[300], v[48];
+
+		if (e->d_name[0] == '.') continue;
+		snprintf(path, sizeof path, "/sys/class/regulator/%s/name", e->d_name);
+		motor_get(path, v, sizeof v);
+		if (strcmp(v, "axp2202-bldo3")) continue;
+		snprintf(path, sizeof path, "/sys/class/regulator/%s/state", e->d_name);
+		motor_get(path, v, sizeof v);
+		uv = 0;
+		if (!strcmp(v, "enabled")) {
+			snprintf(path, sizeof path, "/sys/class/regulator/%s/microvolts", e->d_name);
+			motor_get(path, v, sizeof v);
+			uv = atol(v);
+		}
+		break;
+	}
+	if (d) closedir(d);
+	return uv;
+}
+
+static void *motor_main(void *arg)
+{
+	bool high = false;
+
+	(void)arg;
+	pthread_mutex_lock(&motor_mx);
+	for (;;) {
+		unsigned now = motor_ms(), wake;
+		bool want = bm_pin(&motor, now);
+		struct timespec ts;
+
+		wake = bm_wake(&motor, now);
+		if (want != high) {
+			pthread_mutex_unlock(&motor_mx);
+			if (pwrite(motor_fd, want ? "1" : "0", 1, 0) != 1) { /* said at the open */ }
+			pthread_mutex_lock(&motor_mx);
+			high = want;
+			continue;
+		}
+		if (wake == BM_NEVER) {
+			pthread_cond_wait(&motor_cv, &motor_mx);
+			continue;
+		}
+		clock_gettime(CLOCK_REALTIME, &ts);
+		ts.tv_sec  += wake / 1000u;
+		ts.tv_nsec += (long)(wake % 1000u) * 1000000L;
+		if (ts.tv_nsec >= 1000000000L) { ts.tv_sec++; ts.tv_nsec -= 1000000000L; }
+		pthread_cond_timedwait(&motor_cv, &motor_mx, &ts);
+	}
+	return NULL;
+}
+
+/* Once: the rail on, the pin an output that starts low, the thread */
+static bool motor_ready(void)
+{
+	long uv;
+	pthread_t t;
+
+	if (motor_state) return motor_state > 0;
+	motor_state = -1;
+	if ((uv = motor_rail()) <= 0) {
+		fprintf(stderr, "rumble: no buzz: axp2202-bldo3 %s\n", uv < 0 ? "not found" : "off");
+		return false;
+	}
+	if (access(MOTOR_VALUE, F_OK) != 0) motor_put("/sys/class/gpio/export", "227");
+	if (motor_put("/sys/class/gpio/gpio227/direction", "low") != 0 ||
+	    (motor_fd = open(MOTOR_VALUE, O_WRONLY | O_CLOEXEC)) < 0) {
+		fprintf(stderr, "rumble: no buzz: gpio227 would not be an output\n");
+		return false;
+	}
+	bm_init(&motor);
+	if (pthread_create(&t, NULL, motor_main, NULL) != 0) {
+		close(motor_fd);
+		motor_fd = -1;
+		return false;
+	}
+	pthread_detach(t);
+	fprintf(stderr, "rumble: PH3 (gpio227) at %ld uV for the buzz\n", uv);
+	motor_state = 1;
+	return true;
+}
+
+/* The pin low after a game, whoever drove it last: a Diatom that crashed
+ * with its motor on leaves PH3 high, and nothing else would set it low.
+ * Only a pin already an output: never exported here, never made one. */
+static void motor_safe(void)
+{
+	char dir[16];
+
+	motor_get("/sys/class/gpio/gpio227/direction", dir, sizeof dir);
+	if (!strcmp(dir, "out")) motor_put(MOTOR_VALUE, "0");
+}
+#endif
+
 bool plat_rumble_buzz(float scale, int ms)
 {
+#ifdef __linux__
+	if (!plat_has_rumble()) return false;
+	if (scale <= 0.0f || ms <= 0) return true;      /* Off: nothing to feel */
+	if (!motor_ready()) return false;
+	pthread_mutex_lock(&motor_mx);
+	bm_buzz(&motor, bm_duty(0xFFFF, 0xFFFF, scale), (unsigned)ms, motor_ms());
+	pthread_cond_signal(&motor_cv);
+	pthread_mutex_unlock(&motor_mx);
+	return true;
+#else
 	(void)scale;
 	(void)ms;
 	return false;
+#endif
 }
 
 static void poll_fd(int fd, in_state *st)
@@ -609,6 +771,7 @@ void device_display_take(void)
 #endif
 #ifdef __linux__
 	display_gamma("taking the display back");
+	motor_safe();
 #endif
 }
 
