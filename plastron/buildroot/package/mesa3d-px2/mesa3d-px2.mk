@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-MESA3D_PX2_VERSION = 26.2.6
+MESA3D_PX2_VERSION = 26.3.1
 MESA3D_PX2_SOURCE = mesa-$(MESA3D_PX2_VERSION).tar.xz
 MESA3D_PX2_SITE = https://archive.mesa3d.org
 MESA3D_PX2_LICENSE = MIT, SGI, Khronos

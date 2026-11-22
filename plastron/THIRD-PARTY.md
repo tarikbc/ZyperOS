@@ -59,7 +59,7 @@ Diatom's.
   U-Boot's FSP_INIT patch, and the order they go in from Rockchip's U-Boot's
   `dmc_fsp.c` (GPL-2.0-or-later).
 - **Mesa** (MIT and others), https://mesa3d.org: OpenGL ES for the Mali GPU,
-  through Panfrost, 26.2.6 as released (`package/mesa3d-px2/`). Its build
+  through Panfrost, 26.3.1 as released (`package/mesa3d-px2/`). Its build
   also builds Mesa's own compilers for the build machine, with LLVM and
   clang there, for Panfrost's precompiled GPU programs; none of them goes
   into the image.
