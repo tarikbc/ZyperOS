@@ -27,12 +27,14 @@ static void put(uint8_t *px, int w, int h, int x, int y, uint8_t r, uint8_t g, u
 /* An outline from millimetres, as the drawing places them: straight edges
  * on the rounded pixel edges, arcs and corners by their centres */
 static void outline(const hf_model *m, const hf_rrect *r, uint8_t *px, int w, int h, int gx, int gy, int gw,
-                    int gh)
+                    int gh, int dx)
 {
 	const float sx = (float)gw / m->lcd_w, sy = (float)gh / m->lcd_h;
 	int x0, y0, x1, y1, t;
 
 	hf_px_rect(m, r, gx, gy, gw, gh, &x0, &y0, &x1, &y1);
+	x0 += dx;
+	x1 += dx;
 	for (t = 0; t < 4000; t++) {
 		/* walk the rect's edges, the corner radii ignored: the check is the
 		 * straight runs and the arcs' middles */
@@ -86,7 +88,16 @@ int main(int argc, char **argv)
 					if (argc > 2 && !strcmp(argv[2], "--outline")) {
 						int i;
 
-						for (i = 0; i < m->nparts; i++) outline(m, &m->part[i].shape, px, w, h, gx, gy, gw, gh);
+						/* the light where the drawing puts it (hf_light_dx) */
+						const int ldx = hf_light_dx(m, w, gx, gy, gw, gh);
+
+						for (i = 0; i < m->nparts; i++) {
+							const hf_rrect *r = &m->part[i].shape;
+							const int lit = r->x0 >= m->light.x0 - 0.01f && r->x1 <= m->light.x1 + 0.01f &&
+							                r->y0 >= m->light.y0 - 0.01f && r->y1 <= m->light.y1 + 0.01f;
+
+							outline(m, r, px, w, h, gx, gy, gw, gh, lit ? ldx : 0);
+						}
 					}
 					snprintf(path, sizeof path, "%s/%s-%d-%s-%d.ppm", dir, TAGS[t], w, k ? "whole" : "cut", c);
 					f = fopen(path, "wb");
