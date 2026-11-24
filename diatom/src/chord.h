@@ -4,8 +4,8 @@
  * The hotkeys are SELECT held and one more button pressed: SELECT+R1 saves
  * a state to the quick slot, SELECT+L1 loads it, SELECT+R2 runs the game
  * faster and SELECT+L2 slower, until the player gives them other buttons;
- * a screenshot, the next shader and display mode, Reset Game and Quit have
- * none until given one (the launcher's Hotkeys, RUN hotkeys= and
+ * a screenshot, the next shader and display mode, Reset Game, Quit and Fast
+ * Forward have none until given one (the launcher's Hotkeys, RUN hotkeys= and
  * SETHOTKEYS). Below, "a shoulder" is any button an act is on. Most systems have a SELECT of their own (NES,
  * SNES, Game Boy, GBA, PlayStation...), so a press of SELECT belongs either to
  * the game or to the hotkeys, decided by what comes next, and never to both:
@@ -66,6 +66,7 @@ typedef enum {
 	CHORD_DISPLAY,    /* the system's next display mode */
 	CHORD_RESET,      /* reset the game, asked first */
 	CHORD_QUIT,       /* quit, as MENU then X */
+	CHORD_FFWD,       /* fast forward on or off: 1x and the speed it is given */
 	CHORD_ACTS
 } chord_act;
 

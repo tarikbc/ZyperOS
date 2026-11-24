@@ -1569,6 +1569,9 @@ for _kind in ("disk_side", "disk_in", "disk_out", "disk_first"):
     EXTRA.setdefault("popup-" + _kind, ("demo", "NES", ["--popup", _kind]))
 EXTRA.setdefault("popup-speed-half", ("demo", "PS1", ["--popup", "speed", "3"]))
 EXTRA.setdefault("popup-speed-whole", ("demo", "PS1", ["--popup", "speed", "4"]))
+# Max (0), and 1x, as Fast Forward turns it off
+EXTRA.setdefault("popup-speed-max", ("demo", "PS1", ["--popup", "speed", "0"]))
+EXTRA.setdefault("popup-speed-one", ("demo", "PS1", ["--popup", "speed", "2"]))
 # The Hotkeys list (src/hotkeys_screen.h): MENU > System's, at its top and its
 # end (Home, the line under it, Reset Hotkeys); a game's, Applies To on each
 # of its three and All Controls at the end; the capture screen waiting and
@@ -1593,6 +1596,17 @@ for _name, _flags in (
         ("menu-capture", ["--hotkeys", "107", "--hk-capture", "1"]),
         ("menu-capture-keys", ["--hotkeys", "107", "--hk-capture", "2", "--hk-key", "4"])):
     EXTRA.setdefault("hotkeys-" + _name, ("demo", "PS1", _flags))
+# Fast Forward and its speed under it (src/hotkeys.h): as they come, None and
+# 2x; set, SELECT+Y and Max, both in the accent-ink, in MENU > System's and a
+# game's; and its capture screen
+EXTRA.setdefault("hotkeys-ffwd", ("demo", "PS1", ["--hotkeys", "9"]))
+EXTRA.setdefault("hotkeys-ff-speed", ("demo", "PS1", ["--hotkeys", "120"]))
+EXTRA.setdefault("hotkeys-ff-set", ("demo", "PS1", ["--hotkeys", "120"]))
+SHOT_LIB["hotkeys-ff-set"] = {"hotkeys": "1;ffwd:y,ffspeed:max"}
+EXTRA.setdefault("hotkeys-ff-game", ("demo", "PS1", ["--screen", "games", "--hk-game", "--hk-scope", "0",
+                                                     "--hotkeys", "120"]))
+SHOT_LIB["hotkeys-ff-game"] = {"hotkeys": "1;ffwd:y,ffspeed:max"}
+EXTRA.setdefault("hotkeys-ff-capture", ("demo", "PS1", ["--hotkeys", "9", "--hk-capture", "2", "--hk-key", "3"]))
 # NES Player 2 (src/p2.h): its page over a paused NES game in every state
 # (--player2), the code on the hotspot with nobody yet and its address under
 # it, a player connected, the cable, before A on each link, with neither

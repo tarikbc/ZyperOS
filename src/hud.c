@@ -226,7 +226,9 @@ void hud_text(char *out, size_t n, const hud_values *v, uint8_t items)
 		add(out, n, &k, part);
 	}
 	if ((items & (1u << HUD_SPEED)) && known(v->speed)) {
-		const double s = v->speed > 9.9 ? 9.9 : v->speed;
+		/* 99.9x at most: Max runs a Game Boy game past 10x (2026-11-23),
+		 * and "12.6x" is no wider than "0.97x", the widest it was */
+		const double s = v->speed > 99.9 ? 99.9 : v->speed;
 		const bool full = s >= HUD_FULL_LO && s <= HUD_FULL_HI;
 
 		if (!full) {
