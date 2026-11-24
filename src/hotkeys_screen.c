@@ -308,9 +308,8 @@ static void mk_take_key(app *a, hk_page *p, mk_act m, int key)
 
 		snprintf(chord, sizeof chord, "MENU+%s", hk_key_name(key));
 		mk_chord(&t, m, was, sizeof was);
-		snprintf(q, sizeof q, T(S_HOTKEYS_SWAP_Q), chord, mk_label((mk_act)other),
-		         mk_label((mk_act)other), was);
-		if (!ask_panel(a, &p->st, p, mk_label(m), q, T(S_HOTKEYS_SWAP))) return;
+		cq_text(CQ_HOTKEYS_SWAP, q, sizeof q, chord, mk_label(m), mk_label((mk_act)other), was);
+		if (!confirm_ask_over(a, CQ_HOTKEYS_SWAP, q, &p->st, p)) return;
 	}
 	mk_swap(&t, m, key);
 	mk_put(&t);
