@@ -5,6 +5,7 @@
 #include "collect.h"
 #include "gamedel.h"
 #include "gamern.h"
+#include "keyboard.h"
 #include "panel.h"
 #include "shelfbuild.h"
 #include "ui.h"
@@ -21,7 +22,45 @@
  * against every other game on the shelves as Delete Game's is, is run, the
  * library's rows follow, and the shelf puts the game in its place under its
  * new name, its title emptied so the new name is what shows. True when it
- * was renamed; `said` the message either way, empty for none. */
+ * was renamed; `said` the message either way, empty for none.
+ *
+ * A game whose file keeps its name (gr_shown_only: an arcade set, a port)
+ * has the same keyboard on the name it shows, under its own title, its
+ * quiet line led by a note that the file keeps its name, and the name it
+ * would have back dimmed in the field once that is empty: START sets the
+ * name every screen shows (gr_shown_set), an empty field the one it had
+ * back, and the shelves show it at once (refresh_game_titles). No file is
+ * touched. */
+static bool rename_shown(app *a, int owner, const game_entry *g, char *said, size_t n)
+{
+	const system_cfg *s = &a->sys.systems[owner];
+	char folder[CFG_STR], file[LIB_PATH], name[LIB_NAME], typed[LIB_NAME], plain[LIB_NAME];
+	gr_why why;
+
+	snprintf(folder, sizeof folder, "%s", s->folder);
+	snprintf(file, sizeof file, "%s", g->file);
+	snprintf(name, sizeof name, "%s", g->name);
+	snprintf(typed, sizeof typed, "%s", g->title[0] ? g->title : g->name);
+	said[0] = '\0';
+	gr_shown_plain(folder, file, name, plain, sizeof plain);
+	kb_note_next(T(S_GAMEMENU_RENAME_SHOWN_NOTE));
+	kb_placeholder_next(plain);
+	if (keyboard_prompt(a, T(S_GAMEMENU_RENAME_SHOWN), typed, (int)sizeof typed) != KB_ACCEPT ||
+	    !a->running)
+		return false;
+	why = gr_shown_set(folder, file, name, typed);
+	fprintf(stderr, "rename: %s %s shown as \"%s\" (%d)\n", s->tag, file, typed, (int)why);
+	if (why == GR_SAME) return false;
+	if (why != GR_OK) {
+		snprintf(said, n, "%s", T(S_GAMEMENU_RENAME_FAILED));
+		return false;
+	}
+	/* Every shelf with the game on it, Favorites, Recents and the
+	 * collections too, each in its order again with its cursor kept */
+	refresh_game_titles(a);
+	return true;
+}
+
 bool game_rename(app *a, int owner, const game_entry *g, char *said, size_t n)
 {
 	const system_cfg *s = &a->sys.systems[owner];
@@ -35,6 +74,7 @@ bool game_rename(app *a, int owner, const game_entry *g, char *said, size_t n)
 	gr_done done;
 	int no = 0, cap = 0, i, k;
 
+	if (gr_shown_only(s->core, g->file, g->dir)) return rename_shown(a, owner, g, said, n);
 	/* Copies: the shelf's entries move once the game takes its name */
 	snprintf(tag, sizeof tag, "%s", s->tag);
 	snprintf(folder, sizeof folder, "%s", s->folder);

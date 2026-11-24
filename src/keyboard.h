@@ -65,6 +65,13 @@ typedef bool (*kb_idle)(void *ctx);
  * for the first letter, and goes back to the letters once one is typed
  * (kb_layer_typed). Once: the prompt after it opens as every other does. */
 void kb_capital_next(void);
+/* The next kb_prompt (or preview) leads its quiet line with `note`, before
+ * L1/R1's and MENU's: a few words on what the name typed changes, where the
+ * title alone cannot say it. Once, as kb_capital_next. */
+void kb_note_next(const char *note);
+/* The next kb_prompt (or preview) shows `text` dimmed in its field while
+ * the field is empty: what START on nothing gives. Once. */
+void kb_placeholder_next(const char *text);
 
 kb_result kb_prompt(SDL_Renderer *r, in_state *in, const char *title,
                     char *buf, int cap, kb_panel panel, kb_idle idle,
