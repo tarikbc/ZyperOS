@@ -1189,8 +1189,29 @@ static void sweep(const up_manifest *m, const char *dir, const char *rel)
 static bool enough_space(uint64_t need)
 {
 	struct statvfs v;
+	const char *s = getenv("ZYPEROS_UPDATE_CARD_FREE");   /* the checks' stand-in */
+
+	if (s) return strtoull(s, NULL, 10) >= need + SPACE_MARGIN;
 	if (statvfs(C.card, &v)) return true;
 	return (uint64_t)v.f_bavail * v.f_frsize >= need + SPACE_MARGIN;
+}
+
+/* What staging takes from the manifest's file i on, for the room the page
+ * says it needs (state space): a file already staged nothing, one the
+ * installed folder has its copy, and any other its download beside its copy */
+static uint64_t room_from(const up_manifest *m, int i, const index_t *staged, const index_t *live)
+{
+	uint64_t room = 0;
+
+	for (; i < m->nfiles; i++) {
+		const up_file *f = &m->files[i];
+		const char *was = index_sha(staged, f->path), *had = index_sha(live, f->path);
+
+		if (was && !strcmp(was, f->sha)) continue;
+		room += f->size;
+		if (!had || strcmp(had, f->sha)) room += f->stored;
+	}
+	return room;
 }
 
 /* download: stage the update in next/, check it, mark it ready. */
@@ -1293,7 +1314,12 @@ static int do_download(void)
 			/* With an index, only what it says is the same; without one
 			 * (a card from before System Update), anything the same size */
 			if ((had && !strcmp(had, f->sha)) || (!live.n && !stat(src, &sb) && (uint64_t)sb.st_size == f->size)) {
-				if (!enough_space(f->size)) { say("space", "the card is full: %s needs room", f->path); goto fail; }
+				if (!enough_space(f->size)) {
+					S.need = space + room_from(&m, i, &staged, &live) + SPACE_MARGIN;
+					say("space", "the card is full: %s needs room; the update needs %llu MB free",
+					    f->path, (unsigned long long)(S.need >> 20));
+					goto fail;
+				}
 				next_path(f, tmp, sizeof tmp, ".tmp");
 				if (copy_checked(src, tmp, f) && file_placed(&st, f, tmp)) {
 					progress(&st, false);
@@ -1310,7 +1336,8 @@ static int do_download(void)
 
 		if (nneed) {
 			if (!enough_space(space)) {
-				say("space", "the card needs %llu MB free for the update", (unsigned long long)((space + SPACE_MARGIN) >> 20));
+				S.need = space + SPACE_MARGIN;
+				say("space", "the card needs %llu MB free for the update", (unsigned long long)(S.need >> 20));
 				goto fail;
 			}
 			say("downloading", "%d files, %llu bytes", nneed, (unsigned long long)st.total);

@@ -4673,6 +4673,13 @@ const su_view *up_view(bool now)
 		if (f) fclose(f);
 	}
 	if (!plat_battery(&g_up.battery, &g_up.charging)) { g_up.battery = 100; g_up.charging = true; }
+	/* The card's free room beside what the update needs, while it says
+	 * so: the page shows it as it changes */
+	if (g_up.st.state == SU_SPACE) {
+		struct statvfs vfs;
+
+		if (!statvfs(P_CARD, &vfs)) g_up.card_free = (unsigned long long)vfs.f_bavail * vfs.f_frsize;
+	}
 	if (g_up.st.time > 0) {
 		time_t tt = (time_t)g_up.st.time;
 		struct tm tm;

@@ -1726,7 +1726,13 @@ static void shot_compose_once(app *a)
 
 		for (i = 0; i < UP_NOTES; i++) np[i] = notes[i];
 
-		su_page_build(up_view(true), &p);
+		{
+			su_view v = *up_view(true);
+
+			/* The card too full: a stand-in free room, not this computer's */
+			if (v.st.state == SU_SPACE) v.card_free = 230000000ull;
+			su_page_build(&v, &p);
+		}
 		update_page_draw(a, T(S_UPDATEPAGE_TITLE), &p, np, nn, NULL);
 		return;
 	}
