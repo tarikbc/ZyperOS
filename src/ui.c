@@ -89,6 +89,14 @@ static char title_path_kept[512];
 /* See ui_face_open. Made by the first ui_init and kept for the life of the
  * process, never destroyed by ui_quit: a worker can be waiting on one then. */
 static SDL_mutex *face_lock;
+/* Every face ui_face_open opened and ui_face_close has not closed, with its
+ * size and whether it is a title cut: so face_for finds Chinese and Japanese
+ * faces of the same size and weight for a face of no role (home.c's page
+ * faces, ui_face_at's), as it does for the role faces. Under face_lock, as
+ * the opening and closing are. */
+typedef struct { TTF_Font *f; int pt; bool title; } face_rec;
+static face_rec *face_recs;
+static int face_nrecs, face_caprecs;
 /* The generated card's faces on the art workers (ui_card_paint's `away`):
  * sets of their own, so a face of the frame thread's is only ever the frame
  * thread's. One set for each of texload's two workers, so they draw two
@@ -352,12 +360,37 @@ bool ui_init(SDL_Renderer *r, const char *font_path)
 	return fonts[UI_F_TITLE] && fonts[UI_F_MENU];
 }
 
+/* Whether the file at path is one of the title cuts (DS_FONT_SEMIBOLD and
+ * its Chinese and Japanese cuts) */
+static bool title_cut(const char *path)
+{
+	const char *slash = strrchr(path, '/'), *name = slash ? slash + 1 : path;
+
+	return !strcmp(name, DS_FONT_SEMIBOLD) || !strcmp(name, DS_FONT_CJK_TITLE) ||
+	       !strcmp(name, DS_FONT_JA_TITLE);
+}
+
 TTF_Font *ui_face_open(const char *path, int pt)
 {
 	TTF_Font *f;
 
 	if (face_lock) SDL_LockMutex(face_lock);
 	f = TTF_OpenFont(path, pt);
+	if (f) {
+		/* A face with no record only goes without the Chinese and
+		 * Japanese faces of its size */
+		if (face_nrecs == face_caprecs) {
+			int cap = face_caprecs ? face_caprecs * 2 : 32;
+			face_rec *more = realloc(face_recs, (size_t)cap * sizeof *more);
+
+			if (more) {
+				face_recs = more;
+				face_caprecs = cap;
+			}
+		}
+		if (face_nrecs < face_caprecs)
+			face_recs[face_nrecs++] = (face_rec){ f, pt, title_cut(path) };
+	}
 	if (face_lock) SDL_UnlockMutex(face_lock);
 	return f;
 }
@@ -366,11 +399,34 @@ void ui_face_close(TTF_Font *f)
 {
 	if (!f) return;
 	if (face_lock) SDL_LockMutex(face_lock);
+	for (int i = 0; i < face_nrecs; i++)
+		if (face_recs[i].f == f) {
+			face_recs[i] = face_recs[--face_nrecs];
+			break;
+		}
 	TTF_CloseFont(f);
 	if (face_lock) SDL_UnlockMutex(face_lock);
 }
 
+/* f's size and cut, as it was opened; false for a face ui_face_open did not
+ * open */
+static bool face_rec_of(TTF_Font *f, int *pt, bool *title)
+{
+	bool found = false;
+
+	if (face_lock) SDL_LockMutex(face_lock);
+	for (int i = 0; i < face_nrecs && !found; i++)
+		if (face_recs[i].f == f) {
+			*pt = face_recs[i].pt;
+			*title = face_recs[i].title;
+			found = true;
+		}
+	if (face_lock) SDL_UnlockMutex(face_lock);
+	return found;
+}
+
 static void digits_free(void);
+static void kin_free(void);
 static void button_fonts_free(void);
 static void bakes_free(void);
 
@@ -402,6 +458,7 @@ void ui_quit(void)
 	}
 	fonts = font_sets[SET_LATIN];
 	if (f_mark) { ui_face_close(f_mark); f_mark = NULL; }
+	kin_free();
 	if (face_lock) SDL_LockMutex(face_lock);
 	TTF_Quit();
 	if (face_lock) SDL_UnlockMutex(face_lock);
@@ -734,32 +791,79 @@ static bool has_kana(const char *s)
 	return false;
 }
 
+/* The Chinese and Japanese faces face_for found for faces of no role, by
+ * set, size and cut: each opened the first time a line wants it, and kept
+ * until ui_quit. The frame thread's, as face_for is. */
+#define KIN_N 24
+static struct { int set, pt; bool title, tried; TTF_Font *f; } kin[KIN_N];
+
+static TTF_Font *kin_face(int set, int pt, bool title)
+{
+	char path[512];
+	int i;
+
+	for (i = 0; i < KIN_N && kin[i].tried; i++)
+		if (kin[i].set == set && kin[i].pt == pt && kin[i].title == title) return kin[i].f;
+	if (i == KIN_N || !font_path_kept[0]) return NULL;
+	kin[i].set = set;
+	kin[i].pt = pt;
+	kin[i].title = title;
+	kin[i].tried = true;
+	set_path(set, title, path, sizeof path);
+	kin[i].f = ui_face_open(path, pt);
+	if (!kin[i].f && title) {
+		set_path(set, false, path, sizeof path);
+		kin[i].f = ui_face_open(path, pt);
+	}
+	return kin[i].f;
+}
+
+static void kin_free(void)
+{
+	for (int i = 0; i < KIN_N; i++) {
+		if (kin[i].f) ui_face_close(kin[i].f);
+		kin[i].f = NULL;
+		kin[i].tried = false;
+	}
+}
+
 /* The face s is drawn in when f is asked for: f, or where s has Chinese or
  * Japanese characters f has not, the first face of f's role that has them
  * all, the set that is on first, then Japanese's where s has kana and
  * Chinese's where it has none. So 简体中文 and 日本語 are themselves in MENU >
  * Language's panel in any language, and a game named in either is drawn
- * rather than boxes. Asked only where a line is measured or rendered afresh:
- * what ui_text has cached was drawn this way already. */
+ * rather than boxes. A face of no role (home.c's page faces: the bar's
+ * song, the cassette's label, the grid's names; ui_face_at's) looks the same
+ * way among the Chinese and Japanese faces of its own size and cut; it used
+ * to draw such a song title in Lexend, all boxes (Discord, 2026-11-23).
+ * Asked only where a line is measured or rendered afresh: what
+ * ui_text has cached was drawn this way already. */
 static TTF_Font *face_for(TTF_Font *f, const char *s)
 {
-	int role = -1, order[3];
+	int role = -1, order[3], pt = 0;
+	bool title = false;
 
 	if (!has_cjk(s) || covers(f, s)) return f;
 	for (int k = 0; k < SETS && role < 0; k++)
 		for (int i = 0; i < UI_F_COUNT; i++)
 			if (f == font_sets[k][i]) { role = i; break; }
-	if (role < 0) return f;
+	if (role < 0 && !face_rec_of(f, &pt, &title)) return f;
 	order[0] = set_on;
 	/* Japanese where it has kana, or where it is Japanese's own name, which
 	 * is kanji alone */
 	order[1] = has_kana(s) || !strcmp(s, lang_name(LANG_JA)) ? SET_JP : SET_SC;
 	order[2] = order[1] == SET_JP ? SET_SC : SET_JP;
 	for (int k = 0; k < 3; k++) {
+		TTF_Font *g;
+
 		if (order[k] == SET_LATIN) continue;
-		set_open(order[k]);
-		if (font_sets[order[k]][role] && covers(font_sets[order[k]][role], s))
-			return font_sets[order[k]][role];
+		if (role >= 0) {
+			set_open(order[k]);
+			g = font_sets[order[k]][role];
+		} else {
+			g = kin_face(order[k], pt, title);
+		}
+		if (g && covers(g, s)) return g;
 	}
 	return f;
 }

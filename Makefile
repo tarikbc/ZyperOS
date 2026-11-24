@@ -3229,6 +3229,20 @@ check-textfade:
 		  ./build-native/textfade-check; \
 	else echo "skipped: no SDL2 for the text fade check"; fi
 
+# Chinese and Japanese names in every face ui_face_open opens, not only the
+# role faces: home.c's page faces drew a song's title in boxes.
+check-cjkface:
+	@if pkg-config --exists sdl2 SDL2_ttf SDL2_image; then \
+		mkdir -p build-native; \
+		$(CC) -std=gnu11 -D_GNU_SOURCE -O1 -g -Wall -Wextra \
+		  $$(pkg-config --cflags sdl2 SDL2_ttf SDL2_image) -Isrc \
+		  -o build-native/cjkface-check tools/cjkface-check.c src/ui.c src/ds/glyph.c src/ds/button.c src/folderart.c src/roundrect.c src/theme.c src/look.c \
+		  src/themefile.c src/linebreak.c src/blur.c src/cardgen.c src/cardart.c src/cardart_draw.c src/sysmark.c $(I18N_SRC) \
+		  $$(pkg-config --libs sdl2 SDL2_ttf SDL2_image) -lm && \
+		ZYPEROS_HEADLESS=1 SDL_VIDEODRIVER=dummy SDL_RENDER_DRIVER=software \
+		  ./build-native/cjkface-check; \
+	else echo "skipped: no SDL2 for the CJK face check"; fi
+
 # The design system's rules the compiler cannot hold (DESIGN.md section 15):
 # src/ds/ stands alone, and no page foot, page Zyper or tile mark is typed
 # again or read off a name outside it.
