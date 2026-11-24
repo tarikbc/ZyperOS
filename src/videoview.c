@@ -26,8 +26,6 @@
 #define VV_REACH        5     /* covers drawn either side of the focus */
 /* The band's ground: surface at 92%, so the snap shows through a little */
 #define VV_BAND_ALPHA 235
-/* The rail in the strip: the page's margins, its middle down the strip's */
-#define VV_RAIL_Y     (VV_STRIP_TOP + (ZYPEROS_SCREEN_H - VV_STRIP_TOP) / 2)
 /* The name's card at the top left, under the header row, and the room its
  * name may take before it slides */
 #define VV_CARD_X     DS_INSET
@@ -104,7 +102,7 @@ static void top_fade(SDL_Renderer *r, float k)
 }
 
 /* The name's card: the shelf and the place in it, the name, its facts;
- * `gone` 0 in its place up to 1 off the top of the screen (a shot's) */
+ * `gone` 0 in its place up to 1 off the top of the screen, as the band goes */
 static uint32_t name_card(SDL_Renderer *r, const vv_info *in, uint32_t phase, float gone)
 {
 	TTF_Font *meta = page_font(PAGE_META), *title = page_font(PAGE_GAME_TITLE);
@@ -218,15 +216,12 @@ static void ring(SDL_Renderer *r, SDL_FRect f, float fade)
 }
 
 /* The band, its top at `top`: the covers in a row, the focused one ringed,
- * and the keys; the strip's rail in it at `strip` (0 to 1), none for a
- * shot's, whose band goes off the screen (`in->clear`) */
+ * and the keys, fading out as it goes `down` (0 to 1) off the screen */
 static void band(SDL_Renderer *r, const games_row *row, const vv_info *in, cf_tex_fn texture,
-                 void *ctx, uint32_t now, int top, float strip)
+                 void *ctx, uint32_t now, int top, float down)
 {
 	const int dy = top - VV_BAND_TOP;
-	/* The covers and the keys go as the band goes down, the rail comes:
-	 * the strip holds the rail alone */
-	const float fade = 1 - strip;
+	const float fade = 1 - down;
 	games_slot slots[GAMES_WINDOW];
 	int n, i;
 
@@ -279,19 +274,6 @@ static void band(SDL_Renderer *r, const games_row *row, const vv_info *in, cf_te
 		keyhints_draw(r, foot, nf, sf.keys.x, sf.keys.x + sf.keys.w, sf.keys.y + sf.keys.h / 2 + dy,
 		              KEYHINTS_SPREAD, true, (Uint8)lroundf(255 * fade));
 	}
-	/* The strip's rail: where the game is in the shelf (DESIGN.md 11.2) */
-	if (strip > 0 && in->count > 1 && !in->clear) {
-		const int x0 = DS_MARGIN, tw = ZYPEROS_SCREEN_W - 2 * DS_MARGIN;
-		int mw = tw / in->count, mx;
-		Uint8 al = (Uint8)lroundf(255 * strip);
-
-		if (mw < DS_RAIL_MIN) mw = DS_RAIL_MIN;
-		mx = x0 + (int)lroundf((float)(tw - mw) * in->cursor / (in->count - 1));
-		ui_round_rect(r, &(SDL_Rect){ x0, top + (VV_RAIL_Y - VV_STRIP_TOP) - DS_BAR / 2, tw, DS_BAR },
-		              DS_BAR / 2, ui_col(theme()->track, al));
-		ui_round_rect(r, &(SDL_Rect){ mx, top + (VV_RAIL_Y - VV_STRIP_TOP) - DS_BAR / 2, mw, DS_BAR },
-		              DS_BAR / 2, ui_col(theme()->accent_ink, al));
-	}
 }
 
 uint32_t vv_draw(vv_motion *m, const games_row *row, SDL_Renderer *r, const vv_info *in,
@@ -310,8 +292,8 @@ uint32_t vv_draw(vv_motion *m, const games_row *row, SDL_Renderer *r, const vv_i
 	if (!m->set) vv_reset(m, now);
 	if (in->playing && !m->was_playing && now > m->touched) m->touched = now;
 	m->was_playing = in->playing;
-	/* The rest: down to the strip once the snap has played hold-band
-	 * after the last press; no snap, no strip */
+	/* The rest: the band and the name's card away once the snap has
+	 * played hold-band after the last press; no snap, no rest */
 	if (!in->playing && m->to > 0) slide(m, 0, DS_MS_QUICK, now);
 	if (in->playing && m->to == 0 && now - m->touched >= DS_MS_HOLD_BAND)
 		slide(m, 1, DS_MS_MOVE, now);
@@ -327,7 +309,7 @@ uint32_t vv_draw(vv_motion *m, const games_row *row, SDL_Renderer *r, const vv_i
 	 * the band, half faded, for up to a second after the press (2026-11-19,
 	 * on the 1.1.0 test build: "a black box stays on the side") */
 	if (row_moving(&row->motion, now)) wait = 0;
-	top = (int)lroundf(VV_BAND_TOP + ((in->clear ? ZYPEROS_SCREEN_H : VV_STRIP_TOP) - VV_BAND_TOP) * down);
+	top = (int)lroundf(VV_BAND_TOP + (ZYPEROS_SCREEN_H - VV_BAND_TOP) * down);
 
 	/* The focused game's card, whole above the band, until its snap is in */
 	if (k < 1 && in->count > 0) {
@@ -358,9 +340,9 @@ uint32_t vv_draw(vv_motion *m, const games_row *row, SDL_Renderer *r, const vv_i
 		SDL_SetTextureAlphaMod(in->snap, (Uint8)lroundf(255 * k));
 		SDL_RenderCopyF(r, in->snap, in->snap_src.w > 0 ? &in->snap_src : NULL, &dst);
 		SDL_SetTextureAlphaMod(in->snap, 255);
-		top_fade(r, in->clear ? k * (1 - down) : k);
+		top_fade(r, k * (1 - down));
 	}
-	next = name_card(r, in, phase, in->clear ? down : 0);
+	next = name_card(r, in, phase, down);
 	if (next < wait) wait = next;
 	if (top < ZYPEROS_SCREEN_H) band(r, row, in, texture, ctx, now, top, down);
 	SDL_SetRenderDrawColor(r, red, green, blue, alpha);
