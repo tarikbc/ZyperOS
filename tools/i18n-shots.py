@@ -244,6 +244,9 @@ EXTRA = {
     # ...and at its end: with View and Shader (1.0.5), Box Art is below the
     # first shot's rows
     "system-menu-end": ("demo", "PS1", ["--screen", "games", "--menu", "Downloads"]),
+    # Favorites First under Sort By, On (DESIGN.md 11.70), its longer value
+    # in most languages, over a shelf of its favorites first
+    "system-menu-favfirst": ("demo", "PS1", ["--screen", "games", "--menu", "Favorites First"]),
     "storage-art": ("demo", "PS1", ["--storage", "art"]),
     "storage-states": ("demo", "PS1", ["--storage", "states"]),
     "storage-delete": ("demo", "PS1", ["--storage", "delete"]),
@@ -816,6 +819,7 @@ EXTRA.setdefault("gamemenu-strength-list", ("demo", "PS1", ["--gamemenu", "2", "
 SHOT_SETTINGS["gamemenu-strength-list"] = {"shader.PS1": "crt", "shader_strength.PS1": "50"}
 EXTRA.setdefault("menu-shader-list", ("demo", "PS1", ["--menu", "Shader", "--press", "a"]))
 SHOT_SETTINGS["menu-shader-list"] = {"launcher_shader": "scanlines"}
+SHOT_SETTINGS["system-menu-favfirst"] = {"favfirst.PS1": "on"}
 
 # LCD No Backlight (src/app.h SHADERS' only), the Game Boy's three's alone:
 # in the in-game menu of a Game Boy Advance game, its row and its list under

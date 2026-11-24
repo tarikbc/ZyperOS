@@ -173,12 +173,15 @@ typedef enum { PT_GAMES, PT_DISPLAY, PT_SOUND, PT_CONNECTIONS, PT_SYSTEM,
  * so these are hooks waiting to be wired, not wishes. */
 /* View, under Sort By (1.0.5, DESIGN.md 11.39): the shelf's covers in a
  * row, or its games as a list, this shelf's own choice as Sort By is. */
+/* Favorites First, between them (DESIGN.md 11.70): Off, as it ships, or On,
+ * the shelf's favorites ahead of its other games in its Sort By; a console's
+ * shelf only, so none of the shelves below with rows of their own has it. */
 /* The width an option list's note wraps to under the list, in pixels of
  * the menu's font (menu_pick_note) */
 #define SM_NOTE_W 760
 
 typedef enum {
-	SM_GAMES, SM_RANDOM, SM_CORE, SM_DSLANG, SM_SGB, SM_PACE, SM_SORT, SM_VIEW,
+	SM_GAMES, SM_RANDOM, SM_CORE, SM_DSLANG, SM_SGB, SM_PACE, SM_SORT, SM_FAVFIRST, SM_VIEW,
 	SM_DISPLAY, SM_BORDER, SM_BORDER_COLOR, SM_SHADER, SM_STRENGTH, /* SM_BUTTONS, */ SM_BOXART,
 	SM_RESCAN, SM_ROWS
 } sm_row;
@@ -537,6 +540,9 @@ typedef struct {
 	 * the same reason dmode is one: this file must not know the table, or a
 	 * check that links it would have to link the table too. */
 	const char *sort;
+	/* Favorites First, under Sort By on a console's shelf (DESIGN.md
+	 * 11.70): its favorites ahead of its other games */
+	bool        fav_first;
 	/* The shelf shows a list rather than its covers (View, SM_VIEW) */
 	bool        listed;
 	bool        grid;       /* the shelf is a grid of covers (MENU > View) */

@@ -3470,7 +3470,7 @@ and R1 go round them, and the panel is the same size on every tab:
 
 | Tab | Rows |
 |---|---|
-| **Game** | Continue, Save, Load, Undo Load (after a load, below), Quick Slot, Disc (a game on more than one disc), Player 2 (an NES game, 11.43), Core Settings (11.70), Cheats (11.66), Achievements, Reset, Quit |
+| **Game** | Continue, Save, Load, Undo Load (after a load, below), Quick Slot, Disc (a game on more than one disc), Player 2 (an NES game, 11.43), Core Settings (11.72), Cheats (11.66), Achievements, Reset, Quit |
 | **Display** | Display, Border and Handheld Color (11.59), Shader, Strength (11.50), a DS game's Screens, Swap Screens, Stylus, Screen Colors (a display with a table, 11.42), On-Screen Stats (11.52) |
 
 | **Controls** | Applies To, D-pad as Stick, Pak, Rumble (11.54), Face Buttons, one row a button, Reset Buttons, Hotkeys (11.45) |
@@ -4629,7 +4629,7 @@ its label and a small one for rows, I kept this one: it carries the folder's
 name and its system's color.)*
 
 **The list** (MENU > View > List, src/gamelist.h). A system's menu has
-**View** under Sort By: **Covers**, the row as it always was, **Grid**
+**View** under Sort By (and Favorites First, 11.70): **Covers**, the row as it always was, **Grid**
 (11.47), **List**, or **Video** (11.57).
 Each shelf keeps its own, Favorites too, in the device's database by the
 system's tag (`view.<tag>`): the choice belongs with Sort By and Display
@@ -6781,7 +6781,9 @@ header row (11.12) reads on any picture.
 3-unit **edge** frame, corners **radius.card**, padded 28 by 18: the shelf's
 mark color as a dot 14 across, then the heading and the place in **meta**,
 **text-soft** ("PlayStation · 3 / 6", the folder path in it as the heading
-has it); under it the game's name in **game-title**, **text**; under that,
+has it); under it the game's name in **game-title**, **text**, a favorite's
+heart before it as the cover row has (11.1; 11.70, where it shows the
+favorites' end); under that,
 when there are any, its facts in **chrome**, **text-dim**: its own system on
 a shelf of many (Favorites, Recents, Collections; on Recents with when it was
 last played, 11.48), Played, achievements, apart by " · ". Facts wider than
@@ -7898,26 +7900,60 @@ A game with nothing to tell it by keeps its bare title, and a title that
 stops being shared loses its brackets again. Worked out when the shelf is
 read and again whenever a title changes (a download, Rename, Delete Game).
 
-### 11.70 Core Settings
-The in-game menu's Game-tab **Core Settings** row opens one page while a
-game is running: every option that core offers (mapper, palette, sound
-cart, …), or only the keys listed for it in `config/coreopts-show.cfg`
-when that file names some. There is no shelf row: without a running core
-there is nothing to ask.
+### 11.70 Favorites First
+*(Asked for on the Discord: zazouboy, 2026-11-22, "it would be a nice option
+to be able to get the favorites on top of their respective games lists"; my
+OK, for 1.1.0.)*
 
-**Where the list comes from.** Diatom's `OPTIONS` lines fill it live over
-the paused game. With none, the page says **No options.** Values the
-player picks are kept as `coreopt.<TAG>.<key>` in the library, sent to the
-resident with `SETOPT`, and dropped again when they match the option's
-default so a later device default can still apply.
+**Favorites First**, a console shelf's MENU row right under **Sort By**:
+**Off**, as it ships, the shelf as it always was, or **On**, the shelf's
+favorites ahead of its other games. It is no order of its own but a split
+on top of the one Sort By chose: the favorites in that order, then the
+others in it (by Name, the favorites A to Z, then the rest A to Z; by Play
+Time, the favorites most played first, then the rest). Each shelf keeps its
+own, as it keeps Sort By and View, in the device's database by the system's
+tag (`favfirst.<tag>`, "on" or "off"). Left, Right and A turn it over, as
+Look's two-way rows do (Corners, Zyper), with the ring; the shelf under the
+menu is sorted again on the same game (`sort_shelf_keep`, which Sort By uses
+too). The menu's width is measured with the longer of On and Off.
 
-**The page.** Heading **Core Settings**, one option a row (its description
-at the left, the current value at the right). Left and Right step the value;
-A opens the list when there are more than two, as every option row does
-(11.3). B closes. Each option's allowed values live as one heap string
-(`codef.blob`), not a fixed `vals[64][128]` table, so opening the page no
-longer stacks nearly a megabyte. Host shots: `--coreopts-page ROW`
-(tools/i18n-shots.py: `coreopts-page`, `coreopts-page-empty`).
+- **Where**: a console's shelf, every View (Covers, Grid, List and Video). Not
+  on Favorites, where every game is one; not on Recents, whose order is when
+  a game was played, nor on Collections, whose order is the player's list;
+  not on MP4's or Screenshots', which hold no games to favorite.
+- **The heart** says which games are favorites: before the focused game's
+  name in Covers, Grid and Video (Video's name card had none, and has it
+  now, as the cover row's), and at the right of each favorite's row in List.
+  Nothing else marks the end of the favorites: no rule, no heading, no
+  count. The order and the hearts say it.
+- **Folders stay first** on a shelf with folders (11.39), A to Z, and the
+  favorites lead the games after them, in the folder shown; a folder is
+  never a favorite. Splore stays the PICO-8 shelf's first entry, ahead of the
+  favorites too.
+- **The letter jump** (Up and Down on the row, Left and Right in List) stops
+  where the favorites end even when the last favorite and the first of the
+  others share an initial: Down from "Zelda II", the last favorite, lands on
+  "Zanac", the first of the others, and Up comes back. Each part is its own
+  run of initials.
+- **A favorite marked or taken away** on the details page (X, then Y), or by
+  File Transfer, sorts the shelf again as the page closes: the game goes up
+  among the favorites, or back among the others at its place in the order,
+  and the cursor goes with it, so the page closes onto the game it was
+  opened on. A game deleted closes its part up.
+- **Unchanged**: Random Game (it picks among all the shelf's games, in no
+  order), the home's Favorites group and its order, Recents, Collections,
+  and a shelf with Favorites First off. A shelf with no favorites, or only
+  favorites, is in its Sort By order either way.
+
+Whether a game is a favorite is asked once per game before the sort moves
+anything (`sort_favorites_first`, src/sort.h), never per comparison: the
+favorites are lifted out (at most 512, FAV_MAX), the others close up in
+place, and the favorites go in at the front. The shelf knows where they are
+(`fav_from`, `nfav`), which is what the letter jump reads. `check-sort`
+holds the split in every order; `check-favfirst` walks a real shelf with
+its own keys, in Covers and List, by Name and by Recently Added, the letter
+jump at the favorites' end, and Favorites as it was. `check-menus` holds the
+row's place, its values, its sound and that no other shelf's menu has it.
 
 ### 11.71 Game Names
 *(Asked for on the Discord: DoctorIssa, 2026-11-21, under "Option to show
@@ -7975,3 +8011,25 @@ Name, a set, the article, a downloaded name, the order, a refresh both
 ways); `check-gamenames-shots` the List view's rows under each, as the Pixel
 2 and as the Brick in both themes, and MENU's row turning it over;
 `check-menus` the row's place and words.
+
+### 11.72 Core Settings
+The in-game menu's Game-tab **Core Settings** row opens one page while a
+game is running: every option that core offers (mapper, palette, sound
+cart, …), or only the keys listed for it in `config/coreopts-show.cfg`
+when that file names some. There is no shelf row: without a running core
+there is nothing to ask.
+
+**Where the list comes from.** Diatom's `OPTIONS` lines fill it live over
+the paused game. With none, the page says **No options.** Values the
+player picks are kept as `coreopt.<TAG>.<key>` in the library, sent to the
+resident with `SETOPT`, and dropped again when they match the option's
+default so a later device default can still apply.
+
+**The page.** Heading **Core Settings**, one option a row (its description
+at the left, the current value at the right). Left and Right step the value;
+A opens the list when there are more than two, as every option row does
+(11.3). B closes. Each option's allowed values live as one heap string
+(`codef.blob`), not a fixed `vals[64][128]` table, so opening the page no
+longer stacks nearly a megabyte. Host shots: `--coreopts-page ROW`
+(tools/i18n-shots.py: `coreopts-page`, `coreopts-page-empty`).
+

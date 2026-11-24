@@ -7,6 +7,7 @@
 #include <strings.h>
 #include <time.h>
 
+#include "favorites.h"
 #include "i18n.h"
 #include "library.h"
 #include "stats.h"
@@ -31,9 +32,11 @@
  * free: a game with no sessions has nothing to say about play time, and the
  * bottom is where "nothing to say" belongs. No special case needed for it.
  *
+ * Favorites First is not an order but a split on top of one (sort_favorites_first):
+ * the shelf's favorites ahead of its other games, each part in the order chosen.
+ *
  * What is NOT here, and why: times launched, which tracks play time closely
- * enough that it would be a second copy of the same shelf; and favorites
- * first, which already has a shelf of its own. Publisher, year, genre and
+ * enough that it would be a second copy of the same shelf. Publisher, year, genre and
  * region are not here because nothing on the card knows them - the box art
  * scrapers key on filename rather than a catalog, so those would mean
  * carrying metadata with no source. */
@@ -221,6 +224,38 @@ static inline void sort_apply(game_entry *v, int n, int order, const char *tag)
 	case SORT_LIST: qsort(v, (size_t)n, sizeof *v, sort_by_list); break;
 	default: qsort(v, (size_t)n, sizeof *v, sort_by_name);   break;
 	}
+}
+
+/* Favorites First (DESIGN.md 11.70): the favorites of system `tag` among the
+ * `n` games moved ahead of the rest, the order inside each part kept, so a
+ * shelf in any order is that order twice: its favorites, then its other games.
+ * How many favorites now lead; 0 when there was no memory, and nothing moved.
+ *
+ * Whether a game is a favorite is asked once per game (fav_is walks its set)
+ * before anything moves, never per comparison. The favorites are lifted out
+ * into a buffer of their own, at most FAV_MAX of them; the rest close up
+ * toward the end in place, from the back, so none is read after it is written
+ * over; and the favorites go in at the front. */
+static inline int sort_favorites_first(game_entry *v, int n, const char *tag)
+{
+	unsigned char *is;
+	game_entry *fav;
+	int i, k = 0, w = n;
+
+	if (!v || n <= 0 || !tag) return 0;
+	if (!(is = malloc((size_t)n))) return 0;
+	for (i = 0; i < n; i++)
+		if ((is[i] = !v[i].folder && fav_is(tag, v[i].file))) k++;
+	if (k == 0 || k == n) { free(is); return k; }
+	if (!(fav = malloc(sizeof *fav * (size_t)k))) { free(is); return 0; }
+	for (i = 0, k = 0; i < n; i++)
+		if (is[i]) fav[k++] = v[i];
+	for (i = n - 1; i >= 0; i--)
+		if (!is[i]) v[--w] = v[i];
+	memcpy(v, fav, sizeof *fav * (size_t)k);
+	free(fav);
+	free(is);
+	return k;
 }
 
 /* The same, for a shelf whose games come from several systems - Favorites.

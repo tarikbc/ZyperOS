@@ -50,6 +50,10 @@ typedef struct {
 typedef struct {
 	const char *heading;          /* the system, and the folder it is in */
 	const char *title;            /* the focused game's name */
+	/* ...a favorite: a heart before it, as the cover row has (DESIGN.md
+	 * 11.70: on a shelf with Favorites First on, it is what shows where
+	 * the favorites end) */
+	bool favorite;
 	int count, cursor;
 	unsigned accent;              /* the shelf's color, for the card's dot */
 	/* The focused entry's facts, as the cover row has them */

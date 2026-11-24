@@ -1094,6 +1094,13 @@ void sort_load(app *a)
 		a->view[i].sort = is_mp4(&a->sys.systems[i]) ? (int)ml_order_index(name)
 		                                              : sort_index(name);
 	}
+	/* Favorites First beside it, favfirst.<TAG>: "on", or nothing as it
+	 * ships */
+	for (i = 0; i < a->sys.count; i++) {
+		snprintf(key, sizeof key, "favfirst.%s", a->sys.systems[i].tag);
+		a->view[i].fav_first = db_get_str(db_dev(), key, name, sizeof name, NULL) &&
+		                       !strcmp(name, "on");
+	}
 }
 
 /* MENU > View, per shelf like Sort By: "list", "grid" or none (the
@@ -1308,6 +1315,7 @@ void sort_shelf(app *a, int sys)
 {
 	sysview *v = &a->view[sys];
 
+	v->nfav = 0;
 	if (is_mp4(&a->sys.systems[sys])) { mp4_order_view(v); return; }
 	/* Screenshots' three, each game's newest first (src/shots_screen.h) */
 	if (shots_shelf(a, sys)) { shots_sort(a, sys); return; }
@@ -1335,10 +1343,75 @@ void sort_shelf(app *a, int sys)
 	 * its games' */
 	sort_apply(v->list.items + v->nfold, v->list.count - v->nfold, v->sort,
 	           a->sys.systems[sys].tag);
+	/* Favorites First (DESIGN.md 11.70): its favorites ahead of its other
+	 * games, each part in that order, still after the folders */
+	v->fav_from = v->nfold;
+	v->nfav = v->fav_first && fav_first_offered(a, sys)
+	        ? sort_favorites_first(v->list.items + v->nfold, v->list.count - v->nfold,
+	                               a->sys.systems[sys].tag)
+	        : 0;
 	/* Splore first among the PICO-8 shelf's, whatever the order (Tarik's
-	 * pick, 2026-11-19: the shelf's first entry) */
-	if (!strcmp(a->sys.systems[sys].tag, P8_TAG))
+	 * pick, 2026-11-19: the shelf's first entry), ahead of the favorites
+	 * too: it is no game to favorite */
+	if (!strcmp(a->sys.systems[sys].tag, P8_TAG)) {
+		int at = v->nfold;
+
 		splore_pin(v->list.items + v->nfold, v->list.count - v->nfold);
+		if (v->nfav && at < v->list.count && splore_file(v->list.items[at].file) &&
+		    !fav_is(a->sys.systems[sys].tag, v->list.items[at].file))
+			v->fav_from++;
+	}
+}
+
+/* Favorites First (DESIGN.md 11.70) is a console shelf's: Favorites is
+ * all favorites, Recents goes by when, a collection by its list, and MP4's
+ * albums and Screenshots' shots are no games to favorite */
+bool fav_first_offered(app *a, int sys)
+{
+	return sys >= 0 && sys < a->sys.count && !is_mp4(&a->sys.systems[sys]) &&
+	       !a->view[sys].owner && !shots_shelf(a, sys);
+}
+
+/* Shelf `sys` sorted again with the cursor on the game it was on, not on
+ * the place: Sort By, Favorites First, and a favorite marked or taken away
+ * while Favorites First is on. The textures are indexed by place, so they
+ * are let go, and each card asks for its art where it now is. */
+void sort_shelf_keep(app *a, int sys)
+{
+	sysview *v = &a->view[sys];
+	char keep[LIB_PATH];
+	int i, keep_owner = -1;
+
+	keep[0] = '\0';
+	if (v->cursor >= 0 && v->cursor < v->list.count) {
+		snprintf(keep, sizeof keep, "%s", v->list.items[v->cursor].file);
+		/* On Favorites a file name is not enough: the same one can be on
+		 * the shelf twice, from two systems. */
+		if (v->owner) keep_owner = v->owner[v->cursor];
+	}
+	sort_shelf(a, sys);
+	free_view_textures(v);
+	v->cursor = 0;
+	for (i = 0; i < v->list.count; i++)
+		if (!strcmp(v->list.items[i].file, keep) && (!v->owner || v->owner[i] == keep_owner)) {
+			v->cursor = i;
+			break;
+		}
+	cf_reset(&v->cf, v->cursor);
+	games_reset(&v->row, v->cursor, v->list.count, plat_now_ms());
+}
+
+/* MENU > Favorites First on shelf `sys` turned over, kept by its tag, and
+ * the shelf sorted again on the same game */
+void fav_first_turn(app *a, int sys)
+{
+	char key[CFG_STR + 16];
+
+	if (!fav_first_offered(a, sys)) return;
+	a->view[sys].fav_first = !a->view[sys].fav_first;
+	snprintf(key, sizeof key, "favfirst.%s", a->sys.systems[sys].tag);
+	db_set_str(db_dev(), key, a->view[sys].fav_first ? "on" : "off");
+	sort_shelf_keep(a, sys);
 }
 
 void sort_all(app *a)
@@ -5722,6 +5795,7 @@ static int menu_shelf_width(app *a)
 		int  brow = own ? -1 : sm_pos(a, i, SM_BORDER);
 		int  bcrow = own ? -1 : sm_pos(a, i, SM_BORDER_COLOR);
 		int  vrow = mp4 ? -1 : shots ? 1 : a->view[i].owner ? 3 : sm_pos(a, i, SM_VIEW);
+		int  ffrow = own || shots ? -1 : sm_pos(a, i, SM_FAVFIRST);
 
 		n = menu_build(a, SCREEN_GAMES, i, rows, &bufs, &heading);
 		/* Recents' Card Picture at the longer of its two (DESIGN.md 11.48) */
@@ -5767,6 +5841,18 @@ static int menu_shelf_width(app *a)
 				}
 				rows[lookrow].value = keep;
 			}
+		}
+		/* Favorites First at the longer of On and Off (DESIGN.md 11.70) */
+		if (ffrow >= 0 && ffrow < n) {
+			const char *keep = rows[ffrow].value;
+
+			for (k = 0; k < 2; k++) {
+				int mw;
+				rows[ffrow].value = T(k ? S_MENU_ON_TITLE : S_MENU_OFF_TITLE);
+				mw = menu_measure(rows, n, heading);
+				if (mw > w) w = mw;
+			}
+			rows[ffrow].value = keep;
 		}
 		for (k = 0; drow >= 0 && k < DMODE_COUNT; k++) {
 			int mw;
