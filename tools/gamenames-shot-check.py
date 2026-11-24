@@ -27,9 +27,10 @@ GAMES = ['Chrono Trigger (USA).sfc', 'Donkey Kong Country (USA) (Rev 2).sfc', 'E
 LAST = 'F-Zero (Japan).sfc'
 # The List view's rows on the 1024 x 768 canvas: the name from x 121, a
 # row 56 high from y 200 (the first, Chrono Trigger, the same game in both
-# orders), the fifth Mario Bros
-ROW1 = (110, 205, 640, 252)
-ROW5 = (110, 429, 640, 476)
+# orders), the fifth Mario Bros; to x 545, short of the full-height art
+# (#476), whose column cuts a long name at about x 440
+ROW1 = (110, 205, 545, 252)
+ROW5 = (110, 429, 545, 476)
 
 
 def card():
@@ -105,13 +106,16 @@ for device in ('pixel2', 'brick'):
         names(base, 'file')
         full = shot(base, env, f'{device}-{theme}-file', device, theme)
         s1, f1 = right_ink(short, ROW1), right_ink(full, ROW1)
-        # "Chrono Trigger" against "Chrono Trigger (USA)": the bracket's width
-        assert f1 >= s1 + 70, f'{device} {theme}: File Name\'s first row ends at {f1}, Short\'s at {s1}'
+        # "Chrono Trigger" against "Chrono Trigger (USA)", cut to "Chrono
+        # Trigger (..." by the column: the bracket's start and the ellipsis
+        assert f1 >= s1 + 40, f'{device} {theme}: File Name\'s first row ends at {f1}, Short\'s at {s1}'
         s5, f5 = right_ink(short, ROW5), right_ink(full, ROW5)
-        # "Mario Bros. Arcade Classic", the downloaded name, against the file's
-        # "Mario Bros (v1.1)", which is shorter: the download gave way
-        assert f5 < s5 - 20, f'{device} {theme}: the fifth row ends at {f5} under File Name, {s5} under Short'
+        # "Mario Bros. Arcade Classic", the downloaded name (cut by the
+        # column), against the file's "Mario Bros (v1.1)", which is shorter:
+        # the download gave way
+        assert f5 < s5 - 10, f'{device} {theme}: the fifth row ends at {f5} under File Name, {s5} under Short'
         assert short.crop(ROW1) != full.crop(ROW1)
+        assert short.crop(ROW5) != full.crop(ROW5)
 # MENU's row, Display's sixth: Right turns it over, kept, and names every
 # shelf again; again, back to Short
 names(base, 'short')
