@@ -988,6 +988,11 @@ check-wifi-watch:
 check-launch-start:
 	@sh tools/launch-start-check.sh
 
+# File Transfer's way in and heading: the address first, over the cable as
+# over Wi-Fi, read off the launcher's own shots
+check-xferway:
+	@sh tools/xferway-check.sh
+
 # The Pixel 2's crash report (plastron's /usr/sbin/crashlog): what pstore kept
 # of a panic or a reset, and the launcher's own crash, said once, onto the
 # card for Download logs

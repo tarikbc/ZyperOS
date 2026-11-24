@@ -1298,12 +1298,12 @@ browser: ROMs, Music, Audiobooks, Videos, Menu Music, BIOS, Saves and Save
 States. The screen
 shows the handheld's address, its name (`zyperos.local`) and a four-digit
 PIN, new each time it opens. Either opens the page; the name is the easier
-one to type, and the address works where the name does not. Over the USB
-cable the name comes first, `http://zyperos.local`, with the address and the
-PIN under it: only the computer is on that link. Over Wi-Fi the address
-comes first and the name sits beside the PIN: anyone on the network could
-answer for a name, so the address on the handheld's own screen is the one
-to trust.
+one to type, and the address works where the name does not. The address
+comes first, over the USB cable as over Wi-Fi, and the name under it
+(`http://zyperos.local` over the cable): Windows does not always find the
+name over the cable, and the address works on every computer. Over Wi-Fi
+anyone on the network could answer for a name, so the address on the
+handheld's own screen is the one to trust.
 The page asks for the PIN and opens as the fourth digit goes in. Five wrong
 PINs and the page waits 30 seconds.
 
@@ -1369,8 +1369,8 @@ shows them, and Zyper cheers.
 
 The same thing over a cable, with no Wi-Fi, called USB File Transfer. It works with a Mac, Linux, or Windows 11; Windows 10 has no driver for this kind of connection.
 
-1. Plug the device into the computer with a USB cable, and choose **File Transfer**. Or open **MENU > USB File Transfer**, which takes Wi-Fi File Transfer's place while a computer is on the cable. While the computer connects, it shows a bar; then its name, `http://zyperos.local`, in large type, its address under it, and a PIN.
-2. Open `http://zyperos.local` in a browser on that computer, or the address, `http://10.42.0.1` on the Pixel 2 or `http://10.55.0.2` on the Brick, and type the PIN.
+1. Plug the device into the computer with a USB cable, and choose **File Transfer**. Or open **MENU > USB File Transfer**, which takes Wi-Fi File Transfer's place while a computer is on the cable. While the computer connects, it shows a bar; then its address, `10.42.0.1` on the Pixel 2 and `10.55.0.2` on the Brick, in large type, its name, `http://zyperos.local`, under it, and a PIN.
+2. Open the address in a browser on that computer, `http://10.42.0.1` on the Pixel 2 or `http://10.55.0.2` on the Brick, or `http://zyperos.local`, and type the PIN. On Windows, use the address if the name does not open.
 3. Drag games into their console's folder, albums into `Music`, books into `Audiobooks` or films into `Videos`. They're on the shelf when you leave the screen, or, with the transfer behind the shelf, a moment after they arrive.
 
 ### Leaving the transfer screen
