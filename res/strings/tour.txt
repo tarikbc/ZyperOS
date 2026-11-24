@@ -178,6 +178,17 @@ de = Drücke überall MENU für Einstellungen.
 ja = MENU でどこでも設定を開けます。
 it = Premi MENU per le impostazioni, ovunque.
 
+[tour.menu.note]
+note = The MENU lesson's note, beside Zyper's corner: MENU held with a button, on every screen outside a game. The first %s takes a screenshot of the screen, the second locks the handheld; each is the keys as printed, "MENU+L1" and "MENU+L2". Keep it about as long as English's.
+en = %s takes a screenshot, %s locks.
+zh-Hans = %s 截图，%s 锁屏。
+es = %s hace una captura, %s bloquea.
+pt-BR = %s tira uma captura, %s trava.
+fr = %s fait une capture, %s verrouille.
+de = %s: Bildschirmfoto, %s: Sperre.
+ja = %s でスクショ、%s でロック。
+it = %s fa uno screenshot, %s blocca.
+
 [tour.select.title]
 en = Music
 zh-Hans = 音乐

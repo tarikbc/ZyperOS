@@ -7250,6 +7250,49 @@ with no folder) is neither felt nor heard.
   portkeys plays it itself, on a thread of its own, the launcher being gone
   (tools/pkshutter.h). `check-shotfeel` holds both.
 
+**MENU and a button, on every screen** *(2026-11-22: "Ability to screenshot
+on all screens, maybe menu+l1 (add to tutorial)", "Ability to lock device
+on all screens, maybe menu+l2 (add to tutorial)")*. Outside a game, MENU
+held and L1 pressed saves the screen; MENU held and L2 pressed locks the
+handheld (src/menukeys.h). MENU opens on its release on both handhelds, as
+the Pixel 2's FUNCTION always has (it is the brightness chord's too) and as
+MENU does in a game, so a button pressed under it is MENU's chord and MENU
+then opens nothing; only the two chords' buttons are taken, every other
+press under MENU goes through as it did. Never START (MENU+START held is
+Home), SELECT, the d-pad or a volume key. In a game nothing changes: MENU is
+Diatom's, and the screenshot is SELECT and a button, above.
+
+- **The screenshot** is the frame as it was drawn, before the volume bar
+  over it, 1024 x 768, read back as it is presented and written off the
+  frame's thread to `Screenshots/ZyperOS/ZyperOS 2026-11-22 10.04.31.png`,
+  named as the hotkey names a game's. The shutter as it is taken, then a
+  game's notice over the screen at the foot: the picture small, "Screenshot
+  saved", "Screenshots/ZyperOS", for 1.5 s. On the home's Screenshots
+  group (11.68) as a game's: by its time, the newest first, named ZyperOS
+  ("ZyperOS · today 10:04" under it), the group's own lime its color, A
+  opening it whole, X deleting it; the group is read again on the shelf's
+  next pass after it is written *(2026-11-23: "must also show in the home's
+  Screenshots group, like game screenshots do")*.
+- **The lock** is MP4's (11.14): the screen dark, every button blocked but
+  the volume keys, a press showing the panel and how to open it, SELECT and
+  START held to unlock with the bar filling; over the ground, as no screen is
+  under it. Auto Off still turns the handheld off.
+- **MENU > System > Hotkeys** ends with them, under a rule and "Everywhere
+  but in a game:": Screenshot and Lock Screen with their chords (A captures:
+  MENU held, then a button, MENU let go keeps it; a button the other has asks
+  the swap question), and **Hold to Unlock**, 1, 2, 3 or 5 s (2 s, MP4's
+  hold-unlock, until changed), for this lock and MP4's. A game's Controls tab
+  does not show them. *(My choices, to confirm: the names, the rule's line,
+  the four holds.)*
+- **The tutorial**'s MENU lesson says them as its note, "MENU+L1 takes a
+  screenshot, MENU+L2 locks.", with the keys as Hotkeys has them. The
+  handheld lights MENU alone: with the shoulders lit too it turned to show
+  them and MENU's dots went out of sight.
+
+Host shots: `hotkeys-menu-keys`, `hotkeys-menu-capture`,
+`hotkeys-menu-capture-keys`, `menu-locked` (`--menu-lock K`) and
+`menu-shot-notice`; `make check-menukeys` presses them in desk mode.
+
 ### 11.62 Two cores on a shelf: Gambatte
 *(DoctorIssa on the Discord asked for Gambatte; Tarik: "all good". mGBA
 stays the default.)*

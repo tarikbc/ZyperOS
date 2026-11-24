@@ -14,6 +14,7 @@
 #include "hkstore.h"
 #include "home.h"
 #include "hotkeys.h"
+#include "menukeys_screen.h"
 #include "i18n.h"
 #include "menu.h"
 #include "platform.h"
@@ -23,8 +24,10 @@
 #include "zyperdraw.h"
 
 /* The rows that are no action (the actions are 0 to HK_ACTS - 1) */
-enum { HKR_SCOPE = 100, HKR_HOME, HKR_NOTE, HKR_RESET, HKR_ALL };
-#define HKR_MAX (HK_ACTS + 6)
+enum { HKR_SCOPE = 100, HKR_HOME, HKR_NOTE, HKR_RESET, HKR_ALL,
+       /* MENU's chords on every screen, MENU > System's alone (src/menukeys.h) */
+       HKR_MK_RULE, HKR_MK_NOTE, HKR_MK_SHOT, HKR_MK_LOCK, HKR_MK_HOLD };
+#define HKR_MAX (HK_ACTS + 11)
 
 /* The capture screen's glyphs, as the keyboard's big keys: 11.9's 112 */
 #define HK_CAPTURE_GLYPH 112
@@ -48,6 +51,8 @@ typedef struct {
 	char              val[HK_ACTS][CTL_KEYS_MAX];
 	char              home[CTL_KEYS_MAX];
 	char              scope_val[CFG_STR];
+	char              mk_val[MK_ACTS][CTL_KEYS_MAX];
+	char              hold_val[24];
 } hk_page;
 
 static const str_id ACT_LABEL[HK_ACTS] = {
@@ -131,6 +136,31 @@ static int build(void *ctx, menu_row *rows, int max, const char **heading)
 	}
 	ROW(HKR_RESET, ((menu_row){ T(S_HOTKEYS_RESET_ALL), NULL, own }), 0u, own ? 0 : MENU_SND_NO_A);
 	if (p->s) ROW(HKR_ALL, ((menu_row){ T(S_HOTKEYS_ALL_CONTROLS), NULL, true }), 0u, 0);
+	/* MENU held with a button, on every screen outside a game (2026-11-22):
+	 * a screenshot, the lock, and how long SELECT+START is held to open it.
+	 * The launcher's own, so only on MENU > System's list, not a game's */
+	if (!p->s) {
+		const mk_table *m = mk_now();
+		mk_table def;
+		int i;
+
+		mk_default(&def);
+		ROW(HKR_MK_RULE, MENU_RULE, 0u, 0);
+		ROW(HKR_MK_NOTE, MENU_NOTE(T(S_HOTKEYS_MENU_NOTE)), 0u, 0);
+		for (i = 0; i < MK_ACTS; i++) {
+			char chord[24];
+
+			mk_chord(m, (mk_act)i, chord, sizeof chord);
+			snprintf(p->mk_val[i], sizeof p->mk_val[i], "%s%s", MENU_KEYS_MARK, chord);
+		}
+		ROW(HKR_MK_SHOT, ((menu_row){ T(S_HOTKEYS_SHOT), p->mk_val[MK_SHOT], true }),
+		    m->key[MK_SHOT] != def.key[MK_SHOT] ? 1u : 0u, 0);
+		ROW(HKR_MK_LOCK, ((menu_row){ T(S_SYSMENU_MP4_LOCK), p->mk_val[MK_LOCK], true }),
+		    m->key[MK_LOCK] != def.key[MK_LOCK] ? 1u : 0u, 0);
+		snprintf(p->hold_val, sizeof p->hold_val, T(S_SYSMENU_AUTO_OFF_SECS), (int)(m->hold_ms / 1000));
+		ROW(HKR_MK_HOLD, ((menu_row){ T(S_HOTKEYS_UNLOCK_HOLD), p->hold_val, true }),
+		    m->hold_ms != def.hold_ms ? 1u : 0u, MENU_SND_RING);
+	}
 #undef ROW
 	p->n = n;
 	return n;
@@ -161,7 +191,7 @@ static menu_result power(app *a, void *ctx)
 
 /* The capture screen's keys, for its header (menu_style.header has no
  * context): SELECT while held, and the button with it */
-static struct { bool sel; int key; } g_cap;
+static struct { bool sel; int key; bool menu; } g_cap;
 
 static void capture_header(app *a, const SDL_Rect *r)
 {
@@ -174,18 +204,18 @@ static void capture_header(app *a, const SDL_Rect *r)
 		ui_text(a->r, f, T(S_HOTKEYS_CAPTURE_WAIT), cx, ui_cap_y(f, cy), 0, UI_TEXT_DIM);
 		return;
 	}
-	if (g_cap.key >= 0) snprintf(keys, sizeof keys, "SELECT+%s", hk_key_name(g_cap.key));
-	else snprintf(keys, sizeof keys, "SELECT");
+	if (g_cap.key >= 0) snprintf(keys, sizeof keys, "%s+%s", g_cap.menu ? "MENU" : "SELECT", hk_key_name(g_cap.key));
+	else snprintf(keys, sizeof keys, "%s", g_cap.menu ? "MENU" : "SELECT");
 	/* lit as they go down, the tutorial's pressed look */
 	ui_button_pressed(a->r, keys, cx, cy, HK_CAPTURE_GLYPH, UI_BUTTON_PLAIN, 1.0f, 1.0f, 1.0f);
 }
 
-static void capture_draw(app *a, hk_page *p, hk_act act, float k)
+static void capture_draw_as(app *a, hk_page *p, const char *heading, float k)
 {
 	menu_row rows[2];
 	menu_style st = p->st;
 
-	rows[0] = MENU_NOTE(T(S_HOTKEYS_CAPTURE_HINT));
+	rows[0] = MENU_NOTE(T(g_cap.menu ? S_HOTKEYS_MENU_CAPTURE_HINT : S_HOTKEYS_CAPTURE_HINT));
 	rows[1] = MENU_NOTE(T(g_cap.key >= 0 ? S_HOTKEYS_CAPTURE_KEEP : S_HOTKEYS_CAPTURE_BACK));
 	/* the widest panel, the lab's 800, so the line under the keys stays
 	 * whole in every language */
@@ -195,7 +225,95 @@ static void capture_draw(app *a, hk_page *p, hk_act act, float k)
 	st.sound = NULL;
 	st.vcolors = NULL;
 	backdrop(a, p, k);
-	menu_draw_styled(a, &st, T(ACT_LABEL[act]), rows, 2, -1);
+	menu_draw_styled(a, &st, heading, rows, 2, -1);
+}
+
+static void capture_draw(app *a, hk_page *p, hk_act act, float k)
+{
+	capture_draw_as(a, p, T(ACT_LABEL[act]), k);
+}
+
+/* A MENU chord's row's name: Screenshot or Lock Screen */
+static const char *mk_label(mk_act m)
+{
+	return T(m == MK_SHOT ? S_HOTKEYS_SHOT : S_SYSMENU_MP4_LOCK);
+}
+
+/* A on Screenshot or Lock Screen under MENU's rule: MENU held, then a
+ * button, taken by the platform as a chord would be (mk_capture) so no
+ * screenshot or lock comes of it; MENU let go keeps it. MENU tapped alone
+ * or B with nothing held leaves with no change. The key (HK_*) or -1. */
+static int capture_menu(app *a, hk_page *p, mk_act m)
+{
+	int lv = panel_open(), key = -1;
+	bool done = false;
+	float k;
+
+	g_cap.sel = false;
+	g_cap.key = -1;
+	g_cap.menu = true;
+	plat_input_flush();
+	memset(&a->in, 0, sizeof a->in);
+	mk_capture(true);
+	while (!done && !want_quit && a->running) {
+		bool held;
+
+		plat_input_poll(&a->in);
+		ui_sounds_follow();
+		held = plat_menu_held() || a->in.down[IN_MENU];
+		if (a->in.quit_requested) { a->running = false; break; }
+		if (a->in.pressed[IN_POWER] || idle_due(a)) { power(a, p); break; }
+		if (mk_caught() >= 0 && mk_caught() != g_cap.key) {
+			g_cap.key = mk_caught();
+			uisound_play(DS_SOUND_ACCEPT);
+		}
+		if (held && !g_cap.sel) {
+			g_cap.sel = true;
+			uisound_play(DS_SOUND_MOVE);
+		}
+		if (!held && g_cap.sel && g_cap.key >= 0) {
+			key = g_cap.key;
+			done = true;
+		} else if (a->in.pressed[IN_MENU]) {
+			break;                      /* MENU alone: no change */
+		} else if (!g_cap.sel && a->in.pressed[IN_BACK]) {
+			uisound_play(DS_SOUND_BACK);
+			break;
+		}
+		if (!panel_frame(a, lv, &k)) continue;
+		tick_theme(a);
+		capture_draw_as(a, p, mk_label(m), k);
+		plat_draw_osd(a->r);
+		plat_present();
+		ui_frame_rest(8);
+	}
+	mk_capture(false);
+	g_cap.menu = false;
+	panel_close(a, lv, !a->running);
+	plat_input_flush();
+	memset(&a->in, 0, sizeof a->in);
+	return key;
+}
+
+/* Screenshot or Lock Screen given `key`: the other's already, the swap
+ * question first, as a game's hotkeys ask it */
+static void mk_take_key(app *a, hk_page *p, mk_act m, int key)
+{
+	mk_table t = *mk_now();
+	int other = mk_act_on(&t, key);
+
+	if (t.key[m] == key) return;
+	if (other >= 0) {
+		char q[320], chord[24], was[24];
+
+		snprintf(chord, sizeof chord, "MENU+%s", hk_key_name(key));
+		mk_chord(&t, m, was, sizeof was);
+		snprintf(q, sizeof q, T(S_HOTKEYS_SWAP_Q), chord, mk_label((mk_act)other),
+		         mk_label((mk_act)other), was);
+		if (!ask_panel(a, &p->st, p, mk_label(m), q, T(S_HOTKEYS_SWAP))) return;
+	}
+	mk_swap(&t, m, key);
+	mk_put(&t);
 }
 
 /* A on an action's row: every button read as a key until SELECT is let go,
@@ -285,6 +403,20 @@ static menu_result key(app *a, void *ctx, in_button k, int sel)
 	const bool side = k == IN_LEFT || k == IN_RIGHT;
 
 	if (id < 0 || (!side && k != IN_ACCEPT)) return MENU_STAY;
+	if (id == HKR_MK_HOLD) {
+		mk_table t = *mk_now();
+
+		t.hold_ms = mk_hold_step(t.hold_ms, k == IN_LEFT ? -1 : 1);
+		mk_put(&t);
+		return MENU_STAY;
+	}
+	if (!side && (id == HKR_MK_SHOT || id == HKR_MK_LOCK)) {
+		const mk_act m = id == HKR_MK_SHOT ? MK_SHOT : MK_LOCK;
+		int got = capture_menu(a, p, m);
+
+		if (got >= 0 && a->running) mk_take_key(a, p, m, got);
+		return MENU_STAY;
+	}
 	if (id == HKR_SCOPE) {
 		const int d = k == IN_LEFT ? -1 : 1;
 
@@ -380,7 +512,11 @@ void hotkeys_shot(app *a, const system_cfg *s, const char *file, int sel, int ca
 	if (capture_at) {
 		g_cap.sel = capture_at == 2;
 		g_cap.key = capture_at == 2 ? k : -1;
-		capture_draw(a, &p, sel >= 0 && sel < HK_ACTS ? (hk_act)sel : HK_SHOT, 1.0f);
+		/* A MENU chord's row's capture (sel its row's id) */
+		g_cap.menu = sel == HKR_MK_SHOT || sel == HKR_MK_LOCK;
+		if (g_cap.menu) capture_draw_as(a, &p, mk_label(sel == HKR_MK_SHOT ? MK_SHOT : MK_LOCK), 1.0f);
+		else capture_draw(a, &p, sel >= 0 && sel < HK_ACTS ? (hk_act)sel : HK_SHOT, 1.0f);
+		g_cap.menu = false;
 		return;
 	}
 	if (ask == 2 || ask == 3) {

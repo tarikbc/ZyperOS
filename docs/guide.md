@@ -334,6 +334,8 @@ Dreamcast games run on flycast2021, the 2021 libretro [Flycast](https://github.c
 | **SELECT+L2** (in game) | slower, a step a press, back to normal speed |
 | **SELECT + a button you choose** (in game) | your own hotkeys: Screenshot, Next Shader, Next Display, Reset Game and Quit, none until you set them in **Hotkeys** (below) |
 | **MENU** (inside any menu) | closes the whole menu, however deep in it you are. B goes back one screen |
+| **MENU+L1** (outside a game) | a screenshot of the screen, on any screen: the home, a shelf, a menu. It goes to Screenshots/ZyperOS on the card and shows on the home's Screenshots group, named ZyperOS, beside your games' screenshots. MENU opens the menu when it is let go, so a button pressed while it is held does not open it. In a game, the screenshot is your SELECT hotkey |
+| **MENU+L2** (outside a game) | locks the handheld, on any screen, as MP4's Lock Screen does: the screen goes dark and every button but the volume does nothing. Hold **SELECT+START** to unlock. Both chords' buttons and how long you hold to unlock are in **MENU > System > Hotkeys** |
 | **SELECT** | MP4, the music, audiobook and video player, from anywhere but a running game - the in-game menu included. Again to close it |
 | **POWER** | powers off. In a game, the game is saved first, and the next start goes straight back into it. After a crash or a power cut, the next start is the home instead. With **MENU > Power Button** on **Hold**, POWER has to be held for a second, and a press alone does nothing: a bar at the top of the screen fills while it is held, on the home, in a game and over a port |
 

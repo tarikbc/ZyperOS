@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include "tour_screen.h"
+#include "menukeys_screen.h"
 
 #include "aout_route.h"
 #include "app.h"
@@ -165,6 +166,15 @@ void tour_run(app *a, bool first)
 
 	bool lang_kept = false;
 
+	/* MENU's chords as MENU > System > Hotkeys has them, for its lesson */
+	{
+		const mk_table *m = mk_now();
+		char shot[16], lock[16];
+
+		mk_chord(m, MK_SHOT, shot, sizeof shot);
+		mk_chord(m, MK_LOCK, lock, sizeof lock);
+		tour_menu_keys(mk_in_of(m->key[MK_SHOT]), mk_in_of(m->key[MK_LOCK]), shot, lock);
+	}
 	tour_start(&t, plat_now_ms(), &plat_profile()->chords,
 	           dev_tutorial_model(plat_profile(), &plat_profile()->chords));
 	tour_lang_from(&t, (int)i18n_lang());

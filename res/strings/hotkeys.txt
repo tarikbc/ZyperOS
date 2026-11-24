@@ -312,3 +312,36 @@ fr = Affichage
 de = Anzeige
 ja = 画面
 it = Schermo
+
+[hotkeys.menu_note]
+note = A quiet line on MENU > System > Hotkeys over its last rows: MENU held with a button, Screenshot and Lock Screen, which work on every screen of the launcher but not in a game (there SELECT and a button are the hotkeys above). One line at the menu's size in the widest panel, about 750 units.
+en = Everywhere but in a game:
+zh-Hans = 游戏以外的所有画面：
+es = En todas partes, salvo en juego:
+pt-BR = Em todo lugar, menos no jogo:
+fr = Partout, sauf en jeu\u00a0:
+de = Überall außer im Spiel:
+ja = ゲーム中以外のすべての画面：
+it = Ovunque, tranne in gioco:
+
+[hotkeys.unlock_hold]
+note = A row of MENU > System > Hotkeys: how long SELECT and START are held to unlock the lock (Lock Screen, and MP4's); its value is a number of seconds ("2 s"). A row's name, in Title Case where English writes one.
+en = Hold to Unlock
+zh-Hans = 长按解锁
+es = Mantener para desbloquear
+pt-BR = Segurar para desbloquear
+fr = Maintien pour déverrouiller
+de = Halten zum Entsperren
+ja = ロック解除の長押し
+it = Tieni per sbloccare
+
+[hotkeys.menu_capture_hint]
+note = The capture screen's first line under the keys for Screenshot or Lock Screen under hotkeys.menu_note: hold MENU, then press one more button. MENU is the button's printed name. One line, about 760 units, as hotkeys.capture_hint.
+en = Hold MENU, then press a button.
+zh-Hans = 按住 MENU，再按一个键。
+es = Mantén MENU y pulsa un botón.
+pt-BR = Segure MENU e aperte um botão.
+fr = Maintenez MENU, puis un bouton.
+de = MENU halten, dann eine Taste.
+ja = MENU を押したまま、ボタンを押す。
+it = Tieni MENU e premi un tasto.

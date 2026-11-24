@@ -15,6 +15,7 @@
 #include "../src/db.h"
 #include "../src/hkstore.h"
 #include "../src/hotkeys.h"
+#include "../src/menukeys.h"
 
 static int fails;
 
@@ -106,6 +107,38 @@ static void scopes(void)
 	ck(!db_has(db_lib(), "hotkeys.NES"), "a scope equal to its fallback keeps no key");
 }
 
+/* MENU's chords (src/menukeys.h) */
+static void menukeys(void)
+{
+	mk_table t, back;
+	char s[96], c[24];
+
+	mk_default(&t);
+	ck(t.key[MK_SHOT] == HK_L1 && t.key[MK_LOCK] == HK_L2 && t.hold_ms == 2000,
+	   "MENU's own: L1 a screenshot, L2 the lock, 2 s to unlock");
+	mk_chord(&t, MK_LOCK, c, sizeof c);
+	ck(!strcmp(c, "MENU+L2"), "the lock's chord as the page writes it");
+	ck(mk_act_on(&t, HK_L1) == MK_SHOT && mk_act_on(&t, HK_R1) < 0, "the action a key is on");
+	ck(!mk_key_ok(HK_START) && !mk_key_ok(HK_NONE) && mk_key_ok(HK_A) && mk_key_ok(HK_R2),
+	   "never START (MENU+START is Home): the faces and the shoulders only");
+	mk_store(&t, s, sizeof s);
+	ck(!s[0], "MENU's own keeps nothing");
+	mk_swap(&t, MK_SHOT, HK_L2);
+	ck(t.key[MK_SHOT] == HK_L2 && t.key[MK_LOCK] == HK_L1, "a key the other has: the two swap");
+	mk_swap(&t, MK_LOCK, HK_START);
+	ck(t.key[MK_LOCK] == HK_L1, "START refused, nothing changed");
+	ck(mk_hold_step(2000, 1) == 3000 && mk_hold_step(5000, 1) == 1000 && mk_hold_step(1000, -1) == 5000,
+	   "Hold to Unlock steps 1, 2, 3, 5 s and round");
+	t.hold_ms = 3000;
+	mk_store(&t, s, sizeof s);
+	ck(!strcmp(s, "1;shot:l2,lock:l1,hold:3000"), "what is kept");
+	ck(mk_load(s, &back) && !memcmp(back.key, t.key, sizeof t.key) && back.hold_ms == 3000, "and read back");
+	ck(!mk_load("1;shot:l1,lock:l1", &back) && back.key[MK_SHOT] == HK_L1 && back.key[MK_LOCK] == HK_L2,
+	   "two on one key: not read, MENU's own");
+	ck(!mk_load("1;shot:start", &back) && !mk_load("1;hold:2500", &back) && !mk_load("2;x", &back),
+	   "START, a hold not offered, another version: not read");
+}
+
 int main(void)
 {
 	char dev[] = "/tmp/hotkeys-check-dev-XXXXXX", lib[] = "/tmp/hotkeys-check-lib-XXXXXX";
@@ -120,6 +153,7 @@ int main(void)
 		return 1;
 	}
 	scopes();
+	menukeys();
 	unlink(dev);
 	unlink(lib);
 	if (fails) {

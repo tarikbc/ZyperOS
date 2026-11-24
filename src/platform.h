@@ -141,6 +141,16 @@ bool plat_save_screen_hidden(const char *path);
  * panel's size, or the device has no such pictures. */
 SDL_Texture *plat_load_screen(const char *path);
 
+/* MENU held with one more button (src/menukeys.h): `take` says whether a
+ * button pressed while MENU is held is a chord of the launcher's, as it goes
+ * down, and `run` carries it out once the poll is over, from inside
+ * plat_input_poll on whatever screen is up. NULLs for none. */
+void plat_set_menu_keys(bool (*take)(in_button b), void (*run)(in_state *st, in_button b));
+/* The next frame presented, as it was drawn and before the volume bar over
+ * it, given to `done` as an ARGB8888 surface at the drawing's size (the
+ * caller's to free), on this thread; NULL to forget one asked for */
+void plat_grab_next(void (*done)(SDL_Surface *frame));
+
 bool plat_input_init(void);
 /* The motor once, at `scale` (0 to 1, rumble_run_pct's share over 100) for
  * `ms` milliseconds, then still by itself: Rumble's step, felt as it is

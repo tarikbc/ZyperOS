@@ -366,6 +366,7 @@ void plat_present(void)
 	Uint8 r, g, b, a;
 
 	SDL_GetRenderDrawColor(ren, &r, &g, &b, &a);
+	plat_grab_frame(ren);
 	plat_overlay_present(ren);
 	if (!video_shown) {
 		take_from_splash();
@@ -733,6 +734,7 @@ void plat_input_flush(void)
 	drain(fd_keys);
 	drain(fd_power);
 	l2_down = r2_down = false;
+	plat_menu_forget();
 }
 
 /* No wait here, unlike the Brick: the keys are read straight from the kernel,
@@ -903,6 +905,14 @@ static void key_event(in_state *st, const struct input_event *ev)
 		bool both = l2_down && r2_down, l2 = ev->code == BTN_TL2;
 
 		*(l2 ? &l2_down : &r2_down) = ev->value == 1;
+		/* Under FUNCTION, MENU's chord when the launcher takes it
+		 * (src/menukeys.h): no tap as it is let go, and MENU opens
+		 * nothing */
+		if (plat_menu_with(st, l2 ? IN_L2 : IN_R2, ev->value == 1, fn_down)) {
+			if (ev->value) fn_chorded = true;
+			if (!l2_down && !r2_down) l2r2_chorded = false;
+			return;
+		}
 		if (!both && l2_down && r2_down) {
 			ask_gauge();
 			l2r2_chorded = true;
@@ -916,6 +926,12 @@ static void key_event(in_state *st, const struct input_event *ev)
 	}
 	for (i = 0; i < sizeof keymap / sizeof keymap[0]; i++)
 		if (keymap[i].code == ev->code) {
+			/* Under FUNCTION, MENU's chord when the launcher takes it, as
+			 * a volume key is brightness under it */
+			if (plat_menu_with(st, keymap[i].b, ev->value == 1, fn_down)) {
+				if (ev->value) fn_chorded = true;
+				return;
+			}
 			plat_set_btn(st, keymap[i].b, ev->value == 1);
 			return;
 		}
@@ -967,6 +983,7 @@ void plat_input_poll(in_state *st)
 	poll_fd(fd_keys, st);
 	poll_fd(fd_power, st);
 	plat_power_poll(st);
+	plat_menu_after(st);
 }
 
 /* The turn-off from the power key's queue, while a game or a program owns the

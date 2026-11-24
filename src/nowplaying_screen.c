@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include "nowplaying_screen.h"
+#include "menukeys_screen.h"
 
 #include "aout_route.h"
 #include "app.h"
@@ -525,6 +526,8 @@ void mp4_locked(app *a)
 	/* Under the lock nothing moves: a look's bars rest, and with no frame
 	 * of bars the daemon stops measuring (mp4c_bands_keep) */
 	npl_still(true);
+	/* Held as long as MENU > System > Hotkeys' Hold to Unlock says */
+	l.hold_ms = mk_now()->hold_ms;
 	mp4lock_engage(&l, plat_now_ms(), a->in.down[MP4_UNLOCK_A] && a->in.down[MP4_UNLOCK_B]);
 	plat_input_flush();
 	memset(&a->in, 0, sizeof a->in);
