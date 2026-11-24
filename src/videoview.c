@@ -37,45 +37,6 @@
 /* The ground's fade under the status corner while the snap plays */
 #define VV_TOP_FADE   150
 
-void vv_reset(vv_motion *m, uint32_t now)
-{
-	*m = (vv_motion){ .set = true, .from = 0, .to = 0, .t = now, .ms = DS_MS_QUICK, .touched = now };
-}
-
-float vv_band(const vv_motion *m, uint32_t now)
-{
-	float p;
-
-	if (!m->set || m->ms == 0 || now - m->t >= m->ms) return m->set ? m->to : 0;
-	p = ds_out((float)(now - m->t) / (float)m->ms);
-	return m->from + (m->to - m->from) * p;
-}
-
-/* The band to `to` from wherever it is, over `ms`: a new press retargets */
-static void slide(vv_motion *m, float to, uint32_t ms, uint32_t now)
-{
-	float at = vv_band(m, now);
-
-	if (m->to == to && at == to) return;
-	m->from = at;
-	m->to = to;
-	m->t = now;
-	m->ms = ms;
-}
-
-void vv_touch(vv_motion *m, uint32_t now)
-{
-	if (!m->set) vv_reset(m, now);
-	m->touched = now;
-	slide(m, 0, DS_MS_QUICK, now);
-}
-
-void vv_rest(vv_motion *m, uint32_t now)
-{
-	if (!m->set) vv_reset(m, now);
-	slide(m, 1, DS_MS_MOVE, now);
-}
-
 /* A picture whole inside `box`, at its own shape, its middle on the box's */
 static SDL_FRect fit(float w, float h, SDL_FRect box)
 {
@@ -283,12 +244,12 @@ static void band(SDL_Renderer *r, const games_row *row, const vv_info *in, cf_te
 	}
 }
 
-uint32_t vv_draw(vv_motion *m, const games_row *row, SDL_Renderer *r, const vv_info *in,
+uint32_t vv_draw(snaprest *m, const games_row *row, SDL_Renderer *r, const vv_info *in,
                  cf_tex_fn texture, void *ctx, uint32_t now, uint32_t phase)
 {
 	SDL_BlendMode blend;
 	Uint8 red, green, blue, alpha;
-	uint32_t wait = UINT32_MAX, next;
+	uint32_t wait = UINT32_MAX, next, rest;
 	float k = in->snap && in->snap_w > 0 && in->snap_h > 0 ? fminf(fmaxf(in->snap_k, 0), 1) : 0;
 	float down;
 	int top;
@@ -296,19 +257,12 @@ uint32_t vv_draw(vv_motion *m, const games_row *row, SDL_Renderer *r, const vv_i
 	SDL_GetRenderDrawColor(r, &red, &green, &blue, &alpha);
 	SDL_GetRenderDrawBlendMode(r, &blend);
 	SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
-	if (!m->set) vv_reset(m, now);
-	if (in->playing && !m->was_playing && now > m->touched) m->touched = now;
-	m->was_playing = in->playing;
 	/* The rest: the band and the name's card away once the snap has
-	 * played hold-band after the last press; no snap, no rest */
-	if (!in->playing && m->to > 0) slide(m, 0, DS_MS_QUICK, now);
-	if (in->playing && m->to == 0 && now - m->touched >= DS_MS_HOLD_BAND)
-		slide(m, 1, DS_MS_MOVE, now);
-	down = in->band >= 0 ? fminf(in->band, 1) : vv_band(m, now);
-	if (in->band < 0) {
-		if (now - m->t < m->ms) wait = 0;
-		else if (in->playing && m->to == 0) wait = m->touched + DS_MS_HOLD_BAND - now;
-	}
+	 * played hold-band after the last press; no snap, no rest
+	 * (src/snaprest.h) */
+	down = snaprest_step(m, in->playing, now, &rest);
+	if (in->band >= 0) down = fminf(in->band, 1);
+	else wait = rest;
 	/* The covers' glide, a frame each until it lands, as the cover row's
 	 * (games_draw). Without it the shelf drew the glide only while the
 	 * band slid or a button was down, and its last frame stayed up until

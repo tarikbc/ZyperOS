@@ -268,7 +268,7 @@ bool shots_keys(app *a, sysview *v)
 		g_back = v->grid ? BACK_GRID : v->listed ? BACK_LIST : BACK_COVERS;
 		v->video = true;
 		v->grid = v->listed = false;
-		vv_reset(&v->vm, plat_now_ms());
+		snaprest_reset(&v->vm, plat_now_ms());
 		games_reset(&v->row, v->cursor, v->list.count, plat_now_ms());
 		return true;
 	}
@@ -278,7 +278,7 @@ bool shots_keys(app *a, sysview *v)
 	 * needing to wait for it to collapse"); the next press brings them
 	 * back. The shot's game still starts only from its own shelf (pick 6) */
 	uisound_play(DS_SOUND_ACCEPT);
-	vv_rest(&v->vm, plat_now_ms());
+	snaprest_rest(&v->vm, plat_now_ms());
 	return true;
 }
 

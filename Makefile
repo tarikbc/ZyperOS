@@ -177,6 +177,11 @@ check-desk: native
 check-homekeys: native
 	@python3 tools/homekeys-check.py
 
+# A shelf's d-pad held, in desk mode: the list's Up and Down and the grid's
+# Left and Right stop at the ends, the cover row goes round
+check-shelfkeys: native
+	@python3 tools/shelfkeys-check.py
+
 # The Video view in desk mode: its snap playing holds the screensaver
 check-videoview: native
 	@'$(PYIMG)' tools/videoview-check.py
@@ -1335,6 +1340,26 @@ build-native/cardgen-check: tools/cardgen-check.c src/cardgen.c src/cardgen.h \
 # union of them with no seam. No SDL.
 check-blur: build-native/blur-check
 	@./build-native/blur-check
+
+# The List view's boxes (src/listbox.h, DESIGN.md 11.39): the media as tall
+# as the rows, on the 4:3 canvas and the Smart Pro's
+check-listbox: build-native/listbox-check
+	@./build-native/listbox-check
+
+build-native/listbox-check: tools/listbox-check.c src/listbox.c src/listbox.h src/look.c src/look.h src/ds/flex.c src/ds/flex.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g $$(pkg-config --cflags sdl2) -Isrc \
+	      -o $@ tools/listbox-check.c src/listbox.c src/look.c src/ds/flex.c $$(pkg-config --libs sdl2) -lm
+
+# The List view's details over the media at rest (src/snaprest.h), on a
+# clock the check moves by hand
+check-snaprest: build-native/snaprest-check
+	@./build-native/snaprest-check
+
+build-native/snaprest-check: tools/snaprest-check.c src/snaprest.c src/snaprest.h src/design.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Isrc \
+	      -o $@ tools/snaprest-check.c src/snaprest.c -lm
 
 # The grid's rule (src/gridrule.h, DESIGN.md 11.47): the shape a shelf takes
 # from its art, where the cells go, which art is a cut-out

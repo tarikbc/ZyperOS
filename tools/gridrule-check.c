@@ -152,14 +152,19 @@ int main(void)
 
 	/* L1 and R1: a screenful in the same column, else to the end, and
 	 * from the end round to the other one */
-	NEED(gg_page(0, 23, 10, +1) == 10 && gg_page(10, 23, 10, +1) == 20, "R1 a screenful, the same column");
-	NEED(gg_page(15, 23, 10, +1) == 22, "R1 with less than a screenful left goes to the last");
-	NEED(gg_page(22, 23, 10, +1) == 0, "R1 on the last comes round to the first");
-	NEED(gg_page(20, 23, 10, -1) == 10 && gg_page(5, 23, 10, -1) == 0, "L1 a screenful, else to the first");
-	NEED(gg_page(0, 23, 10, -1) == 22, "L1 on the first comes round to the last");
-	NEED(gg_page(0, 12, 18, +1) == 11 && gg_page(11, 12, 18, +1) == 0, "a grid on one screen: R1 last, then first");
-	NEED(gg_page(4, 12, 18, -1) == 0 && gg_page(0, 12, 18, -1) == 11, "a grid on one screen: L1 first, then last");
-	NEED(gg_page(0, 1, 10, +1) == 0 && gg_page(0, 0, 10, +1) == 0, "one cover, or none, stays put");
+	NEED(gg_page(0, 23, 10, +1, true) == 10 && gg_page(10, 23, 10, +1, true) == 20, "R1 a screenful, the same column");
+	NEED(gg_page(15, 23, 10, +1, true) == 22, "R1 with less than a screenful left goes to the last");
+	NEED(gg_page(22, 23, 10, +1, true) == 0, "R1 on the last comes round to the first");
+	NEED(gg_page(20, 23, 10, -1, true) == 10 && gg_page(5, 23, 10, -1, true) == 0, "L1 a screenful, else to the first");
+	NEED(gg_page(0, 23, 10, -1, true) == 22, "L1 on the first comes round to the last");
+	NEED(gg_page(0, 12, 18, +1, true) == 11 && gg_page(11, 12, 18, +1, true) == 0, "a grid on one screen: R1 last, then first");
+	NEED(gg_page(4, 12, 18, -1, true) == 0 && gg_page(0, 12, 18, -1, true) == 11, "a grid on one screen: L1 first, then last");
+	NEED(gg_page(0, 1, 10, +1, true) == 0 && gg_page(0, 0, 10, +1, true) == 0, "one cover, or none, stays put");
+	/* held (DESIGN.md 11.3): on to the end as a press, and stopping there */
+	NEED(gg_page(15, 23, 10, +1, false) == 22 && gg_page(5, 23, 10, -1, false) == 0,
+	     "a held R1 or L1 does not go on to the end");
+	NEED(gg_page(22, 23, 10, +1, false) == 22, "a held R1 on the last goes round, not stopping there");
+	NEED(gg_page(0, 23, 10, -1, false) == 0, "a held L1 on the first goes round, not stopping there");
 
 	/* The rows kept and asked ahead: the window and two rows either side,
 	 * round the ends, so a row, a page or a step round an end lands on
