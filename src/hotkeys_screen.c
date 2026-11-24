@@ -317,6 +317,18 @@ static int capture_menu(app *a, hk_page *p, mk_act m)
 
 /* Screenshot or Lock Screen given `key`: the other's already, the swap
  * question first, as a game's hotkeys ask it */
+/* The swap question's words for a MENU chord, as a game's hotkeys say it
+ * (CQ_HOTKEYS_SWAP): MENU+L2 to this one? the other has it and moves to
+ * this one's keys */
+static void mk_swap_text(const mk_table *t, mk_act m, int key, int other, char *q, size_t n)
+{
+	char chord[24], was[24];
+
+	snprintf(chord, sizeof chord, "MENU+%s", hk_key_name(key));
+	mk_chord(t, m, was, sizeof was);
+	cq_text(CQ_HOTKEYS_SWAP, q, n, chord, mk_label(m), mk_label((mk_act)other), was);
+}
+
 static void mk_take_key(app *a, hk_page *p, mk_act m, int key)
 {
 	mk_table t = *mk_now();
@@ -324,11 +336,9 @@ static void mk_take_key(app *a, hk_page *p, mk_act m, int key)
 
 	if (t.key[m] == key) return;
 	if (other >= 0) {
-		char q[320], chord[24], was[24];
+		char q[320];
 
-		snprintf(chord, sizeof chord, "MENU+%s", hk_key_name(key));
-		mk_chord(&t, m, was, sizeof was);
-		cq_text(CQ_HOTKEYS_SWAP, q, sizeof q, chord, mk_label(m), mk_label((mk_act)other), was);
+		mk_swap_text(&t, m, key, other, q, sizeof q);
 		if (!confirm_ask_over(a, CQ_HOTKEYS_SWAP, q, &p->st, p)) return;
 	}
 	mk_swap(&t, m, key);
@@ -558,6 +568,19 @@ void hotkeys_shot(app *a, const system_cfg *s, const char *file, int sel, int ca
 		cq_text(which, q, sizeof q, s ? s->name : "", file ? file : "");
 		backdrop(a, &p, 1.0f);
 		confirm_preview(a, which, q);
+		return;
+	}
+	if (ask == 1 && (sel == HKR_MK_SHOT || sel == HKR_MK_LOCK)) {
+		/* A MENU chord given the other's key (--hk-key) */
+		const mk_act m = sel == HKR_MK_SHOT ? MK_SHOT : MK_LOCK;
+		mk_table t;
+		char q[320];
+
+		mk_default(&t);
+		mk_swap_text(&t, m, t.key[m == MK_SHOT ? MK_LOCK : MK_SHOT], m == MK_SHOT ? MK_LOCK : MK_SHOT,
+		             q, sizeof q);
+		backdrop(a, &p, 1.0f);
+		confirm_preview(a, CQ_HOTKEYS_SWAP, q);
 		return;
 	}
 	if (ask) {

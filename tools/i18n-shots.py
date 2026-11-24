@@ -1604,7 +1604,8 @@ for _name, _flags in (
         # Screenshot's capture with MENU and L1 down
         ("menu-keys", ["--hotkeys", "109"]),
         ("menu-capture", ["--hotkeys", "107", "--hk-capture", "1"]),
-        ("menu-capture-keys", ["--hotkeys", "107", "--hk-capture", "2", "--hk-key", "4"])):
+        ("menu-capture-keys", ["--hotkeys", "107", "--hk-capture", "2", "--hk-key", "4"]),
+        ("menu-swap", ["--hotkeys", "107", "--hk-ask", "1"])):
     EXTRA.setdefault("hotkeys-" + _name, ("demo", "PS1", _flags))
 # Fast Forward and its speed under it (src/hotkeys.h): as they come, None and
 # 2x; set, SELECT+Y and Max, both in the accent-ink, in MENU > System's and a

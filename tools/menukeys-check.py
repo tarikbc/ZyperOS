@@ -215,7 +215,7 @@ def main():
             shutil.copy(frames(sock, tmp, 'viewer'), Path(keep) / 'viewer.png')
         ask(sock, 'tap x 40')                      # Delete Screenshot's question
         time.sleep(0.8)
-        ask(sock, 'tap right 40')                  # from Cancel to Delete (#479's panel)
+        ask(sock, 'tap right 40')                  # from Cancel to Delete, beside it (#479)
         time.sleep(0.4)
         ask(sock, 'tap a 40')
         gone = until(lambda: sorted(shots.glob('ZyperOS *.png')), lambda l: not l, 5.0)
