@@ -28,6 +28,14 @@
 #     the console does not end in the kernel's own restart or power-off line.
 #     After a power-off, or a reset asked for, there is nothing to say.
 #
+#   - The launcher's own crash (crashlog --launcher RECORD): ZyperOS's
+#     launcher writes what killed it (the signal, its address, the thread,
+#     the backtrace) to RECORD as it dies, and the launcher that starts next
+#     runs this with it (src/crashrec.h). It becomes a report the same way,
+#     in the same two places, and RECORD is let go. A launcher that crashed
+#     used to leave only the shell's "Segmentation fault" in its log and no
+#     report at all, since the kernel kept nothing (Discord, 2026-11-23).
+#
 # Settings in /etc/default/crashlog: CRASH_DIR (default the card's
 # .plastron/crash), CRASH_KEEP (how many reports CRASH_DIR keeps, 10). For a
 # check on a computer (tools/crashlog-check.sh), the same names and PSTORE,
@@ -47,6 +55,61 @@ case $CARD in
 esac
 BOOT=${BOOT:-${PART}1}
 MNT=/run/crashlog
+
+# A report, kept: on the card beside the reports before it, the newest
+# CRASH_KEEP of them, and on PX2BOOT, the newest only
+keep() {
+	# On the card, beside the reports before it, the newest CRASH_KEEP kept
+	if mkdir -p "$CRASH_DIR" 2> /dev/null; then
+		stem=crash-$(date '+%Y%m%d-%H%M%S')
+		name=$stem.txt
+		n=2
+		while [ -e "$CRASH_DIR/$name" ]; do
+			name=$stem-$n.txt
+			n=$((n + 1))
+		done
+		cp "$1" "$CRASH_DIR/$name.new" && mv "$CRASH_DIR/$name.new" "$CRASH_DIR/$name"
+		ls -1 "$CRASH_DIR" | grep '^crash-.*\.txt$' | sort -r | tail -n +$((CRASH_KEEP + 1)) |
+		while IFS= read -r old; do
+			rm -f "$CRASH_DIR/$old"
+		done
+	fi
+	# On the boot partition, the newest only: mounted for the write and let
+	# go, as the launcher writes its theme.txt there, written whole under
+	# another name and renamed over
+	if [ -b "$BOOT" ] && blkid "$BOOT" 2> /dev/null | grep -q 'LABEL="PX2BOOT"'; then
+		mkdir -p $MNT
+		if mount -t vfat -o noatime,nosuid,nodev,noexec "$BOOT" $MNT 2> /dev/null; then
+			cp "$1" $MNT/zyperos-crash.new && sync && mv $MNT/zyperos-crash.new $MNT/zyperos-crash.txt
+			sync
+			umount $MNT
+		fi
+		rmdir $MNT 2> /dev/null
+	fi
+}
+
+# The launcher's own crash: its record made a report (src/crashrec.h)
+if [ "${1:-}" = --launcher ]; then
+	record=${2:-}
+	[ -s "$record" ] || exit 0
+	now=$(date '+%Y-%m-%d %H:%M:%S')
+	report=$(mktemp) || exit 0
+	{
+		sig=$(sed -n 's/^crash: \(SIG[A-Z]*\).*/\1/p' "$record" | head -n 1)
+		echo "ZyperOS's launcher stopped with ${sig:-a crash} and started again ($now)."
+		[ -r /etc/zyperos/system ] && sed -n 's/^version /System version: /p' /etc/zyperos/system
+		echo "Kernel: $(uname -r)"
+		echo
+		echo "--- what the launcher wrote as it stopped ---"
+		tail -c 16384 "$record" | tr -d '\r'
+		echo
+		echo "--- end ---"
+	} > $report 2> /dev/null
+	keep $report
+	echo "crashlog: the launcher's crash kept in $CRASH_DIR and on PX2BOOT" 2> /dev/null > /dev/kmsg
+	rm -f $report "$record"
+	exit 0
+fi
 
 # An RCU stall panics, as the lockups do (linux-px2.config): at every start,
 # not only during the first start's copy (setuplog), so a CPU stuck in the
@@ -92,34 +155,7 @@ report=$(mktemp) || exit 0
 	echo "--- end ---"
 } > $report 2> /dev/null
 
-# On the card, beside the reports before it, the newest CRASH_KEEP kept
-if mkdir -p "$CRASH_DIR" 2> /dev/null; then
-	stem=crash-$(date '+%Y%m%d-%H%M%S')
-	name=$stem.txt
-	n=2
-	while [ -e "$CRASH_DIR/$name" ]; do
-		name=$stem-$n.txt
-		n=$((n + 1))
-	done
-	cp $report "$CRASH_DIR/$name.new" && mv "$CRASH_DIR/$name.new" "$CRASH_DIR/$name"
-	ls -1 "$CRASH_DIR" | grep '^crash-.*\.txt$' | sort -r | tail -n +$((CRASH_KEEP + 1)) |
-	while IFS= read -r old; do
-		rm -f "$CRASH_DIR/$old"
-	done
-fi
-
-# On the boot partition, the newest only: mounted for the write and let go,
-# as the launcher writes its theme.txt there, written whole under another
-# name and renamed over
-if [ -b "$BOOT" ] && blkid "$BOOT" 2> /dev/null | grep -q 'LABEL="PX2BOOT"'; then
-	mkdir -p $MNT
-	if mount -t vfat -o noatime,nosuid,nodev,noexec "$BOOT" $MNT 2> /dev/null; then
-		cp $report $MNT/zyperos-crash.new && sync && mv $MNT/zyperos-crash.new $MNT/zyperos-crash.txt
-		sync
-		umount $MNT
-	fi
-	rmdir $MNT 2> /dev/null
-fi
+keep $report
 
 echo "crashlog: a report from before this start kept in $CRASH_DIR and on PX2BOOT" 2> /dev/null > /dev/kmsg
 # Said once: the dumps let go (the console is the kernel's to replace). The

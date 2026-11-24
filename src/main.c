@@ -12,6 +12,7 @@
  * it in the way of starting a game.
  */
 #include "hwreport.h"
+#include "crashrec.h"   /* the launcher's own crash, in the log and crashlog's report */
 #include "atomic.h"
 #include "autozone.h"
 #include "coreopts.h"   /* coreopts_migrate: 1.0.6's defaults at run time */
@@ -6527,10 +6528,22 @@ int main(int argc, char *argv[])
 	char startup[CFG_STR];
 	bool hand_back = false;
 
+	/* A crash says where it was, in the log and in a record the next start
+	 * makes a report of (src/crashrec.h), in every one of this binary's
+	 * modes */
+	crashrec_install(CRASHREC_PATH, ZYPEROS_VERSION);
 	if (argc > 1 && !strcmp(argv[1], PORT_MENU_ARG)) return port_menu_main(argc, argv);
 	if (argc > 1 && !strcmp(argv[1], MP4_FOLLOW_ARG)) return mp4_follow_main();
 	if (argc > 1 && !strcmp(argv[1], STATS_PORT_PLAYED_ARG)) return port_played_main();
 	if (argc > 1 && !strcmp(argv[1], ALSA_TRY_ARG)) return alsa_try_main(argc, argv);
+	/* The launcher before this one crashed: its record made a report, as a
+	 * kernel panic's is, by plastron's crashlog (the Pixel 2's) */
+	if (crashrec_waiting(CRASHREC_PATH) && access(CRASHLOG, X_OK) == 0) {
+		char *cl[] = { CRASHLOG, "--launcher", CRASHREC_PATH, NULL };
+
+		fprintf(stderr, "crash: the launcher before this one crashed: %s\n",
+		        plat_spawn_detached(cl, NULL, "/") ? "its record handed to crashlog" : "crashlog would not start");
+	}
 
 	for (int i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "--shot") && i + 1 < argc) {
