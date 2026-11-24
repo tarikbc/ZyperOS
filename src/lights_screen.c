@@ -3,7 +3,9 @@
 #include "shelfbuild.h"
 
 #include "app.h"
+#include "coreopt_defs.h"
 #include "panel.h"
+#include "platform.h"
 
 #include <SDL.h>
 #include <SDL_image.h>
@@ -80,6 +82,10 @@ void language_apply(app *a, lang l, bool keep)
 	if (!keep) return;
 	db_set_str(db_dev(), "language", lang_code(l));
 	boot_theme_changed();
+	/* Core Settings' cached OPTION descs and Diatom's GET_LANGUAGE were for
+	 * the old tongue; drop the cache and restart the resident with --language. */
+	codefs_cache_clear(P_USERDATA);
+	plat_resident_restart();
 	fprintf(stderr, "language: %s\n", lang_code(l));
 }
 

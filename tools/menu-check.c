@@ -337,18 +337,18 @@ static void gm_disc_row_only_with_discs(void)
 	for (d = 0; d <= 1; d++) {
 		u.discs = d;
 		n = gm_rows(&u, GT_GAME, rows, &b);
-		ck(gm_row_at(&u, GT_GAME, GM_DISC) == -1 && n == 7, "no Disc row with 0 or 1 disc, the menu as before");
+		ck(gm_row_at(&u, GT_GAME, GM_DISC) == -1 && n == 8, "no Disc row with 0 or 1 disc, the menu as before");
 	}
 	u.discs = 3; u.disc = 1;
 	n = gm_rows(&u, GT_GAME, rows, &b);
 	at = gm_row_at(&u, GT_GAME, GM_DISC);
-	ck(n == 8 && at == gm_row_at(&u, GT_GAME, GM_QUICK) + 1 &&
-	   at + 1 == gm_row_at(&u, GT_GAME, GM_CHEEVOS), "with 3 discs: right after Quick Slot");
+	ck(n == 9 && at == gm_row_at(&u, GT_GAME, GM_QUICK) + 1 &&
+	   at + 1 == gm_row_at(&u, GT_GAME, GM_COREOPTS), "with 3 discs: right after Quick Slot");
 	ck(at >= 0 && !strcmp(rows[at].label, "Disc") && !strcmp(val(&rows[at]), "Disc 2 of 3") &&
 	   rows[at].live && b.sound[at], "Disc says Disc 2 of 3, and steps round");
 	u.player2 = true; u.player2_value = "Off";
 	n = gm_rows(&u, GT_GAME, rows, &b);
-	ck(n == 9 && gm_row_at(&u, GT_GAME, GM_PLAYER2) == gm_row_at(&u, GT_GAME, GM_DISC) + 1,
+	ck(n == 10 && gm_row_at(&u, GT_GAME, GM_PLAYER2) == gm_row_at(&u, GT_GAME, GM_DISC) + 1,
 	   "Player 2 follows Disc");
 	u.player2 = false;
 	u.port = true;
@@ -370,11 +370,11 @@ static void gm_undo_row_only_with_undo(void)
 	printf("in-game menu, Undo Load:\n");
 	u.dmode = "Native"; u.earned = 12; u.total = 40; u.quick = 2;
 	n = gm_rows(&u, GT_GAME, rows, &b);
-	ck(gm_row_at(&u, GT_GAME, GM_UNDO) == -1 && n == 7, "no Undo Load row with nothing to undo");
+	ck(gm_row_at(&u, GT_GAME, GM_UNDO) == -1 && n == 8, "no Undo Load row with nothing to undo");
 	u.undo = true;
 	n = gm_rows(&u, GT_GAME, rows, &b);
 	at = gm_row_at(&u, GT_GAME, GM_UNDO);
-	ck(n == 8 && at == gm_row_at(&u, GT_GAME, GM_LOAD) + 1 &&
+	ck(n == 9 && at == gm_row_at(&u, GT_GAME, GM_LOAD) + 1 &&
 	   at + 1 == gm_row_at(&u, GT_GAME, GM_QUICK), "with one: right under Load, before Quick Slot");
 	ck(at >= 0 && !strcmp(rows[at].label, "Undo Load") && !rows[at].value &&
 	   rows[at].live && !b.sound[at], "Undo Load is a plain row");
@@ -969,6 +969,7 @@ static void system_menu(void)
 	u.sys_downloads = NULL;
 	sys_menu_build(&u, rows, &b, &heading);
 
+
 	/* A shelf that lists two cores, the Dreamcast's: Core is a choice. */
 	u.sys_core = "Flycast";
 	u.core_choice = true;
@@ -1296,8 +1297,8 @@ static void dslang_row(void)
 	 * row for it) */
 	ck(!has_label(rows, n, "When Slow"), "and no When Slow under it");
 
-	/* Timing (src/pacing.h): under Game Language on the DS's shelf, under
-	 * Core on a shelf without it (the GBA's) */
+	/* Timing (src/pacing.h): under Game Language on the DS's shelf, and under
+	 * Core on a shelf without Game Language (the GBA's) */
 	printf("system menu, Timing:\n");
 	u.pace = "Smooth";
 	n = sys_menu_build(&u, rows, &b, &heading);
@@ -1311,7 +1312,8 @@ static void dslang_row(void)
 		ck(rows[tr].live, "a row to press");
 		ck(menu_sound_at(b.sound, n, tr) == MENU_SND_RING, "that steps round, on A too");
 		ck(sys_menu_system_rows(&u, sm) == n && sm[tr] == SM_PACE, "the build and the list agree");
-		ck(!strcmp(rows[gl].label, "Game Language") && !strcmp(rows[tr + 1].label, plain[at].label),
+		ck(!strcmp(rows[gl].label, "Game Language") &&
+		   !strcmp(rows[tr + 1].label, plain[at].label),
 		   "and the rows round it are as they were");
 		u.pace = "Exact";
 		sys_menu_build(&u, rows, &b, &heading);
@@ -1325,7 +1327,8 @@ static void dslang_row(void)
 		int tr = sm_at(&u, SM_PACE);
 
 		ck(n == SM_ROWS - 3, "on a shelf without the DS's row, one row more than its own");
-		ck(tr == sm_at(&u, SM_CORE) + 1 && !strcmp(rows[tr].label, "Timing"), "Timing right under Core");
+		ck(tr == sm_at(&u, SM_CORE) + 1 && !strcmp(rows[tr].label, "Timing"),
+		   "Timing right under Core");
 		ck(!has_label(rows, n, "Game Language"), "and no DS row with it");
 		ck(!has_label(rows, n, "Super Game Boy"), "nor the Game Boys' Super Game Boy");
 	}
@@ -1423,7 +1426,7 @@ static void cursor_reaches(void)
 	k = reachable(rows, n, got, MENU_MAX_ROWS);
 
 	printf("system menu, what the cursor can reach:\n");
-	ck(k == 8, "eight rows, not the facts (Strength among them, as a zeroed sys_ui shows it)");
+	ck(k == 8, "eight rows, not the facts (Strength among them)");
 	ck(holds(got, k, sm_at(&u, SM_RANDOM)), "Random Game, with games on the shelf");
 	/* 1.0.5: the shelf's covers or a list, under Sort By */
 	ck(holds(got, k, sm_at(&u, SM_VIEW)), "View");
@@ -1520,7 +1523,7 @@ static void radio_less(void)
 	ck(k == PM_ROWS && ok, "every ZyperOS row, in the enum's order");
 	k = sys_menu_system_rows(&u, sm);
 	{
-		/* Every row but the four that only some shelves have, in order */
+		/* Every row but the five that only some shelves have */
 		int j = 0;
 
 		ok = true;
@@ -2255,7 +2258,7 @@ static int row_of(const gm_ui *u, gm_tab t, gm_row id)
 static void ingame_rows(void)
 {
 	static const char *const game[] = { "Continue", "Save", "Load", "Quick Slot", "Player 2",
-	                                    "Achievements", "Reset", "Quit" };
+	                                    "Core Settings", "Achievements", "Reset", "Quit" };
 	static const char *const dsp[] = { "Display", "Shader", "Screens", "Swap Screens", "Stylus",
 	                                   "On-Screen Stats" };
 	gm_ui u = { 0 };
@@ -2267,8 +2270,9 @@ static void ingame_rows(void)
 	u.dmode = "Native"; u.earned = 12; u.total = 40; u.quick = 2;
 
 	printf("in-game menu, the tabs:\n");
-	ck(GT_TABS == 4 && GT_GAME == 0 && GT_DISPLAY == 1 && GT_CONTROLS == 2 &&
-	   GT_ACHIEVEMENTS == 3, "four tabs, Game first, Achievements last (L1 from Game)");
+	ck(GT_TABS == 4 && GT_GAME == 0 && GT_DISPLAY == 1 &&
+	   GT_CONTROLS == 2 && GT_ACHIEVEMENTS == 3,
+	   "four tabs, Game first, Achievements last (L1 from Game)");
 	ck(!strcmp(gm_tab_name(GT_GAME), "Game") && !strcmp(gm_tab_name(GT_DISPLAY), "Display") &&
 	   !strcmp(gm_tab_name(GT_CONTROLS), "Controls") &&
 	   !strcmp(gm_tab_name(GT_ACHIEVEMENTS), "Achievements"),
@@ -2282,27 +2286,35 @@ static void ingame_rows(void)
 	u.player2 = true; u.player2_value = gm_player2_value(P2_OFF);
 	n = gm_rows(&u, GT_GAME, rows, &b);
 	printf("in-game menu, Game tab:\n");
-	ck(labels_are(rows, n, game, 8), "gm_tabs_game_rows: Continue Save Load Quick Slot Player 2 Achievements Reset Quit");
-	ck(gm_tab_rows(&u, GT_GAME, ids) == 8 && ids[0] == GM_CONTINUE && ids[4] == GM_PLAYER2 &&
-	   ids[5] == GM_CHEEVOS && ids[7] == GM_QUIT, "and the ids say the same");
-	ck(!strcmp(val(&rows[3]), "2") && rows[3].live && !strcmp(val(&rows[5]), "12 / 40"),
+	ck(labels_are(rows, n, game, 9),
+	   "gm_tabs_game_rows: Continue … Player 2 Core Settings Achievements Reset Quit");
+	ck(gm_tab_rows(&u, GT_GAME, ids) == 9 && ids[0] == GM_CONTINUE && ids[4] == GM_PLAYER2 &&
+	   ids[5] == GM_COREOPTS && ids[6] == GM_CHEEVOS && ids[8] == GM_QUIT,
+	   "and the ids say the same");
+	ck(!strcmp(val(&rows[3]), "2") && rows[3].live && !strcmp(val(&rows[6]), "12 / 40"),
 	   "Quick Slot says its slot, Achievements counts the set");
+	ck(!strcmp(rows[5].label, "Core Settings") && rows[5].live && !rows[5].value,
+	   "Core Settings is a stop that opens its page");
 	ck(!strcmp(val(&rows[4]), "Off") && rows[4].live && !b.sound[4], "Player 2 says off, a plain stop");
-	ck(reachable(rows, n, got, GM_MAX_ROWS) == 8, "every row is a stop");
+	ck(reachable(rows, n, got, GM_MAX_ROWS) == 9, "every row is a stop");
 	/* X from anywhere is Quit's, and Quit alone carries X's glyph */
-	ck(gm_x_row() == GM_QUIT && rows[7].value == MENU_KEY_X, "X is Quit's, and Quit draws X's glyph");
+	ck(gm_x_row() == GM_QUIT && rows[8].value == MENU_KEY_X, "X is Quit's, and Quit draws X's glyph");
 	for (k = 0; k < n; k++)
-		if (k != 7 && rows[k].value == MENU_KEY_X) break;
+		if (k != 8 && rows[k].value == MENU_KEY_X) break;
 	ck(k == n, "and no other row does");
-	ck(row_of(&u, GT_GAME, GM_QUIT) == 7 && row_of(&u, GT_GAME, GM_SHADER) == -1,
+	ck(row_of(&u, GT_GAME, GM_QUIT) == 8 && row_of(&u, GT_GAME, GM_SHADER) == -1,
 	   "gm_row_at is a place on that tab, -1 for a row it has not");
 	u.player2 = false;
 	n = gm_rows(&u, GT_GAME, rows, &b);
-	ck(n == 7 && !strcmp(rows[4].label, "Achievements"), "a game with no Player 2 has seven");
+	ck(n == 8 && !strcmp(rows[4].label, "Core Settings") &&
+	   !strcmp(rows[5].label, "Achievements") && !strcmp(rows[6].label, "Reset"),
+	   "a game with no Player 2 has eight, Reset under Achievements");
 	u.quick = 0;
 	n = gm_rows(&u, GT_GAME, rows, &b);
-	ck(n == 6 && row_of(&u, GT_GAME, GM_QUICK) == -1 && !strcmp(rows[2].label, "Load") &&
-	   !strcmp(rows[3].label, "Achievements"), "no save states: no Quick Slot");
+	ck(n == 7 && row_of(&u, GT_GAME, GM_QUICK) == -1 && !strcmp(rows[2].label, "Load") &&
+	   !strcmp(rows[3].label, "Core Settings") && !strcmp(rows[4].label, "Achievements"),
+	   "no save states: no Quick Slot");
+
 	ck(ctl_has_states("SFC") && ctl_has_states("PS1") && ctl_has_states("N64") &&
 	   !ctl_has_states("SCUMMVM") && !ctl_has_states("J2ME"),
 	   "every Diatom system keeps states but ScummVM and J2ME");
@@ -2373,7 +2385,7 @@ static void ingame_rows(void)
 	ck(!strcmp(gm_layout_names[GM_LAYOUT_DEFAULT], "single"),
 	   "a system with no layout on record starts on one screen alone, the top one");
 	n = gm_rows(&u, GT_GAME, rows, &b);
-	ck(n == 7, "and the DS game's Game tab is the same as any other's");
+	ck(n == 8, "and the DS game's Game tab is the same as any other's");
 	u.screens = false;
 
 	/* No GM_CONTROLS row in any tab of a game's menu, and no Pak: the
@@ -3151,15 +3163,15 @@ static void player2_row_on_nes_only(void)
 
 	printf("in-game menu, NES Player 2:\n");
 	u.dmode = "Native"; u.earned = 12; u.total = 40; u.quick = 2;
-	ck(gm_row_at(&u, GT_GAME, GM_PLAYER2) == -1 && gm_tab_rows(&u, GT_GAME, (gm_row[GM_MAX_ROWS]){ 0 }) == 7,
+	ck(gm_row_at(&u, GT_GAME, GM_PLAYER2) == -1 && gm_tab_rows(&u, GT_GAME, (gm_row[GM_MAX_ROWS]){ 0 }) == 8,
 	   "no Player 2 row where it is not offered");
 	u.player2 = true;
 	u.player2_value = gm_player2_value(P2_OFF);
 	n = gm_rows(&u, GT_GAME, rows, &b);
 	at = gm_row_at(&u, GT_GAME, GM_PLAYER2);
-	ck(n == 8, "eight rows with it");
-	ck(at == gm_row_at(&u, GT_GAME, GM_QUICK) + 1 && at + 1 == gm_row_at(&u, GT_GAME, GM_CHEEVOS),
-	   "right after Quick Slot, before Achievements");
+	ck(n == 9, "nine rows with it");
+	ck(at == gm_row_at(&u, GT_GAME, GM_QUICK) + 1 && at + 1 == gm_row_at(&u, GT_GAME, GM_COREOPTS),
+	   "right after Quick Slot, before Core Settings");
 	ck(at >= 0 && !strcmp(rows[at].label, "Player 2") && !strcmp(val(&rows[at]), "Off"),
 	   "Player 2, off until it is started");
 	ck(at >= 0 && rows[at].live && !b.sound[at], "a stop, and plain: A opens its page");
@@ -3179,7 +3191,7 @@ static void player2_row_on_nes_only(void)
 	n = gm_rows(&u, GT_GAME, rows, &b);
 	for (i = 0; i < n; i++)
 		if (!strcmp(lbl(&rows[i]), "Player 2")) break;
-	ck(i == n && n == 7, "without it, every other game keeps its seven");
+	ck(i == n && n == 8, "without it, every other game keeps its eight");
 }
 
 /* The quick slot as the device's database keeps it: per system, slot 1

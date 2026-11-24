@@ -26,11 +26,25 @@
 #include <unistd.h>
 
 #include "../src/device.h"
+#include "../src/i18n.h"
 #include "../src/platform.h"
 
 static int failures;
 
 #define CHECK(c, ...) do { if (!(c)) { printf("  FAIL %s:%d: ", __FILE__, __LINE__); printf(__VA_ARGS__); putchar('\n'); failures++; } else { printf("  ok   "); printf(__VA_ARGS__); putchar('\n'); } } while (0)
+
+/* Paths and spawn/i18n that plat_resident_restart reads; unused by the
+ * zone tests below, but linked because resident.c holds the restart. */
+const char *P_ROOT = "/tmp";
+const char *P_CARD = "/tmp";
+lang i18n_lang(void) { return LANG_EN; }
+const char *lang_code(lang l) { (void)l; return "en"; }
+long plat_spawn_detached_pid(char *const argv[], const char *const envkv[],
+                             const char *workdir)
+{
+	(void)argv; (void)envkv; (void)workdir;
+	return -1;
+}
 
 /* ---- the device, stubbed: resident.c's other neighbours ------------------ */
 
@@ -44,6 +58,8 @@ int plat_power_hold(void) { return -1; }
 int  plat_brightness_get(void) { return -1; }
 void plat_brightness_set(int level) { (void)level; }
 int  plat_coreopt_count(const char *tag) { (void)tag; return 0; }
+void plat_coreopts_invalidate(void) {}
+
 const char *plat_coreopt(const char *tag, int i) { (void)tag; (void)i; return NULL; }
 bool plat_mute_poll(bool own_volume) { (void)own_volume; return false; }
 bool plat_muted(void) { return false; }

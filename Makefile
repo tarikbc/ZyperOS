@@ -2710,6 +2710,17 @@ build-native/coreopts-check: tools/coreopts-check.c src/coreopts.c src/coreopts.
 	      -o $@ tools/coreopts-check.c src/coreopts.c src/db.c src/atomic.c src/strength.c \
 	      src/device/pixel2_coreopts.c -lsqlite3 -lpthread
 
+# Core Settings page helpers (src/coreopt_defs.h): OPTION parse, no baked-in
+# seed, empty whitelist = all, value cycle, cache round-trip, coreopt.<TAG>.key.
+check-coreopts-page: build-native/coreopts-page-check
+	@./build-native/coreopts-page-check
+
+build-native/coreopts-page-check: tools/coreopts-page-check.c src/coreopt_defs.c src/coreopt_defs.h \
+                                  src/atomic.c src/atomic.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Isrc \
+	      -o $@ tools/coreopts-page-check.c src/coreopt_defs.c src/atomic.c
+
 # MP4's settings under its own name (src/mp4keys.h): a handheld's "muse."
 # settings from before 1.1.0 moved under "mp4." at its first start, each
 # value kept; the new one kept where both are; nothing for a second start

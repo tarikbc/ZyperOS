@@ -35,6 +35,7 @@ typedef struct {
 	const char   *system_dir;
 	const char   *save_dir;
 	unsigned      controller_type;   /* retro_set_controller_port_device */
+	unsigned      language;         /* RETRO_LANGUAGE_*: GET_LANGUAGE / intl options */
 	diatom_pixfmt pixfmt;
 	bool          pixfmt_set;
 	bool          supports_no_game; /* core declared SET_SUPPORT_NO_GAME */
@@ -228,6 +229,15 @@ void diatom_audio_hold_waits(bool hold);
 void        diatom_options_bind(const void *owner);
 void        diatom_options_forget(const void *owner);
 void        diatom_options_define_v2(const struct retro_core_options_v2 *v2);
+/* us for keys/defaults/values; local's non-NULL desc (and only that) overlays,
+ * so Core Settings can show the UI language when the core shipped it. */
+void        diatom_options_define_v2_intl(const struct retro_core_options_v2 *us,
+                                          const struct retro_core_options_v2 *local);
+/* Core options API v1 (SET_CORE_OPTIONS / _INTL): same fields as v2 minus
+ * categories. fake08 and other cores that only check version >= 1 still use
+ * this even when GET_CORE_OPTIONS_VERSION returns 2. */
+void        diatom_options_define(const struct retro_core_option_definition *defs);
+void        diatom_options_define_intl(const struct retro_core_options_intl *in);
 void        diatom_options_define_vars(const struct retro_variable *vars);
 const char *diatom_options_get(const char *key);
 bool        diatom_options_set(const char *key, const char *value);

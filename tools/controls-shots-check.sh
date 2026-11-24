@@ -193,7 +193,7 @@ for th in light dark; do
 	done
 done
 
-echo "the in-game menu is in tabs: Game, Display and Controls, MENU's tab row"
+echo "the in-game menu is in tabs: Game, Display, Controls and Achievements, MENU's tab row"
 # Quick Slot after Load on the Game tab, Display and Shader on the Display tab,
 # and the Controls tab (its rows come with the remap screen) drawn empty
 for th in light dark; do

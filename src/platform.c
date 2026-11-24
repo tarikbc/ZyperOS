@@ -49,6 +49,11 @@
 static coreopt coreopts[COREOPT_MAX];
 static int  ncoreopts = -1;   /* -1 = not read yet */
 
+void plat_coreopts_invalidate(void)
+{
+	ncoreopts = -1;
+}
+
 /* A row of the player's. Refused whole, not stored short: half a key=value
  * pair is still a valid-looking one, and it would be sent to a core as
  * though someone meant it. */

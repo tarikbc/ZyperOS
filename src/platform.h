@@ -239,6 +239,10 @@ const char *plat_resident_socket(void);
 const char *plat_resident_pidfile(void);
 bool plat_resident_note_pid(long pid);
 bool plat_resident_ready(void);
+/* Stop the resident if it is up, then start it again with the UI language
+ * (MENU > Language): GET_LANGUAGE / intl core-option labels follow. Safe on
+ * the shelf; not while a game is in plat_resident_wait. */
+void plat_resident_restart(void);
 /* plat_resident_ready, waiting up to max_ms for a Diatom that is running but
  * not answering yet (still starting); false at once when none is running. */
 bool plat_resident_await(unsigned max_ms, unsigned *waited_ms);
@@ -378,6 +382,9 @@ const char *plat_resident_last_preview(void);
  * retro_load_game and setting one afterwards does nothing until next launch. */
 int         plat_coreopt_count(const char *tag);
 const char *plat_coreopt(const char *tag, int i);
+/* After the Core Settings page (or --set) writes a coreopt. row: drop the
+ * in-memory merge so the next plat_coreopt_* rebuilds from the library. */
+void        plat_coreopts_invalidate(void);
 /* The turbo map for this system, or NULL. */
 const char *plat_turbo_map(const char *tag);
 
@@ -441,6 +448,12 @@ bool plat_resident_sync_screens(int timeout_ms);
  * lines waiting already. Only while paused, as those: a game that is running
  * can send EXIT, and this would eat it. */
 bool plat_resident_sync_line(const char *prefix, char *out, size_t n, int timeout_ms);
+/* Ask the resident core for its option table (Diatom's OPTIONS): each
+ * OPTION line is passed to `fn` until count is met or the time runs out.
+ * Only while paused, as sync_line. False when Diatom is not there or
+ * answers with count=0. */
+bool plat_resident_options(void (*fn)(const char *line, void *ctx), void *ctx,
+                           int timeout_ms);
 
 void plat_request_poweroff(void);
 void plat_request_reboot(void);
