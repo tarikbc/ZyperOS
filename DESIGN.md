@@ -1389,7 +1389,7 @@ where it was.)*
 | Tab | Rows |
 |---|---|
 | **Games** | Search Games, Play Time, Random Game, Downloads (11.53) |
-| **Display** | Appearance, Theme, Home Screen, System Order, Home Systems, Battery Icon, Screensaver, Shader and Strength (ZyperOS's own screens', 11.50; not on the Brick), Screen Colors, Night Mode (its page: Night Mode, Night Warmth, Night From, Until) |
+| **Display** | Appearance, Theme, Home Screen, System Order, Home Systems, Game Names (11.71), Battery Icon, Screensaver, Shader and Strength (ZyperOS's own screens', 11.50; not on the Brick), Screen Colors, Night Mode (its page: Night Mode, Night Warmth, Night From, Until) |
 | **Sound** | Audio Output, Audio Channels, Equalizer (11.60), UI Sounds, Menu Music, Rumble (a handheld with a motor ZyperOS runs, 11.54) |
 | **Connections** | USB Device (while a plug waits), Wi-Fi, Bluetooth, File Transfer, USB Accessories, Developer Mode |
 | **System** | Date & Time, Clock, Language, Hotkeys, Power Button, Auto Off, Charge Limit, Side Lights, Storage, System Update |
@@ -7818,8 +7818,9 @@ the details of a game?"; my OK, for 1.1.0.)*
 
 A shelf's title stops at the first bracket after a space (src/library.c's
 `lib_title`: "Final Fantasy VII (USA) (Disc 1).chd" is "Final Fantasy VII"),
-and the shelves, Recents, Favorites and the in-game menu stay so. A game's
-details (X on the shelf) give the brackets back:
+and the shelves, Recents, Favorites and the in-game menu stay so under Game
+Names' Short, as it ships; its File Name gives every one of them the brackets
+(11.71). A game's details (X on the shelf) give the brackets back:
 
 - **File**, the last of the facts, after Genre and Core and before
   Achievements, in the facts' quiet style: the game's file as it is on the
@@ -7898,3 +7899,60 @@ A opens the list when there are more than two, as every option row does
 (`codef.blob`), not a fixed `vals[64][128]` table, so opening the page no
 longer stacks nearly a megabyte. Host shots: `--coreopts-page ROW`
 (tools/i18n-shots.py: `coreopts-page`, `coreopts-page-empty`).
+
+### 11.71 Game Names
+*(Asked for on the Discord: DoctorIssa, 2026-11-21, under "Option to show
+(brackets) on filenames", about 900 files told apart by their brackets, a
+version, a region: "is there any chance there is a way we can have a setting
+to show them"; 11.69 put them on the details first. My OK, 2026-11-23.)*
+
+**Game Names** in MENU's Display tab, under Home Systems, says how every
+shelf names its games:
+
+- **Short**, as it ships, and nothing changes for anyone who never sets it:
+  the downloaded name (MENU > Downloads' Names, or a gamelist.xml's), else
+  the file's name less its brackets, its article in front (`lib_title`):
+  "Final Fantasy VII", "The Legend of Zelda - Link's Awakening".
+- **File Name**: the file's whole name, every bracket in it, less the
+  extension, its article where the file has it: "Final Fantasy VII (USA)
+  (Disc 1)", "Legend of Zelda, The - Link's Awakening (USA, Europe) (Rev 2)".
+  A game in a folder of its own (a disc set, a ScummVM game) is its folder's
+  name, "Chrono Cross (USA)": the name the scan keeps for it (`name`), what
+  its art is found by too. Less the folders the shelf only keeps it in, as
+  its File row (11.69) is.
+
+**What wins.** Under File Name the file's name is over a downloaded one: the
+player asked to see the brackets, and a download has none ("Mario Bros. (Arcade
+Classic)" from the catalog is "Mario Bros (v1.1)", the dump on the card).
+Under Short, the order is as it was: the downloaded name, then the file's,
+cut. A name the player gives a game whose file keeps its name (Rename on an
+arcade set or a port, #463, when it lands) is over both, in both: it is what
+the player typed, as Rename's name is the file's, and so shown, on every
+other game. Two games of one title told apart (#466, when it lands): under
+File Name two names are the same only where two files are (a .zip and a .pce
+of one dump), so only its last rule, the file, can apply, and it puts the
+extension alone after the name ("Bonk (USA) · pce"); no region is put after
+a name that has it already.
+
+**Everywhere a game is named**: Covers, Grid, List and Video, Favorites,
+Recents, Collections and Screenshots, Search, Play Time, the details'
+heading, the in-game menu, and the name on the card of a game with no art
+(11.1), so two discs of one game have two cards. A long name slides on focus
+as every long title does, and is cut with its ellipsis off focus, as before. Name orders and the
+letter jump go by the name on screen: under File Name "Legend of Zelda, The"
+is under L. The File row stays on the details: it is the same words for a
+loose game, but the one fact there for a game in a folder.
+
+**Turned over at once**: Right and Left step it, and A opens the two, each
+with what it does under the list, its example name in English. Kept in the
+device's database (`names`: "short" or "file") and read before the scan, as
+System Order is. Every shelf is named again in place (`refresh_game_titles`,
+what a download of names runs), each cursor on its game, the name orders
+sorted again; Screenshots built again, as its names are its games'. No
+rescan, no card read.
+
+`check-gamenames` holds the rule on a real folder and database (Short, File
+Name, a set, the article, a downloaded name, the order, a refresh both
+ways); `check-gamenames-shots` the List view's rows under each, as the Pixel
+2 and as the Brick in both themes, and MENU's row turning it over;
+`check-menus` the row's place and words.

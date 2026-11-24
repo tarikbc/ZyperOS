@@ -123,11 +123,28 @@ void lib_title(const char *name, char *out, size_t n);
 /* Resolve a display title by the unchanged folder/file key. Does not reorder
  * entries or change the launch path, stem, stats, or disc-folder grouping.
  * The first there is: the player's own name (db_user_title, Rename on a game
- * whose file keeps its name), the stored title (MENU > Downloads' Names and
- * Details, else what es_import took from a gamelist.xml), the file's name
- * tidied (lib_title). */
+ * whose file keeps its name), under Game Names' File Name (lib_names_set) the
+ * file's whole name, `name` as the scan keeps it; the stored title (MENU >
+ * Downloads' Names and Details, else what es_import took from a
+ * gamelist.xml); the file's name tidied (lib_title). */
 void lib_display_title(db *d, const char *folder, const char *file,
                        const char *name, char *out, size_t n);
+
+/* MENU > Display > Game Names (DESIGN.md 11.71, 2026-11-23, asked for on
+ * the Discord): Short, as it ships, each game by its downloaded title or its
+ * file's name less the brackets (lib_title); or File Name (`file` true),
+ * each game by its file's whole name, every bracket in it, less the
+ * extension ("Final Fantasy VII (USA) (Disc 1)", "Legend of Zelda, The -
+ * Link's Awakening (USA, Europe) (Rev 2)"); a game in a folder of its own
+ * by its folder's, `name` as the scan keeps it. File Name is over a
+ * downloaded title: the brackets are what the player asked to see, and a
+ * download has none. A player's own name for a game whose file keeps its
+ * name (Rename on an arcade set, #463) is over both: it is what the player
+ * typed, as a renamed file's name is, so its lookup goes before this one.
+ * Read by every title made after it is set: the shelf re-titles its games
+ * (refresh_game_titles). */
+void lib_names_set(bool file);
+bool lib_names_file(void);
 
 /* A game's file as its details page shows it (DESIGN.md 11.69), with the
  * brackets lib_title leaves out: its launch path `file` less the folders its

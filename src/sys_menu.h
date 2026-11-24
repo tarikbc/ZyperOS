@@ -114,6 +114,11 @@
  * shows, each system with games, Favorites, Recents and Collections (src/homesys.h). Its
  * value "All", or how many of them are on; A opens the page of switches
  * (sys_menu_homesys_rows). 1.0.6, asked for on the Discord. */
+/* PM_NAMES is Game Names, under Home Systems: how every shelf names its
+ * games, Short as it ships (a downloaded title, or the file's name less its
+ * brackets) or File Name (the file's whole name, every bracket in it), with
+ * a note under each in its list (src/library.h, lib_names_set; DESIGN.md
+ * 11.71). 2026-11-23, asked for on the Discord. */
 /* PM_THEME is Theme, under Appearance: the accent, a background tone for
  * each theme, the corners and Zyper (src/look.h, DESIGN.md 3.5). My picks
  * 2026-11-12. Appearance is Light, Dark or Auto (1.0.6: Auto went, its
@@ -135,7 +140,7 @@ typedef enum {
 	/* Games */
 	PM_SEARCH, PM_STATS, PM_RANDOM, PM_SCRAPER,
 	/* Display */
-	PM_APPEARANCE, PM_THEME, PM_HOME, PM_ORDER, PM_HOMESYS, PM_BATTERY, PM_SAVER,
+	PM_APPEARANCE, PM_THEME, PM_HOME, PM_ORDER, PM_HOMESYS, PM_NAMES, PM_BATTERY, PM_SAVER,
 	PM_SHADER,
 	PM_STRENGTH,
 	PM_SCREEN,
@@ -283,9 +288,10 @@ int sys_menu_mp4_rows(int kind, bool both, bool no_wifi, sm_mp4_row *out);
  * and the two USB rows (USB Device, USB Accessories) 29 in all; 1.0.5's
  * Auto Hours, Theme, Screensaver and Shader made 34, every tab's rows
  * together (a tab shows its own, but the build for every tab, PT_TABS, holds
- * them all); room for a few more. The menu runner holds MENU_RUN_ROWS
- * (main.c), which must stay at least this. */
-#define MENU_MAX_ROWS 40
+ * them all); room for a few more. Game Names (2026-11-23) made 41, and 44 is
+ * room again. The menu runner holds MENU_RUN_ROWS (main.c), which must stay
+ * at least this. */
+#define MENU_MAX_ROWS 44
 
 /* The array every caller declares must hold every row a build can produce, and
  * on 2026-09-16 it stopped: PM_ROWS went to 13 against a cap of 12 when the
@@ -452,6 +458,8 @@ typedef struct {
 	const char *order;
 	/* Home Systems' value: "All", or "12 of 15"; NULL reads All */
 	const char *homesys;
+	/* Game Names: Short (NULL reads it) or File Name */
+	const char *names;
 	const char *battery;    /* the corner's battery: Bars (default), Percentage or Time Left */
 	int         auto_off;    /* seconds, 0 for off */
 	bool        power_hold;  /* Power Button is Hold; false, Press */
