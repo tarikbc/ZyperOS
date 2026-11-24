@@ -86,6 +86,13 @@ int main(void)
         assert(home_letter_jump(one, 3, 1, 1) == 1 && home_letter_jump(one, 3, 2, -1) == 0);
         assert(home_letter_jump(one, 3, 0, -1) == 0);       /* one group: nowhere to go */
         assert(home_letter_jump(one, 1, 0, 1) == 0 && home_letter_jump(one, 0, 0, 1) == 0);
+        /* Held down a list (MENU > Storage in A to Z): the same jumps, but
+         * never round an end */
+        assert(home_letter_held(k, n, 1, 1) == 3 && home_letter_held(k, n, 6, 1) == 7);
+        assert(home_letter_held(k, n, 7, 1) == 7);          /* the foot: stays */
+        assert(home_letter_held(k, n, 4, -1) == 3 && home_letter_held(k, n, 3, -1) == 1);
+        assert(home_letter_held(k, n, 0, -1) == 0);         /* the top: stays */
+        assert(home_letter_held(one, 3, 1, 1) == 1 && home_letter_held(one, 3, 2, -1) == 0);
         assert(home_group_key("FAV", "x", "Favorites") == 1);
         assert(home_group_key("PRT", "port", "Ports") == 2);
         assert(home_group_key("GB", "gambatte", "game boy") == 'G');

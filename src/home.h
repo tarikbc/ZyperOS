@@ -122,6 +122,10 @@ int home_jump(int cursor, int count, int dir);
  * when the whole row is one group. Pure: the caller builds `keys` on the press. */
 unsigned char home_group_key(const char *tag, const char *core, const char *name);
 int home_letter_jump(const unsigned char *keys, int count, int cursor, int dir);
+/* The same jump for a direction held down a list: it never goes round, and
+ * stays at the end it reached, as a held step stops at a menu's end
+ * (menu_step_index). MENU > Storage's list in A to Z (DESIGN.md 11.32). */
+int home_letter_held(const unsigned char *keys, int count, int cursor, int dir);
 float home_position(const home *h, uint32_t now);
 bool home_moving(const home *h, uint32_t now);
 bool home_song_update(home_song *song, bool active, bool paused, const char *title);
