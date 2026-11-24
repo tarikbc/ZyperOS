@@ -40,6 +40,7 @@ typedef enum {
 	CQ_HOTKEYS_RESET_EVERY,  /* ...Every Game, or MENU > System > Hotkeys */
 	CQ_STORE_UNUSED_ART,     /* Storage's Unused Art */
 	CQ_STORE_OLD_STATES,     /* Storage's Old Save States */
+	CQ_STORE_DS_COPIES,      /* Storage's Unpacked DS Games (src/dscache.h) */
 	CQ_STORE_SYS_SNAPS,      /* a system's page of Storage, Delete Video Snaps */
 	CQ_STORE_MEDIA_FOLDER,   /* an album, a book, a folder of videos */
 	CQ_STORE_MEDIA_FILE,     /* a song, a book, a video */

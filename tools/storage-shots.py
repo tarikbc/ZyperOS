@@ -34,6 +34,8 @@ SHOTS = {
     "system": ["system"],
     "art": ["art"],
     "states": ["states"],
+    "ds": ["ds"],
+    "ds-row": ["main", "0"],
     "delete": ["delete"],
     "done": ["done"],
     "first": ["first"],
