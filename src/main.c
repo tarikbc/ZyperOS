@@ -5507,27 +5507,54 @@ void refresh_game_titles(app *a)
 {
 	int si, i;
 
-	/* The systems off the home too, whose games Favorites copies again */
+	/* The systems off the home too, whose games Favorites copies again: the
+	 * systems' own shelves first (pass 0), then the shelves of games from
+	 * many (pass 1), which take each game's title from its system's */
+	for (int pass = 0; pass < 2; pass++)
 	for (si = 0; si < sys_kept(a); si++) {
 		sysview *v = &a->view[si];
 		char file[LIB_PATH];
 		int owner, selected;
 		bool changed = false;
 
+		if ((v->owner != NULL) != (pass == 1)) continue;
 		/* Not Screenshots: an entry's file is its picture's, and its title
 		 * is its game's as the shelf was read (DESIGN.md 11.68) */
 		if (is_mp4(&a->sys.systems[si]) || shots_shelf(a, si) || v->list.count <= 0) continue;
 		owner = shelf_owner(a, si, v->cursor);
 		snprintf(file, sizeof file, "%s", v->list.items[v->cursor].file);
-		/* A folder's name is its own (src/shelfdir.h); every game of a
-		 * shelf with folders, and the shelf's copies of its folder's */
-		for (i = 0; v->all && i < v->all->count; i++)
-			lib_refresh_title(db_lib(), a->sys.systems[si].folder, &v->all->items[i]);
-		for (i = 0; i < v->list.count; i++) {
-			int o = shelf_owner(a, si, i);
-			if (v->list.items[i].folder) continue;
-			if (lib_refresh_title(db_lib(), a->sys.systems[o].folder, &v->list.items[i]))
-				changed = true;
+		if (!v->owner) {
+			/* A system's own shelf: every game of it, two of one title told
+			 * apart again across all of them (lib_titles_apart), and on a
+			 * shelf with folders the folder's games as copies of those, so
+			 * a game is named alike in every folder, Search and Favorites. A
+			 * folder's name is its own (src/shelfdir.h). */
+			game_list *all = sys_games(v);
+			uint64_t was = lib_titles_digest(all);
+
+			for (i = 0; i < all->count; i++)
+				lib_refresh_title(db_lib(), a->sys.systems[si].folder, &all->items[i]);
+			lib_titles_apart(all);
+			changed = lib_titles_digest(all) != was;
+			if (v->all && lib_titles_copy(&v->list, v->all)) changed = true;
+		} else {
+			/* Favorites, Recents, Collections: each game as its system named
+			 * it, told apart there (pass 0) */
+			for (i = 0; i < v->list.count; i++) {
+				int o = shelf_owner(a, si, i), at;
+				game_entry *e = &v->list.items[i];
+				const game_list *sys;
+
+				if (e->folder) continue;
+				sys = o >= 0 && o < sys_kept(a) && !a->view[o].owner ? sys_games(&a->view[o]) : NULL;
+				if (sys && (at = lib_find_entry(sys, NULL, 0, e->file)) >= 0) {
+					if (strcmp(e->title, sys->items[at].title)) changed = true;
+					memcpy(e->title, sys->items[at].title, sizeof e->title);
+					e->apart = sys->items[at].apart;
+				} else if (lib_refresh_title(db_lib(), a->sys.systems[o].folder, e)) {
+					changed = true;
+				}
+			}
 		}
 		if (!changed) continue;
 		free_view_textures(v);

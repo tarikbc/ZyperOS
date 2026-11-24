@@ -2485,6 +2485,8 @@ void shelf_drop_game(app *a, const char *tag, const char *file)
 		memmove(&all->items[k], &all->items[k + 1],
 		        (size_t)(all->count - k - 1) * sizeof *all->items);
 		all->count--;
+		/* The one it was told apart from goes back to its name */
+		lib_titles_apart(all);
 		shelf_show_dir(v, v->dir);
 		sort_shelf(a, si);
 		v->cursor = at < v->list.count ? at : v->list.count > 0 ? v->list.count - 1 : 0;
@@ -2506,6 +2508,9 @@ void shelf_drop_game(app *a, const char *tag, const char *file)
 		if (v->th)  memmove(&v->th[k],  &v->th[k + 1],  rest * sizeof *v->th);
 		if (v->cb)  memmove(&v->cb[k],  &v->cb[k + 1],  rest * sizeof *v->cb);
 		v->list.count--;
+		/* The one it was told apart from goes back to its name, in its
+		 * place (its picture is the place's) */
+		lib_titles_apart(&v->list);
 		/* Its cursor: on the game, it is now on the next one; past the
 		 * end, on the one before */
 		if (v->cursor > k) v->cursor--;
@@ -2589,7 +2594,12 @@ bool shelf_rename_game(app *a, const char *tag, const char *file, const char *ne
 		snprintf(e->file, sizeof e->file, "%s", new_file);
 		snprintf(e->name, sizeof e->name, "%s", new_name);
 		lib_display_title(db_lib(), folder, e->file, e->name, e->title, sizeof e->title);
+		e->apart = 0;
 	}
+	/* A game of the same title as the new name, or the one it was told
+	 * apart from, told apart again (lib_titles_apart) */
+	lib_titles_apart(sys_games(v));
+	if (v->all) lib_titles_copy(&v->list, v->all);
 	/* Every index from here on can name another game */
 	free_all_textures(a);
 	SDL_AtomicIncRef(&g_lib_gen);       /* a check that read the card before is moot */
