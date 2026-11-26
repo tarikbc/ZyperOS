@@ -20,9 +20,9 @@
 #include "zyperdraw.h"
 #include "zyperrig.h"
 #include "levels.h"
+#include "wdog.h"
 #ifdef ZYPEROS_DESK
 #include "device/desk.h"
-#include "wdog.h"
 #endif
 
 #include <SDL.h>
