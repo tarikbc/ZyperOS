@@ -14,6 +14,9 @@ draws every frame it runs, and not for one that draws less often than that:
     read 0.5x, the Dreamcast at 30 fps on the Brick (1.0.6). The frames it
     emulated are the sound it made: two frames of sound a call.
   - a core too slow for its game reads below 1x, and fast forward at its step
+  - a core under frameskip=late that leaves out two frames in three is at
+    full speed, at 20 fps: the frames it ran undrawn hand over the last
+    picture again (DSperate's), and are not put on the panel
 
 The stub is told how it draws (STUBCORE_DUPE, STUBCORE_SPAN) and how long a
 call takes (STUBCORE_FRAME_US); the desktop port writes down
@@ -103,7 +106,7 @@ class Run:
                 f"step report {self.clock}x of the clock, {self.turns}x of the turns, {self.short} turns short, "
                 f"{self.lost}s lost of {self.held}s held")
 
-def run(tag, stub_env, presses=0, seconds=5.0, clock="0"):
+def run(tag, stub_env, presses=0, seconds=5.0, clock="0", words=""):
     """One game with On-Screen Stats on: `presses` times SELECT+R2 from poll 30,
     then a second of the step to settle, the now file read, `seconds` more at
     the step, the now file read again, STOP. The seconds are Diatom's own,
@@ -136,7 +139,7 @@ def run(tag, stub_env, presses=0, seconds=5.0, clock="0"):
     s.connect(sock)
     s.settimeout(0.02)
     buf, speeds, running = b"", [], False
-    s.sendall(f"RUN\tcore={STUB}\n".encode())
+    s.sendall(f"RUN\tcore={STUB}{words}\n".encode())
 
     def pump(until, stop_when=None):
         nonlocal buf, running
@@ -320,6 +323,19 @@ r = run("span3", {"STUBCORE_SPAN": "3", "STUBCORE_FRAME_US": str(cost)})
 say("span3", r)
 check("a core whose call is three frames long is three frames to a picture, at 1x and 20 fps, not 0.33x",
       per_picture(r, 3) and at(r, allows(3, cost), allows(3, cost) * CORE_FPS / 3), r)
+
+# frameskip=late, a core as a DS game on the Pixel 2: a drawn frame 38 ms, an
+# undrawn one 6 ms, so the loop leaves out two in three (the debt it keeps is
+# the sound queue's depth, 21 ms here, enough for two) at about full speed.
+# The undrawn frames hand over a picture still (the last one's pixels, as
+# DSperate does), and the panel does not get them: FPS is the pictures put
+# on the panel, 20, where counting the core's calls said 60 (1.1.0). Judged as
+# frames to a picture, three, which a busy machine's speed does not change
+r = run("lateskip", {"STUBCORE_SKIPPABLE": "1", "STUBCORE_FRAME_US": "6000",
+                     "STUBCORE_DRAWN_US": "38000"}, words="\tframeskip=late")
+say("lateskip", r)
+check("frameskip=late leaving out two frames in three is three frames to a picture, not over 21 fps",
+      per_picture(r, 3) and r.speed <= 1.06 and r.fps <= 21, r)
 
 # A core too slow for its game reads under 1x, and so does a 30 fps game that
 # is slow: a call of 3 frames' time that is 2 frames long. 25 ms a frame is
