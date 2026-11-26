@@ -4,7 +4,7 @@
 # first says what happened, the second to what.
 
 [popup.speed]
-note = The pop-up as SELECT+R2 or SELECT+L2 changes the game's speed, first line; under it the step (popup.speed_half or popup.speed_whole).
+note = The pop-up as SELECT+R2, SELECT+L2 or Fast Forward changes the game's speed, first line; under it the step (popup.speed_half, popup.speed_whole or popup.speed_max).
 en = Speed
 zh-Hans = 速度
 es = Velocidad
@@ -35,6 +35,17 @@ fr = %dx
 de = %dx
 ja = %dx
 it = %dx
+
+[popup.speed_max]
+note = Under popup.speed, and the value of hotkeys.ff_speed: the speed past 3x, as fast as the handheld can run the game. One short word: the fastest speed.
+en = Max
+zh-Hans = 最快
+es = Máxima
+pt-BR = Máxima
+fr = Max
+de = Max.
+ja = 最速
+it = Massima
 
 [popup.saved]
 note = The pop-up after SELECT+R1 saved a state, first line; under it the slot (slots.slot, "Slot 2").

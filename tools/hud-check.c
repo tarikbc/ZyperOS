@@ -158,7 +158,9 @@ int main(int argc, char **argv)
 		v.fps = 89.6; v.speed = 1.5;
 		text_is(&v, FS, "89.6 fps \xc2\xb7 1.5x", "one decimal from 1.1x");
 		v.fps = 5000; v.speed = 5000;
-		text_is(&v, FS, "999.9 fps \xc2\xb7 9.9x", "clamped at what it holds");
+		text_is(&v, FS, "999.9 fps \xc2\xb7 99.9x", "clamped at what it holds");
+		v.fps = 755.2; v.speed = 12.64;
+		text_is(&v, FS, "755.2 fps \xc2\xb7 12.6x", "Max past 10x: said as it is, not 9.9x");
 		v.fps = 59.7; v.speed = 1.0;
 		text_is(&v, I(SPEED), "1x", "Speed alone says full speed too");
 		v.speed = 0.5;

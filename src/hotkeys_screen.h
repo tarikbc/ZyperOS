@@ -25,6 +25,11 @@ void hotkeys_screen(app *a);
 void hotkeys_ingame(app *a, const menu_style *over, void *ctx, const system_cfg *s,
                     const char *file, const char *title, bool running);
 
+/* A speed as the speed pop-up says it, in the language: "1.5x", "2x", "1x",
+ * or "Max" for 0 (src/hotkeys.h's hk_ff_half, Diatom's SPEED x=max); the
+ * Fast Forward Speed row says its speeds the same way */
+void speed_said(int half, char *out, size_t n);
+
 /* For the shots (src/shots.c): the list drawn once, the cursor on row
  * `sel`, in-game with `s` (NULL: MENU > System's); `capture` 0 none, 1 the
  * capture screen waiting, 2 with SELECT and `key` (HK_*) down; `ask` 1 the

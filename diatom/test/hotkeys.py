@@ -8,7 +8,10 @@ slot's round trip as the launcher drives it.
     never sees their SELECT or their shoulder.
   - SELECT then A: the game has SELECT on A's frame.
   - SELECT+R2 and SELECT+L2 step the speed, 1.5x, 2x, back, and answer at
-    1x again when it is already there.
+    1x again when it is already there; past 3x is Max, said x=max.
+  - Fast Forward (ffwd): one press from 1x to RUN ffspeed='s speed (2x
+    without one, SETHOTKEYS ffspeed= while it runs), one from any fast step
+    back to 1x.
   - MENU+R1 steps nothing any more: R1 under MENU is the game's.
   - A SAVE sent while the game runs (the launcher's answer to the hotkey) is
     written on Diatom's thread, answered SAVED, with its picture beside it,
@@ -398,6 +401,35 @@ check("SELECT+START, quit's: PAUSED for=quit", "PAUSED\tfor=quit" in got, got)
 bits, ax = live_run("hkbad", "60:select;63:select+r1;67:;", "SETHOTKEYS\tkeys=shot:select\n", 100)
 check("a bad SETHOTKEYS: ok=0, and the keys as they were (SELECT+R1 still saves)",
       "HOTKEYS\tok=0" in got and "HOTKEY\tkey=save" in got, got)
+
+# Fast Forward (ffwd), one press each way: from 1x to the speed it is given
+# (RUN ffspeed=, 2x without one), from any fast step back to 1x, one SELECT+R2
+# reached too. And Max, past 3x: SELECT+R2 reaches it and stays, SELECT+L2
+# steps back to 3x.
+def speeds():
+    return [l[8:] for l in got if l.startswith("SPEED\tx=")]
+bits, ax = live_run("ff", "40:select;43:select+y;47:;70:select;73:select+y;77:;"
+                    "100:select;103:select+r2;107:;130:select;133:select+y;137:;",
+                    "", 170, "\thotkeys=save:r1,load:l1,faster:r2,slower:l2,ffwd:y")
+check("ffwd: SELECT+Y goes to 2x with no ffspeed=, back to 1x, and from SELECT+R2's 1.5x to 1x",
+      speeds() == ["2", "1", "1.5", "1"], speeds())
+check("ffwd: the game never sees that SELECT or Y", not any(bits[i] & (Y | SEL) for i in range(40, 50)), bits[38:52])
+# At Max a turn of the stub runs up to 64 polls, so the presses are a few
+# hundred polls apart, each in a turn of its own, as a hand's are
+bits, ax = live_run("ffmax", "40:select;43:select+y;47:;300:select;303:select+l2;307:;"
+                    "600:select;603:select+r2;607:;900:select;903:select+r2;907:;",
+                    "", 1100, "\thotkeys=faster:r2,slower:l2,ffwd:y\tffspeed=max")
+check("ffspeed=max: SELECT+Y goes to Max, said x=max; SELECT+L2 steps back to 3x; "
+      "SELECT+R2 past 3x is Max again, and stays", speeds() == ["max", "3", "max", "max"], speeds())
+bits, ax = live_run("ffset", "60:select;63:select+x;67:;90:select;93:select+x;97:;",
+                    "SETHOTKEYS\tkeys=ffwd:x\tffspeed=1.5\n", 130)
+check("SETHOTKEYS keys=ffwd:x ffspeed=1.5: SELECT+X goes to 1.5x and back",
+      "HOTKEYS\tok=1" in got and speeds() == ["1.5", "1"], (got, speeds()))
+bits, ax = live_run("ffsteps", "40:select;43:select+r2;46:select;49:select+r2;52:select;"
+                    "55:select+r2;58:select;61:select+r2;64:select;67:select+r2;70:;",
+                    "", 110)
+check("SELECT+R2 steps 1.5x, 2x, 3x, Max, and Max again at the end",
+      speeds() == ["1.5", "2", "3", "max", "max"], speeds())
 
 # A remapped SELECT (select:start): the chords go by the SELECT key, not by
 # what it is mapped to, so SELECT+R1 still saves and the core never reads START.

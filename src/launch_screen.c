@@ -1058,6 +1058,10 @@ void launch(app *a)
 					snprintf(keys + strlen(keys), sizeof keys - strlen(keys), "%shotkeys=%s",
 					         keys[0] ? "\t" : "", run);
 			}
+			/* Fast Forward's speed, where it is not 2x, Diatom's own */
+			if (hk.ff != def.ff && strlen(keys) + 16 <= sizeof keys)
+				snprintf(keys + strlen(keys), sizeof keys - strlen(keys), "%sffspeed=%s",
+				         keys[0] ? "\t" : "", hk_ff_word(hk.ff));
 			{
 				/* The game's part of the name as src/shotname.h has it,
 				 * which the Screenshots shelf reads back */

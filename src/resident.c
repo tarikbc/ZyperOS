@@ -1125,9 +1125,11 @@ static int diatom_wait(void)
 			else if (strncmp(l, "STYLUS\t", 7) == 0) d_note_stylus(l);
 			else if (strncmp(l, "SCREENS\t", 8) == 0) d_note_screens(l);
 			else if (strncmp(l, "CHEEVO\t", 7) == 0) d_note_cheevo(l);
-			/* The step, "1" to "3" in halves: "1.5" is 3 */
+			/* The step, "1" to "3" in halves: "1.5" is 3; "max" is 0 */
 			else if (strncmp(l, "SPEED\tx=", 8) == 0) {
-				if (d_on_speed) d_on_speed((int)(strtod(l + 8, NULL) * 2.0 + 0.5));
+				const int half = !strcmp(l + 8, "max") ? 0 : (int)(strtod(l + 8, NULL) * 2.0 + 0.5);
+
+				if (d_on_speed && (half == 0 ? !strcmp(l + 8, "max") : half >= 2)) d_on_speed(half);
 			}
 			/* R2 in a PSP game: "STICK\ton=1" while the d-pad is the stick;
 			 * or the answer to the menu's own SETSTICK (d_note_stick) */

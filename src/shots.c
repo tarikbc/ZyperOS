@@ -2470,9 +2470,7 @@ static void shot_compose_once(app *a)
 			         T(!strcmp(shot_popup, "stick_on") ? S_POPUP_STICK_ON : S_POPUP_STICK_OFF));
 		} else {
 			shot_notice_head = T(S_POPUP_SPEED);
-			snprintf(pbody, sizeof pbody,
-			         shot_popup_half % 2 ? T(S_POPUP_SPEED_HALF) : T(S_POPUP_SPEED_WHOLE),
-			         shot_popup_half / 2);
+			speed_said(shot_popup_half, pbody, sizeof pbody);
 		}
 	}
 	if (shot_notice) {
