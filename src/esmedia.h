@@ -62,6 +62,12 @@ bool es_media(const char *roms, const char *folder, const char *file, const char
  * frame. False while the index is not built. */
 bool es_has_video(const char *folder, const char *file, const char *name);
 
+/* Whether the game has an EmulationStation cover, as es_has_video: a
+ * picture gamelist.xml names for it (thumbnail, image, marquee), or one of
+ * es_media's names in the folder's picture folders. From the index alone;
+ * false while it is not built. */
+bool es_has_cover(const char *folder, const char *file, const char *name);
+
 /* Whether `folder`'s index is built, so es_media without `wait` answers */
 bool es_ready(const char *folder);
 
@@ -108,6 +114,17 @@ bool game_media_own(const char *roms, const char *folder, const char *name, es_k
                     char *out, size_t n);
 bool game_media(const char *roms, const char *folder, const char *file, const char *name,
                 es_kind kind, bool wait, char *out, size_t n);
+
+/* game_media's question without a look at a file, for a whole shelf at once:
+ * whether the game is in `own`, its own files' stems of that kind in the
+ * folder's .media, sorted by strcmp (snap_names_for's for videos), else
+ * whether the folder's index has one for it (es_has_video, es_has_cover).
+ * The shelf's play mark and the screensaver's games ask this, and both then
+ * take the file from game_media (2026-11-23, moroboshi69 on the Discord: the
+ * screensaver showed only the systems with .media, never those whose
+ * gamelist.xml names ./images/..., which the shelf shows). */
+bool game_media_listed(const char *folder, const char *file, const char *name, es_kind kind,
+                       char *const *own, int nown);
 
 /* ---- into the library database ------------------------------------------
  *

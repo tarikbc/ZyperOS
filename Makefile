@@ -193,6 +193,15 @@ check-videoview: native
 check-menukeys: native
 	@'$(PYIMG)' tools/menukeys-check.py
 
+# The screensaver's games and pictures, as the shelf finds them (gamelist.xml's
+# images too), in desk mode left alone past its delay
+check-saver-art: native
+	@python3 tools/saver-art-check.py
+
+# The screensaver's cover clear of its slabs, its snap over the whole screen, off its frames
+check-saver-place: native
+	@'$(PYIMG)' tools/saver-place-check.py
+
 # No button read twice by in_repeat in one step (a held one turned round)
 check-inrepeat:
 	@python3 tools/inrepeat-check.py
