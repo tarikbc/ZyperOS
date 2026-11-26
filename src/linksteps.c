@@ -105,3 +105,41 @@ bool link_arp_complete(const char *text, const char *ifname, char *ip, size_t ip
 	}
 	return false;
 }
+
+/* ---- a fresh link ------------------------------------------------------ */
+
+bool link_fresh_ask(bool just_bound, bool state_tells, bool configured, bool carrier)
+{
+	return !just_bound && (configured || !state_tells) && carrier;
+}
+
+bool link_wants_fresh(bool just_bound, bool state_tells, bool configured, bool carrier,
+                      bool answered)
+{
+	if (just_bound) return false;
+	if (!link_fresh_ask(just_bound, state_tells, configured, carrier)) return true;
+	return !answered;
+}
+
+/* RFC 826 over Ethernet: hardware 1, protocol 0x0800, lengths 6 and 4 */
+static void be16(unsigned char *p, unsigned v) { p[0] = (unsigned char)(v >> 8); p[1] = (unsigned char)v; }
+
+void link_arp_request(unsigned char out[LINK_ARP_LEN], const unsigned char smac[6],
+                      unsigned sip, unsigned tip)
+{
+	be16(out, 1);
+	be16(out + 2, 0x0800);
+	out[4] = 6;
+	out[5] = 4;
+	be16(out + 6, 1);                        /* a request */
+	memcpy(out + 8, smac, 6);
+	memcpy(out + 14, &sip, 4);
+	memset(out + 18, 0, 6);
+	memcpy(out + 24, &tip, 4);
+}
+
+bool link_arp_answer(const unsigned char *p, size_t n, unsigned tip)
+{
+	return n >= LINK_ARP_LEN && p[0] == 0 && p[1] == 1 && p[2] == 8 && p[3] == 0 &&
+	       p[4] == 6 && p[5] == 4 && p[6] == 0 && p[7] == 2 && !memcmp(p + 14, &tip, 4);
+}

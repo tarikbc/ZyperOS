@@ -13,5 +13,5 @@ fi
 # sets it.
 setenv zy_charge_arg
 if test "${zy_charge}" = "1"; then setenv zy_charge_arg zycharge=1; fi
-setenv bootargs "root=${zy_root}${zy_part} ${zy_args} zyperos.slot=${slot} zyperos.trial=${trial} ${zy_theme} ${zy_charge_arg}"
+setenv bootargs "root=${zy_root}${zy_part} ${zy_args} zyperos.slot=${slot} zyperos.trial=${trial} ${zy_theme} ${zy_charge_arg} ${zy_test}"
 booti ${kernel_addr_r} - ${zy_fdt}

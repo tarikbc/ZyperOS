@@ -20,6 +20,7 @@
 #include "texload.h"
 #include "theme.h"
 #include "ui.h"
+#include "wdog.h"
 
 #include <dirent.h>
 #include <stdio.h>
@@ -2389,9 +2390,11 @@ void rescan_all(app *a)
 {
 	/* The card read again: EmulationStation's indexes with it, and the
 	 * menu music's folders on the player's own thread */
+	wdog_hold("the shelves read again");     /* a whole card's read (wdog.h) */
 	es_forget();
 	rebuild(a, NULL, false);
 	bgm_rescan();
+	wdog_release();
 }
 
 /* The saved library as the shelves are now, after a change the launcher

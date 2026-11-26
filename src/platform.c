@@ -17,6 +17,7 @@
 #include "osdbar.h" /* the volume and brightness bar, drawn here and elsewhere */
 #include "powerhold.h"
 #include "theme.h"  /* which theme the bar is drawn in */
+#include "wdog.h"   /* fed while a program has the screen */
 
 #include <errno.h>
 #include <signal.h>
@@ -356,6 +357,9 @@ void plat_set_btn(in_state *st, in_button b, bool down)
 	if (b == IN_NONE) return;
 	if (b == IN_POWER) {
 		if (down && !st->down[b]) {
+			/* Said, and kept across a freeze (klog.h): a POWER that did
+			 * nothing shows whether the launcher ever had it */
+			fprintf(stderr, "power: POWER pressed\n");
 			st->power_tap = true;
 			st->down_since[b] = SDL_GetTicks();
 			st->last_repeat[b] = 0;
@@ -494,6 +498,7 @@ int plat_run(char *const argv[], const char *const envkv[], const char *workdir)
 	int ms_since_term = -1;
 	for (;;) {
 		pid_t r = waitpid(pid, &status, WNOHANG);
+		wdog_feed();                     /* the loop is this one now (wdog.h) */
 		if (r == pid) break;
 		if (r < 0) return -1;
 		usleep(100 * 1000);
@@ -562,12 +567,14 @@ void plat_request_poweroff(void)
 {
 	FILE *f = fopen(plat_flag(ZYPEROS_POWEROFF_FLAG), "w");
 	if (f) fclose(f);
+	fprintf(stderr, "power: a power-off asked of launch.sh\n");
 }
 
 void plat_request_reboot(void)
 {
 	FILE *f = fopen(plat_flag(ZYPEROS_REBOOT_FLAG), "w");
 	if (f) fclose(f);
+	fprintf(stderr, "power: a restart asked of launch.sh\n");
 }
 
 /* The settings indicator: the pill src/osdbar.c draws, at the top center on

@@ -1,5 +1,6 @@
 # QEMU's inittab: ZyperOS's (board/zyperos/rootfs-overlay/etc/inittab) less
-# the splash and the daemons for the Pixel 2's own parts (jackswitch, usbrole),
+# the splash, the hardware watchdog's petter (hwdog: QEMU's machine has no
+# watchdog) and the daemons for the Pixel 2's own parts (jackswitch, usbrole),
 # with its simulated buttons and parts first. Keep it in step with ZyperOS's.
 
 ::sysinit:/bin/mount -t proc proc /proc
