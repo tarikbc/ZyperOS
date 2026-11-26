@@ -23,6 +23,7 @@ typedef struct {
 	char installed[32], version[32];
 	unsigned long long download, done, total;
 	unsigned long long size;  /* the new folder, every file */
+	unsigned long long need;  /* state space: the free room the update needs */
 	int files_done, files_total;
 	char message[160];
 	bool system;              /* a system update (kind system): the root and
@@ -47,6 +48,7 @@ typedef struct {
 	int battery;              /* percent */
 	bool charging;
 	char checked[16];         /* when it last looked, "9:41"; "" for never */
+	unsigned long long card_free; /* the card's free room, read while it says space */
 } su_view;
 
 /* What a button does on the page. SUA_OPEN is the Install PortMaster page's
@@ -79,7 +81,7 @@ typedef struct {
 	bool line_warn;
 	/* A problem, said in full where What's New goes (which steps aside):
 	 * big enough to read at arm's length, not a cut line in **meta** */
-	char warn[160];
+	char warn[256];
 	su_key keys[SU_MAX_KEYS];
 	int nkeys;
 } su_page;

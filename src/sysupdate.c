@@ -48,6 +48,8 @@ void su_status_parse(const char *text, su_status *out)
 			snprintf(out->version, sizeof out->version, "%s", val);
 		} else if (!strcmp(line, "size")) {
 			out->size = strtoull(val, NULL, 10);
+		} else if (!strcmp(line, "need")) {
+			out->need = strtoull(val, NULL, 10);
 		} else if (!strcmp(line, "download")) {
 			out->download = strtoull(val, NULL, 10);
 		} else if (!strcmp(line, "done")) {
@@ -112,6 +114,18 @@ static float frac(unsigned long long a, unsigned long long b)
 	if (!b) return 0.0f;
 	if (a >= b) return 1.0f;
 	return (float)((double)a / (double)b);
+}
+
+/* A size's space as a no-break space (U+00A0), so a message broken onto
+ * lines keeps "410 MB" together */
+static void nbsp(char *s, size_t n)
+{
+	char *sp = strchr(s, ' ');
+
+	if (!sp || strlen(s) + 2 > n) return;
+	memmove(sp + 2, sp + 1, strlen(sp + 1) + 1);
+	sp[0] = '\xc2';
+	sp[1] = '\xa0';
 }
 
 static void key(su_page *p, const char *button, const char *label, su_action act)
@@ -299,8 +313,25 @@ void su_page_build(const su_view *v, su_page *p)
 		}
 		break;
 	case SU_SPACE:
+		/* How much it needs and how much is free, and A to check again
+		 * once there is room: the update program measures again, and
+		 * downloads if it fits (2026-11-22: "should say how much needed
+		 * and check again option") */
 		size_line(v, p->sub, sizeof p->sub);
-		snprintf(p->warn, sizeof p->warn, "%s", T(S_UPDATE_CARD_FULL));
+		if (v->st.need) {
+			char need[24], have[24];
+
+			su_size(v->st.need, need, sizeof need);
+			su_size(v->card_free, have, sizeof have);
+			/* "410 MB" kept on one line: a no-break space before the unit */
+			nbsp(need, sizeof need);
+			nbsp(have, sizeof have);
+			snprintf(p->warn, sizeof p->warn, T(S_UPDATE_CARD_NEEDS), need, have);
+		} else {
+			snprintf(p->warn, sizeof p->warn, "%s", T(S_UPDATE_CARD_FULL));
+		}
+		if (v->wifi) key(p, "A", T(S_UPDATE_CHECK_AGAIN), SUA_DOWNLOAD);
+		else snprintf(p->line, sizeof p->line, "%s", T(S_UPDATE_NEED_WIFI_DOWNLOAD));
 		break;
 	case SU_NEEDS_SYSTEM:
 		snprintf(p->sub, sizeof p->sub, T(S_UPDATE_NEEDS_SYSTEM), v->st.version);

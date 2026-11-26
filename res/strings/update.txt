@@ -442,6 +442,17 @@ de = Erneut versuchen
 ja = もう一度試す
 it = Riprova
 
+[update.check_again]
+note = The A button's label when the card was too full for the update: it measures the free room again, and downloads if the update fits now
+en = Check Again
+zh-Hans = 重新检查
+es = Comprobar de nuevo
+pt-BR = Verificar de novo
+fr = Vérifier à nouveau
+de = Erneut prüfen
+ja = 再確認
+it = Ricontrolla
+
 [update.could_not_look]
 note = The line under the version when the update server did not answer
 en = Could not look for updates
@@ -474,6 +485,17 @@ fr = La carte est trop pleine pour la mise à jour. Libérez de la place, puis r
 de = Die Karte ist zu voll für das Update. Schaffe Platz und versuche es erneut.
 ja = カードの空き容量が足りません。空きを作ってから、もう一度お試しください。
 it = La scheda è troppo piena per l'aggiornamento. Libera spazio, poi riprova.
+
+[update.card_needs]
+note = The problem, said in full, when the card has too little free room for the update: the first %s is the room it needs free ("410 MB"), the second what is free now ("230 MB"). A then says Check Again.
+en = The card needs %s free for the update and has %s. Make room on it, then check again.
+zh-Hans = 更新需要存储卡有 %s 可用空间，现在只有 %s。请腾出空间后再次检查。
+es = La tarjeta necesita %s libres para la actualización y tiene %s. Libera espacio y vuelve a comprobar.
+pt-BR = O cartão precisa de %s livres para a atualização e tem %s. Libere espaço e verifique de novo.
+fr = La mise à jour demande %s de libre, la carte en a %s. Libérez de la place, puis vérifiez à nouveau.
+de = Die Karte braucht %s freien Platz für das Update und hat %s. Schaffe Platz und prüfe dann erneut.
+ja = アップデートには、カードに %s の空きが必要です（いまは %s）。空きを作ってから、もう一度確認してください。
+it = La scheda deve avere %s liberi per l'aggiornamento e ne ha %s. Libera spazio, poi ricontrolla.
 
 [update.needs_system]
 note = The line under the versions: %s is the new version, which needs a new system too
