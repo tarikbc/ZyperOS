@@ -4173,14 +4173,15 @@ a game with a cover and no video.
 ### 11.35 File Transfer's heading and steps
 The transfer panel (11.3) of USB and Wi-Fi File Transfer, 2026-11-10. Its
 heading, in **label** **text-soft**, has the handheld's name on the network
-beside its address and the PIN. Over the cable the name comes first:
-"http://zyperos.local" on the first line, "10.42.0.1 · PIN 4071" on the
-second, since only the computer is on that link. Over Wi-Fi the address
-comes first, as it was, and the name beside the PIN: "192.168.1.42" over
-"PIN 4071 · zyperos.local", since anyone on the network could answer for a
-name, and what a person types should come from the handheld's own screen.
-The name over the cable is written with http:// so a browser opens it
-rather than searching for it; with a port other than 80 both carry it. With
+beside its address and the PIN. The address comes first, over the cable as
+over Wi-Fi, and the name beside the PIN: "192.168.1.42" (or "10.42.0.1")
+over "PIN 4071 · zyperos.local". Over Wi-Fi anyone on the network could
+answer for a name, and what a person types should come from the handheld's
+own screen. Over the cable the name came first until 2026-11-23, but
+Windows does not resolve it there (Discord: Edge, Chrome and Firefox could
+not open http://zyperos.local over the cable, and the address could), and
+the address works on every computer (`make check-xferway`). With a port
+other than 80 both carry it. With
 no name (multicast DNS did not start, or gave the name up after three taken
 in a session) or no link (the heading then says "Cable unplugged" or "Wi-Fi
 went away"), the heading is the address over the PIN.
@@ -4197,9 +4198,11 @@ that, never cut; the other way to reach it under it in **menu**
 **text-soft**; "PIN" in **meta** **text-dim**; and the PIN as one key a
 digit, 80 by 96, a **raised** fill in an **edge** frame (DS_FRAME) with
 DS_RADIUS_KEY, the digit in **title** **text**, as the page's four boxes
-take it. The order is the heading's: over the cable "http://zyperos.local"
-first and "10.42.0.1" under it; over Wi-Fi the address first and the name
-under it. With no name the address is alone. Under the header one live row
+take it. The order is the heading's: the address first and the name under
+it, over the cable as over Wi-Fi; over the cable the name is written with
+http://, "http://zyperos.local", so a browser opens it rather than
+searching for it (the heading writes it bare: with http:// it did not fit
+beside the PIN). With no name the address is alone. Under the header one live row
 says where the link is (**Cable** "unplugged" or "waiting", **Wi-Fi** "not
 connected", **Address** "waiting", **Browser** "waiting", or **PIN**
 "waiting" once a browser has the page), then the rule and the key legend
