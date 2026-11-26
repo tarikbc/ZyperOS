@@ -1267,7 +1267,6 @@ static void draw_games(app *a)
 			.playing = si.snap && si.snap_k >= 1,
 			.band = g_shot_band,
 			.foot = shots ? sfoot : NULL, .nfoot = snf,
-			.clear = shots,
 		};
 		/* Somebody watching a snap holds the screensaver; a still shot
 		 * does not */
