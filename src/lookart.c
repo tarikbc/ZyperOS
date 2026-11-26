@@ -9,8 +9,15 @@
 
 bool la_new(la_canvas *c, int w, int h)
 {
+	return la_new_scaled(c, w, h, 1.0f, 1.0f);
+}
+
+bool la_new_scaled(la_canvas *c, int w, int h, float kx, float ky)
+{
 	c->w = w;
 	c->h = h;
+	c->kx = kx;
+	c->ky = ky;
 	c->p = calloc((size_t)w * h * 4, sizeof *c->p);
 	return c->p != NULL;
 }
@@ -34,8 +41,10 @@ static void put(la_canvas *c, int x, int y, la_rgba col, float k)
 void la_paint(la_canvas *c, la_sd sd, la_col fn, const float *q, la_rgba col, float x0, float y0,
                   float x1, float y1)
 {
-	int ix0 = (int)floorf(x0) - 1, iy0 = (int)floorf(y0) - 1;
-	int ix1 = (int)ceilf(x1) + 1, iy1 = (int)ceilf(y1) + 1, x, y;
+	/* A pixel's distance from the shape: the drawing's, at its scale */
+	const float k = (c->kx + c->ky) / 2;
+	int ix0 = (int)floorf(x0 * c->kx) - 1, iy0 = (int)floorf(y0 * c->ky) - 1;
+	int ix1 = (int)ceilf(x1 * c->kx) + 1, iy1 = (int)ceilf(y1 * c->ky) + 1, x, y;
 
 	if (ix0 < 0) ix0 = 0;
 	if (iy0 < 0) iy0 = 0;
@@ -43,10 +52,10 @@ void la_paint(la_canvas *c, la_sd sd, la_col fn, const float *q, la_rgba col, fl
 	if (iy1 > c->h) iy1 = c->h;
 	for (y = iy0; y < iy1; y++)
 		for (x = ix0; x < ix1; x++) {
-			float px = (float)x + 0.5f, py = (float)y + 0.5f;
-			float k = ds_sd_clamp(0.5f - sd(q, px, py), 0, 1);
+			float px = ((float)x + 0.5f) / c->kx, py = ((float)y + 0.5f) / c->ky;
+			float cov = ds_sd_clamp(0.5f - sd(q, px, py) * k, 0, 1);
 
-			if (k > 0) put(c, x, y, fn ? fn(q, px, py) : col, k);
+			if (cov > 0) put(c, x, y, fn ? fn(q, px, py) : col, cov);
 		}
 }
 

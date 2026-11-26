@@ -6754,6 +6754,12 @@ int main(int argc, char *argv[])
 		/* --np-look cover|classic|spectrum...: Now Playing and MENU's
 		 * Player Look in that look, for the shot only, never saved */
 		else if (!strcmp(argv[i], "--np-look") && i + 1 < argc) np_look_shot(mp4l_from_key(argv[++i]));
+		/* --np-tape smoke|pinstripe|band|...: Cassette's tape style, for
+		 * the shot only, never saved */
+		else if (!strcmp(argv[i], "--np-tape") && i + 1 < argc) np_tape_shot(mp4t_from_key(argv[++i]));
+		/* --np-tape-said: the style's name in its pill, as Up or Down
+		 * leaves it */
+		else if (!strcmp(argv[i], "--np-tape-said")) npl_tape_said();
 		/* --np-bench N: N frames of the look timed before the shot */
 		else if (!strcmp(argv[i], "--np-bench") && i + 1 < argc) shot_np_bench = atoi(argv[++i]);
 		else if (!strcmp(argv[i], "--locked")) shot_locked = 1;

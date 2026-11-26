@@ -129,6 +129,7 @@ static const char *const DS_TONE_ID[DS_THEMES][DS_TONES] = {
 #define DS_FONT_CJK_TITLE "zh-title.otf"
 #define DS_FONT_JA "ja-menu.otf"
 #define DS_FONT_JA_TITLE "ja-title.otf"
+#define DS_FONT_HAND "hand.ttf"
 
 /* Space and shape, in units. */
 #define DS_GRID 8
@@ -260,9 +261,11 @@ typedef enum {
 	DS_SOUND_DENY,
 	DS_SOUND_REWARD,
 	DS_SOUND_SHUTTER,
+	DS_SOUND_TAPE_KEY,
+	DS_SOUND_TAPE_WIND,
 	DS_SOUNDS
 } ds_sound;
-static const char *const DS_SOUND_ID[DS_SOUNDS] = { "move", "edge", "accept", "back", "deny", "reward", "shutter" };
+static const char *const DS_SOUND_ID[DS_SOUNDS] = { "move", "edge", "accept", "back", "deny", "reward", "shutter", "tape-key", "tape-wind" };
 typedef enum {
 	DS_VOICE_WOOD,
 	DS_VOICE_GLASS,

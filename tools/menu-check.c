@@ -1038,7 +1038,7 @@ static void system_menu(void)
 		m.wifi = WIFI_CONNECTED;     /* the case above left the radio down */
 		mn = sys_menu_build(&m, mrows, &mb, &mhead);
 		printf("MP4's shelf menu:\n");
-		ck(mn == 10, "ten rows with only music, Quit last");
+		ck(mn == 11, "eleven rows with only music, Quit last");
 		ck(!strcmp(mrows[0].label, "Albums") && !strcmp(val(&mrows[0]), "7"),
 		   "how many albums");
 		ck(!strcmp(mrows[1].label, "Sort By") && mrows[1].live &&
@@ -1052,14 +1052,18 @@ static void system_menu(void)
 		ck(!strcmp(mrows[4].label, "Player Look") && mrows[4].live &&
 		   !strcmp(val(&mrows[4]), "Cover"),
 		   "Player Look, Cover when nothing says otherwise (DESIGN.md 11.64)");
-		ck(!strcmp(mrows[5].label, "Equalizer") && mrows[5].live && !strcmp(val(&mrows[5]), "Off"),
+		ck(!strcmp(mrows[5].label, "Tape Style") && !mrows[5].live && !strcmp(val(&mrows[5]), "Smoke") &&
+		   menu_sound_at(mb.sound, mn, 5) == MENU_SND_RING,
+		   "Tape Style under Player Look, Smoke when nothing says otherwise, dead while the look is not"
+		   " Cassette (the Tape Styles lab)");
+		ck(!strcmp(mrows[6].label, "Equalizer") && mrows[6].live && !strcmp(val(&mrows[6]), "Off"),
 		   "Equalizer, MENU's own row, Off until it is set");
-		ck(!strcmp(mrows[6].label, "Lock Screen") && !mrows[6].live &&
-		   !strcmp(val(&mrows[6]), "While playing"),
+		ck(!strcmp(mrows[7].label, "Lock Screen") && !mrows[7].live &&
+		   !strcmp(val(&mrows[7]), "While playing"),
 		   "Lock Screen, dead and saying why with nothing playing");
-		ck(!strcmp(mrows[7].label, "Album Art") && mrows[7].live,
+		ck(!strcmp(mrows[8].label, "Album Art") && mrows[8].live,
 		   "covers to fetch, on a network");
-		ck(!strcmp(mrows[8].label, "Rescan Folder") && mrows[8].live,
+		ck(!strcmp(mrows[9].label, "Rescan Folder") && mrows[9].live,
 		   "and a rescan that works");
 		m.grid = true;
 		sys_menu_build(&m, mrows, &mb, &mhead);
@@ -1073,22 +1077,29 @@ static void system_menu(void)
 		sys_menu_build(&m, mrows, &mb, &mhead);
 		ck(!strcmp(val(&mrows[4]), "Spectrum"), "Player Look says the look that is on");
 		m.mp4_look = NULL;
+		m.mp4_tape = "Metal";
+		m.mp4_tape_live = true;
+		sys_menu_build(&m, mrows, &mb, &mhead);
+		ck(!strcmp(val(&mrows[5]), "Metal") && mrows[5].live,
+		   "Tape Style says the style that is on, live on the Cassette look");
+		m.mp4_tape = NULL;
+		m.mp4_tape_live = false;
 		m.eq = "Bass";
 		sys_menu_build(&m, mrows, &mb, &mhead);
-		ck(!strcmp(val(&mrows[5]), "Bass"), "the Equalizer says the preset in use");
+		ck(!strcmp(val(&mrows[6]), "Bass"), "the Equalizer says the preset in use");
 		m.eq = NULL;
 		m.mp4_playing = true;
 		sys_menu_build(&m, mrows, &mb, &mhead);
-		ck(mrows[6].live && !val(&mrows[6])[0], "Lock Screen live while music plays");
+		ck(mrows[7].live && !val(&mrows[7])[0], "Lock Screen live while music plays");
 		m.mp4_playing = false;
 		m.sort = "Album";
 		m.wifi = WIFI_OFF;
 		sys_menu_build(&m, mrows, &mb, &mhead);
 		ck(!strcmp(val(&mrows[1]), "Album"), "the order it is in");
-		ck(!mrows[7].live && !strcmp(val(&mrows[7]), "Needs Wi-Fi"),
+		ck(!mrows[8].live && !strcmp(val(&mrows[8]), "Needs Wi-Fi"),
 		   "Album Art says why it cannot, off the network");
-		ck(mrows[1].live && mrows[2].live && mrows[3].live && mrows[4].live && mrows[5].live &&
-		   mrows[8].live,
+		ck(mrows[1].live && mrows[2].live && mrows[3].live && mrows[4].live && mrows[6].live &&
+		   mrows[9].live,
 		   "and neither Sort By, View, Shuffle All, Player Look, Equalizer nor Rescan Folder needs one");
 		for (k = 0; k < mn; k++) {
 			ck(strcmp(lbl(&mrows[k]), "Core") != 0, "no Core: it has none");
@@ -1101,15 +1112,15 @@ static void system_menu(void)
 		m.wifi = WIFI_CONNECTED;
 		m.mp4_both = true;
 		mn = sys_menu_build(&m, mrows, &mb, &mhead);
-		ck(mn == SM_MP4_ROWS - 1, "eleven rows with more than one kind on music (no Repeat)");
+		ck(mn == SM_MP4_ROWS - 1, "twelve rows with more than one kind on music (no Repeat)");
 		ck(!strcmp(mrows[1].label, "Show") && mrows[1].live &&
 		   !strcmp(val(&mrows[1]), "Music"), "Show, on music");
 		ck(!strcmp(mrows[2].label, "Sort By") && !strcmp(mrows[3].label, "View") &&
 		   !strcmp(mrows[4].label, "Shuffle All") &&
-		   mrows[4].live && !strcmp(mrows[5].label, "Player Look") &&
-		   !strcmp(mrows[6].label, "Equalizer") && !strcmp(mrows[7].label, "Lock Screen") &&
-		   !strcmp(mrows[8].label, "Album Art"),
-		   "Sort By, View, Shuffle All, Player Look, Equalizer, Lock Screen, then Album Art");
+		   mrows[4].live && !strcmp(mrows[5].label, "Player Look") && !strcmp(mrows[6].label, "Tape Style") &&
+		   !strcmp(mrows[7].label, "Equalizer") && !strcmp(mrows[8].label, "Lock Screen") &&
+		   !strcmp(mrows[9].label, "Album Art"),
+		   "Sort By, View, Shuffle All, Player Look, Tape Style, Equalizer, Lock Screen, then Album Art");
 		m.mp4_books = true;
 		m.game_count = 2;
 		mn = sys_menu_build(&m, mrows, &mb, &mhead);
@@ -1122,8 +1133,8 @@ static void system_menu(void)
 		for (k = 0; k < mn; k++)
 			ck(strcmp(lbl(&mrows[k]), "Album Art") != 0 &&
 			   strcmp(lbl(&mrows[k]), "Shuffle All") != 0 &&
-			   strcmp(lbl(&mrows[k]), "Player Look") != 0,
-			   "no Album Art on books (MusicBrainz knows records), no Shuffle All, no Player Look");
+			   strcmp(lbl(&mrows[k]), "Player Look") != 0 && strcmp(lbl(&mrows[k]), "Tape Style") != 0,
+			   "no Album Art on books (MusicBrainz knows records), no Shuffle All, no Player Look or Tape Style");
 		/* Videos: their own count and orders, and like books no Album Art
 		 * and no Shuffle All. */
 		m.mp4_books = false;
@@ -1143,8 +1154,8 @@ static void system_menu(void)
 		for (k = 0; k < mn; k++)
 			ck(strcmp(lbl(&mrows[k]), "Album Art") != 0 &&
 			   strcmp(lbl(&mrows[k]), "Shuffle All") != 0 &&
-			   strcmp(lbl(&mrows[k]), "Player Look") != 0,
-			   "no Album Art, Shuffle All or Player Look on videos");
+			   strcmp(lbl(&mrows[k]), "Player Look") != 0 && strcmp(lbl(&mrows[k]), "Tape Style") != 0,
+			   "no Album Art, Shuffle All, Player Look or Tape Style on videos");
 		/* All, where Show starts: the count is the Total, the orders the
 		 * videos', and Shuffle All and Album Art when there are songs */
 		m.mp4_videos = false;
@@ -1156,16 +1167,18 @@ static void system_menu(void)
 		   !strcmp(val(&mrows[0]), "7") && !strcmp(val(&mrows[1]), "All") &&
 		   !strcmp(val(&mrows[2]), "Folder") && !strcmp(mrows[3].label, "View") &&
 		   !strcmp(mrows[4].label, "Shuffle All") &&
-		   !strcmp(mrows[5].label, "Player Look") && !strcmp(mrows[6].label, "Repeat") &&
-		   !strcmp(mrows[7].label, "Equalizer") && !strcmp(mrows[9].label, "Album Art"),
-		   "on All: the Total, Show All, by folder, View, Shuffle All, Player Look, Repeat, Equalizer and Album Art");
+		   !strcmp(mrows[5].label, "Player Look") && !strcmp(mrows[6].label, "Tape Style") &&
+		   !strcmp(mrows[7].label, "Repeat") && !strcmp(mrows[8].label, "Equalizer") &&
+		   !strcmp(mrows[10].label, "Album Art"),
+		   "on All: the Total, Show All, by folder, View, Shuffle All, Player Look, Tape Style, Repeat, Equalizer"
+		   " and Album Art");
 		m.mp4_songs = false;
 		mn = sys_menu_build(&m, mrows, &mb, &mhead);
 		for (k = 0; k < mn; k++)
 			ck(strcmp(lbl(&mrows[k]), "Album Art") != 0 &&
 			   strcmp(lbl(&mrows[k]), "Shuffle All") != 0 &&
-			   strcmp(lbl(&mrows[k]), "Player Look") != 0,
-			   "All with no songs: no Album Art, Shuffle All or Player Look");
+			   strcmp(lbl(&mrows[k]), "Player Look") != 0 && strcmp(lbl(&mrows[k]), "Tape Style") != 0,
+			   "All with no songs: no Album Art, Shuffle All, Player Look or Tape Style");
 		m.mp4_all = false;
 		m.mp4_books = true;
 		{

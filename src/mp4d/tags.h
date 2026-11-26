@@ -21,4 +21,10 @@
  * Returns how many tracks were read, or -1 when the folder could not be. */
 int tags_folder_artist(const char *dir, char *out, size_t n);
 
+/* How long the tracks in a folder play together, in seconds, from their
+ * headers (FFmpeg's duration, its stream probed where the header has none):
+ * MP4's tape shows the album's length as a C-cassette's number, 46, 60 or
+ * 90 (src/mp4look.h, mp4t_tape_no). 0 when none could be read. */
+double tags_folder_length(const char *dir);
+
 #endif

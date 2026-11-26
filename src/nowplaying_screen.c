@@ -1057,6 +1057,14 @@ unsigned np_draw_video(app *a, const mu_now *mn, float k, float grow)
 	return wait;
 }
 
+/* The tape's own click with the voice's sound, on the Cassette look alone
+ * (my pick in the Tape Styles lab: a click on A and on a track change, no
+ * hiss): heard as UI Sounds are, so Off is silent */
+static void tape_click(ds_sound s, bool video)
+{
+	if (!video && np_look_for() == MP4L_CASSETTE) uisound_play(s);
+}
+
 /* MP4_CLOSE for SELECT and the power button, which leave MP4 altogether;
  * MP4_BACK for B, which is the album's tracks underneath; MP4_REBUILT when
  * MENU's Rescan Folder replaced the library. MENU otherwise comes back here. */
@@ -1113,7 +1121,7 @@ static mp4_exit mp4_now_screen_run(app *a)
 		/* A, and only A. X did the same thing here and pausing in the list,
 		 * which made one button mean two things a screen apart; X is the lock
 		 * now, on every MP4 screen. Eric's call, 2026-09-19; X, 2026-11-05. */
-		if (a->in.pressed[IN_ACCEPT])       { uisound_play(DS_SOUND_ACCEPT); mp4c_toggle(); }
+		if (a->in.pressed[IN_ACCEPT])       { uisound_play(DS_SOUND_ACCEPT); tape_click(DS_SOUND_TAPE_KEY, video); mp4c_toggle(); }
 		/* The mode, on music; on a book, which plays in order whatever the
 		 * mode says, its speed; on a video, Repeat: Off, One, All and round,
 		 * as MP4's MENU > Repeat turns it, kept, its mark beside the time as
@@ -1137,8 +1145,18 @@ static mp4_exit mp4_now_screen_run(app *a)
 				memset(&drawn, 0, sizeof drawn);
 			}
 		}
-		if (in_repeat(&a->in, IN_L1))       { moved_sound(a, IN_L1); mp4c_prev(); }
-		if (in_repeat(&a->in, IN_R1))       { moved_sound(a, IN_R1); mp4c_next(); }
+		/* Up and Down step the tape's style on Cassette, round the kept
+		 * ones, kept at once, its name said a moment (my pick in the Tape
+		 * Styles lab, 2026-11-23); nothing on another look, a book or a
+		 * video */
+		if ((a->in.pressed[IN_UP] || a->in.pressed[IN_DOWN]) && !video && np_look_for() == MP4L_CASSETTE) {
+			uisound_play(DS_SOUND_MOVE);
+			np_tape_set(mp4t_step(np_tape(), a->in.pressed[IN_DOWN] ? 1 : -1));
+			npl_tape_said();
+			memset(&drawn, 0, sizeof drawn);
+		}
+		if (in_repeat(&a->in, IN_L1))       { moved_sound(a, IN_L1); tape_click(DS_SOUND_TAPE_WIND, video); mp4c_prev(); }
+		if (in_repeat(&a->in, IN_R1))       { moved_sound(a, IN_R1); tape_click(DS_SOUND_TAPE_WIND, video); mp4c_next(); }
 		if (in_repeat(&a->in, IN_LEFT))     { moved_sound(a, IN_LEFT); mp4c_seek_by(-seek_step(&a->in, IN_LEFT)); }
 		if (in_repeat(&a->in, IN_RIGHT))    { moved_sound(a, IN_RIGHT); mp4c_seek_by(+seek_step(&a->in, IN_RIGHT)); }
 		if (mp4_keys(a)) {

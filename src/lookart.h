@@ -13,7 +13,9 @@
 #include "design.h"
 
 typedef struct { float r, g, b, a; } la_rgba;
-typedef struct { int w, h; float *p; } la_canvas;     /* w x h of r, g, b, a */
+/* w x h of r, g, b, a; a drawing's unit `kx` x `ky` of its pixels, so a
+ * drawing in its own units is painted at any size (1 by la_new) */
+typedef struct { int w, h; float *p; float kx, ky; } la_canvas;
 
 /* A shape's signed distance at (x, y), from its numbers `q`; a color at
  * (x, y) where it is not one color */
@@ -21,6 +23,9 @@ typedef float (*la_sd)(const float *q, float x, float y);
 typedef la_rgba (*la_col)(const float *q, float x, float y);
 
 bool la_new(la_canvas *c, int w, int h);
+/* A canvas w x h pixels for a drawing scaled kx across and ky down: the
+ * shapes' numbers, boxes and colors' places stay the drawing's units */
+bool la_new_scaled(la_canvas *c, int w, int h, float kx, float ky);
 /* `sd`'s shape over the box (x0, y0)-(x1, y1), in `col` or `fn`'s colors */
 void la_paint(la_canvas *c, la_sd sd, la_col fn, const float *q, la_rgba col, float x0, float y0,
               float x1, float y1);

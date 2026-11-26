@@ -9,10 +9,14 @@
  */
 #include "../src/design.h"
 #include "../src/mp4look.h"
+#include "../src/device/profile.h"
 
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+
+/* The tape's speed in the drawing's units, as src/cassette.h has it */
+#define CAS_SPEED (47.6f * 592 / 100.4f)
 
 static int fails;
 
@@ -214,6 +218,126 @@ int main(void)
 		}
 	}
 
+	/* The cassette's styles: every word back, Smoke the default and for a
+	 * word nobody knows, Up and Down round the kept ones only */
+	{
+		int k, seen[MP4T_COUNT] = { 0 }, n = 0;
+		mp4t_id t = MP4T_SMOKE;
+
+		for (k = 0; k < MP4T_COUNT; k++)
+			if ((int)mp4t_from_key(mp4t_key((mp4t_id)k)) != k) fail("a style's word back", k, k);
+		if (mp4t_from_key(NULL) != MP4T_SMOKE || mp4t_from_key("chrome") != MP4T_SMOKE)
+			fail("an unknown style is Smoke", 1, 0);
+		if (strcmp(mp4t_key(MP4T_SMOKE), "smoke") || strcmp(mp4t_key(MP4T_BAND), "band"))
+			fail("the words as kept", 1, 0);
+		for (k = 0; k < MP4T_COUNT; k++) if (!mp4t_kept((mp4t_id)k)) fail("all eight kept", k, -1);
+		for (k = 0; k < MP4T_COUNT; k++) {
+			t = mp4t_step(t, +1);
+			if (!mp4t_kept(t)) fail("Down onto a style not kept", t, -1);
+			if (!seen[t]++) n++;
+		}
+		if (t != MP4T_SMOKE || n != MP4T_COUNT) fail("Down round the eight and back to Smoke", n, MP4T_COUNT);
+		if (mp4t_step(MP4T_SMOKE, -1) != MP4T_WORN || mp4t_step(MP4T_SMOKE, +1) != MP4T_PINSTRIPE)
+			fail("Up from Smoke is Worn, Down Pinstripe", mp4t_step(MP4T_SMOKE, -1), MP4T_WORN);
+		for (k = 0; k < MP4T_COUNT; k++)
+			if (mp4t_step(mp4t_step((mp4t_id)k, +1), -1) != (mp4t_id)k) fail("Down then Up back", k, k);
+		if (mp4t_pixel(MP4T_SMOKE)) fail("Smoke drawn smooth", 1, 0);
+		for (k = 1; k < MP4T_COUNT; k++) if (!mp4t_pixel((mp4t_id)k)) fail("the others pixel art", k, 1);
+	}
+
+	/* The tape's number and the side, as the lab has them: a 38-minute
+	 * album a 46, 52 a 60, 71 a 90, past 90 a 120; the first half A */
+	{
+		static const struct { double min; int no; } NO[] = {
+			{ 38, 46 }, { 46, 46 }, { 46.1, 60 }, { 52, 60 }, { 60, 60 }, { 71, 90 }, { 90, 90 },
+			{ 91, 120 }, { 200, 120 }, { 1, 46 },
+		};
+		unsigned k;
+
+		for (k = 0; k < sizeof NO / sizeof NO[0]; k++)
+			if (mp4t_tape_no(NO[k].min * 60) != NO[k].no) fail("the tape's number (minutes)", NO[k].min, NO[k].no);
+		if (mp4t_tape_no(0) != 0) fail("no number for a length not known", mp4t_tape_no(0), 0);
+		if (mp4t_side(0, 8) != 'A' || mp4t_side(3, 8) != 'A' || mp4t_side(4, 8) != 'B' || mp4t_side(7, 8) != 'B')
+			fail("eight songs: four a side", mp4t_side(4, 8), 'B');
+		if (mp4t_side(4, 9) != 'A' || mp4t_side(5, 9) != 'B') fail("nine: the odd one on A", mp4t_side(4, 9), 'A');
+		if (mp4t_side(0, 1) != 'A' || mp4t_side(0, 0) != 'A') fail("one song: side A", 1, 'A');
+	}
+
+	/* The sprites the frame picks follow the model: the hubs' frame is the
+	 * angle's nearest 7.5 degrees, all 48 met in a turn, stepping down as
+	 * they turn counterclockwise playing; a rewind's fastest step under 30
+	 * degrees a frame (the teeth's half period), so the frame never seems
+	 * to run back; each pack the nearest half cell of its radius */
+	{
+		mp4l_tape tp;
+		mp4l_spin sp = { .v = 1, .to = 1 };
+		const float cell = 8.0f / (960.0f / 592.0f);   /* units of the drawing a cell, 8-unit cells */
+		int k, last, hit[MP4T_HUB_FRAMES] = { 0 }, met = 0, back = 0;
+		float worst = 0;
+
+		for (k = 0; k < 480; k++) {
+			float a = (float)k * 0.75f;
+
+			if (!hit[mp4t_hub_frame(-a)]++) met++;
+			if (fabsf(-a - (float)mp4t_hub_frame(-a) * MP4T_HUB_STEP) > MP4T_HUB_STEP / 2 &&
+			    fabsf(-a + 360.0f - (float)mp4t_hub_frame(-a) * MP4T_HUB_STEP) > MP4T_HUB_STEP / 2)
+				fail("a hub frame off its angle (degrees)", -a, mp4t_hub_frame(-a) * MP4T_HUB_STEP);
+		}
+		if (met != MP4T_HUB_FRAMES) fail("the hub frames a turn shows", met, MP4T_HUB_FRAMES);
+		if (mp4t_hub_frame(359.0f) != 0 || mp4t_hub_frame(-3.0f) != 0 || mp4t_hub_frame(-4.0f) != 47 ||
+		    mp4t_hub_frame(7.5f) != 1)
+			fail("the hub frame round the turn's ends", mp4t_hub_frame(-4.0f), 47);
+		memset(&tp, 0, sizeof tp);
+		mp4l_tape_step(&tp, 0, 0, 0.0f, 1, CAS_SPEED, 63.4f, 148.0f, 800);
+		last = mp4t_hub_frame(tp.ang[0]);
+		for (k = 0; k < 60; k++) {
+			int f;
+
+			mp4l_spin_step(&sp, 1000.0f / 60);
+			mp4l_tape_step(&tp, 1000.0f / 60, 0, (float)k / 60 / 214, sp.v, CAS_SPEED, 63.4f, 148.0f, 800);
+			f = mp4t_hub_frame(tp.ang[1]);
+			if (((f - last + MP4T_HUB_FRAMES) % MP4T_HUB_FRAMES) > MP4T_HUB_FRAMES / 2 || f == last) {
+				/* down (counterclockwise) or still between two frames */
+			} else back++;
+			last = f;
+		}
+		if (back) fail("the right hub's frame stepping clockwise while playing", back, 0);
+		/* A rewind from the song's end: the empty hub's fastest step */
+		memset(&tp, 0, sizeof tp);
+		mp4l_tape_step(&tp, 0, 0, 1.0f, 0, CAS_SPEED, 63.4f, 148.0f, 800);
+		for (k = 0; k < 60; k++) {
+			float was = tp.ang[0], d;
+
+			mp4l_tape_step(&tp, 1000.0f / 60, 1, 0.0f, 0, CAS_SPEED, 63.4f, 148.0f, 800);
+			d = fabsf(fmodf(tp.ang[0] - was + 540.0f, 360.0f) - 180.0f);
+			if (d > worst) worst = d;
+		}
+		if (worst >= 30.0f || worst < MP4T_HUB_STEP) fail("a rewind's fastest hub step (degrees a frame)", worst, 26);
+		if (mp4t_pack_half(63.4f / cell) != 26 || mp4t_pack_half(148.0f / cell) != 60)
+			fail("the packs' half cells, empty and full", mp4t_pack_half(148.0f / cell), 60);
+		if (mp4t_pack_half(mp4l_tape_r(0.5f, 0, 63.4f, 148.0f) / cell) != 46)
+			fail("a pack halfway", mp4t_pack_half(mp4l_tape_r(0.5f, 0, 63.4f, 148.0f) / cell), 46);
+	}
+
+	/* The cell is whole pixels on every handheld: 8 units on the Pixel 2
+	 * (5) and the Brick (8), 16 on the Smart Pro (15) */
+	{
+		static const struct { const device_profile *p; int cell, px; } DEV[] = {
+			{ &device_profile_pixel2, 8, 5 }, { &device_profile_brick, 8, 8 }, { &device_profile_smartpro, 16, 15 },
+		};
+		unsigned k;
+
+		for (k = 0; k < sizeof DEV / sizeof DEV[0]; k++) {
+			const device_profile *p = DEV[k].p;
+			float ppu = mp4t_px_per_unit(p->screen.panel_w, p->screen.panel_h, p->screen.turn);
+			int c = mp4t_cell(ppu);
+
+			if (c != DEV[k].cell) fail(p->id, c, DEV[k].cell);
+			if (fabsf((float)c * ppu - (float)DEV[k].px) > 1e-3f) fail("a cell's pixels", c * ppu, DEV[k].px);
+		}
+		if (mp4t_cell(0.7f) != 0) fail("no cell where neither is whole", mp4t_cell(0.7f), 0);
+	}
+
 	if (fails) {
 		printf("mp4look-check: %d failed\n", fails);
 		return 1;
@@ -221,7 +345,9 @@ int main(void)
 	printf("mp4look-check: bars up at once and down on follow at any rate, caps held %d ms and down in %d,"
 	       " at rest after, bands over the bars, the setting's words; reels up in %d ms and down in %d from"
 	       " wherever they are, each at the tape's speed over its pack, a rewind in %d ms, a seek wound; the record at"
-	       " 33 1/3, the needle gliding and on every song's ring\n",
+	       " 33 1/3, the needle gliding and on every song's ring;"
+	       " the tape's eight styles, Smoke the default and Up and Down round the kept ones, its number and"
+	       " side, the sprite frames from the model, a cell whole pixels on each handheld\n",
 	       DS_MS_PEAK_HOLD, MP4L_CAP_DROP_MS, DS_MS_SPIN_UP, DS_MS_SPIN_DOWN, DS_MS_REWIND);
 	return 0;
 }

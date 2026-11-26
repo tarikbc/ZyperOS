@@ -40,6 +40,13 @@
 #define CAS_TITLE_X0 112
 #define CAS_ROW_MID  68
 #define CAS_LABEL_PAD 16
+/* The full-screen tape's label (my picks in the Tape Styles lab,
+ * 2026-11-23): a small cover first, at the song's row, 52 across; the
+ * side's letter after it; the song after that */
+#define CAS_COVER_X0 52
+#define CAS_COVER    52
+#define CAS_SIDE_X1  116
+#define CAS_TITLE_X1 172
 /* Under the window, the artist and the album: their line's middle */
 #define CAS_UNDER_MID 224
 /* The window, a pill 54.3 x 16.3 mm, in the middle */
@@ -63,11 +70,17 @@ typedef struct {
 	SDL_Texture *pack;      /* a full pack, 2 x CAS_PACK_R across, scaled to its radius */
 	ds_rgb paper, edge, ground;   /* what they were drawn for */
 	bool dark;
+	int  w, h;              /* the tape's size, units: the drawing at its scale */
 } cas_tex;
 
-/* The textures for the theme's colors (`paper` the label: **surface**),
- * made again only when those change. False when one would not make. */
-bool cas_ready(SDL_Renderer *r, cas_tex *t, const ds_theme *th, bool dark);
+/* The textures for the theme's colors (`paper` the label: **surface**), for
+ * a tape `w` x `h` units, the drawing scaled to it and drawn at that size,
+ * a texel a unit: on the Pixel 2 the screen is drawn 1024 x 768 and made
+ * 640 x 480 whole, so a texture at the panel's pixels would be made larger
+ * and smaller again. The hub and the pack are at the tape's scale down
+ * (`h` over CAS_H), so they stay round. Made again only when those change.
+ * False when one would not make. */
+bool cas_ready(SDL_Renderer *r, cas_tex *t, const ds_theme *th, bool dark, int w, int h);
 void cas_free(cas_tex *t);
 
 #endif

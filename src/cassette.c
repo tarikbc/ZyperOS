@@ -91,7 +91,7 @@ static SDL_Texture *shell(SDL_Renderer *r, const cas_tex *t)
 	const float paper[9] = { CAS_LABEL_X0, CAS_LABEL_Y0, CAS_LABEL_X1, CAS_LABEL_Y1, 12,
 	                         CAS_WIN_X0, CAS_WIN_Y0, CAS_WIN_X1, CAS_WIN_Y1 };
 
-	if (!la_new(&c, CAS_W, CAS_H)) return NULL;
+	if (!la_new_scaled(&c, t->w, t->h, (float)t->w / CAS_W, (float)t->h / CAS_H)) return NULL;
 	la_paint(&c, la_rbox, NULL, body, SMOKE, 0, 0, CAS_W, CAS_H);
 	la_paint(&c, la_rbox_line, NULL, rim, MOULD, 0, 0, CAS_W, CAS_H);
 	screw(&c, 24, 24);
@@ -120,7 +120,9 @@ static SDL_Texture *glass(SDL_Renderer *r, const cas_tex *t)
 	const float pill[5] = { 0, 0, w, h, h / 2 }, edge[6] = { 0, 0, w, h, h / 2, 2 };
 	la_canvas c;
 
-	if (!la_new(&c, (int)w, (int)h)) return NULL;
+	if (!la_new_scaled(&c, (int)lroundf(w * t->w / CAS_W), (int)lroundf(h * t->h / CAS_H), (float)t->w / CAS_W,
+	                   (float)t->h / CAS_H))
+		return NULL;
 	la_paint(&c, la_rbox, glass_col, pill, (la_rgba){ 0 }, 0, 0, w, h);
 	la_paint(&c, sd_paper, NULL, paper, la_role(t->paper), 0, 0, w, h);
 	la_paint(&c, la_rbox_line, NULL, edge, MOULD, 0, 0, w, h);
@@ -131,16 +133,17 @@ static SDL_Texture *glass(SDL_Renderer *r, const cas_tex *t)
  * the tape's end in its rim, and the six teeth round the spindle's hole */
 static SDL_Texture *hub(SDL_Renderer *r, const cas_tex *t)
 {
-	const int side = (int)ceilf(CAS_HUB_R) * 2;
-	const float m = (float)side / 2;
+	const float sc = (float)t->h / CAS_H;
+	const int side = (int)ceilf(CAS_HUB_R * sc) * 2;
+	const float m = (float)side / 2 / sc;
 	const float disc[3] = { m, m, CAS_HUB_R - 0.5f }, rim[4] = { m, m, CAS_HUB_R - 2, 2 };
 	const float spindle[3] = { m, m, 24 }, clamp[5] = { m + 46, m, m + 58, m, 6 };
 	la_canvas c;
 	int k;
 
-	if (!la_new(&c, side, side)) return NULL;
-	la_paint(&c, la_disc, NULL, disc, t->dark ? HUB_DARK : HUB_LIGHT, 0, 0, side, side);
-	la_paint(&c, la_ring, NULL, rim, MOULD, 0, 0, side, side);
+	if (!la_new_scaled(&c, side, side, sc, sc)) return NULL;
+	la_paint(&c, la_disc, NULL, disc, t->dark ? HUB_DARK : HUB_LIGHT, 0, 0, 2 * m, 2 * m);
+	la_paint(&c, la_ring, NULL, rim, MOULD, 0, 0, 2 * m, 2 * m);
 	la_paint(&c, la_seg, NULL, clamp, TOOTH, m + 40, m - 4, m + 62, m + 4);
 	la_paint(&c, la_disc, NULL, spindle, SPINDLE, m - 24, m - 24, m + 24, m + 24);
 	for (k = 0; k < 6; k++) {
@@ -155,14 +158,16 @@ static SDL_Texture *hub(SDL_Renderer *r, const cas_tex *t)
 }
 
 /* A full pack of tape, its brown darker toward its edge */
-static SDL_Texture *pack(SDL_Renderer *r)
+static SDL_Texture *pack(SDL_Renderer *r, const cas_tex *t)
 {
-	const int side = (int)ceilf(CAS_PACK_R) * 2;
-	const float q[3] = { (float)side / 2, (float)side / 2, CAS_PACK_R - 0.5f };
+	const float k = (float)t->h / CAS_H;
+	const int side = (int)ceilf(CAS_PACK_R * k) * 2;
+	const float m = (float)side / 2 / k;
+	const float q[3] = { m, m, CAS_PACK_R - 0.5f / k };
 	la_canvas c;
 
-	if (!la_new(&c, side, side)) return NULL;
-	la_paint(&c, la_disc, pack_col, q, (la_rgba){ 0 }, 0, 0, side, side);
+	if (!la_new_scaled(&c, side, side, k, k)) return NULL;
+	la_paint(&c, la_disc, pack_col, q, (la_rgba){ 0 }, 0, 0, 2 * m, 2 * m);
 	return la_texture(r, &c);
 }
 
@@ -175,10 +180,10 @@ void cas_free(cas_tex *t)
 	t->shell = t->glass = t->hub = t->pack = NULL;
 }
 
-bool cas_ready(SDL_Renderer *r, cas_tex *t, const ds_theme *th, bool dark)
+bool cas_ready(SDL_Renderer *r, cas_tex *t, const ds_theme *th, bool dark, int w, int h)
 {
 	if (t->shell && t->glass && t->hub && t->pack && !memcmp(&t->paper, &th->surface, sizeof t->paper) &&
-	    t->dark == dark)
+	    t->dark == dark && t->w == w && t->h == h)
 		return true;
 	{
 		Uint32 t0 = SDL_GetTicks();
@@ -186,12 +191,23 @@ bool cas_ready(SDL_Renderer *r, cas_tex *t, const ds_theme *th, bool dark)
 		cas_free(t);
 		t->paper = th->surface;
 		t->dark = dark;
+		t->w = w;
+		t->h = h;
 		t->shell = shell(r, t);
 		t->glass = glass(r, t);
 		t->hub = hub(r, t);
-		t->pack = pack(r);
+		t->pack = pack(r, t);
 		/* Once a theme: what it costs, for the device's log */
-		fprintf(stderr, "mp4: the cassette drawn in %u ms\n", (unsigned)(SDL_GetTicks() - t0));
+		{
+			SDL_Texture *all[4] = { t->shell, t->glass, t->hub, t->pack };
+			long bytes = 0;
+			int k, tw, th2;
+
+			for (k = 0; k < 4; k++)
+				if (all[k] && SDL_QueryTexture(all[k], NULL, NULL, &tw, &th2) == 0) bytes += (long)tw * th2 * 4;
+			fprintf(stderr, "mp4: the cassette drawn in %u ms, %ld KB of textures\n",
+			        (unsigned)(SDL_GetTicks() - t0), bytes / 1024);
+		}
 	}
 	return t->shell && t->glass && t->hub && t->pack;
 }
