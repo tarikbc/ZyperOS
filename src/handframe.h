@@ -13,7 +13,9 @@
  *   Handheld          the game at its full Sharp Pixels size (the largest
  *                     whole step that fits: 3x for a Game Boy on the Pixel 2),
  *                     where Sharp Pixels puts it, the frame cut where the
- *                     panel ends
+ *                     panel ends; a power light in the lens that the panel
+ *                     would cut is drawn nearer the screen, the least it
+ *                     takes to be whole (hf_light_dx)
  *   Handheld, Whole   smaller by whole steps until the whole lens and some
  *                     body fit (2x on the Pixel 2, 3x on the Brick), placed
  *                     so the lens is in the middle of the panel
@@ -76,6 +78,9 @@ typedef struct {
 	hf_part part[HF_PARTS];
 	/* What Handheld, Whole centres on the panel: the lens */
 	hf_rrect lens;
+	/* The power light's ring: the parts inside it are the light, drawn
+	 * nearer the screen where the panel would cut it (hf_light_dx) */
+	hf_rrect light;
 } hf_model;
 
 typedef enum { HF_CUT, HF_WHOLE } hf_kind;
@@ -83,14 +88,31 @@ typedef enum { HF_CUT, HF_WHOLE } hf_kind;
 /* Handheld, Whole's least body round the lens on each side, mm */
 #define HF_WHOLE_BODY_MM 1.5f
 
+/* The least face round a light drawn nearer the screen, mm: from the panel's
+ * edge and from the game */
+#define HF_LIGHT_ROOM_MM 1.0f
+
 /* Where the game goes for `kind` on a surface `w` x `h`: its rect, a whole
  * number of panel pixels a game pixel (`*scale`). False where the game does
  * not fit at 1x, and Whole where the whole lens fits only under 2x (the
  * Advance on the Pixel 2's 640x480: 2x is its full size). */
 bool hf_place(const hf_model *m, hf_kind kind, int w, int h, int *scale, int *gx, int *gy, int *gw, int *gh);
 
+/* How far across, in pixels, the light is drawn from its place on the face
+ * at this placement: 0 where it is whole on the panel with HF_LIGHT_ROOM_MM
+ * round it, or where it is not in the lens (the Advance's, on the body past
+ * the lens, off the panel whole); else the least it takes to be whole on the
+ * panel with that room, toward the game, and 0 again where that would not
+ * leave the room between it and the game. A Game Boy's light is 8.3 mm left
+ * of its screen: with the game in the middle at its full size the Pixel 2
+ * showed a third of it and the Brick none (Reported on Discord, 2026-11-22:
+ * "the Gameboy red light awkwardly off screen"). Only the light moves; the
+ * rest of the face stays true to scale. */
+int hf_light_dx(const hf_model *m, int w, int gx, int gy, int gw, int gh);
+
 /* The frame, `w` x `h` BGRA, opaque, around the game at gx, gy, gw x gh,
- * the body in color `color` (0 the first) */
+ * the body in color `color` (0 the first), the light where hf_light_dx
+ * puts it */
 void hf_render(const hf_model *m, int color, int w, int h, int gx, int gy, int gw, int gh, uint8_t *bgra);
 
 /* A part's millimetre rect at a placement, in whole pixels: each edge's place

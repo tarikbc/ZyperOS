@@ -79,13 +79,14 @@ static const hf_model DMG = {
 		{ RR(-0.28f, -0.38f, 47.28f, 43.38f, 0, 0, 0, 0), HF_OWN, RGB(116, 120, 44) },
 	},
 	.lens = RR(-14.15f, -6.91f, 60.85f, 50.29f, 2.55f, 2.3f, 11.5f, 2.6f),
+	.light = DISC(-8.32f, 14.67f, 2.26f),
 };
 
 /* The light is a part of its own, lit: its dark ring, then the red */
 static hf_model dmg_lit(void)
 {
 	hf_model m = DMG;
-	const hf_part ring = { DISC(-8.32f, 14.67f, 2.26f), HF_OWN, RGB(60, 51, 46) };
+	const hf_part ring = { DMG.light, HF_OWN, RGB(60, 51, 46) };
 	const hf_part red = { DISC(-8.32f, 14.67f, 1.7f), HF_OWN, RGB(226, 42, 38) };
 
 	m.part[m.nparts++] = ring;
@@ -123,6 +124,7 @@ static const hf_model CGB = {
 		{ DISC(-9.1f, 12.2f, 0.9f), HF_OWN, RGB(226, 42, 38) },
 	},
 	.lens = { -12.48f, -7.75f, 55.13f, 53.73f, { 2.2f, 2.2f, 4.0f, 4.0f }, 0, 1.34f },
+	.light = DISC(-9.1f, 12.2f, 1.3f),
 };
 
 /* ---- Game Boy Advance (AGB-001) -------------------------------------------
@@ -153,6 +155,7 @@ static const hf_model AGB = {
 		{ DISC(76.5f, -2.5f, 1.4f), HF_OWN, RGB(70, 200, 90) },
 	},
 	.lens = { -7.0f, -6.4f, 68.2f, 54.4f, { 3.7f, 3.7f, 8.0f, 8.0f }, 1.5f, 2.0f },
+	.light = DISC(76.5f, -2.5f, 2.0f),
 };
 
 const hf_model *hf_model_for(const char *tag)
