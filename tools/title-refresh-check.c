@@ -64,6 +64,8 @@ static void scp_page(app *a, const char *only)
 static int pins;
 static const game_entry *pinned;
 void splore_pin(game_entry *items, int n) { pins++; pinned = n > 0 ? items : NULL; }
+/* Splore's own file (src/pico8.c), stubbed: none here */
+bool splore_file(const char *file) { (void)file; return false; }
 /* Favorites First (src/main.c), stubbed: no shelf here has it on, and no
  * game is a favorite (check-sort and check-favfirst hold the split) */
 static bool fav_first_offered(app *a, int s) { (void)a; (void)s; return false; }
