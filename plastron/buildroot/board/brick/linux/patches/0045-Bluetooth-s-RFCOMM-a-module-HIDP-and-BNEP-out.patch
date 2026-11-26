@@ -1,0 +1,29 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Tarik Caramanico <tarikcaramanico@gmail.com>
+Subject: [PATCH] Bluetooth's RFCOMM a module, as Bluetooth is since stage 3.
+ With CONFIG_BT=m, net/ is entered for bluetooth/ as a module directory,
+ and the protocols left at y there (RFCOMM, BNEP, HIDP) were compiled into
+ net/bluetooth/*/built-in.o and linked into nothing: the kernel had none
+ of them (no rfcomm_init in System.map), so bluealsa's hands-free profile
+ could not listen. RFCOMM is now rfcomm.ko, which /etc/init.d/bluetooth
+ loads. BNEP (Bluetooth networking) and HIDP (BlueZ reads pads through
+ uhid, built in) are left out, as they always were in effect; the Image
+ is the same bytes
+
+---
+--- a/arch/arm64/configs/brick_defconfig
++++ b/arch/arm64/configs/brick_defconfig
+@@ -73,12 +73,8 @@
+ # CONFIG_TCP_CONG_HTCP is not set
+ # CONFIG_IPV6 is not set
+ CONFIG_BT=m
+-CONFIG_BT_RFCOMM=y
++CONFIG_BT_RFCOMM=m
+ CONFIG_BT_RFCOMM_TTY=y
+-CONFIG_BT_BNEP=y
+-CONFIG_BT_BNEP_MC_FILTER=y
+-CONFIG_BT_BNEP_PROTO_FILTER=y
+-CONFIG_BT_HIDP=y
+ # CONFIG_BT_DEBUGFS is not set
+ CONFIG_XR_BT_LPM=m
+ CONFIG_XR_BT_FDI=m

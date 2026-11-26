@@ -39,13 +39,27 @@ void logpack_mask_word(const char *word, char *out, size_t n);
  * `cap` is the buffer's size; a line that would outgrow it is cut. */
 void logpack_mask_line(char *line, size_t cap, const char *const *secrets, int n);
 
+/* The system log as logread prints it (`raw`), cut down to what a pack is
+ * for and masked, into `out` (always NUL-terminated): only the lines of
+ * bluetoothd, bluealsa and btplayer, by their syslog tag, so nothing else
+ * that runs on the handheld goes out; in those, every line masked as
+ * logpack_mask_line does, then every IPv4 address ("x.x.x.x"), every quoted
+ * word ('...' or "...") and whatever follows a Name or Alias (a device
+ * BlueZ saw names itself, paired or not), each cut as logpack_mask_word
+ * cuts it. Returns how many lines were kept. Never written to the card:
+ * logpack_build puts it straight into the pack. */
+int logpack_syslog(const char *raw, char *out, size_t cap,
+                   const char *const *secrets, int n);
+
 /* The most of each wifi.log a pack takes: its last 256 KB, from a whole line */
 #define LOGPACK_WIFI_TAIL (256L * 1024)
 
 /* Pack `logs_dir`'s zyperos.log files and `about` into `out` (a .tar.gz), with
- * everything inside one folder named `folder`. The staging happens under
- * /tmp and is removed again. False with a reason in `err` when it could not. */
-bool logpack_build(const char *logs_dir, const char *about,
+ * everything inside one folder named `folder`, and `syslog` (logread's text,
+ * NULL for none) as system.log, through logpack_syslog, when a line of it is
+ * kept. The staging happens under /tmp and is removed again. False with a
+ * reason in `err` when it could not. */
+bool logpack_build(const char *logs_dir, const char *about, const char *syslog,
                    const char *const *secrets, int n,
                    const char *folder, const char *out, char *err, size_t en);
 
