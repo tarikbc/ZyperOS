@@ -251,6 +251,9 @@ EXTRA = {
     "system-menu-favfirst": ("demo", "PS1", ["--screen", "games", "--menu", "Favorites First"]),
     "storage-art": ("demo", "PS1", ["--storage", "art"]),
     "storage-states": ("demo", "PS1", ["--storage", "states"]),
+    "storage-ds": ("demo", "PS1", ["--storage", "ds"]),
+    # ...its row focused, the line under the list saying what it is
+    "storage-ds-row": ("demo", "PS1", ["--storage", "main", "0"]),
     "storage-delete": ("demo", "PS1", ["--storage", "delete"]),
     "storage-done": ("demo", "PS1", ["--storage", "done"]),
     "storage-first": ("demo", "PS1", ["--storage", "first"]),
@@ -659,7 +662,7 @@ CONFIRM_QUESTIONS = (
     "wifi-forget", "wifi-forget-joined", "pico8-restart-display", "pico8-restart-buttons",
     "pico8-reset", "game-reset", "splore-wifi", "cheats-crash", "cheats-first", "hotkeys-swap",
     "hotkeys-reset-game", "hotkeys-reset-system", "hotkeys-reset-every", "storage-unused-art",
-    "storage-old-states", "storage-system-snaps", "storage-media-folder", "storage-media-file",
+    "storage-old-states", "storage-ds-copies", "storage-system-snaps", "storage-media-folder", "storage-media-file",
     "storage-orphan-port", "game-delete", "port-delete", "update-rollback", "collection-delete",
     "screenshot-delete", "media-video-delete", "sgdb-unlink", "ss-unlink", "snaps-delete-all",
     "reset-buttons-game", "reset-buttons-all", "usb-offer", "dl-sign-out", "dl-delete-videos",

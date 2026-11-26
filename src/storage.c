@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* MENU > Storage's numbers: src/storage.h says what and why. */
 #include "storage.h"
+#include "dscache.h"
 
 #include "atomic.h"
 #include "gamedel.h"
@@ -74,6 +75,21 @@ static bool ends_ci(const char *s, size_t n, const char *suf)
 	size_t k = strlen(suf);
 
 	return n >= k && !strcasecmp(s + n - k, suf);
+}
+
+/* `src` into `out` of `n`, cut if it must be at a whole UTF-8 character: a
+ * title shown on a row, where a cut is drawn as one */
+static void utf8_copy(char *out, size_t n, const char *src)
+{
+	size_t k = strlen(src);
+
+	if (!n) return;
+	if (k >= n) {
+		k = n - 1;
+		while (k && ((unsigned char)src[k] & 0xC0) == 0x80) k--;
+	}
+	memcpy(out, src, k);
+	out[k] = '\0';
 }
 
 size_t st_media_suffix(const char *name, bool *video)
@@ -397,6 +413,54 @@ static bool walk(const char *abs, bool skip_media, bool trust, bool force, tsum 
 	return true;
 }
 
+/* A folder's node as the walk last listed it, NULL for none */
+static dnode *node_of(const char *abs)
+{
+	void **slot = smap_slot(&g_dirs, rel_of(abs), false);
+
+	return slot ? *slot : NULL;
+}
+
+/* Whether the walk's listing of `d` holds a folder named `name`: a folder
+ * gone since keeps its node in the map until the cache is pruned */
+static bool has_kid(const dnode *d, const char *name)
+{
+	const char *k;
+
+	for (k = d ? d->kids : NULL; k && k < d->kids + d->kids_len; k += strlen(k) + 1)
+		if (!strcmp(k, name)) return true;
+	return false;
+}
+
+/* The .dsperate in `abs` (src/dscache.h), its own files' bytes */
+static unsigned long long ds_own(const char *abs)
+{
+	char p[PATH_MAX_ST];
+	dnode *d;
+
+	if (!has_kid(node_of(abs), DSC_DIR) ||
+	    snprintf(p, sizeof p, "%s/" DSC_DIR, abs) >= (int)sizeof p || !(d = node_of(p)))
+		return 0;
+	return d->own;
+}
+
+/* The DS copies in a system's folder, from the walk's listings: its
+ * .dsperate and each folder of games' */
+static unsigned long long ds_copies_of(const char *abs)
+{
+	dnode *d = node_of(abs);
+	unsigned long long sum = ds_own(abs);
+	char p[PATH_MAX_ST];
+	char *k;
+
+	for (k = d ? d->kids : NULL; k && k < d->kids + d->kids_len; k += strlen(k) + 1) {
+		if (k[0] == '.') continue;
+		if (snprintf(p, sizeof p, "%s/%s", abs, k) >= (int)sizeof p) continue;
+		sum += ds_own(p);
+	}
+	return sum;
+}
+
 static long long dir_mtime(const char *abs, bool trust)
 {
 	struct stat st;
@@ -461,7 +525,9 @@ static void card_size(const char *card, st_card *c)
 		/* The device under the card's filesystem, and the partitions
 		 * beside it: the boot and the two system slots */
 		struct stat st;
-		char p[160], real[PATH_MAX_ST], buf[32];
+		/* realpath writes up to PATH_MAX whatever the path is: glibc's
+		 * fortified one aborts on a smaller buffer */
+		char p[160], real[PATH_MAX], buf[32];
 		unsigned long long part = 0, disk = 0;
 		FILE *f;
 
@@ -730,7 +796,8 @@ static void size_game(const st_paths *p, const st_game_in *g, const gd_other *ot
 	snprintf(saves, sizeof saves, "%s/Saves", p->card);
 	snprintf(states, sizeof states, "%s/.zyperos", p->shared);
 	snprintf(romdir, sizeof romdir, "%s/%s", p->roms, g->folder);
-	snprintf(media, sizeof media, "%s/.media", romdir);
+	/* A folder too long for its path has no game here to size */
+	if (snprintf(media, sizeof media, "%s/.media", romdir) >= (int)sizeof media) return;
 	/* No Cheats/ root: a game's cheat files are a few KB, not a size the
 	 * page has a part of its bar for (src/cheats.h) */
 	card = (gd_card){ p->roms, saves, states, NULL };
@@ -743,8 +810,9 @@ static void size_game(const st_paths *p, const st_game_in *g, const gd_other *ot
 		struct stat st;
 		char f[PATH_MAX_ST];
 
-		snprintf(f, sizeof f, "%s/%s", romdir, g->file);
-		if (lstat(f, &st) == 0 && S_ISREG(st.st_mode)) out->games = out->bytes = alloc_of(&st);
+		if (snprintf(f, sizeof f, "%s/%s", romdir, g->file) < (int)sizeof f &&
+		    lstat(f, &st) == 0 && S_ISREG(st.st_mode))
+			out->games = out->bytes = alloc_of(&st);
 		return;
 	}
 	for (i = 0; i < plan->n; i++) {
@@ -972,7 +1040,7 @@ void st_totals(st_card *c)
 	int i, k;
 
 	memset(c->cat, 0, sizeof c->cat);
-	c->unused_art = c->old_states = 0;
+	c->unused_art = c->old_states = c->ds_copies = 0;
 	c->unused_covers = c->unused_snaps = c->old_state_games = 0;
 	for (i = 0; i < c->nsys; i++) {
 		c->cat[STC_GAMES] += c->sys[i].games;
@@ -982,6 +1050,7 @@ void st_totals(st_card *c)
 		c->unused_snaps += c->sys[i].unused_snaps;
 		c->old_states += c->sys[i].old_states;
 		c->old_state_games += c->sys[i].old_state_games;
+		c->ds_copies += c->sys[i].ds_copies;
 	}
 	c->cat[STC_SAVES] = c->saves + c->states;
 	c->cat[STC_MEDIA] = c->music + c->videos + c->books + c->bgm;
@@ -1068,11 +1137,11 @@ static void ports_orphans(const job_view *j)
 		tsum t = { 0 };
 
 		if (k[0] == '.' || claimed_by(claimed, nc, k)) continue;
-		snprintf(sub, sizeof sub, "%s/%s", dir, k);
+		if (snprintf(sub, sizeof sub, "%s/%s", dir, k) >= (int)sizeof sub) continue;
 		walk(sub, false, true, false, &t);
 		memset(&found[nf], 0, sizeof found[nf]);
 		snprintf(found[nf].folder, sizeof found[nf].folder, "%s", k);
-		if ((pt = pi_of_folder(ports, np, k))) snprintf(found[nf].title, sizeof found[nf].title, "%s", pt->title);
+		if ((pt = pi_of_folder(ports, np, k))) utf8_copy(found[nf].title, sizeof found[nf].title, pt->title);
 		found[nf].bytes = t.bytes;
 		nf++;
 	}
@@ -1284,14 +1353,16 @@ static bool measure(const job_view *j, st_card *c, bool trust, bool force, bool 
 		snprintf(path, sizeof path, "%s/%s", j->p.roms, s->folder);
 		if (!walk(path, true, trust, force, &t)) return false;
 		s->games = t.bytes;
+		s->ds_copies = ds_copies_of(path);
 		memset(&t, 0, sizeof t);
 		snprintf(path, sizeof path, "%s/%s/.media", j->p.roms, s->folder);
 		if (!walk(path, false, trust, force, &t)) return false;
 		s->snaps = t.video;
 		s->covers = t.bytes - t.video;
 		memset(&t, 0, sizeof t);
-		snprintf(path, sizeof path, "%s/%s", states, s->folder);
-		if (!walk(path, false, trust, force, &t)) return false;
+		if (snprintf(path, sizeof path, "%s/%s", states, s->folder) < (int)sizeof path &&
+		    !walk(path, false, trust, force, &t))
+			return false;
 		s->states = t.bytes;
 		if (live && !c->measured) { st_totals(c); publish(c); }
 	}
@@ -1322,8 +1393,9 @@ static bool measure(const job_view *j, st_card *c, bool trust, bool force, bool 
 			s->unused_covers = sc->ucovers;
 			s->unused_snaps = sc->usnaps;
 		}
-		snprintf(path, sizeof path, "%s/%s", states, s->folder);
-		mt = dir_mtime(path, trust);
+		/* A folder too long for its path: no states of its are listed */
+		if (snprintf(path, sizeof path, "%s/%s", states, s->folder) >= (int)sizeof path) path[0] = '\0';
+		mt = path[0] ? dir_mtime(path, trust) : 0;
 		if (!trust && (!sc->have_bases || sc->states_mt != mt || force)) {
 			bases_free(sc);
 			sc->bases = list_bases(path, &sc->nbases);
@@ -1357,8 +1429,8 @@ static bool measure(const job_view *j, st_card *c, bool trust, bool force, bool 
 		sig = (unsigned long long)dir_mtime(path, trust) * 31u;
 		snprintf(path, sizeof path, "%s/%s/.media", j->p.roms, s->folder);
 		sig = (sig ^ (unsigned long long)dir_mtime(path, trust)) * 31u;
-		snprintf(path, sizeof path, "%s/%s", states, s->folder);
-		sig = (sig ^ (unsigned long long)dir_mtime(path, trust)) * 31u;
+		if (snprintf(path, sizeof path, "%s/%s", states, s->folder) < (int)sizeof path)
+			sig = (sig ^ (unsigned long long)dir_mtime(path, trust)) * 31u;
 		sig ^= (unsigned long long)dir_mtime(saves, trust);
 		/* Its games are together in the list, as the shelves give them */
 		for (k = 0; k < j->n; k++)
@@ -1388,6 +1460,14 @@ static bool measure(const job_view *j, st_card *c, bool trust, bool force, bool 
 
 				snprintf(gdir, sizeof gdir, "%s/%s/%.*s", j->p.roms, g->folder, (int)(slash - g->file), g->file);
 				gsig = (gsig * 31u) ^ (unsigned long long)dir_mtime(gdir, trust);
+			} else if (!strcmp(g->tag, "NDS")) {
+				/* A zipped DS game moves with the folder DSperate unpacks
+				 * it to, which its plan holds (src/dscache.h) */
+				char rd[PATH_MAX_ST], dsd[PATH_MAX_ST];
+
+				if (snprintf(rd, sizeof rd, "%s/%s", j->p.roms, g->folder) < (int)sizeof rd &&
+				    dsc_dir(rd, g->file, dsd, sizeof dsd))
+					gsig = (gsig * 31u) ^ (unsigned long long)dir_mtime(dsd, trust);
 			}
 			pthread_mutex_lock(&g_mu);
 			slot = smap_slot(&g_games, key, false);
@@ -1936,4 +2016,67 @@ st_sort st_sort_next(st_sort mode, bool has_last)
 	if (next == ST_SORT_LAST && !has_last) next = ST_SORT_SIZE;
 	if (mode < 0 || mode >= ST_SORTS) next = ST_SORT_SIZE;
 	return next;
+}
+
+/* ---- the DS copies' delete --------------------------------------------------- */
+
+static bool ds_copy_name(const char *n)
+{
+	size_t l = strlen(n);
+
+	return n[0] != '.' &&
+	       ((l > 4 && ends_ci(n, l, ".nds")) || (l > 8 && ends_ci(n, l, ".nds.tag")) ||
+	        (l > 9 && ends_ci(n, l, ".nds.part")));
+}
+
+/* One .dsperate: its copies, tags and leftovers, then itself if empty */
+static unsigned long long ds_clear(const char *dir, int *files)
+{
+	unsigned long long sum = 0;
+	struct dirent *e;
+	struct stat st;
+	DIR *d;
+
+	if (lstat(dir, &st) != 0 || !S_ISDIR(st.st_mode) || !(d = opendir(dir))) return 0;
+	while ((e = readdir(d))) {
+		char p[PATH_MAX_ST];
+
+		if (!ds_copy_name(e->d_name)) continue;
+		if (snprintf(p, sizeof p, "%s/%s", dir, e->d_name) >= (int)sizeof p) continue;
+		if (lstat(p, &st) != 0 || !S_ISREG(st.st_mode) || unlink(p) != 0) continue;
+		sum += alloc_of(&st);
+		if (ends_ci(e->d_name, strlen(e->d_name), ".nds")) (*files)++;
+	}
+	closedir(d);
+	rmdir(dir);
+	return sum;
+}
+
+unsigned long long st_delete_ds_copies(const st_paths *p, const st_systems *s, int *files)
+{
+	unsigned long long sum = 0;
+	int i;
+
+	*files = 0;
+	for (i = 0; i < s->n; i++) {
+		char top[PATH_MAX_ST], dir[PATH_MAX_ST];
+		struct dirent *e;
+		struct stat st;
+		DIR *d;
+
+		if (snprintf(top, sizeof top, "%s/%s", p->roms, s->folders[i]) >= (int)sizeof top) continue;
+		if (lstat(top, &st) != 0 || !S_ISDIR(st.st_mode)) continue;
+		if (snprintf(dir, sizeof dir, "%s/" DSC_DIR, top) < (int)sizeof dir) sum += ds_clear(dir, files);
+		if (!(d = opendir(top))) continue;
+		while ((e = readdir(d))) {
+			char sub[PATH_MAX_ST];
+
+			if (e->d_name[0] == '.') continue;
+			if (snprintf(sub, sizeof sub, "%s/%s", top, e->d_name) >= (int)sizeof sub) continue;
+			if (lstat(sub, &st) != 0 || !S_ISDIR(st.st_mode)) continue;
+			if (snprintf(dir, sizeof dir, "%s/" DSC_DIR, sub) < (int)sizeof dir) sum += ds_clear(dir, files);
+		}
+		closedir(d);
+	}
+	return sum;
 }

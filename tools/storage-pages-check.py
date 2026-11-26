@@ -36,7 +36,9 @@ _spec = importlib.util.spec_from_file_location("readme_shots", ROOT / "tools" / 
 R = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(R)
 
-RECS = ["Unused Art", "Old Save States"]
+# The fixture's three, the largest first: the DS copies 1.8 GB, the art
+# 1.2 GB, the states 940 MB
+RECS = ["Unpacked DS Games", "Unused Art", "Old Save States"]
 GAMES_BY_SIZE = ["Metal Gear Solid", "Castlevania - Symphony of the Night", "Tekken 3", "Crash Bandicoot"]
 GAMES_BY_LAST = ["Castlevania - Symphony of the Night", "Crash Bandicoot", "Tekken 3", "Metal Gear Solid"]
 MUSIC_BY_SIZE = ["Neon Harbor", "Paper Satellites", "Slow Static", "Coastline Radio", "Afterglow Sessions",
@@ -100,9 +102,9 @@ def main():
                     continue
                 if said != label:
                     fail("%s/main/%s: the hint says %r, not %r" % (theme, order, said, label))
-                if names[:2] != RECS:
-                    fail("%s/main/%s: the recommendations are not first: %s" % (theme, order, names[:3]))
-                rest = names[2:]
+                if names[:len(RECS)] != RECS:
+                    fail("%s/main/%s: the recommendations are not first: %s" % (theme, order, names[:4]))
+                rest = names[len(RECS):]
                 if order == "size" and rest[:3] != ["PlayStation", "Videos", "Sega CD"]:
                     fail("%s/main/size: %s" % (theme, rest[:3]))
                 if order == "az" and not az(rest):

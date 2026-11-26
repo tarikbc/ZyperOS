@@ -63,6 +63,9 @@ typedef struct {
 	int unused_covers, unused_snaps;
 	unsigned long long old_states;   /* ST_OLD_S's states */
 	int old_state_games;
+	/* The copies DSperate unpacked its zipped games to, in .dsperate at
+	 * its top and in each folder of games (src/dscache.h): within games */
+	unsigned long long ds_copies;
 	int games_sized;                 /* its games with a size */
 } st_sys;
 
@@ -76,7 +79,7 @@ typedef struct {
 	st_sys sys[ST_MAX_SYS];
 	int nsys;
 	unsigned long long cat[STC_COUNT];
-	unsigned long long unused_art, old_states;
+	unsigned long long unused_art, old_states, ds_copies;
 	int unused_covers, unused_snaps, old_state_games;
 	bool measured;                   /* from a finished walk, now or cached */
 	bool walking;                    /* a walk is under way */
@@ -220,6 +223,12 @@ unsigned long long st_delete_unused_art(const st_paths *p, const st_systems *s,
                                         const st_game_in *games, int n, int *files);
 unsigned long long st_delete_old_states(const st_paths *p, const st_systems *s,
                                         const st_game_in *games, int n, long now, int *games_out);
+/* The DS copies' delete: in each system's .dsperate, at its top and in each
+ * folder of games, the unpacked games, their tags and what an unpacking
+ * stopped halfway left (<name>.nds, .nds.tag, .nds.part), and the folder once
+ * it is empty. Nothing else, never a link, never out of Roms/: saves and
+ * states are not in reach. A game unpacks again the next time it starts. */
+unsigned long long st_delete_ds_copies(const st_paths *p, const st_systems *s, int *files);
 
 /* The bar's parts and the recommendations' sums from the rest of :
  * Other is what is used less everything measured. For a shot's stand-in

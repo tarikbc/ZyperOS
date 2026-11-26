@@ -1,0 +1,17 @@
+diff --git a/src/libretro.cpp b/src/libretro.cpp
+index 9ba0d38..b8a118e 100644
+--- a/src/libretro.cpp
++++ b/src/libretro.cpp
+@@ -809,6 +809,12 @@ RETRO_API bool retro_load_game(const retro_game_info* game) {
+   rom_path = game->path;
+   layout_begin();
+   nds = std::make_unique<ds::NDS>();
++  // A zipped game is inflated once into .dsperate beside its zip and kept
++  // (cart/zip_cache.h). DSperate's own frontend keeps that folder under
++  // cart.cache_mb, 2048 by default, the least recently launched going first;
++  // here it had no limit at all, so every zipped game ever played stayed.
++  // The same 2 GB, which the ZyperOS launcher also holds after each game.
++  nds->rom_cache_max_bytes = 2048ull << 20;
+   // The options are read after the GBA games this DS game reads are known and
+   // listed (a stored choice is only accepted if it is offered).
+   rumble_if = {};

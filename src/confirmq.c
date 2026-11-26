@@ -42,6 +42,8 @@ static const cq_def CQ[CQ_COUNT] = {
 	                          CANCEL, DEL, CQ_LOSES },
 	[CQ_STORE_OLD_STATES] = { "storage-old-states", S_STORAGE_OLD_HEADING, S_STORAGE_OLD_ASK, NONE,
 	                          CANCEL, DEL, CQ_LOSES | CQ_COUNTED },
+	[CQ_STORE_DS_COPIES] = { "storage-ds-copies", S_STORAGE_DS_HEADING, S_STORAGE_DS_ASK, NONE,
+	                         CANCEL, DEL, CQ_LOSES },
 	[CQ_STORE_SYS_SNAPS] = { "storage-system-snaps", S_STORAGE_DELETE_SNAPS, S_DOWNLOADS_DELETE_SYS_VIDEOS_ASK,
 	                         S_DOWNLOADS_DELETE_VIDEOS_BODY, CANCEL, DEL, CQ_LOSES },
 	[CQ_STORE_MEDIA_FOLDER] = { "storage-media-folder", S_STORAGE_MEDIA_HEADING_FOLDER, S_STORAGE_MEDIA_ASK_FOLDER,
