@@ -333,7 +333,7 @@ static const unsigned char PM_SOUND[PM_ROWS] = {
 	/* A pick is heard as reward, or deny with nothing to pick */
 	[PM_RANDOM]     = MENU_SND_OWN,
 };
-/* Core, Game Language, Super Game Boy, Timing, View and Shader step on A as well; Sort By,
+/* Core, Game Language, Super Game Boy, Timing, Favorites First, View and Shader step on A as well; Sort By,
  * Display Mode and Strength do nothing with it. */
 static const unsigned char SM_SOUND[SM_ROWS] = {
 	[SM_CORE]    = MENU_SND_RING,
@@ -341,6 +341,7 @@ static const unsigned char SM_SOUND[SM_ROWS] = {
 	[SM_SGB]     = MENU_SND_RING,
 	[SM_PACE]    = MENU_SND_RING,
 	[SM_SORT]    = MENU_SND_RING | MENU_SND_NO_A,
+	[SM_FAVFIRST] = MENU_SND_RING,
 	[SM_VIEW]    = MENU_SND_RING,
 	[SM_DISPLAY] = MENU_SND_RING | MENU_SND_NO_A,
 	[SM_BORDER]  = MENU_SND_RING,
@@ -542,6 +543,10 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 		full[SM_PACE]    = (menu_row){ T(S_SYSMENU_PACE), u->pace, u->pace != NULL };
 		full[SM_SORT]    = (menu_row){ T(S_SYSMENU_SORT_BY),
 		                              u->sort ? u->sort : T(S_SORT_NAME), true  };
+		/* Its favorites ahead of its other games, each part in Sort By's
+		 * order (DESIGN.md 11.70) */
+		full[SM_FAVFIRST] = (menu_row){ T(S_SYSMENU_FAVORITES_FIRST),
+		                               T(u->fav_first ? S_MENU_ON_TITLE : S_MENU_OFF_TITLE), true };
 		/* The covers in a row, or a list of names (DESIGN.md 11.39) */
 		full[SM_VIEW]    = (menu_row){ T(S_SYSMENU_VIEW),
 		                              T(u->listed ? S_SYSMENU_VIEW_LIST : u->grid ? S_SYSMENU_VIEW_GRID : u->video ? S_SYSMENU_VIEW_VIDEO : S_SYSMENU_VIEW_COVERS), true };

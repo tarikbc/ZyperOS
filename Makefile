@@ -2890,10 +2890,10 @@ check-sort: build-native/sort-check
 	@./build-native/sort-check
 
 build-native/sort-check: tools/sort-check.c src/sort.h src/library.h src/stats.c \
-                         src/stats.h src/db.c src/atomic.c $(I18N_SRC) FORCE
+                         src/stats.h src/db.c src/atomic.c src/favorites.c src/favorites.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/sort-check.c src/stats.c src/db.c src/atomic.c $(I18N_SRC) -lsqlite3
+	      -o $@ tools/sort-check.c src/stats.c src/db.c src/atomic.c src/favorites.c $(I18N_SRC) -lsqlite3
 
 # Bluetooth. A device NAME is arbitrary bytes chosen by whoever owns the
 # headset, arriving over the air into a process running as root; an ADDRESS is
@@ -3389,6 +3389,12 @@ check-gamenames-shots: native
 
 check-favorites-shots: native
 	@'$(PYIMG)' tools/favorites-shot-check.py
+
+# MENU > Favorites First (DESIGN.md 11.70) on the host launcher: a shelf's
+# favorites ahead of its other games, walked with the shelf's own keys
+.PHONY: check-favfirst
+check-favfirst: native
+	@python3 tools/favfirst-check.py
 
 # A system turned off the home keeps its games on Favorites and Recents, and
 # they start from there on its own core (src/shelfbuild.c, app.parked)

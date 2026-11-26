@@ -56,6 +56,14 @@ typedef struct {
 	 * before this existed and what an untouched one still is. On MP4's
 	 * shelf an ml_order instead, whose zero is by artist. */
 	int sort;
+	/* MENU > Favorites First (DESIGN.md 11.70), a console shelf's own as
+	 * Sort By is: its favorites ahead of its other games, each part in
+	 * `sort`. False, as it ships, is the shelf as it always was. Where the
+	 * favorites are once sorted: `nfav` of them from `fav_from` (after the
+	 * folders, and Splore on PICO-8's), 0 when off or none, which the
+	 * letter jump reads so the two parts are never one run of an initial. */
+	bool fav_first;
+	int fav_from, nfav;
 	coverflow cf;
 	games_row row;
 	/* NULL on a real shelf, where every game belongs to the system whose
@@ -425,6 +433,12 @@ void recents_picture_turn(app *a);
 bool view_listed(const char *tag);
 bool view_grid(const char *tag);
 void sort_shelf(app *a, int sys);
+/* sort_shelf with the cursor kept on its game, the shelf drawn again */
+void sort_shelf_keep(app *a, int sys);
+/* MENU > Favorites First (DESIGN.md 11.70): whether shelf `sys` has it (a
+ * console's), and it turned over there, kept and applied */
+bool fav_first_offered(app *a, int sys);
+void fav_first_turn(app *a, int sys);
 void sort_all(app *a);
 /* Every texture of the renderer the launcher holds, let go */
 void free_all_textures(app *a);

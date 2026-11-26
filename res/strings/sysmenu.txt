@@ -910,6 +910,17 @@ de = Sortieren nach
 ja = 並べ替え
 it = Ordina per
 
+[sysmenu.favorites_first]
+note = A system menu row under Sort By, On or Off: the shelf's favorite games ahead of its other games, each part in the Sort By order
+en = Favorites First
+zh-Hans = 收藏优先
+es = Favoritos primero
+pt-BR = Favoritos primeiro
+fr = Favoris en premier
+de = Favoriten zuerst
+ja = お気に入りを先頭に
+it = Preferiti in cima
+
 
 [sysmenu.rescan]
 note = A system menu row: look at the card's folders again

@@ -248,15 +248,26 @@ static const char *shelf_key(const sysview *v, int i)
 	                                                   : v->list.items[i].title;
 }
 
+/* The run game i is in: its initial, and with Favorites First on, which of
+ * the two parts it is in (DESIGN.md 11.70). The favorites' last initial and
+ * the other games' first are two stops even when they are one letter: Down
+ * from "Zelda", the last favorite, lands on "Zero Wing", the first of the
+ * others, and not past it. */
+static int shelf_group(const sysview *v, int i)
+{
+	return (unsigned char)shelf_initial(shelf_key(v, i)) |
+	       (v->nfav > 0 && i >= v->fav_from && i < v->fav_from + v->nfav ? 0x100 : 0);
+}
+
 static int shelf_group_start(sysview *v, int idx)
 {
 	int n = v->list.count, i = idx;
-	char c = shelf_initial(shelf_key(v, idx));
+	int c = shelf_group(v, idx);
 
 	for (;;) {
 		int p = (i - 1 + n) % n;
 		if (p == idx) return idx;             /* one initial, the whole shelf */
-		if (shelf_initial(shelf_key(v, p)) != c) break;
+		if (shelf_group(v, p) != c) break;
 		i = p;
 	}
 	return i;
@@ -270,13 +281,13 @@ static int shelf_group_start(sysview *v, int idx)
 int shelf_letter_jump(sysview *v, int dir)
 {
 	int n = v->list.count, i, cur = v->cursor;
-	char c0 = shelf_initial(shelf_key(v, cur));
+	int c0 = shelf_group(v, cur);
 
 	if (n <= 1) return cur;
 	if (dir > 0) {
 		for (i = 1; i < n; i++) {
 			int k = (cur + i) % n;
-			if (shelf_initial(shelf_key(v, k)) != c0) return k;
+			if (shelf_group(v, k) != c0) return k;
 		}
 		return cur;                           /* every name starts alike */
 	}
@@ -286,7 +297,7 @@ int shelf_letter_jump(sysview *v, int dir)
 	 * then the shelf is one group and there is nowhere to go - the same answer
 	 * down gives, rather than shuffling back by one. */
 	i = (cur - 1 + n) % n;
-	if (shelf_initial(shelf_key(v, i)) == c0) return cur;
+	if (shelf_group(v, i) == c0) return cur;
 	return shelf_group_start(v, i);
 }
 

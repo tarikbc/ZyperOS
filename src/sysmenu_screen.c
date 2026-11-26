@@ -969,6 +969,7 @@ int menu_build(app *a, screen_id screen, int sys,
 		u.eq         = eq_preset_name(eq_preset_get(eq_out_now()));
 		u.sort       = u.mp4 ? ml_order_label_kind((ml_order)a->view[sys].sort, mp4_kind_shown())
 		                      : sort_label(a->view[sys].sort);
+		u.fav_first  = a->view[sys].fav_first;
 	} else {
 		aout_state ao = aout_now();
 
@@ -2415,38 +2416,22 @@ menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		 * the album, whose folder is its `file`. */
 		if (d && sel == SM_SORT) {
 			sysview *v = &a->view[a->sys_cursor];
-			char keep[LIB_PATH];
-			int i, keep_owner = -1;
-
-			keep[0] = '\0';
-			if (v->cursor >= 0 && v->cursor < v->list.count) {
-				snprintf(keep, sizeof keep, "%s",
-				         v->list.items[v->cursor].file);
-				/* On Favorites a file name is not enough: the same one can
-				 * be on the shelf twice, from two systems. */
-				if (v->owner) keep_owner = v->owner[v->cursor];
-			}
 
 			v->sort = is_mp4(&a->sys.systems[a->sys_cursor])
 			        ? (v->sort + d + ML_ORDERS) % ML_ORDERS
 			        : sort_step_in(sort_set_of(a, a->sys_cursor), v->sort, d);
-			sort_shelf(a, a->sys_cursor);
 			sort_save(a);
-
 			/* The textures are indexed by position, so they moved with
-			 * nothing. Dropping them lets the next frame fetch each card's
-			 * art for where it now sits. */
-			free_view_textures(v);
-
-			v->cursor = 0;
-			for (i = 0; i < v->list.count; i++)
-				if (!strcmp(v->list.items[i].file, keep) &&
-				    (!v->owner || v->owner[i] == keep_owner)) {
-					v->cursor = i;
-					break;
-				}
-			cf_reset(&v->cf, v->cursor);
-	games_reset(&v->row, v->cursor, v->list.count, plat_now_ms());
+			 * nothing: sort_shelf_keep lets them go, and the next frame
+			 * fetches each card's art for where it now sits. */
+			sort_shelf_keep(a, a->sys_cursor);
+			return MENU_STAY;
+		}
+		/* Favorites First, under it: Off or On, turned over on Left,
+		 * Right and A as Look's two-way rows are, the shelf under the menu
+		 * sorted again on the same game (DESIGN.md 11.70) */
+		if ((d || key == IN_ACCEPT) && sel == SM_FAVFIRST) {
+			fav_first_turn(a, a->sys_cursor);
 			return MENU_STAY;
 		}
 		if (key != IN_ACCEPT) return MENU_STAY;
