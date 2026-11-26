@@ -117,6 +117,10 @@ enum {
 	 * the launcher protocol it hands the display over for a menu. A port that
 	 * decided this itself would make that impossible. */
 	DIATOM_BTN_MENU,
+	/* The sticks' clicks, on a handheld with sticks (the R36S's BTN_THUMBL
+	 * and BTN_THUMBR): the RetroPad's L3 and R3. After MENU, so every
+	 * other button keeps its bit. */
+	DIATOM_BTN_L3, DIATOM_BTN_R3,
 	DIATOM_BTN_COUNT
 };
 #define DIATOM_BIT(b) (1u << (b))
