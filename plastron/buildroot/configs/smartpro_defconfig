@@ -86,6 +86,11 @@ BR2_PACKAGE_BLUEZ5_UTILS=y
 BR2_PACKAGE_BLUEZ5_UTILS_CLIENT=y
 BR2_PACKAGE_BLUEZ5_UTILS_TOOLS=y
 BR2_PACKAGE_BLUEZ5_UTILS_DEPRECATED=y
+# Pads: BlueZ's input profiles, classic HID and HID over GATT, which make a
+# pad an input device through the kernel's uhid. Without them a pad paired
+# and then had nothing to connect (a tester's Brick, 2026-11-21)
+BR2_PACKAGE_BLUEZ5_UTILS_PLUGINS_HID=y
+BR2_PACKAGE_BLUEZ5_UTILS_PLUGINS_HOG=y
 # Sound to Bluetooth headsets: bluealsa (A2DP source, HFP gateway) and its
 # ALSA plugin, which ZyperOS's .asoundrc names (bt-alsa.sh)
 BR2_PACKAGE_BLUEZ_ALSA=y
