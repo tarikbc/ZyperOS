@@ -7272,7 +7272,7 @@ small screen's **ink**, and a note: "No filter at all.", "More low notes.
 The small speaker cannot play them all.", "Words and singing come
 forward.", "More of the high notes.", "Your own five bands." The preset
 under the cursor is **heard** at once; B puts back what was set. Under it,
-the five bands, **60 Hz**, **250 Hz**, **1 kHz**, **4 kHz** and **12 kHz**,
+the five bands, **120 Hz**, **250 Hz**, **1 kHz**, **4 kHz** and **7 kHz**,
 each a scale from -6 to +6 dB (11.3's row with a scale, kind
 `DS_SCALE_GAIN`: a grey, darker to lighter, since no color is the sound's),
 stopping at its ends. A step on a preset's band makes the curve Custom's,
@@ -7282,8 +7282,8 @@ menu music from MENU. Six rows fill the panel, so the page has no strip of
 its own under them (the lab's strip, with its bars, waits for the 32-band
 meter the Player Looks bring).
 
-**The curves** (the lab's): Bass +5, +2, 0, 0, +1; Voice -2, 0, +3, +3, 0;
-Treble 0, 0, 0, +3, +5.
+**The curves** (the lab's, made plain to hear on 2026-11-24): Bass +6, +3,
+0, 0, 0; Voice -2, 0, +3, +3, 0; Treble 0, 0, 0, +3, +6.
 
 **Heard live.** A step reaches MP4 at once (`EQ bands= live=`), and while
 the page is open MP4 keeps only about 60 ms of sound queued, where it keeps
@@ -7299,8 +7299,9 @@ shaped.
 
 **How.** Five filters of ZyperOS's own (`src/eqdsp.h`, header-only C, the
 same file in MP4, the menu music, Diatom's copy and the ports' plugin):
-RBJ's cookbook biquads, a low shelf at 60 Hz, peaks at 250 Hz, 1 kHz and 4
-kHz (Q 1.1) and a high shelf at 12 kHz, in direct form I, whose
+RBJ's cookbook biquads, a low shelf at 120 Hz, peaks at 250 Hz, 1 kHz and 4
+kHz (Q 1.1) and a high shelf at 7 kHz (from 60 Hz and 12 kHz on 2026-11-24:
+what a small speaker can play), in direct form I, whose
 coefficients can move under a playing signal. *(This document's call: the
 plan named FFmpeg's `equalizer` filters in MP4's graph. One filter for
 every place the sound plays sounds the same everywhere, moves each gain

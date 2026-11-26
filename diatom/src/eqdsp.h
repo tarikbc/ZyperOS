@@ -12,8 +12,13 @@
  * the presets are the launcher's (src/eq.h); this is the arithmetic alone,
  * header-only and pure C (libm), so each of those builds takes it as it is.
  *
- *   60 Hz    a low shelf      250 Hz, 1 kHz, 4 kHz   peaks, Q 1.1
- *   12 kHz   a high shelf     each -6 to +6 dB, in whole steps
+ *   120 Hz   a low shelf      250 Hz, 1 kHz, 4 kHz   peaks, Q 1.1
+ *   7 kHz    a high shelf     each -6 to +6 dB, in whole steps
+ *
+ * The shelves where a handheld's speaker and a pair of earbuds can say
+ * them (2026-11-24, on the Discord: Bass and Treble were hard to hear): a
+ * shelf at 60 Hz lifted what a small speaker cannot play and left a dip
+ * at 100-120 Hz under the 250 Hz peak, and one at 12 kHz lifted mostly air.
  *
  * The filters are RBJ's cookbook biquads (Robert Bristow-Johnson's "Audio
  * EQ Cookbook"), the shelves at slope 1, in direct form I: a form whose
@@ -57,7 +62,7 @@
 #define EQ_DB_MAX   6
 #define EQ_RAMP_MS  20
 
-static const float EQ_FREQ[EQ_BANDS] = { 60.0f, 250.0f, 1000.0f, 4000.0f, 12000.0f };
+static const float EQ_FREQ[EQ_BANDS] = { 120.0f, 250.0f, 1000.0f, 4000.0f, 7000.0f };
 #define EQ_PEAK_Q   1.1f
 
 /* One filter's coefficients, divided by its a0 */

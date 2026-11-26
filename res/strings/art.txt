@@ -82,7 +82,7 @@ ja = curl の起動に失敗
 it = curl non si avvia
 
 [art.why_index_failed]
-note = tight. The list of covers did not download (the network, not missing art)
+note = tight. The list of covers did not download: no answer (the network, not missing art). art.why_index_refused is the server saying no
 en = index fetch failed
 zh-Hans = 索引下载失败
 es = falló la descarga del índice
@@ -91,6 +91,28 @@ fr = échec de l'index
 de = Index nicht geladen
 ja = 一覧の取得に失敗
 it = indice non scaricato
+
+[art.why_index_refused]
+note = tight. The list of covers did not download: the server answered, with an error (HTTP 404 and the like), not the network
+en = index refused by the server
+zh-Hans = 服务器拒绝了索引
+es = el servidor rechazó el índice
+pt-BR = o servidor recusou o índice
+fr = index refusé par le serveur
+de = Server verweigert den Index
+ja = サーバーが一覧を拒否
+it = indice rifiutato dal server
+
+[art.problems]
+note = More than one console passed over in a run: how many, then the last one's line as art.problem gives it ("NES: index refused by the server")
+en = %d consoles passed over; %s
+zh-Hans = 跳过了 %d 个主机；%s
+es = %d consolas omitidas; %s
+pt-BR = %d consoles pulados; %s
+fr = %d consoles ignorées\u00a0; %s
+de = %d Konsolen übersprungen; %s
+ja = %d 機種をスキップ；%s
+it = %d console saltate; %s
 
 [art.why_index_bad]
 note = tight. The list of covers arrived but could not be read

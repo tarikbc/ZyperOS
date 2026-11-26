@@ -112,7 +112,8 @@ typedef enum {
 } tour_key;
 
 /* What a launcher button is to the tutorial: the d-pad's four, the faces,
- * the shoulders (L1/R1 and L2/R2, each a wrong press but in no step bar L1/R1's Move Around), START, SELECT, MENU,
+ * the shoulders (L1/R1 and L2/R2, each a wrong press but in Move Around and
+ * Music, which take them), START, SELECT, MENU,
  * both volume keys as TK_VOL, both brightness keys as TK_BRIGHT, POWER.
  * TK_KEYS for IN_NONE or anything out of range. */
 tour_key tour_key_of(in_button b);

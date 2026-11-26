@@ -2592,7 +2592,7 @@ check-badges:
 		  $$(pkg-config --cflags sdl2 SDL2_image) -Isrc \
 		  -DNET_TMP='"$(CURDIR)/build-native/badges-check-tmp"' \
 		  -DZYPEROS_VERSION='"check"' \
-		  -o build-native/rabadge-check tools/rabadge-check.c src/rabadge.c src/noticeart.c \
+		  -o build-native/rabadge-check tools/rabadge-check.c src/rabadge.c src/rapack.c src/noticeart.c \
 		  src/zyperplace.c src/blur.c src/cheevos.c src/atomic.c src/db.c \
 		  $$(pkg-config --libs sdl2 SDL2_image) -lsqlite3 -lz -lpthread -lm && \
 		SDL_VIDEODRIVER=dummy ./build-native/rabadge-check; \
@@ -2717,12 +2717,12 @@ build-native/cheatsdl-check: tools/cheatsdl-check.c src/cheatsdl.c src/cheatsdl.
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Isrc $(shell pkg-config --cflags sdl2 2>/dev/null) \
 	      -o $@ tools/cheatsdl-check.c -lz
 
-build-native/radl-check: tools/radl-check.c src/radl.c src/radl.h src/net.c src/net.h src/rafetch.c src/rajson.c src/cheevos.c src/library.c src/sheet.c $(RAHASH_SRC) src/atomic.c src/db.c $(I18N_SRC) FORCE
+build-native/radl-check: tools/radl-check.c src/radl.c src/radl.h src/rapack.c src/rapack.h src/net.c src/net.h src/rafetch.c src/rajson.c src/cheevos.c src/library.c src/sheet.c $(RAHASH_SRC) src/atomic.c src/db.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -DZYPEROS_VERSION='"check"' \
 	      -DNET_TMP='"$(CURDIR)/build-native/radl-check-tmp"' \
 	      -DRADL_TMP='"$(CURDIR)/build-native"' \
-	      $(LZMA_CFLAGS) -o $@ tools/radl-check.c src/radl.c src/rafetch.c src/rajson.c src/cheevos.c \
+	      $(LZMA_CFLAGS) -o $@ tools/radl-check.c src/radl.c src/rapack.c src/rafetch.c src/rajson.c src/cheevos.c \
 	      src/library.c src/sheet.c $(RAHASH_SRC) src/atomic.c src/db.c $(I18N_SRC) -lsqlite3 -lz $(LZMA_LIBS) -lpthread
 
 # The two set converters - one C on the device, one Python in the bulk tool -

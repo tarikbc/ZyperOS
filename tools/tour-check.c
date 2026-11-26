@@ -565,10 +565,10 @@ static void buttons(void)
 	/* L2 and R2 are wrong presses in every lesson that asks for another
 	 * button, each answered as any misclick is: deny, Zyper's failure, the
 	 * button named, the one to try. The lessons are all of them but the
-	 * welcome's and the choices'. */
+	 * welcome's, the choices' and Music's, which asks for them. */
 	{
 		static const tour_step lessons[] = { TOUR_MOVE, TOUR_A, TOUR_B, TOUR_X, TOUR_Y,
-		                                     TOUR_MENU, TOUR_SELECT, TOUR_VOL, TOUR_BRIGHT };
+		                                     TOUR_MENU, TOUR_VOL, TOUR_BRIGHT };
 		static const in_button shoulders[] = { IN_L2, IN_R2 };
 		size_t s2, b2;
 
@@ -587,12 +587,24 @@ static void buttons(void)
 				   strstr(t.hint, tour_key_name(tour_key_of(shoulders[b2]))), what);
 			}
 	}
-	tour_pose(&t, TOUR_SELECT, T0, 2000, -1, DEV(false));
-	memset(pressed, 0, sizeof pressed);
-	pressed[IN_L2] = true;
-	pressed[IN_R2] = true;
-	ck(tour_buttons(&t, pressed, T0, snd) == 2 && t.wrong,
-	   "even in Music, whose note names them");
+	/* Music asks for them beside SELECT, so every button the handheld has
+	 * is asked for by some step (the Smart Pro kit's notes): each lands it */
+	{
+		static const in_button shoulders[] = { IN_L2, IN_R2 };
+		size_t b2;
+
+		for (b2 = 0; b2 < 2; b2++) {
+			char what[96];
+
+			tour_pose(&t, TOUR_SELECT, T0, 2000, -1, DEV(false));
+			memset(pressed, 0, sizeof pressed);
+			pressed[shoulders[b2]] = true;
+			n = tour_buttons(&t, pressed, T0, snd);
+			snprintf(what, sizeof what, "%s lands the Music lesson, whose note names it",
+			         tour_key_name(tour_key_of(shoulders[b2])));
+			ck(n == 1 && snd[0] == DS_SOUND_REWARD && t.done && !t.wrong, what);
+		}
+	}
 	ck(!strcmp(tour_step_info(TOUR_SELECT)->note, "L2/R2 play the previous or next song."),
 	   "Music's note says what L2/R2 do");
 }

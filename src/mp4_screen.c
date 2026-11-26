@@ -13,6 +13,7 @@
 #include "nowplaying_screen.h"
 #include "panel.h"
 #include "taskhold.h"
+#include "usbdrive_screen.h"
 #include "texload.h"
 #include "ui.h"
 #include "uisound.h"
@@ -436,6 +437,15 @@ static mp4_exit mp4_tracks(app *a, int album, bool now)
 		loaded = mn->state == MU_PLAYING || mn->state == MU_PAUSED;
 		playing = mp4c_path();
 		mp4_input(a);
+		/* A plug on the USB port asks here too, as at the shelf: a DAC
+		 * plugged in to listen gets its question (usb_questions) */
+		if (usb_questions(a)) {
+			plat_input_flush();
+			memset(&a->in, 0, sizeof a->in);
+			mp4_input_reset();
+			redraw_now();
+			continue;
+		}
 
 		/* The album over its artist - and the album alone when there is no
 		 * artist over it, a folder of tracks or of episodes straight in
@@ -748,6 +758,15 @@ void mp4_shelf_screen(app *a, bool now)
 		cover_answers();
 		mp4_input(a);
 		if (a->in.quit_requested) { a->running = false; break; }
+		/* A plug on the USB port asks here too, as at the shelf: a DAC
+		 * plugged in to listen gets its question (usb_questions) */
+		if (usb_questions(a)) {
+			plat_input_flush();
+			memset(&a->in, 0, sizeof a->in);
+			mp4_input_reset();
+			redraw_now();
+			continue;
+		}
 		if (a->in.pressed[IN_POWER] || idle_due(a)) { mp4_power(a); break; }
 		/* B and SELECT both leave, which is the rule everywhere in MP4: one
 		 * button in, the same button out, and B for the level below. SELECT

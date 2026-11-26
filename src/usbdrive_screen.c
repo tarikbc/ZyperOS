@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include "usbdrive_screen.h"
+#include "saver_screen.h"
 
 #include "aout_route.h"
 #include "app.h"
@@ -896,6 +897,31 @@ bool phone_link_due(bool xfer_on)
 	if (g_replug.on && (g_replug.say == USBPOWER_SAY_PHONE || g_replug.say == USBPOWER_SAY_IPHONE))
 		replug_off();
 	return true;
+}
+
+bool usb_questions(app *a)
+{
+	bool asked = false;
+
+	/* USB charges only until asked: a computer plugged in gets its
+	 * question, once per plug (usblink.h) */
+	if (usblink_follow(db_dev(), plat_now_ms())) {
+		saver_stop(a, "a computer was plugged in");
+		usb_ask(a);
+		asked = true;
+	}
+	/* Something on the port wants power: asked too, once per plug; the
+	 * replug message is the overlay's, over any screen */
+	power_follow();
+	if (g_power_ask) {
+		unsigned plug = g_power_ask;
+
+		g_power_ask = 0;
+		saver_stop(a, "something was plugged in");
+		usb_power_ask(a, plug);
+		asked = true;
+	}
+	return asked;
 }
 
 void power_follow(void)

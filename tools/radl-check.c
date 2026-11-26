@@ -34,6 +34,7 @@
 #include "../src/db.h"
 #include "../src/rafetch.h"
 #include "../src/radl.h"
+#include "../src/rapack.h"
 #include "../src/rahash.h"
 
 #ifndef NET_TMP
@@ -335,6 +336,14 @@ static int set_count(const char *path)
 }
 
 static bool has(const char *path) { return access(path, F_OK) == 0; }
+/* A badge in its set's pack (src/rapack.h), and not loose beside it */
+static bool packed(const char *set, const char *name)
+{
+	char pack[1200], loose[1200];
+
+	snprintf(loose, sizeof loose, "%.*sbadges/%s.png", (int)(strrchr(set, '/') - set + 1), set, name);
+	return rp_pack_path(set, pack, sizeof pack) && rp_has(pack, name) && !has(loose);
+}
 
 static systems_cfg g_sys;
 
@@ -576,9 +585,11 @@ int main(int argc, char **argv)
 	CHECK(has(ROMS "/NES/.cheevos/Empty.none"), "Empty too: nothing a player can earn");
 	CHECK(set_count(ROMS "/Game Boy/.cheevos/Gb Game.set") == 1, "the Game Boy game's set, after the 429");
 	CHECK(!has(ROMS "/Ports/.cheevos"), "and nothing written for Ports");
-	CHECK(has(ROMS "/NES/.cheevos/badges/B103_1.png") && has(ROMS "/NES/.cheevos/badges/B103_2.png"),
-	      "New's badges landed");
-	CHECK(has(ROMS "/NES/.cheevos/badges/B101_2.png"), "and Cached's missing one");
+	CHECK(packed(ROMS "/NES/.cheevos/New.set", "B103_1") && packed(ROMS "/NES/.cheevos/New.set", "B103_2"),
+	      "New's badges landed, in its pack");
+	CHECK(packed(ROMS "/NES/.cheevos/Cached.set", "B101_2"), "and Cached's missing one");
+	CHECK(packed(ROMS "/NES/.cheevos/Cached.set", "B101_1"),
+	      "and the one it had loose, taken into the pack too (not fetched again)");
 	CHECK(log_count("badge B101_1") == 0, "a badge on the card is not asked for again");
 	CHECK(chv_synced_for(101) == 1 && chv_synced_for(103) == 1,
 	      "the store holds the account's unlocks: %d %d", chv_synced_for(101), chv_synced_for(103));

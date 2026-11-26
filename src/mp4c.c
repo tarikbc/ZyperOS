@@ -841,6 +841,9 @@ void mp4c_eq(const int8_t db[5], bool live)
 	if (!strcmp(said, g_eq_sent)) return;
 	snprintf(g_eq_sent, sizeof g_eq_sent, "%s", said);
 	sendf("EQ\tbands=%s\tlive=%d", bands, live ? 1 : 0);
+	/* Which output's curve MP4 now plays, in the log: a "the bass does
+	 * nothing" report says whether the bands ever reached it */
+	fprintf(stderr, "mp4: eq -> %s, on %s\n", said, g_sink_said);
 }
 
 void mp4c_gain(int db)

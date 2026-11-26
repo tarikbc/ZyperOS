@@ -18,6 +18,7 @@
 #include "ds/layout.h"   /* DS_FOOT_Y */
 #include "ds/mark.h"     /* ds_bar_in */
 #include "uisound.h"
+#include "usbdrive_screen.h"
 #include "zyperdraw.h"
 #include "levels.h"
 
@@ -1106,6 +1107,15 @@ static mp4_exit mp4_now_screen_run(app *a)
 		mp4c_video_show(video);
 		mp4_input(a);
 		if (a->in.quit_requested) { a->running = false; how = MP4_CLOSE; break; }
+		/* A plug on the USB port asks here too, as at the shelf: a DAC
+		 * plugged in to listen gets its question (usb_questions) */
+		if (usb_questions(a)) {
+			plat_input_flush();
+			memset(&a->in, 0, sizeof a->in);
+			mp4_input_reset();
+			redraw_now();
+			continue;
+		}
 		if (a->in.pressed[IN_POWER] || idle_due(a)) { mp4_power(a); how = MP4_CLOSE; break; }
 		if (a->in.pressed[IN_BACK] || mp4_select()) uisound_play(DS_SOUND_BACK);
 		if (a->in.pressed[IN_BACK]) break;

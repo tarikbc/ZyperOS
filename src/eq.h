@@ -46,7 +46,7 @@ const char *eq_preset_name(eq_preset p);
 const char *eq_preset_note(eq_preset p);
 /* The output's name for the page's first row: Speaker or Headphones */
 const char *eq_out_name(eq_out o);
-/* A band's name, "60 Hz", "1 kHz", into `out` */
+/* A band's name, "120 Hz", "1 kHz", into `out` */
 void eq_band_name(int band, char *out, size_t n);
 
 /* The output's preset, and its Custom bands */

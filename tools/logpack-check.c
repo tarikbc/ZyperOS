@@ -86,7 +86,7 @@ static void pack(void)
 	char dir[] = "/tmp/logpack-check.XXXXXX", p[600], out[600], cmd[1400], line[512];
 	char err[128];
 	FILE *f;
-	bool found_net = false, found_mac = false, found_about = false;
+	bool found_net = false, found_mac = false, found_about = false, found_sys = false;
 	int files = 0;
 
 	printf("a whole pack, unpacked again\n");
@@ -116,6 +116,13 @@ static void pack(void)
 	snprintf(p, sizeof p, "%s/logs/other.txt", dir);
 	if ((f = fopen(p, "w"))) { fputs("not a log\n", f); fclose(f); }
 
+	/* A system log outside the folder: the Smart Pro's controllers' reader's */
+	static char sys[600];
+	snprintf(sys, sizeof sys, "%s/sppad.log", dir);
+	if ((f = fopen(sys, "w"))) { fputs("sppad: left stick 1050 to 2900 round 2150\n", f); fclose(f); }
+	logpack_system_logs[0] = sys;
+	logpack_system_logs[1] = NULL;
+
 	snprintf(p, sizeof p, "%s/logs", dir);
 	snprintf(out, sizeof out, "%s/pack.tar.gz", dir);
 	CHECK(logpack_build(p, "ZyperOS 1.0.3\nss: ericr\n",
@@ -135,11 +142,13 @@ static void pack(void)
 			if (strstr(line, "R...i")) found_net = true;
 			if (strstr(line, "XX:XX:XX:XX:XX:7F")) found_mac = true;
 			if (strstr(line, "ss: e...r")) found_about = true;
+			if (strstr(line, "left stick 1050")) found_sys = true;
 		}
 		pclose(f);
 	}
-	CHECK(files == 8, "three logs (wifi.log among them), the kernel's log, the system log, the card checks, a crash report and about.txt, "
+	CHECK(files == 9, "three logs (wifi.log among them), the kernel's log, the system log, the card checks, a crash report, sppad.log and about.txt, "
 	      "not the other files: %d", files);
+	CHECK(found_sys, "the system's log from outside the folder went in");
 	CHECK(found_net && found_mac && found_about,
 	      "each masked, in the logs and in about.txt: %d %d %d",
 	      found_net, found_mac, found_about);
@@ -220,6 +229,7 @@ static void tail(void)
 		fputs("LASTLINE\n", f);
 		fclose(f);
 	}
+	logpack_system_logs[0] = NULL;
 	snprintf(p, sizeof p, "%s/logs", dir);
 	snprintf(out, sizeof out, "%s/pack.tar.gz", dir);
 	CHECK(logpack_build(p, "", NULL, SECRETS, NSECRETS, "t", out, err, sizeof err), "built: %s", err);
