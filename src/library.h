@@ -118,7 +118,11 @@ void lib_free(game_list *l);
 void lib_title(const char *name, char *out, size_t n);
 
 /* Resolve a display title by the unchanged folder/file key. Does not reorder
- * entries or change the launch path, stem, stats, or disc-folder grouping. */
+ * entries or change the launch path, stem, stats, or disc-folder grouping.
+ * The first there is: the player's own name (db_user_title, Rename on a game
+ * whose file keeps its name), the stored title (MENU > Downloads' Names and
+ * Details, else what es_import took from a gamelist.xml), the file's name
+ * tidied (lib_title). */
 void lib_display_title(db *d, const char *folder, const char *file,
                        const char *name, char *out, size_t n);
 

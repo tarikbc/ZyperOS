@@ -133,6 +133,19 @@ static const char GAMES_SCHEMA[] =
 	"  PRIMARY KEY(folder, file)"
 	");";
 
+/* The names the player gave games whose file keeps its name (Rename on an
+ * arcade set or a port, db.h's db_user_title). A table of its own and not a
+ * column of games: a row there is a game the library has details on, which
+ * es_import, the details page and db_game_set's INSERT OR REPLACE all read
+ * it as, and a name typed on a game with no details is not one. */
+static const char USER_TITLES_SCHEMA[] =
+	"CREATE TABLE IF NOT EXISTS user_titles("
+	"  folder TEXT NOT NULL,"
+	"  file TEXT NOT NULL,"
+	"  title TEXT NOT NULL,"
+	"  PRIMARY KEY(folder, file)"
+	");";
+
 /* ScreenScraper's "we do not know this game" and when it said so, per card
  * as the games are (db.h, db_ss_miss_set). Its own table, so no games row
  * stands for a game with nothing in it. */
@@ -161,7 +174,7 @@ static bool games_schema(db *d)
 	bool has_title = false;
 	int rc;
 
-	if (!run(d, GAMES_SCHEMA) || !run(d, SS_MISS_SCHEMA)) return false;
+	if (!run(d, GAMES_SCHEMA) || !run(d, SS_MISS_SCHEMA) || !run(d, USER_TITLES_SCHEMA)) return false;
 	if (sqlite3_prepare_v2(d->h, "PRAGMA table_info(games);", -1, &st, NULL) != SQLITE_OK)
 		return false;
 	while ((rc = sqlite3_step(st)) == SQLITE_ROW) {
@@ -517,7 +530,8 @@ static int title_row_cmp(const void *a, const void *b)
 	return strcmp(((const db_title_row *)a)->file, ((const db_title_row *)b)->file);
 }
 
-bool db_titles_load(db *d, const char *folder, db_titles *out)
+/* A folder's (file, title) rows from `sql`, which takes the folder */
+static bool titles_load(db *d, const char *sql, const char *folder, db_titles *out)
 {
 	sqlite3_stmt *st = NULL;
 	int cap = 0;
@@ -525,9 +539,7 @@ bool db_titles_load(db *d, const char *folder, db_titles *out)
 	if (!out) return false;
 	memset(out, 0, sizeof *out);
 	if (!d || !folder) return false;
-	/* An empty title is no title (db_game_title's false), so it is not kept */
-	if (sqlite3_prepare_v2(d->h, "SELECT file, title FROM games WHERE folder=? AND title<>'';",
-	                       -1, &st, NULL) != SQLITE_OK) return false;
+	if (sqlite3_prepare_v2(d->h, sql, -1, &st, NULL) != SQLITE_OK) return false;
 	sqlite3_bind_text(st, 1, folder, -1, SQLITE_TRANSIENT);
 	while (sqlite3_step(st) == SQLITE_ROW) {
 		const char *file = (const char *)sqlite3_column_text(st, 0);
@@ -559,6 +571,75 @@ bool db_titles_load(db *d, const char *folder, db_titles *out)
 	 * BINARY order is the same, but the search should not lean on it */
 	if (out->n > 1) qsort(out->rows, (size_t)out->n, sizeof *out->rows, title_row_cmp);
 	return true;
+}
+
+bool db_titles_load(db *d, const char *folder, db_titles *out)
+{
+	/* An empty title is no title (db_game_title's false), so it is not kept */
+	return titles_load(d, "SELECT file, title FROM games WHERE folder=? AND title<>'';", folder, out);
+}
+
+/* --- the player's own names (db.h, db_user_title) ------------------------ */
+
+bool db_user_titles_load(db *d, const char *folder, db_titles *out)
+{
+	return titles_load(d, "SELECT file, title FROM user_titles WHERE folder=? AND title<>'';",
+	                   folder, out);
+}
+
+bool db_user_title(db *d, const char *folder, const char *file, char *out, size_t n)
+{
+	sqlite3_stmt *st = NULL;
+
+	if (!out || !n) return false;
+	out[0] = '\0';
+	if (!d || !folder || !file) return false;
+	if (sqlite3_prepare_v2(d->h, "SELECT title FROM user_titles WHERE folder=? AND file=?;",
+	                       -1, &st, NULL) != SQLITE_OK) return false;
+	sqlite3_bind_text(st, 1, folder, -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(st, 2, file, -1, SQLITE_TRANSIENT);
+	if (sqlite3_step(st) == SQLITE_ROW)
+		title_text((const char *)sqlite3_column_text(st, 0), out, n);
+	sqlite3_finalize(st);
+	return out[0] != '\0';
+}
+
+/* The player's name of `file` gone, as a statement on (folder, file) */
+static bool user_title_drop(db *d, const char *folder, const char *file)
+{
+	sqlite3_stmt *st = NULL;
+	bool ok;
+
+	if (sqlite3_prepare_v2(d->h, "DELETE FROM user_titles WHERE folder=? AND file=?;", -1, &st,
+	                       NULL) != SQLITE_OK)
+		return false;
+	sqlite3_bind_text(st, 1, folder, -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(st, 2, file, -1, SQLITE_TRANSIENT);
+	ok = sqlite3_step(st) == SQLITE_DONE;
+	sqlite3_finalize(st);
+	return ok;
+}
+
+bool db_user_title_set(db *d, const char *folder, const char *file, const char *title)
+{
+	sqlite3_stmt *st = NULL;
+	char t[GAME_TITLE_MAX];
+	bool ok;
+
+	if (!d || !folder || !file) return false;
+	title_text(title, t, sizeof t);
+	if (!t[0]) return user_title_drop(d, folder, file);
+	/* INSERT OR REPLACE, as db_game_set: the device's sqlite predates
+	 * ON CONFLICT */
+	if (sqlite3_prepare_v2(d->h, "INSERT OR REPLACE INTO user_titles(folder,file,title) VALUES(?,?,?);",
+	                       -1, &st, NULL) != SQLITE_OK)
+		return false;
+	sqlite3_bind_text(st, 1, folder, -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(st, 2, file, -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(st, 3, t, -1, SQLITE_TRANSIENT);
+	ok = sqlite3_step(st) == SQLITE_DONE;
+	sqlite3_finalize(st);
+	return ok;
 }
 
 const char *db_titles_find(const db_titles *t, const char *file)
@@ -709,6 +790,8 @@ bool db_game_del(db *d, const char *folder, const char *file)
 	sqlite3_bind_text(st, 2, file, -1, SQLITE_TRANSIENT);
 	ok = sqlite3_step(st) == SQLITE_DONE && sqlite3_changes(d->h) > 0;
 	sqlite3_finalize(st);
+	/* and the player's name for it, which a game of that file later is not */
+	user_title_drop(d, folder, file);
 	return ok;
 }
 
@@ -726,6 +809,9 @@ bool db_game_move(db *d, const char *folder, const char *from, const char *to)
 	sqlite3_bind_text(st, 3, from, -1, SQLITE_TRANSIENT);
 	ok = sqlite3_step(st) == SQLITE_DONE && sqlite3_changes(d->h) > 0;
 	sqlite3_finalize(st);
+	/* A file renamed shows its new name: no player's name, under either */
+	user_title_drop(d, folder, from);
+	user_title_drop(d, folder, to);
 	return ok;
 }
 
