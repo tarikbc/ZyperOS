@@ -5,7 +5,9 @@
 # go, a console that ends in the kernel's own restart says nothing, one that
 # ends some other way (a reset Linux did not ask for) is a report too, the
 # RCU stall panic is set at every start, and only the newest CRASH_KEEP
-# reports stay. The boot partition is the device's, so not here. Runs with
+# reports stay; the launcher's own crash (--launcher RECORD) is a report the
+# same way, once, and touches nothing of the kernel's. The boot partition is
+# the device's, so not here. Runs with
 # the computer's sh; the device's is busybox 1.37's ash.
 set -u
 CRASHLOG=plastron/buildroot/board/px2/rootfs-overlay/usr/sbin/crashlog
@@ -97,5 +99,34 @@ run
 	[ -f "$T/logs/crash-20261104-000000.txt" ] && ok "the oldest went" || bad "the wrong ones went: $(ls "$T/logs")"
 [ -f "$T/logs/zyperos.log" ] && ok "other files left alone" || bad "zyperos.log went"
 
-[ "$fails" = 0 ] && echo "ok: crashlog keeps a panic's and a reset's report, once" && exit 0
+echo "the launcher's own crash (crashlog --launcher, src/crashrec.h)"
+fresh
+printf 'crash: SIGSEGV (code 1) at 0x10 in thread zyperos, pid 812, ZyperOS 1.1.1\ncrash: backtrace, each frame the binary and its offset (addr2line -e with this build):\n/mnt/SDCARD/ZyperOS/zyperos(+0x8a1c4)[0x5585e8a1c4]\r\n/lib/libc.so.6(+0x2773c)[0x7f9a12773c]\n' > "$T/record"
+launcher() {
+	PSTORE=$T/pstore RCU_PANIC=$T/rcu RUN_REPORT=$T/run-report CRASH_DIR=$T/logs CRASH_KEEP=3 \
+		sh "$CRASHLOG" --launcher "$T/record" > "$T/out" 2>&1
+}
+launcher
+[ "$(reports)" = 1 ] && ok "one report" || bad "$(reports) reports for the launcher's crash: $(cat "$T/out")"
+r=$(ls "$T/logs"/crash-*.txt 2> /dev/null | head -n 1)
+grep -q "launcher stopped with SIGSEGV" "$r" 2> /dev/null && ok "it says the launcher stopped, and with which signal" ||
+	bad "the report does not say the launcher's signal"
+grep -q 'at 0x10 in thread zyperos' "$r" 2> /dev/null && grep -q 'zyperos(+0x8a1c4)' "$r" &&
+	ok "with the record: the address, the thread and the backtrace" || bad "the record is not in the report"
+grep -q "$(printf '\r')" "$r" 2> /dev/null && bad "carriage returns left in the report" || ok "plain line ends"
+[ ! -f "$T/record" ] && ok "the record is let go" || bad "the record is still there"
+[ ! -f "$T/run-report" ] && ok "setuplog's report left alone" || bad "a launcher's crash became setuplog's report"
+[ "$(cat "$T/rcu")" = 0 ] && ok "nothing of the kernel's done" || bad "the launcher's crash set the RCU panic"
+launcher
+[ "$(reports)" = 1 ] && ok "said once: no record, nothing more" || bad "a report with no record"
+: > "$T/record"
+launcher
+[ "$(reports)" = 1 ] && ok "an empty record says nothing" || bad "a report of an empty record"
+printf 'Kernel panic\n' > "$T/pstore/dmesg-ramoops-0"
+printf 'crash: SIGBUS (code 2) at 0x7f00 in thread zyperos-after\n' > "$T/record"
+launcher
+[ "$(reports)" = 2 ] && [ -f "$T/pstore/dmesg-ramoops-0" ] &&
+	ok "the kernel's dumps are left for the boot's own run" || bad "the launcher mode took the kernel's dump"
+
+[ "$fails" = 0 ] && echo "ok: crashlog keeps a panic's, a reset's and the launcher's report, once" && exit 0
 exit 1
