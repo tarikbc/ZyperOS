@@ -10,15 +10,19 @@ once they have started on time for half a second (main.c, STEADY_HOLD).
 
 The stub offers a frameskip (STUBCORE_SKIPPABLE), takes a set time in each
 frame (STUBCORE_FRAME_US_AT: fast, then slower than a refresh for a stretch,
-then fast again) and writes which frames Diatom had drawn, a 1 or a 0 each,
-and when each started (STUBCORE_SHOWN_LOG).
+then fast again) and writes which frames Diatom had drawn, a 1 or a 0 each
+(STUBCORE_SHOWN_LOG).
 
-What a slow stretch does is the same on any machine. What the fast frames
-around it do is not: a machine too busy to start them on time (a CI runner
-with other checks at once drew 20 frames a second) has them run late too,
-and each mode then does what it does with a late frame. So the fast frames
-are judged only in a run that started them on time, by the times the stub
-wrote down, and otherwise the check says it could not tell.
+On Diatom's test clock (port/desktop.c, DIATOM_TEST_CLOCK): time moves only
+by the stub's frames and the loop's sleeps, so a fast frame starts on time
+and a slow one late on any machine, however busy, and every frame is judged
+exactly. On the wall clock this check had to let fast frames be left out
+now and then, and judge them only when this machine had started them on
+time by the times the stub wrote down; the merge gate's load of 12 still
+had steady's drawn too few (2026-11-24). Two more runs have the loop's
+sleeps overshoot by up to 6 ms, by a fixed sequence, as a busy machine's do:
+a frame that late is less than half a period behind, no late frame, and
+every one is drawn.
 
 Needs build/desktop (diatom and stubcore.so) and SKIPS without it, as
 check-hotkeys does. SDL's dummy drivers: no window, no sound.
@@ -35,109 +39,106 @@ if not (os.path.exists(BIN) and os.path.exists(STUB)):
     sys.exit(0)
 
 TMP = tempfile.mkdtemp(prefix="diatom-lateskip-")
-fails, unjudged = [], []
+fails = []
 def check(name, ok, got=None):
     print(("  ok   " if ok else "  FAIL ") + name + ("" if ok else f"\n         got  {got}"))
     if not ok: fails.append(name)
 
-# Fast for 120 frames, 25 ms a frame (slower than a refresh) for 120, fast again
+# Fast for 120 frames, 25 ms a frame (slower than a refresh) for 120, fast
+# again. The log has a line for each of the stub's frames, the three of the
+# warmup (main.c) first, so a frame's line is its number in the schedule.
 SLOW_FROM, SLOW_TO = 120, 240
 SCHEDULE = f"0:2000,{SLOW_FROM}:25000,{SLOW_TO}:2000"
+STEADY_HOLD = 30   # main.c
 
-def run(tag, skip, frames=420, limit=90.0, schedule=SCHEDULE, extra=None):
-    """One game with frameskip=`skip`, until the stub has run `frames`
-    frames (or `limit` seconds). The frames it was told to draw, as a string
-    of 1 and 0, when each started (seconds), and Diatom's output. `extra`:
-    more of the stub's settings (a PSP game's, below)."""
+def run(tag, skip, frames=420, schedule=SCHEDULE, extra=None, overshoot=0):
+    """One game with frameskip=`skip` on the test clock, DIATOM_TEST_CLOCK
+    `overshoot` (port/desktop.c: the most a sleep runs over, in us, and the
+    sound device's lateness and slowness), until the stub has run `frames`
+    frames. The frames
+    it was told to draw, as a string of 1 and 0, and Diatom's output.
+    `extra`: more of the stub's settings (a PSP game's, below)."""
     sock, out, log = f"{TMP}/{tag}.sock", f"{TMP}/{tag}.out", f"{TMP}/{tag}.shown"
     env = dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_RENDER_DRIVER="software",
-               SDL_AUDIODRIVER="dummy", STUBCORE_SKIPPABLE="1",
-               STUBCORE_FRAME_US_AT=schedule, STUBCORE_SHOWN_LOG=log, **(extra or {}))
+               SDL_AUDIODRIVER="dummy", DIATOM_TEST_CLOCK=str(overshoot),
+               STUBCORE_SKIPPABLE="1", STUBCORE_FRAME_US_AT=schedule,
+               STUBCORE_SHOWN_LOG=log, **(extra or {}))
     with open(out, "w") as f:
         p = subprocess.Popen([BIN, "--socket", sock, "--save", TMP, "--system", TMP],
                              env=env, stdout=f, stderr=subprocess.STDOUT)
-    for _ in range(100):
-        if os.path.exists(sock): break
+    # The waits are the wall clock's, and only waits: a busy machine makes
+    # them longer, never the frames different
+    end = time.monotonic() + 30
+    while not os.path.exists(sock) and time.monotonic() < end:
         time.sleep(0.05)
     s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     s.connect(sock)
     s.sendall(f"RUN\tcore={STUB}\tframeskip={skip}\n".encode())
-    end = time.monotonic() + limit
+    end = time.monotonic() + 120
     while time.monotonic() < end:
-        time.sleep(0.25)
+        time.sleep(0.1)
         try:
             with open(log) as f: n = sum(1 for _ in f)
         except OSError: n = 0
         if n >= frames: break
     s.sendall(b"STOP\n")
-    time.sleep(1.5)
+    end = time.monotonic() + 60
+    while time.monotonic() < end and "frames in" not in open(out, errors="replace").read():
+        time.sleep(0.1)
     s.sendall(b"QUIT\n")
-    try: p.wait(5)
+    try: p.wait(60)
     except subprocess.TimeoutExpired: p.kill()
     lines = [l.split() for l in open(log)] if os.path.exists(log) else []
-    lines = [l for l in lines if len(l) == 2]
-    shown = "".join(l[0] for l in lines)
-    starts = [int(l[1]) / 1e6 for l in lines]
-    return shown, starts, open(out, errors="replace").read()
+    shown = "".join(l[0] for l in lines if len(l) == 2)
+    return shown, open(out, errors="replace").read()
 
-# The warmup frames run before the game's own (main.c), so frame numbers in
-# the log are a few past the stub's; the stretches are judged well inside.
-late, late_t, late_out = run("late", "late")
-steady, steady_t, steady_out = run("steady", "steady")
+def every(x):
+    """Every frame drawn"""
+    return len(x) > 20 and set(x) == {"1"}
+
+def cycle(x, unit):
+    """`x` is `unit` over and over, from wherever in it x starts"""
+    return len(x) > 50 and x in unit * (len(x) // len(unit) + 2)
+
+late, late_out = run("late", "late")
+steady, steady_out = run("steady", "steady")
+check("both ran past the slow stretch", len(late) > SLOW_TO + 120 and len(steady) > SLOW_TO + 120,
+      (len(late), len(steady)))
+
+# Fast, every frame starts on time: none left out
+check("late, fast, before the stretch: every frame drawn", every(late[10:SLOW_FROM]), late[10:SLOW_FROM])
+check("steady, fast, before the stretch: every frame drawn", every(steady[10:SLOW_FROM]), steady[10:SLOW_FROM])
+# Slow, every frame starts late: late leaves out two and draws the third,
+# steady draws every second
 slow_late = late[SLOW_FROM + 10:SLOW_TO - 5]
 slow_steady = steady[SLOW_FROM + 10:SLOW_TO - 5]
-check("both ran past the slow stretch", len(late) > SLOW_TO + 60 and len(steady) > SLOW_TO + 60,
-      (len(late), len(steady)))
-# The Mac is no real-time system: now and then a fast frame starts late, and
-# each mode does what it does with a late frame (late leaves it out, steady
-# draws every second one for half a second). So fast stretches are judged as
-# mostly drawn, and steady by its coming back to every frame drawn.
-def drawn(x):
-    return x.count("1") / len(x) if x else 0.0
-
-# Whether this run started its frames from a to b on time, by the rule
-# Diatom goes by (main.c): a frame is late when it starts more than half a
-# period behind the schedule. The schedule is rebuilt from the times the
-# stub wrote down: a gap longer than a period puts the next frame behind by
-# the difference, a shorter one takes it back (Diatom never runs ahead), and
-# a stall of over four frames is dropped. One late frame in twenty is a busy
-# moment; more, and this machine was too busy to tell what either mode does
-# with frames that come on time.
-PERIOD = 1 / 59.7275   # the stub's frame rate
-
-def on_time(t, a, b, span=1):
-    """`span`: periods each frame stands for (a PSP game's two, below)"""
-    behind, late, n = 0.0, 0, 0
-    for i in range(1, min(b, len(t))):
-        behind = max(0.0, behind + t[i] - t[i - 1] - span * PERIOD)
-        if behind > 4 * PERIOD: behind = 0.0
-        if i >= a:
-            n += 1
-            late += behind > PERIOD / 2
-    return n > 20 and late <= n / 20, f"{late} of {n} started late"
-
-def fast_check(name, t, a, b, ok, got, span=1):
-    timely, why = on_time(t, a, b, span)
-    if timely: check(name, ok, got)
-    else:
-        print(f"  --   {name}: not judged, this machine started those frames late ({why})")
-        unjudged.append(name)
-    return timely
-
-fast_check("late, fast, before the stretch: nearly every frame is drawn",
-           late_t, 10, SLOW_FROM, drawn(late[10:SLOW_FROM]) >= 0.9, late[10:SLOW_FROM])
-fast_check("steady, fast, before the stretch: nearly every frame is drawn",
-           steady_t, 10, SLOW_FROM, drawn(steady[10:SLOW_FROM]) >= 0.7, steady[10:SLOW_FROM])
-check("late, slow: frames left out, never three in a row", "0" in slow_late and "000" not in slow_late,
-      slow_late)
-check("late, slow: two in a row left out, so frames come unevenly", "00" in slow_late, slow_late)
-check("steady, slow: exactly every second frame drawn",
-      "00" not in slow_steady and "11" not in slow_steady and len(slow_steady) > 50, slow_steady)
-tail = steady[SLOW_TO:]
-fast_check("steady, fast again: back to every frame drawn, half a second of them in a row",
-           steady_t, SLOW_TO + 35, len(steady_t), "1" * 30 in tail, steady[SLOW_TO - 5:])
+check("late, slow: two left out and one drawn, over and over", cycle(slow_late, "001"), slow_late)
+check("late, slow: it starts within the stretch's first frames", "0" in late[SLOW_FROM:SLOW_FROM + 4],
+      late[SLOW_FROM - 2:SLOW_FROM + 6])
+check("steady, slow: exactly every second frame drawn", cycle(slow_steady, "01"), slow_steady)
+# Fast again: the debt left from the stretch (cut to the sound queue's
+# depth, pace.h) is repaid in a frame or two, and late draws every frame
+check("late, fast again: every frame drawn, a few frames after the stretch",
+      every(late[SLOW_TO + 4:]), late[SLOW_TO - 5:])
+# Steady goes on drawing every second frame for STEADY_HOLD frames from the
+# last that started late (the stretch's last, or one of the two after it
+# that repay the debt), then every frame: its last left out is the hold's
+# last frame or the one before
+back = len(steady.rstrip("1"))   # one past the last left out
+check("steady, fast again: every second frame for half a second after the stretch, then every frame",
+      SLOW_TO + STEADY_HOLD - 1 <= back <= SLOW_TO + 2 + STEADY_HOLD and
+      cycle(steady[SLOW_FROM + 10:back], "01") and every(steady[back:]),
+      (back, steady[SLOW_TO - 5:back + 5]))
 check("the summary names the mode", "(frameskip=steady)" in steady_out and "(frameskip=late)" in late_out,
       [l for l in (late_out + steady_out).splitlines() if "left undrawn" in l])
+
+# A sleep that overshoots, as a busy machine's does: up to 6 ms, under half a
+# period (8.4 ms), so no frame of these is late, and none is left out
+FAST = "0:2000"
+late_o, _ = run("late-over", "late", frames=300, schedule=FAST, overshoot=6000)
+steady_o, _ = run("steady-over", "steady", frames=300, schedule=FAST, overshoot=6000)
+check("late, sleeps up to 6 ms over: every frame drawn", every(late_o[10:300]), late_o[10:300])
+check("steady, sleeps up to 6 ms over: every frame drawn", every(steady_o[10:300]), steady_o[10:300])
 
 # A PSP game's, frameskip|PSP|late (config/systems.cfg): PPSSPP's retro_run
 # runs until the game shows a new picture, so a game that draws at 30 brings
@@ -147,22 +148,35 @@ check("the summary names the mode", "(frameskip=steady)" in steady_out and "(fra
 # (more than the 33.5 ms its sound lasts: behind), then 2 ms again. On time,
 # a call of two periods is no late frame: every one drawn, as the game draws
 # today. Behind, frames left out, two in a row at most, as a DS game's.
+#
+# Such a core's frame is late by its work, not by the schedule (main.c,
+# sound_debt_us), so a turn the loop itself started late is no late frame:
+# here the sleeps run up to 15 ms over, past half a period, which a DS
+# game's rule would count late, and the sound device is as SDL's dummy one
+# was measured on a Mac (2026-11-24): its periods 22.5 ms apart where 21.3
+# are due, so 5% slow, which rate control's 0.5% cannot follow and pushes
+# wait for room (audio.c, HOLD), and each period up to 10 ms late. Judged by
+# the schedule instead, 40% of the on-time frames were left out of this
+# run.
 PSP_FROM, PSP_TO = 80, 160
-psp, psp_t, psp_out = run("psp", "late", frames=280,
-                          schedule=f"0:2000,{PSP_FROM}:45000,{PSP_TO}:2000",
-                          extra={"STUBCORE_NAME": "PPSSPP", "STUBCORE_SPAN": "2"})
+psp, psp_out = run("psp", "late", frames=280,
+                   schedule=f"0:2000,{PSP_FROM}:45000,{PSP_TO}:2000",
+                   extra={"STUBCORE_NAME": "PPSSPP", "STUBCORE_SPAN": "2"},
+                   overshoot="15000:10000:50000")
 slow_psp = psp[PSP_FROM + 10:PSP_TO - 5]
 check("PSP: ran past the slow stretch", len(psp) > PSP_TO + 60, len(psp))
+check("PSP: paced by its sound", "paced by the sound it made" in psp_out,
+      [l for l in psp_out.splitlines() if "paced" in l])
+held = re.search(r"audio waited [\d.]+ s for room, over (\d+) push", psp_out)
+check("PSP: pushes waited for room on the slow device", held and int(held.group(1)) > 20,
+      held and held.group(0))
 # On time is judged by the work, not the schedule (main.c, sound_debt_us):
 # a sound-paced turn whose push waited for room starts the next one late by
-# the schedule while the game is ahead (46% of these frames, before), so the
-# schedule's gaps say nothing here. A frame left out on time would be the
-# rule failing; one in twenty is allowed for a machine that stalled the stub.
-check("PSP, on time (two periods a call): every frame drawn",
-      drawn(psp[10:PSP_FROM]) >= 0.95, psp[10:PSP_FROM])
-check("PSP, behind: frames left out, never three in a row", "0" in slow_psp and "000" not in slow_psp,
-      slow_psp)
-check("PSP, on time again: every frame drawn", drawn(psp[PSP_TO + 30:]) >= 0.95, psp[PSP_TO + 30:])
+# the schedule while the game is ahead
+check("PSP, on time (two periods a call): every frame drawn", every(psp[10:PSP_FROM]), psp[10:PSP_FROM])
+check("PSP, behind: two left out and one drawn, over and over", cycle(slow_psp, "001"), slow_psp)
+check("PSP, on time again: every frame drawn, a few frames after the stretch",
+      every(psp[PSP_TO + 4:]), psp[PSP_TO - 5:])
 check("PSP: the summary names the mode", "(frameskip=late)" in psp_out,
       [l for l in psp_out.splitlines() if "left undrawn" in l])
 
@@ -170,9 +184,5 @@ shutil.rmtree(TMP, ignore_errors=True)
 if fails:
     print(f"{len(fails)} failed")
     sys.exit(1)
-if unjudged:
-    print(f"ok: frameskip=late leaves late frames out unevenly and frameskip=steady every second one; "
-          f"{len(unjudged)} check(s) of frames on time not judged, this machine started them late")
-else:
-    print("ok: frameskip=late leaves late frames out unevenly, frameskip=steady every second one, "
-          "and both draw every frame when on time")
+print("ok: frameskip=late leaves late frames out two in three, frameskip=steady every second one "
+      "and for half a second after, and both draw every frame on time, on the test clock")

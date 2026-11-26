@@ -221,6 +221,32 @@ int fake_close(int fd)
 	return 0;
 }
 
+/* ---- the port's thread, idle or not (test/rumble_fake.h) ------------------ */
+
+/* Set while the thread waits for a wish with none pending: from its wait's
+ * start, under the port's lock, to a signal, made under the same lock, or
+ * the wait's end */
+static bool p_idle;
+
+int fake_cond_wait(pthread_cond_t *cv, pthread_mutex_t *mx)
+{
+	int r;
+
+	__atomic_store_n(&p_idle, true, __ATOMIC_SEQ_CST);
+	r = pthread_cond_wait(cv, mx);
+	__atomic_store_n(&p_idle, false, __ATOMIC_SEQ_CST);
+	return r;
+}
+
+int fake_cond_signal(pthread_cond_t *cv)
+{
+	__atomic_store_n(&p_idle, false, __ATOMIC_SEQ_CST);
+	return pthread_cond_signal(cv);
+}
+
+/* test/rumble_fake.h's CLOSE_WAIT_MS, the close's wait in this build */
+#define TEST_CLOSE_WAIT_MS 2000
+
 /* ---- the port's log, which rumble_evdev.c writes to ----------------------- */
 
 static int g_warns;
@@ -264,10 +290,24 @@ static uint16_t g_core[2];      /* [RETRO_RUMBLE_STRONG = 0], [WEAK = 1] */
 
 enum { STRONG = 0, WEAK = 1 };
 
+/* Each call's time, in ms, while g_took is set */
+static double *g_took;
+static int     g_took_n;
+
 static void core_says(int effect, uint16_t v)
 {
+	double t0 = now_ms();
+
 	g_core[effect] = v;
 	evdev_rumble_set(g_core[STRONG], g_core[WEAK]);
+	if (g_took) g_took[g_took_n++] = now_ms() - t0;
+}
+
+static int by_value(const void *a, const void *b)
+{
+	double x = *(const double *)a, y = *(const double *)b;
+
+	return (x > y) - (x < y);
 }
 
 /* Has the device been told what the game asks for now? Stopped, or the
@@ -284,26 +324,24 @@ static bool told(void)
 	return ok;
 }
 
-/* Until the device has been told (or has had no call for 100 ms: a port that
- * tells it something else never gets there), with no jiffy in between, so the
- * timer never helps. */
+/* Until the device has been told, and the port's thread waits with nothing
+ * left to say, with no jiffy in between, so the timer never helps; at most
+ * 5 s, for a port that tells it something else and so never gets there.
+ *
+ * It gave up after 100 ms with no call to the device until 2026-11-24,
+ * which a writer thread a busy machine had not run for 100 ms also met: a
+ * pass on time that read as the device told something else. And told()
+ * alone can pass with an older wish still on its way: the game back at the
+ * state the device is in while the thread is telling it one between, which
+ * lands after the check had read the motor. The thread idle with nothing
+ * pending (fake_cond_wait) says nothing is on its way. Every settle in a
+ * passing run ends there, so the 5 s cost a failing run alone. */
 static void settle(void)
 {
-	double end = now_ms() + 2000, quiet_since = now_ms();
-	unsigned long seen;
+	double end = now_ms() + 5000;
 
-	pthread_mutex_lock(&k_mx);
-	seen = k_calls;
-	pthread_mutex_unlock(&k_mx);
-	while (!told() && now_ms() < end && now_ms() - quiet_since < 100) {
-		unsigned long c;
-
+	while (!(told() && __atomic_load_n(&p_idle, __ATOMIC_SEQ_CST)) && now_ms() < end)
 		nap_ms(1);
-		pthread_mutex_lock(&k_mx);
-		c = k_calls;
-		pthread_mutex_unlock(&k_mx);
-		if (c != seen) { seen = c; quiet_since = now_ms(); }
-	}
 }
 
 
@@ -435,7 +473,7 @@ int main(void)
 	settle();
 	{
 		int warns = g_warns;
-		double end = now_ms() + 1000;
+		double end = now_ms() + 5000;     /* until the thread has met it */
 
 		pthread_mutex_lock(&k_mx);
 		k_refuse = true;
@@ -451,20 +489,28 @@ int main(void)
 
 	/* A game's call never waits on the device: with the device stuck in a
 	 * call (the gate), a hundred calls return at once, and the motor gets
-	 * the last of them once the device answers. */
+	 * the last of them once the device answers. A call that waited for good
+	 * would hang here, and the alarm is the failure. One that waited a while
+	 * makes every call that long, so the middle call's time is the judge: a
+	 * busy machine that takes the CPU away from this thread stretches a call
+	 * or two, never half of them. Until 2026-11-24 the judge was the 204
+	 * calls' sum, under 50 ms, which one such stretch could pass. */
 	check("opens again", open_motor(), 0);
 	n64_pak(true, false);
 	settle();
 	k_gate(true);
 	{
-		double t0 = now_ms(), took;
+		double took[204];
 
+		g_took = took;
+		g_took_n = 0;
 		n64_pak(false, false);
 		for (i = 0; i < 100; i++) ps1_pad((unsigned)(i * 7) % 256, i % 2, false);
 		ps1_pad(0x80, false, false);
-		took = now_ms() - t0;
-		check("204 calls on a stuck device return at once (under 50 ms)",
-		      took < 50, (long)took);
+		g_took = NULL;
+		qsort(took, (size_t)g_took_n, sizeof took[0], by_value);
+		check("204 calls on a stuck device return at once, each (the middle one in under 1 ms, us)",
+		      g_took_n == 204 && took[102] < 1.0, (long)(took[g_took_n / 2] * 1000));
 	}
 	k_gate(false);
 	settle();
@@ -485,11 +531,18 @@ int main(void)
 
 		evdev_rumble_close();
 		took = now_ms() - t0;
-		check("a close on a stuck device returns (under 2 s)", took < 2000, (long)took);
+		/* It waits its CLOSE_WAIT_MS for the thread, then gives up: never
+		 * sooner, and on any machine well before the alarm */
+		check("a close on a stuck device returns, after its wait (ms)",
+		      took >= TEST_CLOSE_WAIT_MS - 1 && took < TEST_CLOSE_WAIT_MS + 5000, (long)took);
 		check("and says the device did not answer", g_warns == warns + 1, g_warns - warns);
 	}
 	k_gate(false);
-	nap_ms(50);
+	{
+		double end = now_ms() + 5000;     /* until the thread has met it */
+
+		while (k_level() != 0 && now_ms() < end) nap_ms(1);
+	}
 	check("the stop it asked for reaches the motor once the device answers",
 	      k_level() == 0, k_level());
 	check("a second open after that is refused: the old thread had the device",

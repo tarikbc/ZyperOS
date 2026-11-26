@@ -37,40 +37,89 @@ for ext in (".in.raw", ".out.raw"):
 p = subprocess.Popen([f"{ROOT}/build/desktop/diatom", "--socket", SOCK,
                       "--tap-audio", TAP], env=ENV,
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-for _ in range(100):
+for _ in range(600):
     if os.path.exists(SOCK): break
     time.sleep(0.05)
 
 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM); s.connect(SOCK)
 buf = b""
-def lines(timeout=3.0):
+def read_line(until):
+    """The next line Diatom says, or None once `until` (this script's clock)
+    has passed. The fence's answers (drain) are not lines of the test's."""
     global buf
-    s.settimeout(timeout)
-    end = time.time() + timeout
-    while time.time() < end:
-        if b"\n" in buf:
+    while True:
+        while b"\n" in buf:
             l, buf = buf.split(b"\n", 1)
-            yield l.decode().strip(); end = time.time() + 0.25; continue
-        # Only until `end`: the quiet 0.25 s after a line is the wait, not the
-        # whole timeout again (which made a full run take three minutes)
-        s.settimeout(max(0.01, end - time.time()))
+            l = l.decode().strip()
+            if l and not l.startswith(FENCE + "\t"): return l
+            if l.startswith(FENCE + "\t"): return ""
+        left = until - time.time()
+        if left <= 0: return None
+        s.settimeout(min(left, 0.5))
         try: d = s.recv(65536)
-        except socket.timeout: return
-        if not d: return
+        except socket.timeout: continue
+        if not d: return None
         buf += d
 def send(m):
     s.sendall((m + "\n").encode()); time.sleep(0.1)
-def drain(t=1.0): return [l for l in lines(t) if l]
-def drain_until(token, t=5.0):
-    """Lines until one holds `token` or `t` runs out, then what follows it
-    within the usual quiet: for an answer that comes after a pause longer
-    than drain's, as a core loading and running to a frame does on a slow
-    machine (a 3-core CI runner, 2026-11-07)"""
+# What ends a drain: a PLAYER2 sent after the rest, which this test never
+# asks otherwise. Diatom answers its messages in the order they came, one a
+# turn while a game runs, and says what a message makes it say as it handles
+# it, so every line in answer to what was sent before is out before the
+# fence's answer. Until 2026-11-24 a drain ended at a quarter of a second
+# with nothing said, which a busy machine's Diatom could take between two
+# lines of one answer, or before the first: an exact list a line short.
+FENCE = "PLAYER2"
+def drain(t=None):
+    """Every line said in answer to what was sent before, up to the fence's
+    answer, which is not among them; at most 30 s. `t` is the old quiet's
+    length, and no longer anything: kept so each call reads as it did."""
+    global buf
+    s.sendall((FENCE + "\n").encode())
+    got, end = [], time.time() + 30
+    while True:
+        while b"\n" in buf:
+            l, buf = buf.split(b"\n", 1)
+            l = l.decode().strip()
+            if l.startswith(FENCE + "\t"): return got
+            if l: got.append(l)
+        left = end - time.time()
+        if left <= 0: return got
+        s.settimeout(min(left, 0.5))
+        try: d = s.recv(65536)
+        except socket.timeout: continue
+        if not d: return got
+        buf += d
+def listen(t):
+    """Every line said for `t` seconds of this script's time, for a check
+    that something is not said: a busy machine makes those seconds hold
+    less of Diatom's, never a line that is not there"""
     got, end = [], time.time() + t
-    while time.time() < end:
-        got += drain(max(0.05, min(1.0, end - time.time())))
-        if any(token in l for l in got):
-            return got + drain(0.3)
+    while (l := read_line(end)) is not None:
+        if l: got.append(l)
+    return got
+def hold_for_sound(ms):
+    """Until the tap holds `ms` more of the game's sound than now, however
+    slowly this machine runs the core (a wait of 0.6 s was 200 ms of it at
+    a third of the clock, and a busy CI runner ran the stub at 20 fps), and
+    at least 0.6 s. The tap is written through a buffer, so what it holds
+    can be up to a buffer behind what was made: that more is waited for
+    too. At most a minute."""
+    path, frame = TAP + ".out.raw", 4                   # stereo S16
+    size = lambda: os.path.getsize(path) if os.path.exists(path) else 0
+    want = size() + ms * 48 * frame + 65536
+    end, least = time.time() + 60, time.time() + 0.6
+    while time.time() < end and (size() < want or time.time() < least):
+        time.sleep(0.05)
+def drain_until(token, t=30.0):
+    """Lines until one holds `token`, at most `t` s, then the rest of what
+    was asked (drain): for a line that comes when Diatom gets there, not in
+    answer to a message, as an achievement unlocked at a frame, a state
+    written on a thread of its own or IDLE after its time"""
+    got, end = [], time.time() + t
+    while (l := read_line(end)) is not None:
+        if l: got.append(l)
+        if token in l: return got + drain()
     return got
 
 fails = []
@@ -455,10 +504,10 @@ check_that("ms=0 clears rather than failing", "OVERLAID" in got, got)
 # SETIDLE: Diatom reports that nobody is pressing anything, because the
 # launcher cannot see input during a game. It reports; it does not act.
 send("SETIDLE\tms=300")
-got = drain(2.0)          # send() already sleeps; do not drain before checking
+got = drain_until("IDLE")   # when its 300 ms are up, not in answer
 check_that("idleness is reported after the timeout", "IDLE" in got, got)
 send("SETIDLE\tms=0")
-got = drain(1.5)
+got = drain() + listen(1.5)
 check_that("ms=0 turns it off", "IDLE" not in got, got)
 
 # The game's verbs: a state written and read, a reset, and the core's options.
@@ -466,15 +515,17 @@ check_that("ms=0 turns it off", "IDLE" not in got, got)
 # src/main.c), so both are asked here, line for line.
 def game_verbs(where):
     sv, nope = f"{tmp}/verbs.state", f"{tmp}/nope.state"
+    # A running game's state is written and read on a thread of its own,
+    # and said by the frame loop when that is done: waited for by its line
     send(f"SAVE\tpath={sv}")
-    check(f"{where}: SAVE writes a state", drain(), [f"SAVED\tpath={sv}"])
+    check(f"{where}: SAVE writes a state", drain_until("SAVED\t"), [f"SAVED\tpath={sv}"])
     send(f"SAVE\tpath={ovl}/x.state")
-    check(f"{where}: a state that cannot be written is refused", drain(),
+    check(f"{where}: a state that cannot be written is refused", drain_until("ERROR\t"),
           [f"ERROR\tcode=save_failed\tmsg={ovl}/x.state"])
     send(f"LOAD\tpath={sv}")
-    check(f"{where}: LOAD reads it back", drain(), [f"LOADED\tpath={sv}"])
+    check(f"{where}: LOAD reads it back", drain_until("LOADED\t"), [f"LOADED\tpath={sv}"])
     send(f"LOAD\tpath={nope}")
-    check(f"{where}: a state that is not there is refused", drain(),
+    check(f"{where}: a state that is not there is refused", drain_until("ERROR\t"),
           [f"ERROR\tcode=state_rejected\tmsg={nope}"])
     send("RESET"); check(f"{where}: RESET", drain(), ["RESETDONE"])
     send("OPTIONS")
@@ -530,10 +581,9 @@ check_that("QUIET answers before anyone has set it",
 send("SETQUIET\ton=1"); got = drain(1.0)
 check_that("SETQUIET is acknowledged with the new state",
            any(l == "QUIET\ton=1" for l in got), got)
-# Held long enough for the tap to record 200 ms of it (the check at the end)
-# however slowly this machine runs the core: the waits around it end as soon
-# as the answers stop, which on a busy 3-core CI runner was under 200 ms
-time.sleep(0.6)
+# Held long enough for the tap to record 200 ms of it (the check at the end),
+# twice that, however slowly this machine runs the core
+hold_for_sound(400)
 send("SETQUIET\ton=0"); got = drain(1.0)
 check_that("and released", any(l == "QUIET\ton=0" for l in got), got)
 
@@ -560,8 +610,8 @@ send("SETCHANNELS\tmode=left"); got = drain(1.0)
 check_that("SETCHANNELS left is acknowledged",
            any(l == "CHANNELS\tmode=left" for l in got), got)
 # Held long enough for the tap to record the 300 ms of a silent right channel
-# the check at the end asks for, however slowly the core runs here
-time.sleep(0.6)
+# the check at the end asks for, twice that, however slowly the core runs here
+hold_for_sound(600)
 send("SETCHANNELS\tmode=stereo"); got = drain(1.0)
 check_that("and stereo again", any(l == "CHANNELS\tmode=stereo" for l in got), got)
 
@@ -569,8 +619,10 @@ send("STOP"); got = drain(3.0)
 check_that("the game still ends normally after all that",
            any(l.startswith("EXIT") for l in got), got)
 
-send("QUIT"); time.sleep(0.4)
-s.close(); p.terminate(); p.wait(timeout=5)
+send("QUIT")
+try: p.wait(timeout=30)
+except subprocess.TimeoutExpired: p.terminate(); p.wait(timeout=30)
+s.close()
 
 # The quiet, as heard. The stub core plays an unbroken 440 Hz tone, so the one
 # long run of exact zeros in the tap is the quiet - sessions start with 43 ms

@@ -40,6 +40,12 @@
 
 static int failures;
 
+/* How long a wait below waits for what it waits for, in ms: a reply on a client socket, a
+ * part's size, a part gone. Each returns as soon as that holds, so this is only how long a
+ * broken server keeps the check: 2 and 3 s were too few once make check ran four at a time on
+ * a loaded Mac (2026-11-24). On the monotonic clock (src/monoclock.h). */
+#define WAIT_MS 30000
+
 /* The art match route's handler, standing in for the launcher's: how much of
  * the body it was handed. */
 static size_t g_art_seen;
@@ -160,7 +166,7 @@ static int req(const char *method, const char *path, const char *cookie,
                const void *body, size_t blen, char *outbody, size_t outn)
 {
 	struct sockaddr_in a;
-	struct timeval tv = { 3, 0 };
+	struct timeval tv = { WAIT_MS / 1000, 0 };
 	char head[1024], resp[65536];
 	size_t got = 0, sent = 0;
 	int fd, n, status = 0;
@@ -278,7 +284,7 @@ static int post(const char *path, const char *cookie)
 static long raw(const char *request, char *resp, size_t n)
 {
 	struct sockaddr_in a;
-	struct timeval tv = { 3, 0 };
+	struct timeval tv = { WAIT_MS / 1000, 0 };
 	size_t got = 0;
 	int fd;
 
@@ -327,7 +333,7 @@ static int host_req(const char *method, const char *host, const char *path,
                     size_t outn)
 {
 	struct sockaddr_in a;
-	struct timeval tv = { 3, 0 };
+	struct timeval tv = { WAIT_MS / 1000, 0 };
 	char head[512], resp[8192];
 	size_t got = 0;
 	int fd, n, status = 0;
@@ -456,7 +462,7 @@ static unsigned fake_clock(void) { return now_ms32() + g_clock_add; }
 static int dial(void)
 {
 	struct sockaddr_in a;
-	struct timeval tv = { 3, 0 };
+	struct timeval tv = { WAIT_MS / 1000, 0 };
 	int fd = socket(AF_INET, SOCK_STREAM, 0);
 
 	memset(&a, 0, sizeof a);
@@ -518,24 +524,24 @@ static long long upload_have(const char *key, bool *busy, bool *done)
  * as `busy` says: the server's thread takes a moment to see a hang-up */
 static bool wait_have(const char *key, long long want, bool busy)
 {
-	int i;
+	const unsigned until = now_ms32() + WAIT_MS;
 
-	for (i = 0; i < 300; i++) {
+	do {
 		bool b = !busy;
 		long long have = upload_have(key, &b, NULL);
 
 		if (have == want && b == busy) return true;
 		usleep(10000);
-	}
+	} while ((int)(until - now_ms32()) > 0);
 	return false;
 }
 
-/* Until `path` is gone, or two seconds */
+/* Until `path` is gone */
 static bool wait_gone(const char *path)
 {
-	int i;
+	const unsigned until = now_ms32() + WAIT_MS;
 
-	for (i = 0; i < 200 && exists(path); i++) usleep(10000);
+	while (exists(path) && (int)(until - now_ms32()) > 0) usleep(10000);
 	return !exists(path);
 }
 

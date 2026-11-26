@@ -60,13 +60,15 @@ class Diatom:
                                            SDL_AUDIODRIVER="dummy", STUBCORE_NAME=core,
                                            STUBCORE_VERSION=version, STUBCORE_INPUT_LOG=self.log_path),
                                   stdout=self.err, stderr=self.err)
-        for _ in range(100):
-            if os.path.exists(self.sock): break
+        # The waits are the wall clock's, and only waits: each ends as soon
+        # as what it waits for is there (2 to 4 s until 2026-11-24)
+        end = time.time() + 30
+        while not os.path.exists(self.sock) and time.time() < end:
             time.sleep(0.05)
         self.s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.s.connect(self.sock)
         self.buf = b""
-        self.drain(2.0, "READY")
+        self.drain(30.0, "READY")
 
     def drain(self, timeout, until):
         end = time.time() + timeout
@@ -96,21 +98,23 @@ class Diatom:
         with open(self.err_path, errors="replace") as f: return f.read()
 
     def resume(self, path):
-        """The game resumed from `path` for a moment: the first frame it ran"""
+        """The game resumed from `path` for a moment, 30 of its frames: the
+        first frame it ran. Half a second of this script's time until
+        2026-11-24, in which a busy machine could run none."""
         before = len(self.frames())
         self.send(f"RUN\tcore={STUB}\trom={ROM}\tresume={path}")
-        ok = self.drain(4.0, "RUNNING") is not None
-        time.sleep(0.5)
+        ok = self.drain(30.0, "RUNNING") is not None
+        end = time.time() + 30
+        while ok and len(self.frames()) - before < 30 and time.time() < end:
+            time.sleep(0.02)
         f = self.frames()[before:]
         self.send("STOP")
-        self.drain(3.0, "EXIT")
+        self.drain(30.0, "EXIT")
         return f[0] if ok and f else None
 
     def close(self):
         self.send("QUIT")
-        time.sleep(0.3)
-        self.p.terminate()
-        try: self.p.wait(3)
+        try: self.p.wait(30)
         except subprocess.TimeoutExpired: self.p.kill()
         self.err.close()
 

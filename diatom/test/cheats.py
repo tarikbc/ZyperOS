@@ -54,8 +54,10 @@ class Diatom:
             env=dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_RENDER_DRIVER="software",
                      SDL_AUDIODRIVER="dummy", STUBCORE_CHEAT_LOG=self.clog),
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        for _ in range(100):
-            if os.path.exists(self.sock): break
+        # The waits are the wall clock's, and only waits: each ends as soon
+        # as what it waits for is there
+        end = time.time() + 30
+        while not os.path.exists(self.sock) and time.time() < end:
             time.sleep(0.05)
         self.s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.s.connect(self.sock)
@@ -80,7 +82,7 @@ class Diatom:
                 l, self.buf = self.buf.split(b"\n", 1)
                 self.got.append(l.decode().strip())
 
-    def wait_for(self, what, limit=20.0):
+    def wait_for(self, what, limit=30.0):
         """The next line that starts with `what`, past the last one found"""
         end = time.time() + limit
         while time.time() < end:
@@ -101,13 +103,24 @@ class Diatom:
         new, self.seen = lines[self.seen:], len(lines)
         return new
 
-    def ask(self, verb, what, limit=5.0):
+    def logged(self, n, limit=30.0):
+        """Until the core's cheat log holds `n` calls past the last look"""
+        end = time.time() + limit
+        while time.time() < end:
+            try:
+                with open(self.clog) as f:
+                    if sum(1 for l in f if l.strip()) >= self.seen + n: return
+            except OSError:
+                pass
+            self.pump(0.05)
+
+    def ask(self, verb, what, limit=30.0):
         self.send(verb)
         return self.wait_for(what, limit)
 
     def end(self):
         self.send("QUIT")
-        try: self.p.wait(10)
+        try: self.p.wait(30)
         except subprocess.TimeoutExpired: self.p.kill(); self.p.wait()
 
 # An achievement that fires on frame 10 (as test/stateplane.py's), so a frame
@@ -122,7 +135,7 @@ d = Diatom()
 # ---- at the start, and nothing while frames run ---------------------------
 d.send(f"RUN\tcore={STUB}\tconsole=0\tcheevos={setf}\tcheats={two}")
 check("the game starts", d.wait_for("RUNNING") is not None, d.got)
-d.pump(0.5)
+d.logged(3)     # handed just after RUNNING (main.c, diatom_cheats_begin)
 check("RUN cheats= hands the core each code once it is loaded",
       d.calls() == ["reset", "set 0 1 AAAA-BBBB", "set 1 1 7E0DBE:63+7E0019:02"],
       open(d.clog).read() if os.path.exists(d.clog) else "no log")
@@ -172,7 +185,7 @@ d.send("STOP"); d.wait_for("EXIT")
 d.send(f"RUN\tcore={STUB}\tconsole=0\tcheevos={setf}")
 d.wait_for("RUNNING")
 check("the next game with no cheats has its achievements back",
-      d.wait_for("CHEEVO\tid=5001", 5.0) is not None, d.got[-5:])
+      d.wait_for("CHEEVO\tid=5001") is not None, d.got[-5:])
 line = d.ask("CHEEVOS", "CHEEVOS\t") or ""
 check("and CHEEVOS does not say paused", "paused=" not in line, line)
 check("its core is reset once, so the last game's codes never reach it",

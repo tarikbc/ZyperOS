@@ -257,23 +257,28 @@ int main(int argc, char **argv)
 		       "gain_back_to_0_the_sound_as_it_came_after_the_move", rms_db(fl + RATE / 2, RATE / 2));
 	}
 
-	/* What it costs: Voice over a second, a period at a time */
+	/* What it costs: Voice over a second, a period at a time. Timed as this thread's own CPU
+	   time, the least of 20 passes: wall time counted every moment another program held the
+	   core, and with make check four at a time on a loaded Mac the mean of 20 passes on the
+	   wall clock went past 2% once though the plugin was the same (2026-11-24). */
 	{
 		const int reps = 20;
 		struct timespec t0, t1;
-		double s;
+		double s = 1e9, one;
 		int k;
 
 		put_bands(6, voice);
-		clock_gettime(CLOCK_MONOTONIC, &t0);
-		for (k = 0; k < reps; k++)
+		for (k = 0; k < reps; k++) {
+			clock_gettime(CLOCK_THREAD_CPUTIME_ID, &t0);
 			for (at = 0; at < RATE; at += PERIOD) {
 				d->connect_port(h, 0, il + at); d->connect_port(h, 1, ir + at);
 				d->connect_port(h, 2, ol + at); d->connect_port(h, 3, or_ + at);
 				d->run(h, (unsigned long)(RATE - at < PERIOD ? RATE - at : PERIOD));
 			}
-		clock_gettime(CLOCK_MONOTONIC, &t1);
-		s = ((double)(t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec) / 1e9) / reps;
+			clock_gettime(CLOCK_THREAD_CPUTIME_ID, &t1);
+			one = (double)(t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec) / 1e9;
+			if (one < s) s = one;
+		}
 		printf("  cost: %.3f ms for a second of 48 kHz stereo in %d-frame periods: %.3f%% of one core here\n",
 		       s * 1000.0, PERIOD, s * 100.0);
 		report(s < 0.02, "costs_under_2_percent_of_a_core_here", s * 100.0);
