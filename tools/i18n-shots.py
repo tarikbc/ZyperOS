@@ -1361,8 +1361,8 @@ EXTRA.setdefault("theme-folders-list-teal", ("demo", "PS1", ["--look-page", "the
 # Color's Handheld Color list, each of its six under the cursor
 _BORDER_SET = {"display.GB": "integer", "display_source.GB": "160x144", "display_shape.GB": "1.11111"}
 _BORDER_PIC = ["Borders/Game Boy/Waves.png"]
-# Border's lists say only its own kinds (--expect-en): Blur where the device
-# draws it (not the Brick), the rest on both
+# Border's lists say only its own kinds (--expect-en), in their order and each
+# once: Blur where the device draws it, the rest on both
 _BORDER_EXPECT = "Off|Blur?|Handheld|Handheld, Whole|Your Own"
 _BORDER_WORDS = (("off", "Off"), ("blur", "Blur"), ("handheld", "Handheld"), ("whole", "Handheld, Whole"),
                  ("own", "Your Own"))

@@ -687,9 +687,12 @@ static int shot_pick_index(const menu_choice *ch)
 
 /* --expect-en "WORDS|WORDS?|...": the shot fails unless the open list's
  * every choice is one of these, in English, in whatever language is on,
- * and each one not marked "?" is there: a list built from another row's
- * words shows (Recents' Card Picture said Border's Off and Blur when the two
- * shared a pool slot, 1.1.0's test run) */
+ * each once and in this order, and each one not marked "?" is there: a list
+ * built from another row's words shows (Recents' Card Picture said Border's
+ * Off and Blur when the two shared a pool slot, 1.1.0's test run), and so
+ * does one whose words another shelf's menu wrote over (a Game Boy's Border
+ * list said "Off, Handheld, Handheld, Whole, Handheld, Whole, Your Own",
+ * the Advance's three over its own five, 2026-11-23) */
 const char *shot_expect_en;
 
 /* Whether `label` is word `w` (n bytes of it) in the language that is on */
@@ -711,11 +714,14 @@ static void shot_expect_list(const menu_choice *ch)
 	int k;
 	bool bad = false;
 
+	int last = -1;
+
 	if (!p || !ch->labels) return;
 	for (k = 0; k < ch->n && !bad; k++) {
 		bool known = false;
+		int w = 0;
 
-		for (p = shot_expect_en; *p && !known; p = *e ? e + 1 : e) {
+		for (p = shot_expect_en; *p && !known; p = *e ? e + 1 : e, w++) {
 			size_t n;
 
 			e = strchr(p, '|');
@@ -727,7 +733,13 @@ static void shot_expect_list(const menu_choice *ch)
 			fprintf(stderr, "--expect-en: the list has \"%s\", which is not one of %s\n", ch->labels[k],
 			        shot_expect_en);
 			bad = true;
+		} else if (w - 1 <= last) {
+			/* the words in their order, each once */
+			fprintf(stderr, "--expect-en: the list has \"%s\" twice or out of the order %s\n",
+			        ch->labels[k], shot_expect_en);
+			bad = true;
 		}
+		last = w - 1;
 	}
 	for (p = shot_expect_en; *p && !bad; p = *e ? e + 1 : e) {
 		bool there = false;
