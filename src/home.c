@@ -192,6 +192,11 @@ int home_letter_jump(const unsigned char *keys, int count, int cursor, int dir)
     while (start > 0 && keys[start - 1] == keys[p]) start--;
     return start;
 }
+int home_letter_held(const unsigned char *keys, int count, int cursor, int dir)
+{
+    int to = home_letter_jump(keys, count, cursor, dir);
+    return (dir > 0 && to < cursor) || (dir < 0 && to > cursor) ? cursor : to;
+}
 bool home_song_update(home_song *song, bool active, bool paused, const char *title)
 {
     home_song next = { .active = active, .paused = active && paused };

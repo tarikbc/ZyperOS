@@ -6,6 +6,7 @@
 #include "app.h"
 #include "bgm.h"
 #include "gamedel_screen.h"
+#include "home.h"
 #include "i18n.h"
 #include "menumotion.h"
 #include "panel.h"
@@ -1117,6 +1118,30 @@ static void store_close(store_view *v)
 	v->med = NULL;
 }
 
+/* Up or Down held in A to Z: a letter at a time, from the row the cursor is
+ * on (home_letter_held: the first row of the next initial, or of its own
+ * and then the one before, never round an end). A row the order keeps in
+ * its place, the recommendations and Delete Video Snaps at the top and
+ * Other Files at the foot, is a group of its own (2026-11-22: "should skip
+ * by letter when pressing and holding up/down buttons") */
+static int store_letter_held(const store_view *v, int dir)
+{
+	unsigned char *keys = malloc((size_t)v->nrows);
+	int i, to;
+
+	if (!keys) return v->pg.sel;
+	for (i = 0; i < v->nrows; i++) {
+		const sp_row *r = &v->rows[i];
+
+		keys[i] = r->kind == SR_ART || r->kind == SR_STATES || r->kind == SR_SNAPS ? 1
+		        : r->kind == SR_REST ? 2
+		        : home_group_key("", "", r->name ? r->name : "");
+	}
+	to = home_letter_held(keys, v->nrows, v->pg.sel, dir);
+	free(keys);
+	return to;
+}
+
 /* The page as a base, as MP4's shelf is: the screen's, and --storage
  * delete-open's, which holds it to the panel that opens on it */
 int store_base_open(void)
@@ -1183,7 +1208,15 @@ void storage_screen(app *a)
 			in_button b = in_repeat(&a->in, IN_UP) ? IN_UP : in_repeat(&a->in, IN_DOWN) ? IN_DOWN : IN_NONE;
 
 			if (b != IN_NONE) {
-				v->pg.sel = list_step_heard(a, b, v->nrows, v->pg.sel);
+				/* A press a row; held in A to Z, a letter at a time */
+				if (v->sort == ST_SORT_AZ && !a->in.pressed[b]) {
+					int to = store_letter_held(v, b == IN_DOWN ? 1 : -1);
+
+					step_sound(a, b, v->pg.sel, to);
+					v->pg.sel = to;
+				} else {
+					v->pg.sel = list_step_heard(a, b, v->nrows, v->pg.sel);
+				}
 			}
 			if (a->in.pressed[IN_ACCEPT]) store_act(v);
 			/* X: the list's next order, the cursor kept on its row; a value

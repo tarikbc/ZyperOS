@@ -3893,7 +3893,13 @@ a system's page. Each list keeps its order, as Sort By keeps a shelf's: the
 card's, each system's by its tag, each media folder's. Under the list at the
 right, on the more-rows mark's line, X's glyph and the order it is now
 ("Size", "A to Z", "Last Played") in **meta** **text-dim**: the button and
-what it is, as the keyboard's action row names its keys (11.5).
+what it is, as the keyboard's action row names its keys (11.5). In A to Z,
+Up or Down held goes a letter at a time once it repeats: the first row of the
+next initial, or of its own and then the one before, as the shelf's letter
+jump does (`home_letter_held`), stopping at the ends as a held step does; a
+press is still a row. The recommendations, Delete Video Snaps and Other
+Files are a letter of their own. *(2026-11-22: "should skip by letter when
+pressing and holding up/down buttons".)*
 
 The page is a base, as MP4's shelf is: MENU's panel leaves over it as it
 opens, and a panel opened on it - a question, "Deleting...", a result - comes
