@@ -78,3 +78,87 @@ fr = Lancez la mise à jour de l'Installateur ZyperOS sur un ordinateur. POWER �
 de = Führe das Update im ZyperOS-Installer an einem Computer aus. POWER schaltet den Smart Pro aus.
 ja = パソコンで ZyperOS インストーラーの「アップデート」を実行してください。POWER で Smart Pro の電源が切れます。
 it = Esegui Aggiorna dell'Installer di ZyperOS su un computer. POWER spegne lo Smart Pro.
+
+# A start that is taking longer than it should (DESIGN.md 11.20, "Slower than
+# usual"): drawn into pictures by tools/genbootslow.py, one set a language and
+# a handheld, which plastron's splash lays over the boot animation. From 5 s
+# the step under way at the foot, with its code (" · C3", not translated);
+# from 20 s the first line over Zyper and what to do under the step. Each one
+# line, at most 896 of the launcher's 1024 units (64 in from each edge).
+
+[boot.slow]
+note = Over Zyper at the top of the boot screen, 20 s into a start that is normally done in 2 s. Calm: a fact, not an alarm. At most 896 units at label size (55).
+en = Taking longer than usual
+zh-Hans = 比平时慢一些
+es = Está tardando más de lo normal
+pt-BR = Demorando mais que o normal
+fr = Plus long que d'habitude
+de = Dauert länger als sonst
+ja = いつもより時間がかかっています
+it = Ci vuole più del solito
+
+[boot.stage_mount]
+note = The step under way at the foot of the boot screen, from 5 s: the card's games partition is being opened (mounted). A short status, no full stop. At most about 800 units at meta size (37), its code follows it.
+en = Opening the card
+zh-Hans = 正在打开存储卡
+es = Abriendo la tarjeta
+pt-BR = Abrindo o cartão
+fr = Ouverture de la carte
+de = Karte wird geöffnet
+ja = カードを開いています
+it = Apertura della scheda
+
+[boot.stage_format]
+note = The same: a new card's games partition is being made and formatted (its first start, before ZyperOS is copied).
+en = Preparing the card
+zh-Hans = 正在准备存储卡
+es = Preparando la tarjeta
+pt-BR = Preparando o cartão
+fr = Préparation de la carte
+de = Karte wird vorbereitet
+ja = カードを準備しています
+it = Preparazione della scheda
+
+[boot.stage_check]
+note = The same: the card is being checked and repaired after a power-off that was not clean (a flat battery). Can take a while on a full card.
+en = Checking the card
+zh-Hans = 正在检查存储卡
+es = Revisando la tarjeta
+pt-BR = Verificando o cartão
+fr = Vérification de la carte
+de = Karte wird geprüft
+ja = カードを確認しています
+it = Controllo della scheda
+
+[boot.stage_switch]
+note = The same: a system update downloaded earlier is being put in place (or one that did not start is being put back).
+en = Switching to the new version
+zh-Hans = 正在切换到新版本
+es = Cambiando a la nueva versión
+pt-BR = Mudando para a nova versão
+fr = Passage à la nouvelle version
+de = Wechsel zur neuen Version
+ja = 新しいバージョンに切り替えています
+it = Passaggio alla nuova versione
+
+[boot.stage_launch]
+note = The same: ZyperOS itself is starting, the last step before the home.
+en = Starting ZyperOS
+zh-Hans = 正在启动 ZyperOS
+es = Iniciando ZyperOS
+pt-BR = Iniciando o ZyperOS
+fr = Démarrage de ZyperOS
+de = ZyperOS wird gestartet
+ja = ZyperOS を起動しています
+it = Avvio di ZyperOS
+
+[boot.stuck]
+note = Under the step, from 20 s, and in place of the first start's line when its bar has not moved for a minute: what to do if the start never ends. POWER is the button. The tutorial's "Frozen screen? Hold POWER for 10 s." in other words. At most 896 units at meta size (37).
+en = Stuck? Hold POWER for 10 s, then turn it on.
+zh-Hans = 卡住了？按住 POWER 10 秒，再开机。
+es = ¿Se atascó? Mantén POWER 10 s y enciende.
+pt-BR = Travou? Segure POWER por 10 s e ligue.
+fr = Bloqué ? Maintenez POWER 10 s, puis rallumez.
+de = Hängt es? Halte POWER 10 s, dann einschalten.
+ja = 止まったら POWER を 10 秒長押しして再起動。
+it = Bloccata? Tieni POWER per 10 s, poi riaccendi.

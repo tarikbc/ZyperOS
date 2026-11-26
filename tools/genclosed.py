@@ -160,10 +160,11 @@ GLYPH_SIZE = 22
 GLYPH_FIRST, GLYPH_COUNT = 32, 95
 
 
-def glyphs():
+def glyphs(size=GLYPH_SIZE):
     """The splash's letters: "TSPG" and each printable ASCII letter's
-    coverage, its advance wide"""
-    font = ImageFont.truetype(os.path.join(ROOT, "res", "fonts", "menu.ttf"), GLYPH_SIZE)
+    coverage, its advance wide, at `size` pixels (the boot screen's tester's
+    view draws them at each handheld's scale: tools/genbootslow.py)"""
+    font = ImageFont.truetype(os.path.join(ROOT, "res", "fonts", "menu.ttf"), size)
     ascent, descent = font.getmetrics()
     height = ascent + descent
     out = bytearray(struct.pack("<4sHHHH", b"TSPG", height, ascent, GLYPH_FIRST, GLYPH_COUNT))

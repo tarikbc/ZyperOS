@@ -27,10 +27,11 @@ bad() { echo "  FAIL $1"; fails=$((fails + 1)); }
 
 run() {
 	PSTORE=$T/pstore RCU_PANIC=$T/rcu RUN_REPORT=$T/run-report CRASH_DIR=$T/logs CRASH_KEEP=3 \
+		LASTBOOT=$T/lastboot \
 		sh "$CRASHLOG" > "$T/out" 2>&1
 }
 fresh() {
-	rm -rf "$T/pstore" "$T/logs" "$T/run-report"
+	rm -rf "$T/pstore" "$T/logs" "$T/run-report" "$T/lastboot"
 	mkdir -p "$T/pstore"
 	echo 0 > "$T/rcu"
 }
@@ -41,6 +42,7 @@ fresh
 run
 [ "$(reports)" = 0 ] && ok "no report" || bad "a report with nothing in pstore"
 [ "$(cat "$T/rcu")" = 1 ] && ok "the RCU stall panic is on" || bad "panic_on_rcu_stall is $(cat "$T/rcu")"
+[ ! -f "$T/lastboot" ] && ok "no summary for the launcher" || bad "a summary with nothing in pstore"
 
 echo "a panic"
 fresh
@@ -128,5 +130,57 @@ launcher
 [ "$(reports)" = 2 ] && [ -f "$T/pstore/dmesg-ramoops-0" ] &&
 	ok "the kernel's dumps are left for the boot's own run" || bad "the launcher mode took the kernel's dump"
 
-[ "$fails" = 0 ] && echo "ok: crashlog keeps a panic's, a reset's and the launcher's report, once" && exit 0
+# The summary the launcher says (ZyperOS's src/lastboot.h): reason, stage,
+# the kernel's time and its last line, from what the kernel kept
+summary_is() {   # what, reason, stage, kernel_time
+	if grep -qx "reason=$2" "$T/lastboot" 2> /dev/null && grep -qx "stage=$3" "$T/lastboot" &&
+	   grep -qx "kernel_time=$4" "$T/lastboot" && grep -q '^time=' "$T/lastboot" && grep -q '^last=' "$T/lastboot"; then
+		ok "$1: $2 $3 at $4"
+	else
+		bad "$1: the summary is $(tr '\n' ' ' < "$T/lastboot" 2> /dev/null)"
+	fi
+}
+echo "the summary for the launcher"
+fresh
+printf '[    0.430312] Waiting for root device /dev/mmcblk0p2...\r\n[    0.556257] mmcblk0: mmc0:aaaa SN128 119 GiB\r\n' > "$T/pstore/console-ramoops-0"
+run
+summary_is "stopped in the kernel before the card's partitions: the chip's watchdog" W K1 0.556257
+grep -qx 'last=\[    0.556257\] mmcblk0: mmc0:aaaa SN128 119 GiB' "$T/lastboot" && ok "the last line, plain" ||
+	bad "the last line: $(grep last= "$T/lastboot")"
+fresh
+printf '[    0.558306]  mmcblk0: p1 p2 p3 p4\n[    0.570133] VFS: Mounted root (squashfs filesystem) readonly\n' > "$T/pstore/console-ramoops-0"
+run
+summary_is "the card found, not init" W K2 0.570133
+fresh
+printf '[    0.558306]  mmcblk0: p1 p2 p3 p4\n[    0.572807] Run /sbin/init as init process\n[    0.701220] zyboot: stage=C1\n[    0.903400] zyboot: stage=C3\n[   14.200000] exfat: something\n' > "$T/pstore/console-ramoops-0"
+run
+summary_is "the card's check, a reset" W C3 14.200000
+fresh
+printf '[    0.720000] zyboot: stage=L1\n[    1.736000] zyperos: first frame at 1.736 s\n[  121.000000] zyperos: watchdog: the loop has not come round for 60 s: the screen off, a restart at 120 s\n[  181.000000] zyperos: watchdog: the loop has not come round for 120 s: an emergency sync, and a restart\n[  181.050000] sysrq: Emergency Sync\n[  181.100000] sysrq: Resetting\n' > "$T/pstore/console-ramoops-0"
+run
+summary_is "the launcher's watchdog after the home" W H 181.100000
+fresh
+printf '<3>[  243.1] INFO: task zyperos.elf:412 blocked for more than 120 seconds.\n<0>[  243.2] Kernel panic - not syncing: hung_task: blocked tasks\n' > "$T/pstore/dmesg-ramoops-0"
+printf '[    0.720000] zyboot: stage=L1\n[  243.2] Kernel panic - not syncing: hung_task: blocked tasks\n' > "$T/pstore/console-ramoops-0"
+run
+summary_is "hung_task's panic" T L1 243.2
+fresh
+printf '<4>[   20.43] Waiting for root device /dev/mmcblk0p2...\n<0>[   20.44] VFS: Cannot open root device "mmcblk0p2"\n<0>[   20.45] Kernel panic - not syncing: VFS: Unable to mount root fs\n' > "$T/pstore/dmesg-ramoops-0"
+run
+summary_is "rootwait gave up" R K1 20.45
+fresh
+printf '<0>[ 3600.1] watchdog: BUG: soft lockup - CPU#2 stuck for 22s! [retroarch:812]\n<0>[ 3600.2] Kernel panic - not syncing: softlockup: hung tasks\n' > "$T/pstore/dmesg-ramoops-0"
+run
+summary_is "a lockup an hour in, its start's lines gone" P H 3600.2
+fresh
+printf '[    1.736000] zyperos: first frame at 1.736 s\n[  900.000000] rk817: battery 3%%\n' > "$T/pstore/console-ramoops-0"
+run
+summary_is "a reset after the home with nothing to say" X H 900.000000
+fresh
+printf '[    1.736000] zyperos: first frame at 1.736 s\n[  300.000000] zyperos: watchdog: the loop came round again after 64 s: the screen on\n[  900.000000] rk817: battery 3%%\n' > "$T/pstore/console-ramoops-0"
+run
+summary_is "the launcher's watchdog came back, then a reset" X H 900.000000
+grep -q '^report=crash-.*\.txt$' "$T/lastboot" && ok "the report's name" || bad "no report= in the summary"
+
+[ "$fails" = 0 ] && echo "ok: crashlog keeps a panic's and a reset's report, once, its summary for the launcher, and the launcher's own report" && exit 0
 exit 1

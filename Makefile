@@ -760,6 +760,43 @@ build-native/heat-check: tools/heat-check.c src/heat.c src/heat.h FORCE
 	$(CC) -std=gnu11 -Wall -Wextra -Werror -O1 -g \
 	      -o $@ tools/heat-check.c src/heat.c
 
+# A start slower than usual, on plastron's splash's own code and frames
+# (splash/src/slowline.h): the step from 5 s, the first line and the help from
+# 20 s, no letter on the animation in any language or theme, drawn and taken
+# away to the pixel, the tester's view, the copy's help, the beat. Plain C and
+# zlib. `build-native/bootslow-check --shots DIR` writes the screens as PPM.
+check-bootslow: build-native/bootslow-check
+	@./build-native/bootslow-check
+
+build-native/bootslow-check: tools/bootslow-check.c plastron/buildroot/package/splash/src/slowline.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -Werror -O2 -g \
+	      -o $@ tools/bootslow-check.c -lz
+
+# The slow start's lines, there for every language and handheld and as wide
+# as tools/genbootslow.py draws them, every line within 896 units. Byte for
+# byte is check-genbootslow-drift, out of the suite as check-genfirststart
+# is: another Pillow or FreeType draws other pixels (CI's did, 2026-11-25)
+check-genbootslow:
+	@py='$(PYIMG)'; [ -n "$$py" ] || { echo "check-genbootslow: needs Pillow; set PYIMG" >&2; exit 1; }; \
+	"$$py" -B tools/genbootslow.py --check
+
+.PHONY: check-genbootslow-drift
+check-genbootslow-drift:
+	@py='$(PYIMG)'; [ -n "$$py" ] || { echo "check-genbootslow-drift: needs Pillow; set PYIMG" >&2; exit 1; }; \
+	"$$py" -B tools/genbootslow.py --drift
+
+# The last start's restart (src/lastboot.h): crashlog's summary in letters
+# and in words, the code "K1W · 0.6 s", said once, the card's copy, the About
+# row's 30 days. Plain C.
+check-lastboot: build-native/lastboot-check
+	@./build-native/lastboot-check
+
+build-native/lastboot-check: tools/lastboot-check.c src/lastboot.c src/lastboot.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -Werror -O1 -g \
+	      -o $@ tools/lastboot-check.c src/lastboot.c
+
 # The theme file the launcher writes and Diatom and portkeys read, so that the
 # bar over a game and over a port is drawn in the theme the shelf is in: a file
 # that is missing or says nothing sensible reads as Beard, the word the writer

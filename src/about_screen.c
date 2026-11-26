@@ -7,6 +7,7 @@
 #include "aout_route.h"
 #include "app.h"
 #include "devmode.h"
+#include "lastboot.h"
 #include "ingame_screen.h"
 #include "levels.h"
 #include "menu_panel.h"
@@ -182,6 +183,11 @@ void about_refresh(about_view *v, unsigned now)
 	v->system[2] = (menu_row){ T(S_ABOUT_BATTERY), v->batt, false };
 	v->system[3] = (menu_row){ T(S_ABOUT_AWAKE_FOR), v->up, false };
 	v->nsystem = 4;
+	/* The last restart ZyperOS made, for LASTBOOT_KEEP_DAYS after it was
+	 * said, so its code is still here once Zyper's bubble has gone
+	 * (src/lastboot.h, DESIGN.md 11.70) */
+	if (lastboot_about(v->restart, sizeof v->restart))
+		v->system[v->nsystem++] = (menu_row){ T(S_LASTBOOT_ROW), v->restart, false };
 	if (devmode_unlocked(db_dev())) {
 		v->system[v->nsystem++] = (menu_row){ T(S_SYSMENU_DEVELOPER), T(S_MENU_ON_TITLE), false };
 	} else if (devmode_hold_permille(&v->hold, now) > 0) {
@@ -223,7 +229,8 @@ void about_draw(app *a, const about_view *v, int page)
 	{
 		int pm = page == 0 ? devmode_hold_permille(&v->hold, plat_now_ms()) : 0;
 
-		if (pm > 0 && rest && g_menu_body.h > 0 && v->nsystem > 4) {
+		if (pm > 0 && rest && g_menu_body.h > 0 && v->nsystem > 4 &&
+		    v->system[v->nsystem - 1].value == NULL) {
 			int pitch = g_menu_body.h / v->nsystem;
 			int x0 = g_menu_body.x + g_menu_body.w * 62 / 100;   /* clear of the longest label */
 			SDL_Rect bar = { x0, g_menu_body.y + g_menu_body.h - pitch / 2 - UI_BAR_H / 2,

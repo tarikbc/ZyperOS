@@ -13,6 +13,7 @@
  */
 #include "hwreport.h"
 #include "crashrec.h"   /* the launcher's own crash, in the log and crashlog's report */
+#include "lastboot.h"
 #include "atomic.h"
 #include "autozone.h"
 #include "coreopts.h"   /* coreopts_migrate: 1.0.6's defaults at run time */
@@ -4833,6 +4834,41 @@ static void up_news(const char *key, const char *fmt, const char *version, bool 
 	}
 }
 
+/* The last start's restart (src/lastboot.h, DESIGN.md 11.70): this start's
+ * summary read against the card's copy the first time the shelf comes round;
+ * when it is new, said in Zyper's bubble as soon as nothing else of his is up,
+ * and the card's copy written then, so it is said once. 0 not read yet, 1 to
+ * be said, 2 said or nothing to say. */
+static int      g_lb_state;
+static lastboot g_lb_say;
+
+static void lastboot_watch(void)
+{
+	char path[512], code[48];
+
+	snprintf(path, sizeof path, "%s/%s", P_USERDATA, LASTBOOT_FILE);
+	if (g_lb_state == 0) {
+		const char *run_path = getenv("ZYPEROS_LASTBOOT_RUN");
+		lastboot run, kept;
+
+		g_lb_state = 2;
+		if (!lastboot_read(run_path && *run_path ? run_path : LASTBOOT_RUN, &run)) return;
+		lastboot_read(path, &kept);
+		if (!lastboot_due(&run, &kept, (long)time(NULL), &g_lb_say)) {
+			fprintf(stderr, "lastboot: %s%c said before\n", run.stage, run.reason);
+			return;
+		}
+		g_lb_state = 1;
+	}
+	if (g_lb_state != 1 || g_heatpop.on || g_songpop.on) return;
+	heatpop_show(plat_now_ms());
+	lastboot_bubble(&g_lb_say);
+	lastboot_code(&g_lb_say, code, sizeof code);
+	fprintf(stderr, "lastboot: said %s (%s), %s\n", code, g_lb_say.time[0] ? g_lb_say.time : "no date",
+	        lastboot_write(path, &g_lb_say) ? "kept for About" : "not kept: the card's copy would not write");
+	g_lb_state = 2;
+}
+
 /* The shelf's pass: the news up in Zyper's bubble, when there is some and
  * nothing else of his is up */
 static void up_news_watch(void)
@@ -7150,6 +7186,13 @@ int main(int argc, char *argv[])
 			g_shot_no_hash = !strcmp(argv[i], "system") ? RA_HASH_NO_SYSTEM
 			                                            : RA_HASH_NO_FILE;
 		}
+		/* --lastboot SUMMARY: Zyper's bubble saying the last start's
+		 * restart, SUMMARY as crashlog writes it with ";" for its line
+		 * ends ("stage=K1;reason=W;kernel_time=0.62") */
+		else if (!strcmp(argv[i], "--lastboot") && i + 1 < argc) {
+			shot_lastboot = argv[++i];
+			if (shot_heatpop < 0) shot_heatpop = 3000;
+		}
 		else if (!strcmp(argv[i], "--upnews") && i + 1 < argc) {
 			shot_upnews = argv[++i];
 			if (shot_heatpop < 0) shot_heatpop = 3000;
@@ -8775,6 +8818,8 @@ int main(int argc, char *argv[])
 		song_watch();
 		/* ...and "Getting hot", when the chip has passed the trip */
 		heat_watch();
+		/* ...and that ZyperOS had to restart the last start, once */
+		lastboot_watch();
 		up_news_watch();
 		ra_news_watch();
 		dl_news_watch();

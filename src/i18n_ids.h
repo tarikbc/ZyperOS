@@ -883,6 +883,11 @@ typedef enum {
 	/* res/strings/language.txt */
 	S_MENU_LANGUAGE,
 	S_TOUR_LANG_HELLO,
+	/* res/strings/lastboot.txt */
+	S_LASTBOOT_ZYPER,
+	S_LASTBOOT_START,
+	S_LASTBOOT_FROZE,
+	S_LASTBOOT_ROW,
 	/* res/strings/launch.txt */
 	S_LAUNCH_NEEDS_BIOS,
 	S_LAUNCH_BIOS_SIZE,

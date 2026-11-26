@@ -14,8 +14,11 @@
 #     stall (21 s). A panic dumps the kernel's last lines into pstore and
 #     reboots 30 s later (panic=30, boot-prelude.cmd), the DDR still powered,
 #     so the start after has the report. A freeze that stops the whole chip
-#     (the DDR or its bus) stops these too; no hardware watchdog (a false
-#     reset under a long card copy is worse, plastron PR #115).
+#     (the DDR or its bus) stops these too: only the chip's own watchdog,
+#     where the image starts it (U-Boot, and plastron's hwdog pets it from
+#     init's first line, never touching the card, so a long card copy is no
+#     false reset as it was in plastron PR #115), resets that, with nothing
+#     said.
 #   - At the start after (this, run by init after the card is mounted), each
 #     dump the kernel kept, and the end of the kernel log before the reset,
 #     go into CRASH_DIR/crash-DATE.txt on the card (ZyperOS's logs folder,
@@ -40,10 +43,12 @@
 # .plastron/crash), CRASH_KEEP (how many reports CRASH_DIR keeps, 10). For a
 # check on a computer (tools/crashlog-check.sh), the same names and PSTORE,
 # the folder pstore is in, RCU_PANIC, the file the RCU stall panic is set
-# in, and RUN_REPORT, where this start's report stays for setuplog.
+# in, RUN_REPORT, where this start's report stays for setuplog, and
+# LASTBOOT, its summary for the launcher.
 PSTORE=${PSTORE:-/sys/fs/pstore}
 RCU_PANIC=${RCU_PANIC:-/proc/sys/kernel/panic_on_rcu_stall}
 RUN_REPORT=${RUN_REPORT:-/run/crashlog.txt}
+LASTBOOT=${LASTBOOT:-/run/zyperos-lastboot.txt}
 CARD=/dev/mmcblk0
 CRASH_DIR=${CRASH_DIR:-/mnt/SDCARD/.plastron/crash}
 CRASH_KEEP=${CRASH_KEEP:-10}
@@ -57,7 +62,9 @@ BOOT=${BOOT:-${PART}1}
 MNT=/run/crashlog
 
 # A report, kept: on the card beside the reports before it, the newest
-# CRASH_KEEP of them, and on PX2BOOT, the newest only
+# CRASH_KEEP of them, and on PX2BOOT, the newest only. With "lastboot", a
+# start's report: its name goes into LASTBOOT's summary, and the summary
+# beside it on PX2BOOT (zyperos-lastboot.txt)
 keep() {
 	# On the card, beside the reports before it, the newest CRASH_KEEP kept
 	if mkdir -p "$CRASH_DIR" 2> /dev/null; then
@@ -68,7 +75,8 @@ keep() {
 			name=$stem-$n.txt
 			n=$((n + 1))
 		done
-		cp "$1" "$CRASH_DIR/$name.new" && mv "$CRASH_DIR/$name.new" "$CRASH_DIR/$name"
+		cp "$1" "$CRASH_DIR/$name.new" && mv "$CRASH_DIR/$name.new" "$CRASH_DIR/$name" &&
+			[ "${2:-}" = lastboot ] && [ -f "$LASTBOOT" ] && echo "report=$name" >> "$LASTBOOT"
 		ls -1 "$CRASH_DIR" | grep '^crash-.*\.txt$' | sort -r | tail -n +$((CRASH_KEEP + 1)) |
 		while IFS= read -r old; do
 			rm -f "$CRASH_DIR/$old"
@@ -81,6 +89,8 @@ keep() {
 		mkdir -p $MNT
 		if mount -t vfat -o noatime,nosuid,nodev,noexec "$BOOT" $MNT 2> /dev/null; then
 			cp "$1" $MNT/zyperos-crash.new && sync && mv $MNT/zyperos-crash.new $MNT/zyperos-crash.txt
+			[ "${2:-}" = lastboot ] && [ -f "$LASTBOOT" ] && cp "$LASTBOOT" $MNT/zyperos-lastboot.new && sync &&
+				mv $MNT/zyperos-lastboot.new $MNT/zyperos-lastboot.txt
 			sync
 			umount $MNT
 		fi
@@ -155,7 +165,60 @@ report=$(mktemp) || exit 0
 	echo "--- end ---"
 } > $report 2> /dev/null
 
-keep $report
+# The summary the launcher says once, in Zyper's bubble with a short code
+# ("K1W · 0.6 s"), and keeps in About ZyperOS (ZyperOS's src/lastboot.h, its
+# DESIGN.md 11.70): key=value lines in LASTBOOT, for this start only (/run),
+# written whole and renamed. From what the kernel kept:
+#   reason  P a panic (the lockup detectors' and an RCU stall's too), T one
+#           of hung_task's, R the card never found (rootwait), W a watchdog
+#           that restarted it: the launcher's ("zyperos: watchdog: ... an
+#           emergency sync, and a restart", then sysrq), or a reset with no
+#           panic before the home, which is the chip's watchdog's where the
+#           image starts it (U-Boot, and plastron's hwdog pets it); X a
+#           reset with nothing of its own to say after the home
+#           (the chip's watchdog, a power glitch, its thermal cut)
+#   stage   H once ZyperOS drew its first frame, else the last step the start
+#           said ("zyboot: stage=", from datapart and zyperos.init); before
+#           any, C1 once init ran, K2 once the card was found, else K1; and H
+#           for a console past two minutes with none of them left in it
+#   kernel_time  the kernel's clock at its last line; last, that line;
+#   report  the report's name in CRASH_DIR
+# Beside the report on PX2BOOT too (zyperos-lastboot.txt), for a computer.
+text=$(mktemp) || text=
+if [ -n "$text" ]; then
+	for f in $dumps $console; do [ -f "$f" ] && tr -d '\r' < "$f"; done > "$text" 2> /dev/null
+	kt=$(sed -n 's/^[^[]*\[ *\([0-9][0-9]*\.[0-9]*\)\].*/\1/p' "$text" | tail -n 1)
+	stage=$(sed -n 's/.*zyboot: stage=\([A-Z0-9]*\).*/\1/p' "$text" | tail -n 1)
+	if grep -q 'zyperos: first frame' "$text"; then stage=H
+	elif [ -z "$stage" ]; then
+		if grep -q -E 'Run /sbin/init|Run .* as init process' "$text"; then stage=C1
+		elif grep -q 'mmcblk0: p' "$text"; then stage=K2
+		elif [ "${kt%%.*}" -ge 120 ] 2> /dev/null; then stage=H
+		else stage=K1
+		fi
+	fi
+	if [ -n "$dumps" ]; then
+		if grep -q -E 'blocked for more than|hung_task' "$text"; then why=T
+		elif ! grep -q 'mmcblk0: p' "$text" &&
+		     grep -q -E 'Waiting for root device|Cannot open root device|Unable to mount root' "$text"; then why=R
+		else why=P
+		fi
+	elif grep -q 'zyperos: watchdog: .*an emergency sync, and a restart' "$text" || [ "$stage" != H ]; then why=W
+	else why=X
+	fi
+	last=$(grep -v '^ *$' "$text" | tail -n 1 | cut -c1-120)
+	{
+		echo "reason=$why"
+		echo "stage=$stage"
+		[ -n "$kt" ] && echo "kernel_time=$kt"
+		echo "time=$now"
+		[ -r /etc/zyperos/system ] && sed -n 's/^version /version=/p; s/^device /device=/p' /etc/zyperos/system
+		echo "last=$last"
+	} > "$LASTBOOT.new" 2> /dev/null && mv "$LASTBOOT.new" "$LASTBOOT"
+	rm -f "$text"
+fi
+
+keep $report lastboot
 
 echo "crashlog: a report from before this start kept in $CRASH_DIR and on PX2BOOT" 2> /dev/null > /dev/kmsg
 # Said once: the dumps let go (the console is the kernel's to replace). The

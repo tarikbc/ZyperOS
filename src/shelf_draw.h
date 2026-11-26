@@ -11,6 +11,7 @@
 #include "panel.h"
 #include "songpop.h"
 #include "zyperrig.h"
+#include "lastboot.h"
 
 typedef struct {
 	int sys, cursor;
@@ -37,8 +38,9 @@ typedef struct {
 	unsigned drawn;    /* render's last frame of it */
 	zr_rig   rig;
 	/* Another word of his in the same bubble (System Update's news,
-	 * up_notice_watch): its two lines and no thermometer; "" for the heat */
-	char     line1[160], line2[160];
+	 * up_notice_watch; the last start's restart, lastboot_watch): its two
+	 * lines and no thermometer; "" for the heat */
+	char     line1[160], line2[256];
 } heatpop_state;
 
 /* What main.c uses of it; each is described where it is defined */
@@ -86,6 +88,9 @@ void song_watch(void);
 void song_popup_draw(app *a, unsigned now);
 void heatpop_show(unsigned now);
 void heatpop_draw(app *a, unsigned now);
+/* Zyper's bubble saying the last start's restart (src/lastboot.h), after
+ * heatpop_show */
+void lastboot_bubble(const lastboot *lb);
 void heat_watch(void);
 void song_keys(app *a);
 bool focus_ok(const app *a);

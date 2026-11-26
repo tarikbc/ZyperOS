@@ -6,4 +6,7 @@ CHECKS += check-crashlog
 #| is a report; two reports in one second keep a file each; only the newest CRASH_KEEP stay; the
 #| RCU stall panic is set at every start; the launcher's own crash (`--launcher RECORD`) is one
 #| report with its signal and the record, the record let go, said once, and nothing of the
-#| kernel's touched
+#| kernel's touched; and the summary the launcher says (`src/lastboot.h`): the
+#| reason (a panic, hung_task's, rootwait's, a watchdog's: the launcher's sysrq restart or a reset
+#| before the home; a reset after it with nothing to say), the stage (the kernel before the card, after it, the last `zyboot: stage=`, after the home)
+#| and the kernel's time at its last line; the report's name with it
