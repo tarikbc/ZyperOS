@@ -70,6 +70,16 @@ static const char *g_index = NULL;   /* the catalog; INDEX_OTHER when NULL */
  * with its GitHub mirror up: its raw files (the served names, and a link's
  * text for g_serve_link) and its API's tree (g_tree, or a 404 for NULL) */
 static bool g_lr_down;
+
+/* strstr within the first `n` bytes of `s` */
+static const char *strnstr_(const char *s, const char *w, size_t n)
+{
+	size_t k = strlen(w);
+
+	for (size_t i = 0; i + k <= n; i++)
+		if (!memcmp(s + i, w, k)) return s + i;
+	return NULL;
+}
 static bool g_net_down;              /* nothing answers at all */
 static const char *g_serve_link;     /* "Link%20Game": a link's text on the mirror */
 static const char *g_link_text;      /* what that link says */
@@ -988,10 +998,31 @@ int main(void)
 		CHECK(!strcmp(cover_of_in(gba, "Fuzzy Game (Europe)"), "NEW"),
 		      "the game the mirror's tree named reads \"%s\"", cover_of_in(gba, "Fuzzy Game (Europe)"));
 		CHECK(st.found == 3 && !st.problem[0], "found %d, problem \"%s\"", st.found, st.problem);
-		for (u = g_urls; (u = strstr(u, "thumbnails.libretro.com")); u++) lr++;
-		/* The first game's refusal, then the mirror only: one request a
-		 * game, as before, and no index asked of the host that refused */
-		CHECK(lr == 1, "libretro's host asked %d times, wanted once:\n%s", lr, g_urls);
+		/* libretro's host asked until the mirror has a cover it refused,
+		 * then the mirror only: no index asked of the host that refused.
+		 * Which game is first is the folder's order (Linux's readdir put
+		 * Fuzzy Game (Europe) first, which the mirror has under another
+		 * name, so A Game was asked of libretro too), so the asks are
+		 * judged from the first cover the mirror served. */
+		{
+			const char *served = NULL, *m;
+
+			for (m = g_urls; (m = strstr(m, "raw.githubusercontent.com/")); m++) {
+				const char *e = strchr(m, '\n');
+				size_t len = e ? (size_t)(e - m) : strlen(m);
+
+				if ((strnstr_(m, "/A%20Game.png", len) || strnstr_(m, "/Link%20Game.png", len)) &&
+				    (!served || m < served))
+					served = m;
+			}
+			for (u = g_urls; (u = strstr(u, "thumbnails.libretro.com")); u++) {
+				lr++;
+				CHECK(!served || u < served, "libretro's host asked after the mirror served a cover:\n%s",
+				      g_urls);
+			}
+		}
+		CHECK(lr >= 1 && lr <= 3, "libretro's host asked %d times, wanted once a game at most "
+		      "until the mirror served one:\n%s", lr, g_urls);
 		CHECK(strstr(g_urls, "raw.githubusercontent.com/libretro-thumbnails/Nintendo_-_Game_Boy_Advance/"
 		                     "master/Named_Boxarts/") != NULL, "no mirror URL:\n%s", g_urls);
 		CHECK(strstr(g_urls, "api.github.com/repos/libretro-thumbnails/Nintendo_-_Game_Boy_Advance/"
