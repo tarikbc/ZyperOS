@@ -10,9 +10,11 @@
  * FN is the launcher's MENU, a round key with the word printed over it:
  * the Pixel 2's FUNCTION, seen when it is let go, and brightness is FN with
  * a volume key, as the R36S has no keys of its own for it. It has one light
- * and no side lights, so L2 and R2 are plain keys. Its sticks and their
- * clicks (L3, R3) are no buttons of the launcher's; Diatom reads no stick
- * yet on any device (the docs' to-do). */
+ * and no side lights, so L2 and R2 are plain keys. Its left stick moves as
+ * the d-pad does on the launcher's screens (src/device/pixel2.c, its
+ * stickpad), its right stick does nothing there, and its clicks are L3 and
+ * R3, which the launcher names and draws; in a game Diatom gives the core
+ * both sticks and both clicks. */
 #include "profile.h"
 
 /* Its core options (src/device/r36s_coreopts.c), linked in its build alone */
@@ -31,6 +33,9 @@ static const dev_button r36s_buttons[] = {
 	{ IN_R1,     "R1",     DEV_CAP_SHOULDER, DEV_ICON_NONE, 0 },
 	{ IN_L2,     "L2",     DEV_CAP_SHOULDER, DEV_ICON_NONE, 0 },
 	{ IN_R2,     "R2",     DEV_CAP_SHOULDER, DEV_ICON_NONE, 0 },
+	/* The sticks, pressed: drawn as the stick, its name on it */
+	{ IN_L3,     "L3",     DEV_CAP_STICK,    DEV_ICON_NONE, 0 },
+	{ IN_R3,     "R3",     DEV_CAP_STICK,    DEV_ICON_NONE, 0 },
 	/* Round blank keys, the words printed on the body under them: the
 	 * glyph is the word */
 	{ IN_SELECT, "SELECT", DEV_CAP_ROUND,    DEV_ICON_NONE, 0 },
@@ -67,6 +72,7 @@ const device_profile device_profile_r36s = {
 		.lr2_taps = false,
 		.home_chord = true,
 		.battery_chord = false,
+		.stick_dpad = true,
 	},
 	.buttons = r36s_buttons,
 	.n_buttons = (int)(sizeof r36s_buttons / sizeof r36s_buttons[0]),

@@ -239,7 +239,7 @@ static const char *const KEY_NAME[TK_KEYS] = {
 	[TK_A] = "A", [TK_B] = "B", [TK_X] = "X", [TK_Y] = "Y",
 	[TK_L1] = "L1", [TK_R1] = "R1", [TK_L2] = "L2", [TK_R2] = "R2",
 	[TK_START] = "START", [TK_SELECT] = "SELECT", [TK_MENU] = "MENU",
-	[TK_POWER] = "POWER",
+	[TK_POWER] = "POWER", [TK_L3] = "L3", [TK_R3] = "R3",
 };
 static const str_id KEY_WORDS[TK_KEYS] = {
 	[TK_UP] = S_TOUR_KEY_UP, [TK_DOWN] = S_TOUR_KEY_DOWN,
@@ -277,6 +277,7 @@ static const tour_key KEY_OF[IN_COUNT] = {
 	[IN_BRIGHTUP] = TK_BRIGHT, [IN_BRIGHTDN] = TK_BRIGHT,
 	[IN_POWER] = TK_POWER,
 	[IN_L2] = TK_L2, [IN_R2] = TK_R2,
+	[IN_L3] = TK_L3, [IN_R3] = TK_R3,
 };
 
 tour_key tour_key_of(in_button b)

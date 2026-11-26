@@ -18,6 +18,10 @@ typedef enum {
 	 * is let go without the other, L2+R2 being the battery level there
 	 * (src/device/pixel2.c). */
 	IN_L2, IN_R2,
+	/* The sticks' clicks, on a handheld with sticks (the R36S): buttons the
+	 * launcher names and draws (L3, R3), which no screen acts on. Last, so
+	 * the numbers of the others stand. */
+	IN_L3, IN_R3,
 	IN_COUNT,
 	IN_NONE = -1,
 } in_button;

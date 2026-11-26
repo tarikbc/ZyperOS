@@ -108,6 +108,8 @@ typedef enum {
 	TK_A, TK_B, TK_X, TK_Y, TK_L1, TK_R1, TK_L2, TK_R2,
 	TK_START, TK_SELECT, TK_MENU,
 	TK_VOL, TK_BRIGHT, TK_POWER,
+	/* The sticks' clicks, a wrong press in every step (the R36S's) */
+	TK_L3, TK_R3,
 	TK_KEYS
 } tour_key;
 

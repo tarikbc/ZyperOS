@@ -30,4 +30,11 @@ typedef struct {
  * and past the let-go line. */
 void stickpad_update(stickpad *s, int x, int y, int max);
 
+/* An axis as evdev reports it, `value` of min..max with `flat` its dead zone
+ * (the kernel's input_absinfo, the device tree's), as stickpad_update takes
+ * it: from its middle, the flat taken out so a stick at rest that drifts
+ * inside it reads 0, of -*range..*range. *range 0 for an axis with no room
+ * past its flat, which then holds nothing. */
+int stickpad_centred(int value, int min, int max, int flat, int *range);
+
 #endif

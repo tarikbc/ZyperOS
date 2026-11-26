@@ -92,6 +92,35 @@ int main(void)
 	stickpad_update(&s, 0, 0, 0);
 	CHECK(held_count(&s) == 0, "a stick with no range: nothing");
 
+	/* An axis as evdev has it (the R36S's: a range and a flat, its device
+	 * tree's dead zone): from its middle, the flat out, no drift at rest */
+	{
+		int r, v;
+
+		v = stickpad_centred(2048, 0, 4096, 64, &r);
+		CHECK(v == 0 && r == 2048 - 64, "the middle of 0..4096 is 0, the range 1984 (%d, %d)", v, r);
+		v = stickpad_centred(2048 + 63, 0, 4096, 64, &r);
+		CHECK(v == 0, "a drift inside the flat reads 0 (%d)", v);
+		v = stickpad_centred(2048 - 63, 0, 4096, 64, &r);
+		CHECK(v == 0, "and the other way (%d)", v);
+		v = stickpad_centred(2048 + 64 + 100, 0, 4096, 64, &r);
+		CHECK(v == 100, "past the flat, from its edge (%d)", v);
+		v = stickpad_centred(0, 0, 4096, 64, &r);
+		CHECK(v == -r, "the end is the range (%d of %d)", v, r);
+		v = stickpad_centred(9999, 0, 4096, 64, &r);
+		CHECK(v == r, "past the end, the end (%d)", v);
+		v = stickpad_centred(0, -1800, 1800, 0, &r);
+		CHECK(v == 0 && r == 1800, "a centred axis with no flat (%d, %d)", v, r);
+		v = stickpad_centred(5, 0, 100, 60, &r);
+		CHECK(v == 0 && r == 0, "a flat wider than the axis: no room, nothing (%d, %d)", v, r);
+		/* At rest with a drift inside the flat: no direction ever */
+		stickpad_update(&s, stickpad_centred(2048 + 50, 0, 4096, 64, &r),
+		                stickpad_centred(2048 - 60, 0, 4096, 64, &r), r);
+		CHECK(held_count(&s) == 0, "a stick drifting inside its flat holds nothing");
+		stickpad_update(&s, stickpad_centred(4000, 0, 4096, 64, &r), stickpad_centred(2048, 0, 4096, 64, &r), r);
+		CHECK(only(&s, STICK_RIGHT), "pushed right on the raw axis: right");
+	}
+
 	printf("stickpad-check: %d checks, %d failed\n", checks, fails);
 	return fails ? 1 : 0;
 }

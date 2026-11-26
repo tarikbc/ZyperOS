@@ -61,7 +61,12 @@ int td_flat_parts(const td_model *m, td_flat_part *out, int max)
 		const td_part *p = &m->parts[i];
 		const td_flat_key *look = p->face == TD_FACE_FRONT ? &blank_front : p->face == TD_FACE_LEFT ? &blank_left
 		                        : p->face == TD_FACE_RIGHT ? &blank_right : &blank_top;
-		td_flat_part *o = &out[n++];
+		td_flat_part *o;
+
+		/* The sticks' caps are the flat drawing's sticks (td_flat_stick), not
+		 * keys of it */
+		if (p->key == TD_L3 || p->key == TD_R3) continue;
+		o = &out[n++];
 
 		for (j = 0; j < f->n_keys; j++)
 			if (f->keys[j].key == p->key) look = &f->keys[j];

@@ -43,6 +43,9 @@ typedef struct {
 	bool home_chord;
 	/* L2+R2 flashes the battery's level on lights of the device's own */
 	bool battery_chord;
+	/* The left stick moves as the d-pad does on the launcher's screens (the
+	 * R36S's; src/stickpad.h), and the pages say so beside the d-pad */
+	bool stick_dpad;
 } dev_chords;
 
 /* A control's cap as the device has it, and the mark on it from the design

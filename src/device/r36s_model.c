@@ -38,6 +38,10 @@ static const td_part r36s_parts[] = {
 	{ TD_MENU,   TD_FACE_FRONT,   0.0f, -22.9f,  3.6f },
 	{ TD_SELECT, TD_FACE_FRONT,  -7.4f, -30.4f,  3.6f },
 	{ TD_START,  TD_FACE_FRONT,   7.4f, -30.4f,  3.6f },
+	/* The sticks' caps, 15 across in their 22 mm wells, pressed as L3 and
+	 * R3 (and the left one moving as the d-pad, src/device/pixel2.c) */
+	{ TD_L3,     TD_FACE_FRONT, -26.3f, -38.6f,  7.5f },
+	{ TD_R3,     TD_FACE_FRONT,  26.3f, -38.6f,  7.5f },
 	/* POWER on the left side, a pill 8.0 long; the volume rocker on the
 	 * right, its two halves 6.6 long each, meeting at z 39.7 */
 	{ TD_POWER,  TD_FACE_LEFT,   -5.75f, 40.0f,  4.0f },
