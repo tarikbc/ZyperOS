@@ -178,6 +178,14 @@ typedef struct {
 
 const tour_info *tour_step_info(tour_step s);
 
+/* MENU's chords on every screen (src/menukeys.h), the MENU lesson's note:
+ * the screenshot's and the lock's buttons with MENU, IN_L1 and IN_L2 until
+ * the caller says others (MENU > System > Hotkeys), and their names as the
+ * note writes them ("MENU+L1"). The handheld lights MENU alone: lit with
+ * the shoulders it turned to show them and hid MENU's dots. */
+void tour_menu_keys(in_button shot, in_button lock, const char *shot_said, const char *lock_said);
+in_button tour_menu_key(int i);
+
 /* The little shelf on the stage: five systems by their systems.cfg names
  * and accents, the third (SNES) the one in focus, which opens. Content, not
  * chrome, so each is that system's own color; tools/tour-check.c holds the

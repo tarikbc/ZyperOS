@@ -41,7 +41,7 @@ bool mp4lock_step(mp4lock *l, unsigned now, const bool down[IN_COUNT],
 		return false;
 	}
 	if (!l->held_from) l->held_from = now ? now : 1;
-	if (now - l->held_from >= MP4_UNLOCK_MS) {
+	if (now - l->held_from >= (l->hold_ms ? l->hold_ms : MP4_UNLOCK_MS)) {
 		l->locked = false;
 		l->held_from = 0;
 		return true;
@@ -54,7 +54,7 @@ float mp4lock_progress(const mp4lock *l)
 	float k;
 
 	if (!l->locked || !l->held_from) return 0;
-	k = (float)(l->now - l->held_from) / MP4_UNLOCK_MS;
+	k = (float)(l->now - l->held_from) / (float)(l->hold_ms ? l->hold_ms : MP4_UNLOCK_MS);
 	return k < 0 ? 0 : k > 1 ? 1 : k;
 }
 

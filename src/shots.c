@@ -15,6 +15,7 @@
 #include "ctltab.h"
 #include "ctltab_screen.h"
 #include "hotkeys_screen.h"
+#include "menukeys_screen.h"
 #include "db.h"
 #include "devmode_screen.h"
 #include "diskpopup.h"
@@ -290,6 +291,10 @@ static void gm_said_preview(app *a, int k)
 
 int shot_controls = -1;
 int shot_hotkeys = -1, shot_hk_scope = -1, shot_hk_capture, shot_hk_key = -1;
+/* MENU's chords (src/menukeys_screen.h): the lock over the screen, its
+ * unlock's hold that far (0 to 1); the screenshot's notice over the shelf */
+float shot_menu_lock = -1;
+bool shot_menu_notice;
 bool shot_hk_game;
 int shot_hk_ask;
 /* --sgdb [0|1|2]: MENU > SteamGridDB with no key, a key that works, or one
@@ -1936,6 +1941,8 @@ static void shot_compose_once(app *a)
 		menu_draw_caption(a, head, rows, n, -1, menu_std_width(a), MENU_ZYPEROS, NULL, false,
 		                  0, count);
 	}
+	if (shot_menu_lock >= 0) mk_lock_shot(a, shot_menu_lock);
+	if (shot_menu_notice) mk_notice_shot(a);
 	if (shot_hotkeys >= 0) {
 		const system_cfg *hs = NULL;
 		const char *hf = NULL;

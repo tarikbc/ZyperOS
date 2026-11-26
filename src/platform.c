@@ -249,6 +249,108 @@ unsigned plat_input_wait_hook(unsigned ms)
 	return g_wait_hook ? g_wait_hook(ms) : ms;
 }
 
+/* ---- MENU and its chords (src/menukeys.h) --------------------------------- */
+
+static bool (*g_menu_take)(in_button b);
+static void (*g_menu_run)(in_state *st, in_button b);
+static bool g_taken[IN_COUNT];       /* gone down as a chord: its let-go is the chord's too */
+static bool g_menu_held, g_menu_chorded;
+static in_button g_menu_due = IN_NONE;
+
+void plat_set_menu_keys(bool (*take)(in_button b), void (*run)(in_state *st, in_button b))
+{
+	g_menu_take = take;
+	g_menu_run = run;
+}
+
+bool plat_menu_with(in_state *st, in_button b, bool down, bool menu_held)
+{
+	(void)st;
+	if (b < 0 || b >= IN_COUNT || b == IN_MENU) return false;
+	if (!down) {
+		if (!g_taken[b]) return false;
+		g_taken[b] = false;
+		return true;
+	}
+	if (!menu_held || !g_menu_take || !g_menu_take(b)) return false;
+	g_taken[b] = true;
+	g_menu_due = b;
+	return true;
+}
+
+/* MENU down is held, not pressed: the press comes as it is let go, unless a
+ * chord was made under it. A screen that checks MENU held (MENU+START is
+ * Home) still sees it down. */
+void plat_key(in_state *st, in_button b, bool down)
+{
+	if (b == IN_MENU) {
+		if (down && !g_menu_held) {
+			g_menu_held = true;
+			g_menu_chorded = false;
+			st->down[IN_MENU] = true;
+			st->down_since[IN_MENU] = SDL_GetTicks();
+			st->last_repeat[IN_MENU] = 0;
+		} else if (!down && g_menu_held) {
+			g_menu_held = false;
+			st->down[IN_MENU] = false;
+			if (!g_menu_chorded) st->pressed[IN_MENU] = true;
+		}
+		return;
+	}
+	if (plat_menu_with(st, b, down, g_menu_held)) {
+		if (down) g_menu_chorded = true;
+		return;
+	}
+	plat_set_btn(st, b, down);
+}
+
+void plat_menu_forget(void)
+{
+	memset(g_taken, 0, sizeof g_taken);
+	g_menu_held = g_menu_chorded = false;
+	g_menu_due = IN_NONE;
+}
+
+void plat_menu_after(in_state *st)
+{
+	in_button b = g_menu_due;
+
+	if (b == IN_NONE) return;
+	g_menu_due = IN_NONE;
+	if (g_menu_run) g_menu_run(st, b);
+}
+
+/* ---- a frame read back (plat_grab_next) ------------------------------------ */
+
+static void (*g_grab)(SDL_Surface *frame);
+
+void plat_grab_next(void (*done)(SDL_Surface *frame)) { g_grab = done; }
+
+void plat_grab_frame(SDL_Renderer *r)
+{
+	void (*done)(SDL_Surface *) = g_grab;
+	SDL_Texture *t;
+	SDL_Surface *s;
+	int w = 0, h = 0;
+
+	if (!done) return;
+	g_grab = NULL;
+	/* The target the frame was drawn in: the Pixel 2's screen texture, the
+	 * Brick's window (or its curve's texture) */
+	if ((t = SDL_GetRenderTarget(r))) SDL_QueryTexture(t, NULL, NULL, &w, &h);
+	else SDL_GetRendererOutputSize(r, &w, &h);
+	if (w <= 0 || h <= 0 || !(s = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_ARGB8888))) {
+		done(NULL);
+		return;
+	}
+	if (SDL_RenderReadPixels(r, NULL, SDL_PIXELFORMAT_ARGB8888, s->pixels, s->pitch) != 0) {
+		fprintf(stderr, "grab: %s\n", SDL_GetError());
+		SDL_FreeSurface(s);
+		s = NULL;
+	}
+	done(s);
+}
+
 void plat_set_btn(in_state *st, in_button b, bool down)
 {
 	if (b == IN_NONE) return;

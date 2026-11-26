@@ -184,6 +184,10 @@ check-homekeys: native
 check-videoview: native
 	@'$(PYIMG)' tools/videoview-check.py
 
+# MENU's chords in desk mode: a screenshot of the screen, the lock
+check-menukeys: native
+	@'$(PYIMG)' tools/menukeys-check.py
+
 # No button read twice by in_repeat in one step (a held one turned round)
 check-inrepeat:
 	@python3 tools/inrepeat-check.py
@@ -1948,15 +1952,16 @@ build-native/remap-check: tools/remap-check.c src/remap.c src/remap.h src/remaps
 
 # The player's hotkeys, pure: SELECT and a button for each action, the swap
 # that loses none, what is kept for Every Game, a system and a game, and
-# Diatom's RUN form (src/hotkeys.h, src/hkstore.h)
+# Diatom's RUN form (src/hotkeys.h, src/hkstore.h); and MENU's chords on every
+# screen, their swap, Hold to Unlock and what is kept (src/menukeys.h)
 check-hotkeys: build-native/hotkeys-check
 	@./build-native/hotkeys-check
 
 build-native/hotkeys-check: tools/hotkeys-check.c src/hotkeys.c src/hotkeys.h src/hkstore.c src/hkstore.h \
-                            src/db.c src/db.h src/atomic.c FORCE
+                            src/menukeys.c src/menukeys.h src/db.c src/db.h src/atomic.c FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/hotkeys-check.c src/hotkeys.c src/hkstore.c src/db.c src/atomic.c -lsqlite3
+	      -o $@ tools/hotkeys-check.c src/hotkeys.c src/hkstore.c src/menukeys.c src/db.c src/atomic.c -lsqlite3
 
 # Rumble's levels, the share a game is sent, and what is kept for a game, a
 # system and MENU (src/rumble.h)

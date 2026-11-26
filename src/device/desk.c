@@ -575,7 +575,7 @@ static void set_btn(in_state *st, in_button b, bool down)
 		g_held &= ~(1u << b);
 	}
 	if (!g_game) {
-		plat_set_btn(st, b, down);
+		plat_key(st, b, down);
 	} else if (b != IN_POWER) {
 		fb_buttons();
 	} else if (g_npower < 16) {

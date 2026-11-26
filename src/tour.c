@@ -75,6 +75,10 @@ typedef struct {
 	const tour_loop *loop;
 } step_def;
 
+/* MENU's chords, for the MENU lesson (tour_menu_keys) */
+static in_button g_mk_key[2] = { IN_L1, IN_L2 };
+static char g_mk_said[2][16] = { "MENU+L1", "MENU+L2" };
+
 static const step_def STEPS[TOUR_STEPS] = {
 	/* The language: his hello in the language under the cursor, the A on
 	 * the focused row (src/tourdraw.c) */
@@ -101,8 +105,11 @@ static const step_def STEPS[TOUR_STEPS] = {
 	 * pops is the one a favorite gets. */
 	[TOUR_Y]       = { S_TOUR_Y_TITLE, S_TOUR_Y_LINE,
 	                   NO_TEXT, NO_TEXT, NO_TEXT, TG_FACE, "Y", NO_TEXT, "Y", NULL, &LOOP_Y },
+	/* MENU's chords on every screen as its note (2026-11-22: "add to
+	 * tutorial"), as the shoulders ride on Move Around and Music; the
+	 * handheld lights MENU alone, so it stays turned to MENU */
 	[TOUR_MENU]    = { S_TOUR_MENU_TITLE, S_TOUR_MENU_LINE,
-	                   NO_TEXT, NO_TEXT, NO_TEXT, TG_PILL, "MENU", NO_TEXT, "MENU", NULL,
+	                   NO_TEXT, S_TOUR_MENU_NOTE, NO_TEXT, TG_PILL, "MENU", NO_TEXT, "MENU", NULL,
 	                   &LOOP_MENU },
 	[TOUR_SELECT]  = { S_TOUR_SELECT_TITLE, S_TOUR_SELECT_LINE,
 	                   NO_TEXT, S_TOUR_SELECT_NOTE, NO_TEXT, TG_PILL,
@@ -188,7 +195,26 @@ const tour_info *tour_step_info(tour_step s)
 	                       with_menu(line_fn[s], sizeof line_fn[s], d->line_fn), said(d->note),
 	                       said(d->note_done), d->glyph, d->label,
 	                       d->want == NO_TEXT ? wk : T(d->want), wf, d->loop };
+	if (s == TOUR_MENU) {
+		static char note[200];
+
+		snprintf(note, sizeof note, T(S_TOUR_MENU_NOTE), g_mk_said[0], g_mk_said[1]);
+		info[s].note = note;
+	}
 	return &info[s];
+}
+
+void tour_menu_keys(in_button shot, in_button lock, const char *shot_said, const char *lock_said)
+{
+	g_mk_key[0] = shot;
+	g_mk_key[1] = lock;
+	snprintf(g_mk_said[0], sizeof g_mk_said[0], "%s", shot_said);
+	snprintf(g_mk_said[1], sizeof g_mk_said[1], "%s", lock_said);
+}
+
+in_button tour_menu_key(int i)
+{
+	return i == 0 || i == 1 ? g_mk_key[i] : IN_NONE;
 }
 
 /* Each choice's names, MENU's row values in the order its setting steps
