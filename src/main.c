@@ -4197,8 +4197,10 @@ int header_half(void)
  * up, and a whole frame is some 40 draws the GL driver takes 4.4 ms of CPU to
  * run on the Pixel 2: 6% of a core for a machine that waits (2026-11-07).
  * Not while anything that is not redrawn here is on screen: the song or heat
- * pop-up, the volume bar. A whole frame still comes at least once a second
- * (HEARTBEAT_MS counts whole frames only). */
+ * pop-up, the volume bar. Nor where the screen does not keep the last
+ * frame's picture (plat_screen_kept: the Brick draws on its window). A whole
+ * frame still comes at least once a second (HEARTBEAT_MS counts whole frames
+ * only). */
 
 /* ---- the panel pass, and the panel on screen ---------------------------
  *
@@ -8793,7 +8795,10 @@ int main(int argc, char *argv[])
 
 			if (touched || away || texload_ready() || now >= g_redraw_at ||
 			    now - last_render >= HEARTBEAT_MS || snap_new_picture() ||
-			    (focus_due && !focus_ok(&a))) {
+			    /* A whole frame where a focus frame cannot draw: something
+			     * it does not draw again is up, or the screen does not
+			     * keep the last frame's picture to draw over (the Brick) */
+			    (focus_due && !(focus_ok(&a) && plat_screen_kept()))) {
 				tick_tint(&a);
 				render(&a);
 				/* With the first frame up, Diatom maps its cores now (its
