@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* See cheevos.h for the division of labor with Diatom, and src/rafetch.h for
  * the network half. */
+#include <ctype.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,6 +20,19 @@ static int    g_game, g_console;
 static char   g_title[CHV_TITLE];
 static char   g_hash[CHV_HASH];    /* the ROM's, from the header */
 static char   g_src[1024];         /* the file loaded, for chv_write_active */
+
+/* What a measured achievement counts, read from its condition line, for
+ * chv_progress_said: the whole condition but for its target, the measured
+ * value alone, and the target. Hashes, not the strings: a condition has been
+ * measured at 30,897 characters and only equality is ever asked of them. */
+typedef struct {
+	int           id;
+	uint64_t      whole;     /* the condition, its measured target left out */
+	uint64_t      value;     /* the measured value: its chain, operand, comparison */
+	unsigned long target;    /* 0: not measured, or a target this cannot read */
+} chv_tier;
+static chv_tier g_tier[CHV_MAX];
+static int      g_ntier;
 
 /* The earned store, whole-library. Sized so a player who finishes a hundred
  * games never meets the cap; at 64 bytes a row that is 256KB, which on a
@@ -115,6 +130,8 @@ void chv_clear(void)
 	g_title[0] = '\0';
 	g_hash[0] = '\0';
 	g_src[0] = '\0';
+	memset(g_tier, 0, sizeof g_tier);
+	g_ntier = 0;
 }
 
 /* "#! zyperos-cheevos 2\tgame=1459\tconsole=7\ttitle=Blaster Master"
@@ -166,6 +183,72 @@ static void parse_meta(char *line)
 	g_n++;
 }
 
+static uint64_t fnv(uint64_t h, const char *s, size_t n)
+{
+	while (n--) { h ^= (unsigned char)*s++; h *= 1099511628211ULL; }
+	return h;
+}
+
+/* A flag that only feeds the condition after it (rcheevos' AddSource,
+ * SubSource, AddAddress, Remember, AddHits, SubHits, AndNext, OrNext,
+ * ResetNextIf): part of what a Measured condition measures */
+static bool chain_flag(const char *c)
+{
+	return c[0] && strchr("ABIKCDNOZ", c[0]) && c[1] == ':';
+}
+
+/* "<id>\t<condition>": which value it measures and to what target.
+ * "M:0xX1234>=60" counts to 60, "M:0xH1234=1.10." to 10 hits; "G:" is the
+ * same shown as a percentage. Two achievements whose conditions differ only
+ * in that target are one count at different levels - Rayman 2's lums at
+ * 10, 30 and 60. */
+static void parse_condition(const char *line)
+{
+	const char *cond = strchr(line, '\t'), *m = NULL, *p, *op, *rhs, *end, *start;
+	const uint64_t basis = 14695981039346656037ULL;
+	unsigned long hits = 0, k = 0;
+	chv_tier *t;
+	int id = atoi(line);
+
+	if (id <= 0 || !cond || g_ntier >= CHV_MAX) return;
+	cond++;
+	/* The Measured condition: at the start, or after a condition's "_" or an
+	 * alternative's "S" */
+	for (p = cond; *p; p++)
+		if ((p[0] == 'M' || p[0] == 'G') && p[1] == ':' &&
+		    (p == cond || p[-1] == '_' || p[-1] == 'S')) { m = p; break; }
+	if (!m) return;
+	end = m + strcspn(m, "_S");
+	/* Its comparison, then what it compares to, then any ".hits." */
+	for (op = m + 2; op < end && !strchr("=!<>", *op); op++) ;
+	if (op >= end) return;
+	for (rhs = op; rhs < end && strchr("=!<>", *rhs); rhs++) ;
+	p = memchr(rhs, '.', (size_t)(end - rhs));
+	if (p) hits = strtoul(p + 1, NULL, 10);
+	if (hits) k = hits;
+	else if (isdigit((unsigned char)*rhs)) {
+		if (rhs[0] == '0' && (rhs[1] == 'x' || rhs[1] == 'X')) return;   /* memory */
+		k = strtoul(rhs, NULL, 10);
+	} else if (*rhs == 'h' || *rhs == 'H') k = strtoul(rhs + 1, NULL, 16);
+	else if (*rhs == 'f' || *rhs == 'F') k = (unsigned long)strtod(rhs + 1, NULL);
+	if (!k) return;
+
+	/* The chain that feeds it, back to the first condition that does not */
+	for (start = m; start > cond && start[-1] == '_'; ) {
+		const char *q = start - 1;
+
+		while (q > cond && q[-1] != '_') q--;
+		if (!chain_flag(q)) break;
+		start = q;
+	}
+
+	t = &g_tier[g_ntier++];
+	t->id = id;
+	t->target = k;
+	t->value = fnv(basis, start, (size_t)(rhs - start));
+	t->whole = fnv(fnv(basis, cond, (size_t)(rhs - cond)), end, strlen(end));
+}
+
 bool chv_load(const char *set_path)
 {
 	char *line = NULL;
@@ -187,6 +270,7 @@ bool chv_load(const char *set_path)
 		line[strcspn(line, "\r\n")] = '\0';
 		if (!strncmp(line, "#!", 2))      parse_header(line);
 		else if (!strncmp(line, "#:", 2)) parse_meta(line);
+		else                              parse_condition(line);
 	}
 	free(line);
 	fclose(f);
@@ -209,6 +293,60 @@ bool chv_note_progress(int id, const char *text)
 		}
 	return false;
 }
+
+static const chv_tier *tier_of(int id)
+{
+	int i;
+
+	for (i = 0; i < g_ntier; i++) if (g_tier[i].id == id) return &g_tier[i];
+	return NULL;
+}
+
+/* "Lums II" to "Lums": the length of a title without a trailing level, a
+ * roman numeral or a number after a space; 0 when it has none */
+static size_t title_base(const char *t)
+{
+	size_t n = strlen(t), k;
+
+	while (n && t[n - 1] == ' ') n--;
+	for (k = n; k && (isdigit((unsigned char)t[k - 1]) || strchr("IVXLC", t[k - 1])); k--) ;
+	if (k == n || k < 2 || t[k - 1] != ' ') return 0;
+	/* All digits or all numeral, not "C3" */
+	if (strspn(t + k, "0123456789") != n - k && strspn(t + k, "IVXLC") != n - k) return 0;
+	while (k && t[k - 1] == ' ') k--;
+	return k;
+}
+
+static bool same_count(const cheevo *a, const chv_tier *ta, const cheevo *b, const chv_tier *tb)
+{
+	size_t na, nb;
+
+	if (ta->whole == tb->whole) return true;
+	if (ta->value != tb->value) return false;
+	na = title_base(a->title);
+	nb = title_base(b->title);
+	return na && na == nb && !strncmp(a->title, b->title, na);
+}
+
+bool chv_progress_said(int id)
+{
+	const chv_tier *ta = tier_of(id), *tb;
+	const cheevo *a = NULL;
+	int i;
+
+	for (i = 0; i < g_n; i++) if (g_ach[i].id == id) { a = &g_ach[i]; break; }
+	if (a && (a->earned || a->earned_now)) return false;
+	if (!a || !ta) return true;
+	for (i = 0; i < g_n; i++) {
+		const cheevo *b = &g_ach[i];
+
+		if (b == a || b->earned || b->earned_now) continue;
+		if (!(tb = tier_of(b->id)) || tb->target >= ta->target) continue;
+		if (same_count(a, ta, b, tb)) return false;
+	}
+	return true;
+}
+
 int chv_game(void) { return g_game; }
 int chv_console(void) { return g_console; }
 const char *chv_game_title(void) { return g_title; }

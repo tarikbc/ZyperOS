@@ -1667,7 +1667,12 @@ left-aligned beside it. A progress notice is the achievement's name in
 **meta** **text-dim**, a strip **bar** high in **accent-ink** on **track**,
 and the count ("74 / 100") in **meta** **text** under it. Notices take turns:
 each has its time and a 300 ms gap before the next; unlocks go ahead of
-progress. The achievements list (a game's Achievements row) has the badge at the start
+progress. A count a set keeps at levels (Rayman 2's lums at 10, 30, 60...:
+achievements measuring the same value with only the target different, or
+named alike but for a trailing "I", "II" or "2") has one progress notice, the
+nearest level not earned, where it had one for every level *(2026-11-26, from
+metior: "Supressing redundant RetroAchievements")*; unlocks are as they were.
+The achievements list (a game's Achievements row) has the badge at the start
 of every row, greyed and faded until earned, and the count where the points
 are while it moves. *(My picks in the achievements lab,
 docs/design/mock/cheevos-lab.html, 2026-11-05: badge at the left, strip, on
@@ -4929,6 +4934,15 @@ library's rows, so the card still works in the other system.
   from the page has the folder read again for its next listing. The page
   draws no video in 1.1.0 *(my call, 2026-11-20)*: the listing names each
   game's video (`video`), found the same way, for a later design.
+- **A PICO-8 cart is its own cover**, after ZyperOS's and ES's *(2026-11-26,
+  from moroboshi69: "Set the default boxart for PICO-8 games to use the
+  game's png")*: a `.p8.png` of a cart's size (160 x 205) shows its label,
+  the 128 x 128 at (16, 24) PICO-8 draws, drawn nearest so its pixels stay
+  sharp (src/cartlabel.h). The same on the shelf, its Video and List views,
+  the screensaver (which takes the shelf's lookup, ES's covers too, from
+  1.1.1), the menu and Recents' Last Screen. Box Art does not count it, so a
+  fetched cover can still come first; the File Transfer page shows the cart
+  whole.
 - **Box Art** counts an ES cover as a cover: it fetches only for games with
   neither, and **Cover and Video** (11.34) shows an ES cover as Now,
   credited "EmulationStation". A cover chosen there is ZyperOS's own, and
