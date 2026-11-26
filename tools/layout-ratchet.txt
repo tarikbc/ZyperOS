@@ -13,13 +13,15 @@
 1 folderart.c
 4 folderart.h
 2 gamegrid.c
-8 gamelist.c
+3 gamelist.c
 3 games.c
 2 games.h
 2 home.c
 1 ingame_screen.c
 2 kbnav.h
 5 keyboard.c
+3 listbox.c
+1 listbox.h
 7 mediapage.c
 2 mediapage.h
 2 menu_panel.c

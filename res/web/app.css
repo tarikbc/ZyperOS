@@ -133,6 +133,8 @@
 	--t-arm-glide: 180ms;
 	--t-hold-snap: 1000ms;
 	--t-hold-band: 2000ms;
+	--t-slide-hold: 1400ms;
+	--t-slide-end: 900ms;
 	--t-sheen: 480ms;
 	--t-sharpen: 200ms;
 	--t-hold-low-battery: 6000ms;

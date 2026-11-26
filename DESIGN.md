@@ -710,7 +710,9 @@ beside a cubic one. One function each, in `src/design.h`.)*
 | **wind** | 180 | follow | MP4's cassette winding to a seek's place: follow's tau |
 | **arm-glide** | 180 | follow | MP4's tonearm gliding to the song's place on the record: follow's tau |
 | **hold-snap** | 1000 | - | a game focused on the shelf before its cover turns into its video snap |
-| **hold-band** | 2000 | - | the Video view's band of covers and keys, after the last press on a game whose snap plays, before it goes down to its strip |
+| **hold-band** | 2000 | - | the Video view's band of covers and keys, and the List view's details over the media, after the last press on a game whose snap plays, before they go down |
+| **slide-hold** | 1400 | - | a name or a line too long for its place, still before it slides (at 70 units a second, its ends faded over 36: src/ui.c's marquee) |
+| **slide-end** | 900 | - | ...and still at its far end before it slides back |
 | **sheen** | 480 | turn | one light crossing a game's card with no art, once, as the cover row stops on it |
 | **sharpen** | 200 | fade | a played game's card with no art turning from its blurred frame of play to the sharp one, as the cover row stops on it |
 | **hold-low-battery** | 6000 | - | the low-battery start screen before the handheld powers off |
@@ -999,7 +1001,7 @@ same system (Down from the last column over a short row lands on its last
 system), stopping at the top and the foot with the edge sound; **Left** and
 **Right** step, a press going round the ends and a held one stopping at the
 first or the last system with the edge sound once, as a list's does;
-**L1** and **R1** jump a screenful, or to the last (first) system where less is left, and from the last round to the first (as the shelf grid's, 11.47).
+**L1** and **R1** jump a screenful, or to the last (first) system where less is left, and from the last a press goes round to the first and a held one stops (a list's page, 11.3).
 A system hidden or emptied leaves the grid as it leaves the row; Favorites is
 a tile like any other. When the systems change (one turned off or on in
 Home Systems, 11.48; Favorites or Recents made or emptied; a system's last
@@ -1284,6 +1286,19 @@ for a press and `menu_step_sel` for a hold (src/menu.c), and
 `menu_step_index` for the loops that keep a plain index. *(2026-11-12: I
 want lists to go round, and a held direction to stop at the end. From 1.0.1
 to then they stopped at both.)*
+
+**A list's page goes by the same rule.** Where L1 and R1 page a list - the
+shelf's list (11.39) and grid (11.47), the home's Grid (11.1), the
+achievement list - they go a screenful on, or to the end where less is
+left (the same column on a grid), so a list that fits on one screen gets its
+two ends; from the end itself a press goes round to the other end and a
+**held** one stops there, playing **edge** once, as a held direction does.
+One rule in one place, `gg_page` (src/gridrule.c), with the press or the
+hold. Tabs (MENU's, the in-game menu's) and a row (the home's Spotlight and
+Gallery, the cover row, the Video view's band) are not lists: their L1 and
+R1 go round held or not, as their Left and Right do. *(2026-11-23, with the
+List View lab: before, the shelf's list went round on a hold, the grids went
+to the end and round, and the achievement list never went round.)*
 
 A list that fits its panel sends the focus fill back to the other end in
 **quick**, as any step. A list longer than its panel **goes on**: after its
@@ -4657,8 +4672,9 @@ step, its START skips it, and its last page sends you to MENU > Controls.
 
 The heading and the foot are the cover row's (START's word apart), so
 turning View moves only the middle:
-- Rows down the left: the focus plate from x 40, 552 wide, rows 56 tall
-  from y 200, eight in sight; names in **meta** at x 120, **text-soft**,
+- Rows down the left: the focus plate from x 40 to 464, rows 56 tall
+  from y 200 to 648, eight in sight; names in **meta** at x 120, 320 units
+  of room, **text-soft**,
   the focused one on an **accent** plate in **on-accent** (radius.row) -
   with Highlight's Bar, as it ships; with Border a ring of the row's corners
   inside the plate's place, with Lift a plate of **surface** on a soft lift,
@@ -4673,27 +4689,85 @@ turning View moves only the middle:
   drawn rather than loaded, so a list of a thousand games costs no art
   reads and no textures, and a 512-unit cover is never squeezed to 40
   units; a folder's, the card's folder drawn small (32 x 28 cells, two
-  units a cell, no label), its count at the row's end (x 568) in
+  units a cell, no label), its count at the row's end (x 440) in
   **chrome**. A favorite has the heart at the row's
   end, not on Favorites.
-- The focused entry on the right: its card or box art whole in a box 320
-  x 320 from x 640, y 200; its facts under it from cap y 552, 32 apart, in
-  **chrome** **text-dim** (its system on Favorites, Played, Achievements,
-  or a folder's "12 games"); A's hint at cap y 664, so three facts fit. A
-  fact wider than the panel takes a second line where the facts after it
-  still fit in the three: the system's line with its time (Recents,
-  Screenshots) at its dot, the time under the system, and Played with its
-  word over the time ("Tiempo de juego:", "10 min 0 s"); where they do not,
-  the system's name is the part cut, never the time, and Played is cut as
-  before.
+- The focused entry on the right, **its media as tall as the rows**: its
+  card or box art whole in a box 448 x 448 from x 512, y 200 to 648, at
+  its own shape, its middle on the box's and **its foot on the box's foot**
+  (so a wide box or the snap leaves the ground above it, never under it).
+  On a wider canvas the box takes the width past 4:3's, up to a 4:3 snap's
+  at 448 (600 x 448 on the Smart Pro's 1368), and the list the rest. A 4:3
+  snap plays at 448 x 336 (280 x 210 pixels on the Pixel 2, 200 x 150
+  before). src/listbox.h, check-listbox.
+- **Its details over the media's foot**: A's hint inset 24 from the box's
+  left and its foot (its middle at y 604), the facts standing on it, 32
+  apart and the last 48 over A, in **chrome** **text-soft** (its system
+  on Favorites, Played, Achievements, cheats, or a folder's "12 games"),
+  firmware it lacks in **warning**. Under them the theme's **ground** fades
+  up from the foot, none 64 above the first fact's top and full from there
+  down, across the picture, as the Video view's ground fades down over its
+  snap (11.57): the media melts into the page at its foot. **How full is
+  worked out, not typed**: the least ground under which every line keeps
+  its 4.5:1 (3.2) over any picture, its worst black or white, in the theme,
+  tone and accent that are on (src/listbox.h's gl_ground_alpha). For
+  **text-soft** that is about 75% in both themes (191 of 255 in Beard, 189
+  in Salt & Pepper; text-dim would need 87 to 94%, so the facts are in
+  text-soft). With a firmware line it is as much as **warning** needs, up to
+  the Video view's band's 92%; where that is not enough (Beard's warning is
+  4.53:1 on the bare ground, so no picture may show through it) the line is
+  walked toward **text** in twentieths, no further than it must, as the
+  port's loading band is (11.11): three of them in Beard, none in Salt &
+  Pepper (90% there). check-listbox holds
+  every line at 4.5:1 or more in all 60 looks.
+  to 3.3 over black art. A fact wider than the details (400) takes a second
+  line where the facts after it still fit in three: the system's line with
+  its time (Recents, Screenshots) at its dot, the time under the system, and
+  Played with its word over the time ("Tiempo de juego:", "10 min 0 s");
+  where they do not, the system's name is the part cut, never the time, and
+  Played is cut as before. The snap's play mark at the cover's foot, as on
+  the cover row, over the fade.
+- **The details go down at rest** *(my pick in the List View lab,
+  2026-11-23: "FUll height, show the details on top of the video in a very
+  subtle way, maybe with a gradient, and collapse the details in 2s so u
+  can see the full media")*: after **hold-band** (2 s) with no press on a
+  game whose snap plays, counted from the later of the last press and the
+  snap's start, the facts, A's hint and the fade under them fade out and
+  sink 24 units in **move** (out), and the whole picture shows. Any press,
+  a page or a menu over the list, and the snap going (a move, the dark
+  screen) bring them back up in **quick** (out). A game with no snap keeps
+  them up, as the Video view keeps its band. It is the Video view's band's
+  rule in the same code: src/snaprest.h drives both (check-snaprest,
+  check-games).
 - Up and Down step, Left and Right jump a letter, L1 and R1 a page: the
-  row turned, as the cover row's d-pad turns with it. It comes round past
-  its ends: a shelf, not a menu (11.3).
-- The focused game's video snap plays in its cover's place on the panel,
-  as on the cover row (11.19): the same wait, its bar under the cover, the
-  same turn from the cover to the video in a frame that grows from one to
-  the other, and the play mark on a cover that has one. *(2026-11-13: "the
-  list mode should also play the video preview".)*
+  row turned, as the cover row's d-pad turns with it. A press goes round
+  past the ends; **a held Up or Down stops at the end** with the edge
+  sound once, and the next press goes round, as every list's does (11.3)
+  and the home's Grid's *(my pick in the List View lab, 2026-11-23; before,
+  a held Down ran from the last game to the first and on)*. L1 and R1 page
+  by the same rule: eight rows on, or to the end, then a press round and a
+  held one stopping (11.3's list page). The grid's Left
+  and Right step the same way (11.47); the cover row and the Video view's
+  band go round held or not, as the home's row does. check-shelfkeys.
+- The focused game's video snap plays in its cover's place, **asked the
+  frame the focus comes**, as the Video view's is (11.57): no hold-snap,
+  no bar, not while a direction is held, so a scroll opens no file and the
+  snap is asked when the press lets go; until its first picture the cover
+  shows, then it turns into the snap over **turn**, in a frame that grows
+  from one to the other, the play mark on a cover that has one. *(2026-11-13:
+  "the list mode should also play the video preview"; at once, my pick in
+  the List View lab, 2026-11-23.)* The snap is decoded at its own size as
+  on every view (at most 640 x 480, one decoder thread); only the scaled
+  draw grows.
+- The focused name slides when it is too long, as every long name does:
+  still for **slide-hold** (1.4 s), on at 70 units a second, still for
+  **slide-end** (0.9 s) at its far end, and back, its ends faded over 36
+  units (src/ui.c's marquee, the same for the heading, MENU, MP4 and the
+  details).
+
+Host shots: `shelf-list-snap` (the test picture, the details up) and
+`shelf-list-rest` (`--band F`, the details F of the way down), with
+tools/i18n-shots.py. The lab: ~/Documents/ZyperOS/labs/list-view-lab.html.
 
 *(2026-11-12: I wanted my folders in a system kept on the shelf, with
 their own look in the pixel style, and a list to switch to from MENU. Host
@@ -5524,12 +5598,16 @@ shape, growing from the cell as the cover row's turns wide, the ring and a
 card's lift (UI_LIFT_FOCUS) going with it. The play mark on the focused
 cover alone.
 
-**The keys** (src/shelf_keys.c): Left and Right step along the rows, round
-the ends as the row does; Up and Down a row, stopping at the top and the
+**The keys** (src/shelf_keys.c): Left and Right step along the rows, a
+press going round the ends and a held one stopping at the first or the
+last cover with the edge sound once, as a list's does and the home's Grid's
+(11.1; my pick in the List View lab, 2026-11-23, for the shelf's list and
+grid alike); Up and Down a row, stopping at the top and the
 foot with the edge sound, Down from over a short last row landing on its
 last cover; L1 and R1 a screenful in the same column, or to the last (first)
-cover where less is left, and from the last round to the first, so a grid
-that fits on one screen gets its two ends (`gg_page`). The four directions are
+cover where less is left, and from the last a press round to the first and
+a held one stopping there, so a grid that fits on one screen gets its two
+ends (`gg_page`, a list's page, 11.3). The four directions are
 the grid's, so it has no letter jump. A, B, X, Y, START as on the cover row.
 The covers a press can slide into sight are decoded before it comes: the two
 rows in sight and two rows either side of them stay, counted round the ends
@@ -5665,6 +5743,10 @@ when its change lands.
   in Salt & Pepper): Ports' pink moves a twentieth over a dark cover in Beard,
   and Nintendo DS's silver four or five. So the band can differ slightly from
   the system's rail and wash, which do not move.
+- The List view's firmware line over the media (11.39) is **warning**
+  walked three twentieths toward **text** in Beard, as a picture shows
+  through the ground under it and Beard's warning is only 4.53:1 on the bare
+  ground; so it is a darker red there than **warning** elsewhere.
 - Zyper's loop on the loading screen (11.11): the words and the cover stay
   out of his frame, but the still under it is the blurred backdrop, and
   plastron's splash has to copy the still back under his frame before it draws
@@ -7692,7 +7774,7 @@ launcher).
   on its card's ground as a game's is.
 - **The list** is the games shelf's (11.39): a row an album, its kind's
   badge in the mark's place on All (the letter's card otherwise), the cover
-  on the panel with the artist under it.
+  in the media's box with the artist over its foot.
 - **The foot**: **B Back**, and **START Grid** under the covers, **START
   List** under the grid, **START Covers** under the list. No X or Y there,
   and no play time, achievements, resume or heart among the facts: those

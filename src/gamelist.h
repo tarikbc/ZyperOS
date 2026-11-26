@@ -10,29 +10,31 @@
  * name more than by cover (Arcade, Ports, a long library).
  *
  * Up and Down step, Left and Right jump a letter, L1 and R1 a page: the row
- * turned, as the cover row's d-pad turns with it (main.c, update_games). It
- * comes round past its ends as the cover row does: it is a shelf, not a
- * menu (DESIGN.md 11.3).
+ * turned, as the cover row's d-pad turns with it (main.c, update_games). A
+ * press comes round past its ends; a held Up or Down stops at the end with
+ * the edge sound once, as every list's does (DESIGN.md 11.3, shelf_move).
  *
  * No I/O: the caller hands it its facts, as games_draw's are handed. */
 #include "coverflow.h"
 #include "keyhints.h"
+#include "listbox.h"         /* GL_ROWS */
+#include "snaprest.h"
 
 #include <SDL.h>
 #include <stdbool.h>
 #include <stdint.h>
 
-/* Rows in sight */
-#define GL_ROWS 8
-
 /* Where the list stands and where it is going, as rows: the first row in
  * sight and the focus plate, each easing from where it was to where the
- * cursor has put it (ms.move, out). The caller keeps one a shelf. */
+ * cursor has put it (ms.move, out); and the focused entry's details over
+ * its media, down at rest while its snap plays (src/snaprest.h), which the
+ * caller touches at a press. The caller keeps one a shelf. */
 typedef struct {
 	bool     set;
 	int      cursor, count;
 	float    top_from, top_to, plate_from, plate_to;
 	uint32_t moved;
+	snaprest details;
 } gl_motion;
 
 typedef struct {
@@ -50,16 +52,18 @@ typedef struct {
 	/* The pixel folder (ui_make_folder_icon), FA_ICON_W x FA_ICON_H; NULL
 	 * draws none */
 	SDL_Texture *folder_icon;
-	/* The focused game's video snap (src/snapshelf.h), as the cover row has
-	 * it (games_info): its picture, its shape and the part of its texture
-	 * the picture is in, how far the cover has turned into it (0 to 1), the
-	 * wait before it as a bar under the cover, and whether it has one at all,
-	 * for the play mark on its cover */
+	/* The focused game's video snap (src/snapshelf.h), asked the frame the
+	 * focus comes, as the Video view's is: its picture, its shape and the
+	 * part of its texture the picture is in, how far the cover has turned
+	 * into it (0 to 1), and whether it has one at all, for the play mark on
+	 * its cover */
 	SDL_Texture *snap;
 	int snap_w, snap_h;
 	SDL_Rect snap_src;
-	float snap_k, snap_wait;
+	float snap_k;
 	bool has_snap;
+	/* A shot's details, F of the way down (--band F); 0 for their own */
+	float details;
 	/* The focused entry's facts, as the cover row has them; `needs` its
 	 * firmware the card lacks, in **warning** */
 	const char *played, *origin, *needs;
