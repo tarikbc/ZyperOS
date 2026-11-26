@@ -257,8 +257,6 @@ uint32_t vv_draw(snaprest *m, const games_row *row, SDL_Renderer *r, const vv_in
 	SDL_GetRenderDrawColor(r, &red, &green, &blue, &alpha);
 	SDL_GetRenderDrawBlendMode(r, &blend);
 	SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
-	SDL_GetRenderDrawBlendMode(r, &blend);
-	SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
 	/* The rest: the band and the name's card away once the snap has
 	 * played hold-band after the last press; no snap, no rest
 	 * (src/snaprest.h) */
