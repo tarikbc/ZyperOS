@@ -85,6 +85,7 @@ typedef struct {
 	char kind[16];          /* "system" for a system update, else empty */
 	char slot[4], other[32];/* the slot that runs, the other slot's version */
 	int files_done, files_total;
+	uint64_t need;          /* state space: the free room it needs, its margin in */
 	char message[160];
 } up_status;
 void up_status_write(up_status *s);

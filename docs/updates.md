@@ -102,7 +102,10 @@ keys and the device, and compares:
 **download**, in order:
 
 1. Refuses below 25% battery without a charger (`battery`), and when the card
-   has less free space than the new folder needs (`space`).
+   has less free space than the new folder needs (`space`), with the room it
+   needs in the status file (`need <bytes>`, its 32 MB margin in). The page
+   says that beside the card's free room, and its A, Check Again, runs the
+   download again, which measures again and goes on when it fits.
 2. Stages the new folder in `/mnt/SDCARD/ZyperOS.next/`, never touching the
    running one. Every file the installed folder already has (by the index) is
    copied from it, hashed on the way, so only changed files download.

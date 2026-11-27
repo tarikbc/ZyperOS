@@ -5,7 +5,8 @@
 #   update-pack.py, tools/update-key.sh), a fake card at the first, then
 #   zyperos-update check and download from a file:// source and the boot
 #   switch (update/apply.sh) as the device runs them. Covered: only changed
-#   files download; low battery refuses; a download cut short goes on from
+#   files download; low battery refuses; a card too full refuses and says
+#   the room it needs; a download cut short goes on from
 #   where it stopped; a changed list, a list signed by another key and a
 #   changed pack are all refused; the switch keeps the launcher's state; the
 #   step back and forward; a version that does not start goes back by itself;
@@ -143,6 +144,15 @@ expect "a release for a newer system image says so" "$?:$(state)" "2:needs-syste
 expect "18% without the charger refuses" "$?:$(state)" "2:battery"
 [ -d "$CARD/ZyperOS.next" ] && bad "  ...and staged something" || ok "  ...and staged nothing"
 (export ZYPEROS_UPDATE_BATTERY="18 1"; run check --source "file://$T/rel2/")
+
+# --- a card too full ----------------------------------------------------------
+(export ZYPEROS_UPDATE_CARD_FREE=1000; run download --source "file://$T/rel2/")
+expect "a card too full refuses" "$?:$(state)" "2:space"
+need=$(field need)
+if [ "${need:-0}" -gt $((32 << 20)) ]; then ok "  ...and says the room it needs ($need bytes)"; else bad "  ...need '$need'"; fi
+rm -rf "$CARD/ZyperOS.next"
+run check --source "file://$T/rel2/"
+[ -z "$(field need)" ] && ok "  ...said only while it is too full" || bad "  ...need still said"
 
 # --- cut short, then on from there -------------------------------------------
 # The pack cut in the middle of b_libretro.so's member

@@ -1578,7 +1578,11 @@ UPDATE_STATES = {
     "update-error-download": ("state error\nversion 0.1.1\ndownload 83000000\nkind system\ntime {now}\n", True),
     "update-needs-system": ("state needs-system\nversion 0.3.0\ntime {now}\n", True),
     "update-too-big": ("state too-big\nversion 0.3.0\nkind system\ntime {now}\n", True),
-    "update-space": ("state space\nversion 0.2.0\ndownload 14200000\ntime {now}\n", True),
+    # The card too full: what the update needs, beside the shot's stand-in
+    # free room (src/shots.c)
+    "update-space": ("state space\nversion 0.2.0\ndownload 14200000\nneed 410000000\ntime {now}\n", True),
+    # ...and as a program from before need was written says it
+    "update-space-old": ("state space\nversion 0.2.0\ndownload 14200000\ntime {now}\n", True),
     "update-available-offline": ("state available\nversion 0.1.1\ndownload 83000000\nkind system\ntime {now}\n", False),
     "update-ready": ("state ready\nversion 0.1.1\nkind system\ntime {now}\n", True),
 }
