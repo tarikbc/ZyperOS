@@ -11,6 +11,7 @@
  *   done <bytes>        progress through total, for the bar
  *   total <bytes>
  *   files <done> <all>
+ *   need <bytes>        state space: the free room the update needs
  *   message <words>     for the log and the screen's note
  *   pid <pid>           the program, while it runs
  *   time <unix time>    when this was written */
@@ -40,6 +41,7 @@ void up_status_write(up_status *s)
 	if (s->other[0]) fprintf(f, "other %s\n", s->other);
 	if (s->total) fprintf(f, "done %llu\ntotal %llu\n", (unsigned long long)s->done, (unsigned long long)s->total);
 	if (s->files_total) fprintf(f, "files %d %d\n", s->files_done, s->files_total);
+	if (s->need && !strcmp(s->state, "space")) fprintf(f, "need %llu\n", (unsigned long long)s->need);
 	if (s->message[0]) fprintf(f, "message %s\n", s->message);
 	fprintf(f, "pid %ld\ntime %lld\n", (long)getpid(), (long long)time(NULL));
 	if (fclose(f) == 0) rename(tmp, s->path);

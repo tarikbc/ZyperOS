@@ -2720,7 +2720,10 @@ card is full, a version did not start) is said in full where What's New goes,
 which steps aside: **menu** **text**, up to three balanced lines from y 348
 every 52, with an 8-wide **warning** bar at their left; the line under the
 versions stays short ("Back on 0.1.0"). *(2026-11-05: the error was
-hard to read as a cut **meta** line in **warning**.)* The buttons at the foot, centered on y 714: 11.9's glyph at 48
+hard to read as a cut **meta** line in **warning**.)* A card too full says what the update needs free and what the card has ("The card needs 410 MB free for the
+update and has 230 MB."), and A is **Check Again**, which runs the download again: the program measures
+again, and goes on if the update fits now *(2026-11-22: "should say how much needed and check again
+option")*. The buttons at the foot, centered on y 714: 11.9's glyph at 48
 and its word in **meta** **text-soft**, 40 between pairs. A is the page's
 action (Download, Continue, Restart Now, Look Again, Try Again), B is Back
 ("Continue in background" while it works; "Later" when it is ready), Y is "Roll
