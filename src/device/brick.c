@@ -260,6 +260,20 @@ static void show_scaled(void)
 	SDL_SetRenderTarget(ren, screen_tex);
 }
 
+/* Kept only in the host's desk mode, which draws on its screen texture
+ * (window_target). The Brick draws on the window, whose back buffer after
+ * SDL_RenderPresent is one of fb0's pages as Imagination's EGL left it,
+ * not the frame just shown. bend_tex would keep it, but while it is in use
+ * the shader is in the frame, and no frame is drawn over the last then. */
+bool plat_screen_kept(void)
+{
+#ifdef ZYPEROS_DESK
+	return desk_on();
+#else
+	return false;
+#endif
+}
+
 /* The Brick's panel is the screen, so drawing to the screen is drawing to the
  * window (on a panel of another size than the canvas, show_scaled). The first present tells
  * the splash first, and goes on the kernel's clock beside the splash's own

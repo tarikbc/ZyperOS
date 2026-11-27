@@ -122,6 +122,15 @@ void plat_screen_finish(void);
  * is (src/shelf_draw.c), would put it on twice, so none is, while this is
  * true. False where it goes on as the frame goes to the panel (the Pixel 2). */
 bool plat_screen_shader_in_frame(void);
+/* What ZyperOS drew is still there at the next frame: it draws on a texture
+ * of its own that outlives a present (the Pixel 2's screen_tex, the host's
+ * desk screen), so a frame can draw over the last one's picture, as a focus
+ * frame does (src/shelf_draw.c). False where it draws on the window itself
+ * (the Brick): after a swap the window's back buffer is whichever of fb0's
+ * pages comes round next, holding a frame two or three presents old, and a
+ * frame drawn over it showed those old frames again, a menu closed a moment
+ * ago among them, flickering on the still home (a Brick tester, 2026-11-21). */
+bool plat_screen_kept(void);
 /* A video picture UNDER the screen, for the next plat_present only: MP4's
  * player, called at the start of a frame in place of clearing it. The frame
  * is `bg` everywhere, then the `src` part of `tex` (which may be NULL; `src`
