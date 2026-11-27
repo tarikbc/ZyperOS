@@ -1248,6 +1248,9 @@ static void draw_games(app *a)
 		if (!g_home_live) vv_touch(&v->vm, now);
 		vi = (vv_info){
 			.heading = head, .title = g ? g->title : NULL,
+			/* The heart as the cover row's: not on Favorites, nor a shot */
+			.favorite = g && !g->folder && !shots && strcmp(s->tag, HOMESYS_FAV) && !is_mp4(s) &&
+			            fav_is(a->sys.systems[owner].tag, g->file),
 			.count = v->list.count, .cursor = v->cursor,
 			.accent = g ? a->sys.systems[owner].accent : s->accent,
 			.played = g_game_page.valid ? g_game_page.played : "",

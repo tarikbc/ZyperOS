@@ -267,6 +267,75 @@ static void collections_orders(void)
 	ck(!strcmp(v[0].name, "Tetris") && !strcmp(v[2].name, "Contra"), "and so on a shelf of one system");
 }
 
+/* Favorites First (DESIGN.md 11.70): the shelf's favorites ahead of its
+ * other games, each part in the order chosen, never a folder, never another
+ * system's favorite of the same file */
+static int names_are(const game_entry *v, int n, const char *want)
+{
+	char got[256] = "";
+	int i;
+
+	for (i = 0; i < n; i++)
+		snprintf(got + strlen(got), sizeof got - strlen(got), "%s%s", i ? "," : "", v[i].name);
+	if (strcmp(got, want)) printf("    got %s\n    not %s\n", got, want);
+	return !strcmp(got, want);
+}
+
+static void favorites_first(void)
+{
+	game_entry v[6], w[6];
+	int k;
+
+	printf("favorites first:\n");
+	scrub();
+	fav_load();
+	put(&v[0], "Zelda", 10);
+	put(&v[1], "Contra", 60);
+	put(&v[2], "metroid", 30);
+	put(&v[3], "Bomberman", 40);
+	put(&v[4], "Adventure Island", 50);
+	put(&v[5], "Rygar", 20);
+	fav_toggle("NES", "Zelda.zip");
+	fav_toggle("NES", "Bomberman.zip");
+	fav_toggle("NES", "Rygar.zip");
+	fav_toggle("SNES", "Contra.zip");          /* the same file, another system */
+
+	sort_apply(v, 6, 0, "NES");
+	memcpy(w, v, sizeof w);
+	k = sort_favorites_first(v, 6, "NES");
+	ck(k == 3, "three favorites lead");
+	ck(names_are(v, 6, "Bomberman,Rygar,Zelda,Adventure Island,Contra,metroid"),
+	   "by name: the favorites A to Z, then the others A to Z");
+	ck(!sort_favorites_first(w, 6, "GB") && names_are(w, 6, "Adventure Island,Bomberman,Contra,metroid,Rygar,Zelda"),
+	   "a shelf with none of its own: nothing moves (SNES's Contra is not NES's)");
+
+	sort_apply(v, 6, 3, "NES");                /* Recently Added */
+	k = sort_favorites_first(v, 6, "NES");
+	ck(k == 3 && names_are(v, 6, "Bomberman,Rygar,Zelda,Contra,Adventure Island,metroid"),
+	   "by recently added: newest first in each part");
+	memcpy(w, v, sizeof w);
+	sort_apply(w, 6, 3, "NES");
+	sort_favorites_first(w, 6, "NES");
+	ck(!memcmp(v, w, sizeof v), "the same shelf twice, the same order");
+
+	/* A folder is no game to favorite, even one named as a favorite is */
+	put(&v[0], "Zelda", 10);
+	v[0].folder = 4;
+	sort_apply(v, 6, 0, "NES");
+	sort_favorites_first(v, 6, "NES");
+	ck(strcmp(v[0].name, "Zelda") || !v[0].folder, "a folder is never lifted");
+
+	/* Every game a favorite, or one game: nothing to move */
+	for (k = 0; k < 6; k++) put(&w[k], v[k].name, 0);
+	memcpy(v, w, sizeof v);
+	for (k = 0; k < 6; k++) if (!fav_is("NES", w[k].file)) fav_toggle("NES", w[k].file);
+	ck(sort_favorites_first(w, 6, "NES") == 6 && !memcmp(v, w, sizeof v), "all favorites: the order as it was");
+	ck(sort_favorites_first(w, 0, "NES") == 0 && sort_favorites_first(NULL, 6, "NES") == 0,
+	   "an empty shelf, or none");
+	for (k = 0; k < 6; k++) if (fav_is("NES", w[k].file)) fav_toggle("NES", w[k].file);
+	fav_toggle("SNES", "Contra.zip");
+}
+
 static void by_display_title(void)
 {
 	game_entry v[3];
@@ -297,6 +366,7 @@ int main(void)
 	nothing_to_sort();
 	favorites_carry_their_owners();
 	collections_orders();
+	favorites_first();
 	db_shutdown();
 
 	if (fails) { printf("\n%d sort check(s) failed\n", fails); return 1; }

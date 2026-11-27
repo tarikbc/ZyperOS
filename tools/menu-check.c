@@ -1423,11 +1423,45 @@ static void cursor_reaches(void)
 	k = reachable(rows, n, got, MENU_MAX_ROWS);
 
 	printf("system menu, what the cursor can reach:\n");
-	ck(k == 8, "eight rows, not the facts (Strength among them, as a zeroed sys_ui shows it)");
+	ck(k == 9, "nine rows, not the facts (Strength among them, as a zeroed sys_ui shows it)");
 	ck(holds(got, k, sm_at(&u, SM_RANDOM)), "Random Game, with games on the shelf");
-	/* 1.0.5: the shelf's covers or a list, under Sort By */
+	/* DESIGN.md 11.70: Favorites First, right under Sort By, Off as it
+	 * ships, On when the shelf has it */
+	ck(holds(got, k, sm_at(&u, SM_FAVFIRST)), "Favorites First");
+	ck(sm_at(&u, SM_FAVFIRST) == sm_at(&u, SM_SORT) + 1 &&
+	   !strcmp(rows[sm_at(&u, SM_FAVFIRST)].label, "Favorites First"), "Favorites First right under Sort By");
+	ck(!strcmp(val(&rows[sm_at(&u, SM_FAVFIRST)]), "Off"), "Favorites First is Off, as it ships");
+	u.fav_first = true;
+	n = sys_menu_build(&u, rows, &b, &heading);
+	ck(!strcmp(val(&rows[sm_at(&u, SM_FAVFIRST)]), "On"), "or On");
+	u.fav_first = false;
+	n = sys_menu_build(&u, rows, &b, &heading);
+	/* Not on the shelves with rows of their own: Favorites (all of it
+	 * favorites), Recents, Collections and Screenshots */
+	{
+		sys_ui o = u;
+		menu_row orow[MENU_MAX_ROWS];
+		menu_bufs ob;
+		const char *oh;
+		int on, oi, j, has = 0;
+
+		for (j = 0; j < 5; j++) {
+			o = u;
+			o.fav = j == 0 || j == 1;
+			o.recents = j == 1;
+			o.coll = j == 2 || j == 3;
+			o.coll_inside = j == 3;
+			o.shots = j == 4;
+			on = sys_menu_build(&o, orow, &ob, &oh);
+			for (oi = 0; oi < on; oi++)
+				if (orow[oi].label && !strcmp(orow[oi].label, "Favorites First")) has++;
+		}
+		ck(!has, "no Favorites First on Favorites, Recents, Collections or Screenshots");
+	}
+	/* 1.0.5: the shelf's covers or a list, under Sort By (and Favorites
+	 * First, since 11.70) */
 	ck(holds(got, k, sm_at(&u, SM_VIEW)), "View");
-	ck(sm_at(&u, SM_VIEW) == sm_at(&u, SM_SORT) + 1, "right under Sort By");
+	ck(sm_at(&u, SM_VIEW) == sm_at(&u, SM_FAVFIRST) + 1, "right under Sort By and Favorites First");
 	ck(!strcmp(val(&rows[sm_at(&u, SM_VIEW)]), "Covers"), "the covers, as it always was");
 	u.listed = true;
 	n = sys_menu_build(&u, rows, &b, &heading);
@@ -3756,6 +3790,8 @@ static void row_sounds(void)
 	u.game_count = 3; u.dmode = "Native";
 	n = sys_menu_build(&u, rows, &b, &heading);
 	ck(menu_sound_at(b.sound, n, sm_at(&u, SM_CORE)) == MENU_SND_RING, "a system's Core steps round, on A too");
+	ck(menu_sound_at(b.sound, n, sm_at(&u, SM_FAVFIRST)) == MENU_SND_RING,
+	   "Favorites First turns over on A too, as Look's two-way rows");
 	ck(menu_sound_at(b.sound, n, sm_at(&u, SM_SORT)) == (MENU_SND_RING | MENU_SND_NO_A),
 	   "Sort By steps round and does nothing with A");
 	ck(menu_sound_at(b.sound, n, sm_at(&u, SM_DISPLAY)) == (MENU_SND_RING | MENU_SND_NO_A),

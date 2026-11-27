@@ -9,6 +9,7 @@
 #include "keyhints_draw.h"
 #include "theme.h"
 #include "ui.h"
+#include "zyperdraw.h"
 #include "ds/layout.h"
 
 #include <math.h>
@@ -111,6 +112,10 @@ static uint32_t name_card(SDL_Renderer *r, const vv_info *in, uint32_t phase, fl
 	const char *name = in->count > 0 && in->title && in->title[0] ? in->title : T(S_SHELF_NO_GAMES);
 	uint32_t wait = UINT32_MAX;
 	int dot = 14, w, tw, x, y, h, dy, lines;
+	/* A favorite's heart before its name, sized and spaced as the cover
+	 * row's (src/games.c): the name moves over for it, in the card's room */
+	float hr = in->favorite && in->count > 0 ? (float)ui_cap_height(title) * .55f : 0;
+	int hw = hr > 0 ? (int)lroundf(hr * 2) + 16 : 0, room = VV_CARD_TEXT - hw;
 	size_t lead = 0;
 	SDL_Rect q;
 
@@ -153,7 +158,8 @@ static uint32_t name_card(SDL_Renderer *r, const vv_info *in, uint32_t phase, fl
 	}
 	lines = facts[0] ? (more[0] ? 2 : 1) : 0;
 	tw = ui_text_width(title, name);
-	if (tw > VV_CARD_TEXT) tw = VV_CARD_TEXT;
+	if (tw > room) tw = room;
+	tw += hw;
 	w = ui_text_width(meta, head) + dot + 12;
 	if (tw > w) w = tw;
 	if (facts[0] && ui_text_width(chrome, facts) > w)
@@ -179,11 +185,12 @@ static uint32_t name_card(SDL_Renderer *r, const vv_info *in, uint32_t phase, fl
 	}
 	ui_text(r, meta, head, x + dot + 12, ui_cap_y(meta, y), -1, UI_TEXT_SOFT);
 	y += DS_LINE_META / 2 + 12 + ui_font_line(UI_F_TITLE) / 2;
-	if (ui_text_width(title, name) <= VV_CARD_TEXT) {
-		ui_text(r, title, name, x, ui_cap_y(title, y), -1, UI_TEXT);
+	if (hr > 0) draw_heart(r, (float)x + hr, (float)y, hr, ui_col(theme()->favorite, 255));
+	if (ui_text_width(title, name) <= room) {
+		ui_text(r, title, name, x + hw, ui_cap_y(title, y), -1, UI_TEXT);
 	} else {
-		ui_text_marquee(r, title, name, x, ui_cap_y(title, y), VV_CARD_TEXT, phase, UI_TEXT);
-		wait = ui_pingpong_wait(ui_text_width(title, name) - VV_CARD_TEXT, phase);
+		ui_text_marquee(r, title, name, x + hw, ui_cap_y(title, y), room, phase, UI_TEXT);
+		wait = ui_pingpong_wait(ui_text_width(title, name) - room, phase);
 	}
 	for (int l = 0; l < lines; l++) {
 		const char *t = l ? more : facts;
