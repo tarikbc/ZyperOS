@@ -69,5 +69,16 @@ device_log() {
 		dmesg 2> /dev/null | grep -iE 'panel|dsi|st7703|generic-dsi|mmc[0-9]|battery at start|joypad|rk817' |
 			sed 's/^/kernel: /'
 		grep -E '^(N|H):' /proc/bus/input/devices 2> /dev/null | sed 's/^/r36s: input /'
+		# The charger and the battery, the USB port's role and its PHY's
+		# cables: what a report on charging or the OTG port needs
+		for f in /sys/class/power_supply/*/uevent; do
+			sed "s|^|r36s: $(basename "$(dirname "$f")") |" "$f"
+		done 2> /dev/null
+		for f in /sys/class/usb_role/*/role /sys/class/extcon/*/state; do
+			[ -e "$f" ] && echo "r36s: $f $(tr '\n' ' ' < "$f")"
+		done 2> /dev/null
+		cat /run/usbrole/state 2> /dev/null | sed 's/^/r36s: usbrole /'
+		dmesg 2> /dev/null | grep -iE 'dwc2|usb[0-9]|usbrole|jackswitch' |
+			sed 's/^/kernel: /'
 	} >> "$LOG" 2>&1 &
 }
