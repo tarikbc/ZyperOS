@@ -7,7 +7,11 @@
  *
  * Its two sticks (RK_STICKS): the joypad reports ABS_X, ABS_Y, ABS_RX and
  * ABS_RY, read as the RetroPad's analog sticks, and L3 and R3 as BTN_THUMBL
- * and BTN_THUMBR. */
+ * and BTN_THUMBR.
+ *
+ * No headphone jack read (RK_JACK 0): its device tree's line read "plugged"
+ * whatever was in the jack on board R36S-V12, so the volume keeps the
+ * speaker's window, as ZyperOS's launcher does (its src/device/r36s.c). */
 #include <linux/input.h>
 
 #define RK_PORT          "r36s"
@@ -15,5 +19,6 @@
 #define RK_CODE_B        BTN_SOUTH
 #define RK_CODE_FUNCTION BTN_MODE
 #define RK_STICKS        1
+#define RK_JACK          0
 
 #include "pixel2.c"

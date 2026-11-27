@@ -1,8 +1,9 @@
 The R36S's known panels, as overlays for ROCKNIX's generic-dsi driver
 (plastron's kernel patch 4-rocknix-panel-generic-dsi.patch). The card's boot
 partition holds them all as overlays/panel-NAME.dtbo, and r36s-boot.txt's
-zy_panel=NAME picks one (board/r36s/boot-prelude.cmd). Without it, the
-card's device tree drives panel 0, the first R36S's.
+zy_panel=NAME picks one (board/r36s/boot-prelude.cmd). Without it, and
+without an overlays/mipi-panel.dtbo, the card uses panel-4.dtbo
+(boot-prelude.cmd says why).
 
 Each panel-NAME.dts is what plastron/scripts/r36s-panel.py writes from that
 panel's stock device tree, and panel-NAME.dtbo is dtc's build of it. The

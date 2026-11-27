@@ -1,0 +1,11 @@
+# The R36S's sound output (package/jackswitch): "Playback Mux" held at HP,
+# not moved by the headphone jack. Its device tree's jack line
+# (rk3326-gameconsole-r3xs.dtsi, hp-det-gpios on gpio2 PC6, active high;
+# the stock tree has it active low) read "plugged" whatever was in the jack
+# on board R36S-V12 (Sylver, 2026-11-26), and neither ROCKNIX (no headphone
+# device in its R36S quirks, 20260901) nor ArkOS or dArkOSRE reads it. HP
+# is what ROCKNIX plays the R36S's speaker on (DEVICE_PLAYBACK_PATH_SPK="HP",
+# packages/hardware/quirks/devices/Game Console R36S/001-device_config at
+# its tag 20260901), and the headphones too, so both outputs play.
+# zy_audio=SPK in r36s-boot.txt tries the class D speaker path instead.
+OUTPUT=HP

@@ -24,3 +24,25 @@ fi
 if test -n "${zy_panel}"; then
 	setenv zy_overlay overlays/panel-${zy_panel}.dtbo
 fi
+# With no panel picked and no overlays/mipi-panel.dtbo on the card, panel 4's
+# overlay (boot-slots.cmd): a card as it comes lit board R36S-V12 only once
+# zy_panel=4 was set (Sylver, 2026-11-27), the device tree's own panel 0
+# stayed black. Panel 4 is the NV3051D that dArkOSRE's own device trees give
+# its boards R36S-V12 2023-08-18 Panel 4 and HL-R36H-V20 2024-05-18; its
+# boards R36S-V21 (2550, 2551, 2552), R36S-V22, R36XX-V21 and HL-R36H-V21
+# have panel 4v22, whose init sequence is panel 4's without its first sleep
+# out and display on (0x11 0x00, 0x29 0x00), which it then sends anyway, so
+# panel 4's overlay is meant to light those too. Only R35S-V11 and R36S-V12
+# Panel 0 there have panel 0. Each board's panel-init-sequence compared with
+# overlays/panel-*.dts, from southoz/dArkOSRE-R36 at
+# 3f372c85aa53a26b265c3dc0c2661ec0fae5faf0, files/BOOT/dtb/r36s/*/
+# rk3326-r36s-linux.dtb. dArkOSen-R36S's trees agree (djparentx/
+# dArkOSen-R36S at 28f5427f7ae953ee6e813618705baf569fef0f27,
+# boot/dtb/r36s/*/): panel 4 or 4v22 on R36S-V12 Panel 4, every R36S-V21
+# (2503 to 2604), every R36S-V22 and R36S-V30 2603.
+# No firmware found reads which panel a unit has:
+# ROCKNIX picks it by hand (its R36S overlay, FDTOVERLAYS in
+# packages/u-boot/config/extlinux/extlinux.conf), dArkOSRE by a script on a
+# computer (files/BOOT/dtb/select_devices.sh), ArkOS R3XS by keys held at
+# power-on (AeolusUX/ArkOS-R3XS README). docs/devices/r36s.md, "Panels".
+setenv zy_panel_default 4

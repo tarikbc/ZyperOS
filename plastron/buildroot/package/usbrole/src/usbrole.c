@@ -38,6 +38,10 @@
  * to full: the volume the player moves is a software one in front of it
  * (asound.conf's pcm.usb), the same for every DAC.
  *
+ * Or one role for good, where the port has no pin to follow: ROLE=host in
+ * /etc/default/usbrole (the R36S's, board/r36s/rootfs-overlay, which says
+ * why). Nothing is asked about then, and the rest below works as ever.
+ *
  * And it loads the driver for anything plugged in that has one as a module,
  * by the alias the kernel gives the device, as udev would: a USB Wi-Fi
  * adapter's, whose driver and wireless stack are modules so a boot without
@@ -72,6 +76,8 @@ static char role_file[320];    /* the role switch */
 #define HOST_FILE  RUN_DIR "/host"
 #define MODE_FILE  RUN_DIR "/mode"
 static int run_ok;             /* RUN_DIR is root's own directory */
+static const char *fixed_role; /* "host" or "device" for good, or NULL */
+#define DEFAULTS   "/etc/default/usbrole"
 /* Power coming in from the other end: a computer or a charger */
 #define VBUS_IN "/sys/class/power_supply/rk817-charger/online"
 
@@ -136,7 +142,28 @@ static int find_files(void)
 		}
 		closedir(d);
 	}
-	return host_state[0] && role_file[0] ? 0 : -1;
+	return (host_state[0] || fixed_role) && role_file[0] ? 0 : -1;
+}
+
+/* ROLE=host or ROLE=device in DEFAULTS, a line of its own */
+static const char *read_fixed(void)
+{
+	char text[256];
+	ssize_t got;
+	int fd = open(DEFAULTS, O_RDONLY | O_CLOEXEC);
+
+	if (fd < 0)
+		return NULL;
+	got = read(fd, text, sizeof text - 1);
+	close(fd);
+	text[got > 0 ? got : 0] = '\0';
+	for (char *l = text; l && *l; l = strchr(l, '\n') ? strchr(l, '\n') + 1 : NULL) {
+		if (!strncmp(l, "ROLE=host", 9) && (!l[9] || l[9] == '\n'))
+			return "host";
+		if (!strncmp(l, "ROLE=device", 11) && (!l[11] || l[11] == '\n'))
+			return "device";
+	}
+	return NULL;
 }
 
 static unsigned now_ms(void)
@@ -290,6 +317,17 @@ static unsigned follow_pin(void)
 
 	if (read_line(role_file, role, sizeof role) < 0)
 		return 0;
+	if (fixed_role) {
+		in = (ur_sense){ 0 };
+		write_state(&in, fixed_role);
+		if (strcmp(role, fixed_role) && (fd = open(role_file, O_WRONLY | O_CLOEXEC)) >= 0) {
+			if (write(fd, fixed_role, strlen(fixed_role)) > 0)
+				log_to_kernel(strcmp(fixed_role, "host") ? "usbrole: device for good\n"
+				                                         : "usbrole: host for good\n");
+			close(fd);
+		}
+		return 0;
+	}
 	in.pin = read_line(host_state, state, sizeof state) < 0 ? -1 : !strcmp(state, "1");
 	in.vbus = read_line(VBUS_IN, vbus, sizeof vbus) < 0 ? -1 : !strcmp(vbus, "1");
 	/* Every cable of the PHY's extcon, one a line: its charger detection */
@@ -406,6 +444,7 @@ int main(void)
 	char msg[4096];
 	int sock;
 
+	fixed_role = read_fixed();
 	if (find_files() < 0) {
 		log_to_kernel("usbrole: no USB-HOST cable or no role switch\n");
 		/* init respawns us; don't spin */
