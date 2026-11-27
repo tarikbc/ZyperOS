@@ -16,7 +16,8 @@ typedef struct { char folder[64], tag[16]; } system_cfg;
 typedef struct { int cursor; } coverflow;
 /* A shelf with folders (src/shelfdir.h) has every game in `all` and its
  * folders first in `list`; these have none */
-typedef struct { game_list list; game_list *all; int *owner; int sort, cursor, dropped, nfold; coverflow cf; } sysview;
+typedef struct { game_list list; game_list *all; int *owner; int sort, cursor, dropped, nfold; coverflow cf;
+                 bool fav_first; int fav_from, nfav; } sysview;
 typedef struct { struct { int count; system_cfg systems[4]; } sys; sysview view[4]; int parked; int sys_cursor; bool running; } app;
 /* src/app.h's: the home's shelves and the systems turned off it (app.parked) */
 static inline int sys_kept(const app *a) { return a->sys.count + a->parked; }
@@ -63,6 +64,10 @@ static void scp_page(app *a, const char *only)
 static int pins;
 static const game_entry *pinned;
 void splore_pin(game_entry *items, int n) { pins++; pinned = n > 0 ? items : NULL; }
+/* Favorites First (src/main.c), stubbed: no shelf here has it on, and no
+ * game is a favorite (check-sort and check-favfirst hold the split) */
+static bool fav_first_offered(app *a, int s) { (void)a; (void)s; return false; }
+bool fav_is(const char *tag, const char *file) { (void)tag; (void)file; return false; }
 #include "title-refresh-hooks.h"
 
 static void put(game_entry *e, const char *name, const char *file)
