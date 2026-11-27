@@ -984,6 +984,7 @@ static uint64_t g_present_us;
  * pays one add each. */
 static uint64_t g_sound_made;
 static uint64_t g_pictures;
+static bool     g_frame_pic;     /* this core frame handed over a picture (not NULL) */
 
 /* The frame turned by the game's rotation (SET_ROTATION, see env.c), written
  * packed into g_frame. Libretro's quarter turns are counter-clockwise: a
@@ -1035,7 +1036,8 @@ void diatom_on_video(const void *data, unsigned w, unsigned h, size_t pitch)
 	size_t need;
 
 	if (!data) return;          /* dupe: keep the previous frame */
-	g_pictures++;
+	/* Counted in the frame loop, as the panel gets it (g_pictures) */
+	g_frame_pic = true;
 	/* Drawn by the GPU into the port's framebuffer (hw.c): no pixels to copy,
 	 * only the size. Not turned: no GPU core here asks for a rotation. */
 	if (data == RETRO_HW_FRAME_BUFFER_VALID) {
@@ -3327,9 +3329,19 @@ static int run_session_inner(const diatom_session *sn)
 			last_shown = shown;
 
 			diatom_env_frame_begin();
+			g_frame_pic = false;
 			g_core->run();
 			frames++;
 			ran++;
+			/* A picture is one the panel gets: FPS is those (emumeter.h). A
+			 * frame run undrawn under frameskip=late still hands over one, the
+			 * last frame's pixels again (DSperate), and it is not presented
+			 * (the present, below), so it is not counted: a DS game that left
+			 * out two frames in three read 60 fps (1.1.0). At 1x a turn is
+			 * one frame, so this is the present's own test; fast, each frame
+			 * of the turn drawn is counted, as the step's FPS always was. */
+			if (g_frame_pic && (shown || pace_present_undrawn(g_frame_gpu, fast, sn->late_skip)))
+				g_pictures++;
 			/* The game ended itself (env.c, RETRO_ENVIRONMENT_SHUTDOWN): no
 			 * frame more, and the session ends as a quit does */
 			if (diatom_env_core_quit()) break;

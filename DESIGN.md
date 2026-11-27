@@ -6370,7 +6370,10 @@ speed.)*
 video callbacks that brought one, over half a second of the game's time (the
 menu's is left out), said twice a second. A repeat, a NULL frame, is not one.
 A game that draws every second frame reads 30, and one that draws every third
-reads 20. In fast forward it is what the core made, not what the panel showed:
+reads 20. A frame run undrawn under `frameskip=late` is not one either: the
+core (DSperate) hands over the last picture again and the panel does not get
+it, so a DS game that leaves out two frames in three reads 20, where 1.1.0 said
+60. In fast forward it is what the core made, not what the panel showed:
 2x of a game at 60 reads 120. A core that resends the same picture, not a NULL
 frame, is counted at every call, since a picture cannot be told from the last
 without a compare, which a frame does not pay for.
