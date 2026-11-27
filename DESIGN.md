@@ -313,7 +313,13 @@ else changes. A line with characters its face lacks is drawn in the first of
 its role's faces that has them all (the set that is on, then Japanese's for
 kana, Chinese's otherwise), placed by the capitals of the face it was asked
 in (src/ui.c, `face_for`), so 简体中文 and 日本語 read in an English menu and
-a game named in either is not boxes. The button letters
+a game named in either is not boxes. A face of no role, opened at a size of
+its own (home.c's page faces: the bar's song, the cassette's label, the
+grid's names; `ui_face_at`), looks the same way among the Chinese and
+Japanese cuts of its size and weight, opened the first time a line needs one:
+`ui_face_open` keeps each face's size and cut for it. Until 2026-11-23 it
+drew such a line in Lexend, and a Japanese song title in the top bar was
+all boxes (Discord; `make check-cjkface`). The button letters
 and the cards the launcher draws stay Lexend in every language: they are
 marks. Measured on an M3 against Lexend (2026-11-07): 1 ms to open the eight
 sizes, 0.5 MB more memory, and a new line of Chinese about six times
