@@ -265,6 +265,10 @@ void ui_fit_value(const char *s);
 /* A menu row's value `s`, `w` wide, in `room` of a row `row_w` wide: said
  * on a host when it fits by less than 2% of the row (see ui.c) */
 void ui_fit_tight(const char *s, int w, int room, int row_w);
+/* Words of ZyperOS's own `s` balanced into `lines` (Zyper's bubble): said
+ * as a cut on a host when a line ends cut ("..."), as a table string's is,
+ * though `s` was formatted from one */
+void ui_fit_cut(const char *s, char lines[][LB_LINE], int n);
 /* A key's glyph or a mark drawn (ui_button, ds_more), for the host's check:
  * a string whose ink comes within FIT_MARGIN of one is said (src/ui.c, "the
  * keys and the marks"), as the keys of a foot met a caption over them on

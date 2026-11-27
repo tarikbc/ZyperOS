@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include "ds/hover.h"
 #include "shelf_draw.h"
+#include "lastboot.h"
 #include "cheats_screen.h"
 #include "homesys.h"
 
@@ -2018,16 +2019,20 @@ void heatpop_draw(app *a, unsigned now)
 		int i, l1 = ui_font_line(UI_F_LABEL), l2 = ui_font_line(UI_F_META);
 
 		/* News (System Update's) has no thermometer, and its lines are
-		 * balanced onto two each in the room right of him, the bubble
-		 * growing upward from where the heat's stands */
-		char a1[2][LB_LINE], a2[2][LB_LINE];
+		 * balanced in the room right of him, the first onto two, the
+		 * second onto three (the last start's restart says a code and
+		 * where to send the logs), the bubble growing upward from where
+		 * the heat's stands */
+		char a1[2][LB_LINE], a2[3][LB_LINE];
 		int n1 = 1, n2 = 1, k, room = ZYPEROS_SCREEN_W - 24 - HEATPOP_BUBBLE_X - 2 * HEATPOP_PAD_X;
 
 		mh = heatpop_mark_h();
 		mw = g_heatpop.line1[0] ? -HEATPOP_GAP : (mh + 1) / 2;
 		if (g_heatpop.line1[0]) {
 			n1 = ui_balance_lines(f1, HEATPOP_LINE1, room, 2, a1);
-			n2 = ui_balance_lines(f2, HEATPOP_LINE2, room, 2, a2);
+			n2 = ui_balance_lines(f2, HEATPOP_LINE2, room, 3, a2);
+			ui_fit_cut(HEATPOP_LINE1, a1, n1);
+			ui_fit_cut(HEATPOP_LINE2, a2, n2);
 			for (k = 0, w1 = 0; k < n1; k++) if (ui_text_width(f1, a1[k]) > w1) w1 = ui_text_width(f1, a1[k]);
 			for (k = 0, w2 = 0; k < n2; k++) if (ui_text_width(f2, a2[k]) > w2) w2 = ui_text_width(f2, a2[k]);
 		} else {
@@ -2062,6 +2067,19 @@ void heatpop_draw(app *a, unsigned now)
 	}
 	g_heatpop.drawn = now;
 	redraw_now();
+}
+
+/* The bubble's two lines for the last start's restart (src/lastboot.h,
+ * DESIGN.md 11.70): his "I had to restart!", then what stopped, its code and
+ * where to send the logs */
+void lastboot_bubble(const lastboot *lb)
+{
+	char code[48];
+
+	lastboot_code(lb, code, sizeof code);
+	snprintf(g_heatpop.line1, sizeof g_heatpop.line1, "%s", T(S_LASTBOOT_ZYPER));
+	snprintf(g_heatpop.line2, sizeof g_heatpop.line2,
+	         T(lastboot_froze(lb) ? S_LASTBOOT_FROZE : S_LASTBOOT_START), code);
 }
 
 /* Once a pass of the main loop, beside song_watch: the chip read, and Zyper

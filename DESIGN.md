@@ -2356,7 +2356,8 @@ the corner and for Date & Time's own row and Hour.
 
 ### 11.13 About ZyperOS
 Four read-only pages, Left/Right to change them, round from the last to the
-first. The first keeps Version, Address, Battery and Awake for. The second
+first. The first keeps Version, Address, Battery and Awake for, and Last
+Restart for 30 days after ZyperOS restarted a start (11.70). The second
 shows Storage used, Storage free, Storage total, Battery health, Full charge
 and Design charge. The third, headed **The name**, is the README's story of
 it: Zyper, my dog, who passed away, and zippy and hyper, signed Tarik;
@@ -2802,7 +2803,8 @@ Back to 0.0.9" when the image allows one. Opened with a network and no look
 in the last ten minutes, it looks at once. It also looks each time Wi-Fi
 connects and once a day, and a release it finds is said once, by Zyper's
 bubble on the shelf (11.23's, "ZyperOS 1.0.4 is ready to download" over
-"Open MENU > System Update.", the lines balanced onto two each, no
+"Open MENU > System Update.", the lines balanced onto two each (the
+second onto three for the last start's restart, 11.70), no
 thermometer) or as a notice over a game. A download goes on behind every
 screen and game: the corner shows it (11.12, an arrow into a tray in File
 Transfer's ring, swept as far as the download), Auto Off waits for it, and
@@ -3173,6 +3175,71 @@ the copy's line, which its init ends with the card's `.userdata/<device>/languag
 (the launcher's copy of the setting), else from `zylang` on the kernel's line
 (11.21), else English: a new card, which has no language yet, says it in
 English, and the first start's first step asks.
+
+**Slower than usual** *(Tarik, 2026-11-23: "let's have the boot screen have a
+message when it's taking too long and maybe something that can help us debug
+if users ever see it"; his picks in the boot notice lab, 2026-11-24,
+`~/Documents/ZyperOS/labs/boot-notice-lab.html`, https://claude.ai/artifact/5oDVrw8dKG4dJd53yJ7Eud)*.
+A start reaches the home in 1.4 to 2 s on a Pixel 2 (its kernel's log, seven
+starts) and about 2.2 s on a Brick; one that does not says so, over the
+animation, in the theme and the language of the copy's line, in two steps:
+
+- **From 5 s**, the step under way, where the copy's line is (meta
+  **text-soft**, baseline 706): "Checking the card · C3", its code after it
+  in **text-dim**. The steps are what the start's scripts write as they go
+  (datapart and zyperos.init, `/tmp/splash-stage`): C1 the games partition
+  mounting ("Opening the card"), C2 a new card's partition made ("Preparing
+  the card"), C3 its check after a power-off that was not clean ("Checking
+  the card"), U1 System Update's switch ("Switching to the new version"), L1
+  ZyperOS starting ("Starting ZyperOS"). The copy (U2) has its own line and
+  bar and none of these.
+- **From 20 s**, over Zyper: "Taking longer than usual" in **label**
+  **text-soft** (baseline 80), and under it in **meta** **text-dim**
+  (baseline 136) what to do if it never ends, "Stuck? Hold POWER for 10 s,
+  then turn it on." (the tutorial's "Frozen screen? Hold POWER for 10 s." in
+  other words). It promises no restart: whether a watchdog will restart a
+  start that hangs is not the screen's to say.
+- **Arriving**: each line comes in over **quick** on **out**, from nothing;
+  the first line and the help coming down 14 as they do, the step in place.
+  A step that follows another is simply the next.
+
+*(Tarik's pick put the help under the step at the foot. Measured on the frames
+and the drawn lines: the animation is from 157 to 658 on every handheld, and a
+Chinese or Japanese letter at meta reaches 35 units over its baseline and 11
+under, so two lines under the wordmark either touch it or pass the screen's
+inset. The help went up under the first line, where there is room for both.)*
+The lines are pictures (tools/genbootslow.py: every language, coverage only,
+for each handheld's scale; no line past 896 units), laid on the animation's
+ground in the theme's ink by plastron's splash (splash/src/slowline.h), where
+no frame of the animation reaches. A start on time reads and draws nothing
+new.
+
+- **The copy's bar still for a minute** (SLOW_STALL_S, 60 s): its line becomes
+  the help, in the line's **text-soft**, and the bar stays. launch.sh is
+  copied last, so turning it off there and on again copies again.
+- **The tester's view**: SELECT held 2 s on the boot screen shows the
+  kernel's latest lines on a dark band from under Zyper (481) to the foot,
+  over the wordmark and the step, wrapped at spaces, and under them the
+  step, the time and the frames shown, in the splash's ASCII letters at 35
+  units on every handheld (each one's glyphs.bin); the first line and the
+  help stay. Let go and the screen is as it was, to the pixel.
+- **The beat**: every 2 s from the start, a line in the kernel's log,
+  "splash: 12.0 s, 663 frames, stage=L1", until ZyperOS draws. After a
+  watchdog's restart the console the kernel kept ends with it: a start whose
+  splash was still drawing (the chip alive, something stuck) is told from one
+  whose whole chip stopped, and a count under 60 a second says it struggled.
+- **On the Brick and the Smart Pro** the same, on their boot screen, which is
+  Salt & Pepper's whatever the theme (they have its frames only); the panel's
+  line (/tmp/splash-say) gives way to the step. Their splash held its last
+  frame 15 s at the most; now as long as the start takes, half an hour at
+  the most. The R36S's splash is the Pixel 2's, at the same scale.
+
+`check-bootslow` holds all of it on the splash's own code and frames, and
+`check-genbootslow` the pictures; `build-native/bootslow-check --shots DIR`
+shoots every handheld, theme and language. A full card's check measured on a
+computer (a 119 GiB exFAT volume, 32 KB clusters, 44,040 files in 163
+folders, 60 GB): fsck.exfat -p read 5.0 MB in 1,367 reads, so on a card it
+takes seconds, near the first step, never near the second.
 
 ### 11.21 Boot screen theme
 The boot animation is in the theme MENU > Appearance chose: Salt & Pepper's
@@ -8283,3 +8350,59 @@ Name, a set, the article, a downloaded name, the order, a refresh both
 ways); `check-gamenames-shots` the List view's rows under each, as the Pixel
 2 and as the Brick in both themes, and MENU's row turning it over;
 `check-menus` the row's place and words.
+
+### 11.70 The last start's restart
+*(Tarik, 2026-11-23, with the slow start of 11.20: "something that can help us
+debug if users ever see it"; his picks in the boot notice lab, 2026-11-24:
+Zyper's bubble on the home, the report and the Discord, the code "K1W ·
+0.6 s", also a freeze while playing, a row in About.)*
+
+A start that stops in the kernel (a GKD Pixel 2 that stays black after a
+cold start, 1.1.0) or a handheld that freezes while playing is restarted by
+a watchdog or a panic, and plastron's crashlog writes a report at the start
+after: zyperos-crash.txt on PX2BOOT, crash-*.txt in the logs File Transfer's
+Download logs packs, and a summary of it in `/run/zyperos-lastboot.txt` and
+PX2BOOT's zyperos-lastboot.txt (key=value: reason, stage, kernel_time, time,
+version, device, last, report), on
+the Pixel 2, whose kernel keeps its log across a reset (pstore); the Brick
+and the Smart Pro keep none yet, so there it never shows. The launcher says
+it once (src/lastboot.h):
+
+- **Zyper's bubble on the home** (11.23's, as System Update's news): "I had
+  to restart!" in **label**, and in **meta**, balanced on up to three lines,
+  "The last start did not finish. Code K1W · 0.6 s. Sending your logs on the
+  Discord helps." A freeze after the home says "The handheld froze." first.
+  Held **hold-heat**, then gone, as his other words; never over a game or a
+  menu (it waits for the home), and never twice for one report: the card
+  keeps a copy (`.userdata/<device>/lastboot.txt`) with the day it was said.
+- **The code**: the stage, the reason and the kernel's time at its last
+  line, the same in every language and easy to read from a photo, its spaces
+  no-break so it never breaks across lines. Stage: K1 the kernel before the
+  card was found, K2 after it, before init; C1 to C3 the card (11.20's
+  steps); U1 the version switch; U2 the copy; L1 ZyperOS starting; H after
+  the home. Reason: W a watchdog (the launcher's, or a reset with no panic
+  before the home, which is the chip's), P a panic (a lockup and an RCU stall
+  panic too), T a task stuck (hung_task), R the card not found (rootwait), X a
+  reset after the home with nothing of its own to say. One decimal under 10 s, whole seconds above. K1W against
+  K2W tells the card's probe from what comes after it.
+- **A reset that takes the RAM with it** (the PMIC's power cut, POWER held
+  over a frozen start) leaves pstore empty. So crashlog keeps a marker on the
+  card's games partition, `.plastron/starting.txt`, made at every start once
+  the card is mounted (stage C1), a line appended for each of init's steps
+  after it (U1, U2, L1: builtins, no fork), removed at the home's first frame
+  by the launcher and at a clean stop by init. One found at the next start
+  with nothing in pstore is a report too: its last step, W when U-Boot read
+  the chip's own reset (`zyreset=chip` on the kernel's line, from the Pixel
+  2's RK817), else X, and no time ("L1X"). Its cost: one small
+  write at every start, synced in the background.
+- **About ZyperOS, page 1**: a **Last Restart** row after Awake for, its
+  value the code, for 30 days after it was said, so the code a helper asks
+  for is still there once the bubble has gone. Read-only, as the rest of
+  About.
+
+Host shots: `--lastboot "stage=L1;reason=W;kernel_time=118.4"` (the bubble;
+`;` for the summary's line ends), `--about 0` on a card whose
+`.userdata/<device>/lastboot.txt` was said within 30 days.
+`check-lastboot` holds the summary in letters and in words, the code, said
+once, the card's copy and the 30 days; check-i18n-shots the bubble with the
+longest code and the row, in every language.
