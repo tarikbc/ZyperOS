@@ -53,7 +53,7 @@ export const ANSWERS = {
     url: G + "adding-games-over-wi-fi",
     text:
       "**Over Wi-Fi:** join a network in **MENU > Wi-Fi**, open **MENU > Wi-Fi File Transfer**, then open `http://zyperos.local` (or the address it shows) in a browser and type the PIN.\n" +
-      "**Over the USB cable:** plug the Pixel 2 into a Mac, Linux or Windows 11 computer, choose **File Transfer** when it asks, and open `http://zyperos.local` or `http://10.42.0.1`.\n\n" +
+      "**Over the USB cable:** plug the Pixel 2 into a Mac, Linux or Windows 11 computer, choose **File Transfer** when it asks, and open the address it shows, `http://10.42.0.1`, and type the PIN. `http://zyperos.local` works too, but Windows may not open it over the cable: use the address there.\n\n" +
       "Drag games into their console's folder, albums into `Music`, books into `Audiobooks` and films into `Videos`. They're on the shelf when you leave the screen. A card with no games shows both ways on its home.\n\n" +
       "**Your computer didn't connect?** Unplug the cable and plug it back in: it can take a few tries. A USB-A to USB-C cable, with USB-A at the computer, connects every time.\n\n" +
       "**Card in a card reader on Windows?** ZYPEROS is the large exFAT drive. If Windows asks to format a drive, choose **Cancel**: that's ZyperOS's system. No drive letter? Disk Management, right-click ZYPEROS, **Change Drive Letter and Paths**, **Add**.\n\n" +
