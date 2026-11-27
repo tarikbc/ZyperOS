@@ -403,6 +403,11 @@ static void report_load(const struct retro_game_info *game)
  * frame the frontend left out from one this machine was too busy to start
  * on time (test/lateskip.py) */
 static long frame_cost_us;
+/* STUBCORE_DRAWN_US=N: a drawn frame costs N in place of STUBCORE_FRAME_US,
+ * as a DS game's frame costs far more drawn than left undrawn on a slow
+ * device, so frameskip=late leaves out two in three at full speed
+ * (test/hudspeed.py) */
+static long drawn_cost_us;
 static bool frame_unshown;
 static long overshoot_us;         /* STUBCORE_OVERSHOOT_US: up to this much late, at random */
 static bool precise_cost;         /* STUBCORE_PRECISE: the cost to the microsecond */
@@ -491,13 +496,15 @@ static void frame_late(void)
 static void frame_cost(void)
 {
 	struct timespec d;
+	long cost;
 
 	for (int i = 0; i < cost_at_n; i++)
 		if ((long)frame >= cost_at_frame[i]) frame_cost_us = cost_at_us[i];
-	if (frame_cost_us <= 0) { frame_late(); return; }
+	cost = drawn_cost_us > 0 && !frame_unshown ? drawn_cost_us : frame_cost_us;
+	if (cost <= 0) { frame_late(); return; }
 	/* On the test clock, exactly the cost, precise or not */
 	if (tclock_spend) {
-		spend_us(frame_cost_us);
+		spend_us(cost);
 		frame_late();
 		return;
 	}
@@ -513,19 +520,19 @@ static void frame_cost(void)
 		long us;
 
 		clock_gettime(CLOCK_MONOTONIC, &t0);
-		if (frame_cost_us > PRECISE_SPIN_US) {
-			d.tv_sec = (frame_cost_us - PRECISE_SPIN_US) / 1000000L;
-			d.tv_nsec = ((frame_cost_us - PRECISE_SPIN_US) % 1000000L) * 1000L;
+		if (cost > PRECISE_SPIN_US) {
+			d.tv_sec = (cost - PRECISE_SPIN_US) / 1000000L;
+			d.tv_nsec = ((cost - PRECISE_SPIN_US) % 1000000L) * 1000L;
 			nanosleep(&d, NULL);
 		}
 		do {
 			clock_gettime(CLOCK_MONOTONIC, &t);
 			us = (t.tv_sec - t0.tv_sec) * 1000000L + (t.tv_nsec - t0.tv_nsec) / 1000L;
-		} while (us < frame_cost_us);
+		} while (us < cost);
 		frame_late();
 		return;
 	}
-	spend_us(frame_cost_us);
+	spend_us(cost);
 	frame_late();
 }
 
@@ -582,6 +589,8 @@ bool retro_load_game(const struct retro_game_info *game)
 	{
 		const char *e = getenv("STUBCORE_FRAME_US");
 		frame_cost_us = e && *e ? strtol(e, NULL, 10) : 0;
+		e = getenv("STUBCORE_DRAWN_US");
+		drawn_cost_us = e && *e ? strtol(e, NULL, 10) : 0;
 		precise_cost = getenv("STUBCORE_PRECISE") != NULL;
 		e = getenv("STUBCORE_OVERSHOOT_US");
 		overshoot_us = e && *e ? strtol(e, NULL, 10) : 0;

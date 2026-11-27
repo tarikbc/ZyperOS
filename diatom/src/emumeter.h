@@ -31,9 +31,11 @@
  * little over its calls is the pieces, not a longer call (SOUND_SNAP).
  *
  * FPS is the pictures: the core's video callbacks that brought one, a second
- * of game time. A core that resends the picture it drew (not a NULL frame)
- * is counted at its calls, as a picture cannot be told from the last without
- * a compare, which a frame does not pay for.
+ * of game time, less those of the frames run undrawn that are not put on the
+ * panel (frameskip=late: a DS game's undrawn frame hands over the last
+ * picture again, main.c). A core that resends the picture it drew (not a
+ * NULL frame) is counted at its calls, as a picture cannot be told from the
+ * last without a compare, which a frame does not pay for.
  *
  * Pure counters in, numbers out: nothing here reads a clock or a core. */
 #ifndef DIATOM_EMUMETER_H
