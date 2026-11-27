@@ -1,0 +1,75 @@
+From: plastron
+Subject: [PATCH] devfreq: px30_dmc: keep the DDR at the loader's rate at probe
+
+The driver started on simple_ondemand, whose first look, 50 ms after the
+probe, read the low bus load of a system still booting and moved the DDR
+from the 1056 MHz U-Boot's FSP_INIT leaves it at down to 328 MHz, about
+0.46 s into the kernel. The card's UHS-I tuning and the root's first
+reads were in flight then, and init's datapart, which sets the
+performance governor, moved it back up a moment later. Neither the
+launcher's idle ceiling nor steady-memory comes in until seconds after.
+
+Some GKD Pixel 2s crashed on cold starts exactly in that window, 0.13 to
+0.38 s after the probe that succeeded, before init ran or just after:
+paging requests at fffffefffffffff0 and fffefefffffffff0 in
+insert_vmap_area (a vmap tree pointer with bits flipped), one in
+terminate_walk and an init killed by SIGSEGV on 1.0.6 (pstore,
+2026-11-21 to 26).
+
+Start on performance instead when the loader's rate is the table's top
+step: it asks for the rate the DDR already runs at, px30_dmc_target()
+returns at once, and nothing switches. It is the governor init sets
+anyway, so the launcher's and Diatom's ceilings (max_freq) work as
+before and simple_ondemand stays one write away. Any other boot rate is
+held as it is, under userspace. The probe says which, with the rate.
+---
+--- a/drivers/devfreq/px30_dmc.c
++++ b/drivers/devfreq/px30_dmc.c
+@@ -340,7 +340,8 @@
+ 	struct arm_smccc_res res;
+ 	struct dev_pm_opp *opp;
+ 	struct px30_dmc *dmc;
+-	unsigned long freq;
++	unsigned long freq, max;
++	const char *gov;
+ 	int irq, ret;
+ 
+ 	res = px30_dmc_sip(0, PX30_DRAM_GET_VERSION);
+@@ -430,8 +431,35 @@
+ 		.initial_freq	= freq,
+ 	};
+ 
+-	dmc->devfreq = devm_devfreq_add_device(dev, &dmc->profile,
+-					       DEVFREQ_GOV_SIMPLE_ONDEMAND,
++	/*
++	 * No switch at probe: the DDR stays at the rate the loader left it
++	 * at until user space asks for another. simple_ondemand's first look,
++	 * 50 ms after this, read a booting system's low bus load and moved the
++	 * DDR from 1056 to 328 MHz about 0.46 s into the kernel, with the
++	 * card's UHS-I tuning and the root's first reads in flight; init's
++	 * performance (datapart) moved it back up a moment later. Some GKD
++	 * Pixel 2s crashed on cold starts right there, before init or just
++	 * after it, on corrupted kernel pointers (2026-11-21 to 26).
++	 *
++	 * performance when the loader's rate is the top step: the rate it asks
++	 * for is the one the DDR already runs at, so px30_dmc_target() returns
++	 * at once, and it is the governor init sets anyway, so the system's
++	 * own ceilings (max_freq: the launcher's idle one, a game's) work as
++	 * before. Any other rate (the loader's training did not run, another
++	 * DDR type) is held as it is, under userspace. simple_ondemand stays
++	 * one write away, with its thresholds above.
++	 */
++	max = ULONG_MAX;
++	opp = dev_pm_opp_find_freq_floor(dev, &max);
++	if (IS_ERR(opp))
++		return PTR_ERR(opp);
++	dev_pm_opp_put(opp);
++	gov = dmc->rate == max ? DEVFREQ_GOV_PERFORMANCE
++			       : DEVFREQ_GOV_USERSPACE;
++	dev_info(dev, "DDR at %lu Hz from the loader, held there (%s)\n",
++		 dmc->rate, gov);
++
++	dmc->devfreq = devm_devfreq_add_device(dev, &dmc->profile, gov,
+ 					       &dmc->ondemand);
+ 	if (IS_ERR(dmc->devfreq))
+ 		return PTR_ERR(dmc->devfreq);
