@@ -10,7 +10,7 @@ the boot loader and the closed parts.
 | alsa-lib | 1.2.15.3 | LGPL-2.1+ (library), GPL-2.0+ (aserver) | https://www.alsa-project.org/files/pub/lib |
 | bluez-alsa | 4.3.1 | MIT | https://github.com/Arkq/bluez-alsa/archive/v4.3.1 |
 | bluez5_utils | 5.79 | GPL-2.0+, LGPL-2.1+ | https://cdn.kernel.org/pub/linux/bluetooth |
-| brick-kmods | from its repository | GPL-2.0 (brick-pad, cfg80211, xr829, bluetooth, hci_uart, xradio_bt*), Dual MIT/GPL-2.0 (pvrsrvkm, dc_sunxi) | plastron's build of the Brick's kernel (see THIRD-PARTY.md) |
+| brick-kmods | from its repository | GPL-2.0 (brick-pad, cfg80211, xr829, bluetooth, rfcomm, hci_uart, xradio_bt*), Dual MIT/GPL-2.0 (pvrsrvkm, dc_sunxi) | plastron's build of the Brick's kernel (see THIRD-PARTY.md) |
 | brick-rootswitch | from its repository | GPL-3.0+ | plastron, https://github.com/ericreinsmidt/plastron |
 | brick-tools | 1.0 | GPL-3.0+ | plastron, https://github.com/ericreinsmidt/plastron |
 | busybox | 1.37.0 | GPL-2.0, bzip2-1.0.4 | https://www.busybox.net/downloads |
