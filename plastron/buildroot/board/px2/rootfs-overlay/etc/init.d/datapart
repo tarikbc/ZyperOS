@@ -123,7 +123,11 @@ start() {
 	# done (the launcher's idle ceiling is 328). One Pixel 2 hung the whole
 	# system at random points of that copy, every card, every version
 	# (2026-11-13); this way the copy runs on the DDR as every later boot
-	# does. Nothing to do on a device with no DMC (QEMU).
+	# does. Nothing to do on a device with no DMC (QEMU). The driver now
+	# starts on performance itself, at the rate U-Boot left the DDR at
+	# (9-px2-px30-dmc-boot-rate.patch): its simple_ondemand had moved the
+	# DDR to 328 MHz before this ran, where some Pixel 2s crashed on cold
+	# starts (2026-11-21 to 26). Kept here for a kernel that does not.
 	echo performance > /sys/class/devfreq/dmc/governor 2> /dev/null
 	# The card read ahead 2 MB at a time rather than 128 KB, before anything
 	# after this reads it, as on the Brick (its /etc/init.d/brick), where it
