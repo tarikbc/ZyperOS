@@ -14,13 +14,16 @@
 #include "db.h"
 #include "i18n.h"
 
-/* The lab's curves (the Sound lab, 2026-11-19): Bass lifts the bottom with a
- * touch of air on top, Voice the middle where words are, Treble the top */
+/* The lab's curves (the Sound lab, 2026-11-19), made plain to hear on
+ * 2026-11-24: Bass lifts everything under 300 Hz, the 120 Hz shelf to its
+ * top and the 250 Hz peak half way, about 3 dB at 150-300 Hz with no dip
+ * between them; Voice the middle where words are; Treble the top, the 4 kHz
+ * peak half way and the 7 kHz shelf to its top */
 const int8_t EQ_CURVE[EQ_PRESETS][EQ_BANDS] = {
 	[EQ_OFF]    = {  0, 0, 0, 0, 0 },
-	[EQ_BASS]   = {  5, 2, 0, 0, 1 },
+	[EQ_BASS]   = {  6, 3, 0, 0, 0 },
 	[EQ_VOICE]  = { -2, 0, 3, 3, 0 },
-	[EQ_TREBLE] = {  0, 0, 0, 3, 5 },
+	[EQ_TREBLE] = {  0, 0, 0, 3, 6 },
 	[EQ_CUSTOM] = {  0, 0, 0, 0, 0 },
 };
 

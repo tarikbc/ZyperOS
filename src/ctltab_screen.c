@@ -350,10 +350,36 @@ static void lights_to(unsigned target, unsigned now)
 	g_cs.snap = false;
 }
 
-/* The keys the live screen's rows are about, false when they say nothing
- * now (another tab, or the tab before its rows were built) */
-static bool lights_of(const menu_side *at, unsigned *target)
+/* The tab's buttons as the launcher reads them, in its order (RM_*) */
+static const in_button RM_IN[RM_BUTTONS] = {
+	IN_ACCEPT, IN_BACK, IN_X, IN_Y, IN_L1, IN_R1, IN_L2, IN_R2, IN_START, IN_SELECT
+};
+
+/* The handheld's buttons held now, as keys of the drawing, each one that went
+ * down this frame pressed on it: a button pressed on the tab lights itself,
+ * so the drawing answers the hand (the Smart Pro kit's notes, 2026-11-24) */
+static unsigned held_keys(const in_state *in)
 {
+	unsigned held = 0;
+	int i;
+
+	for (i = 0; i < RM_BUTTONS; i++) {
+		const td_key k = ct_key_of(i);
+
+		if (k >= TD_KEYS) continue;
+		if (in->pressed[RM_IN[i]]) press(k);
+		if (in->down[RM_IN[i]]) held |= 1u << k;
+	}
+	return held;
+}
+
+/* The keys the live screen's rows are about, false when they say nothing
+ * now (another tab, or the tab before its rows were built): the buttons
+ * held, while one is, and else the row under the cursor's */
+static bool lights_of(const menu_side *at, const in_state *in, unsigned *target)
+{
+	unsigned held;
+
 	switch (g_cs.mode) {
 	case CS_PICK:
 		*target = ct_lit(&g_cs.m, (ct_row)(CT_BUTTON + g_cs.pick_button));
@@ -372,6 +398,10 @@ static bool lights_of(const menu_side *at, unsigned *target)
 	default:
 		if (at->tab_at >= 0 && at->tab_at != GT_CONTROLS) return false;
 		if (!g_cs.fresh) return false;
+		if ((held = held_keys(in)) != 0) {
+			*target = held;
+			return true;
+		}
 		if (at->sel < 0 || at->sel >= g_cs.n) {
 			*target = 0;
 			return true;
@@ -461,7 +491,7 @@ void ctlscr_side(app *a, const menu_side *at)
 	td_pose p;
 
 	/* The live screen sets the lights, once a frame */
-	if (at->live && at->stage != MENU_SIDE_OVER && lights_of(at, &target))
+	if (at->live && at->stage != MENU_SIDE_OVER && lights_of(at, &a->in, &target))
 		lights_to(target, at->now);
 	/* ...and a panel with the handheld at rest ends a page's hold */
 	if (at->live && at->stage == MENU_SIDE_REST) g_cs.steady = false;

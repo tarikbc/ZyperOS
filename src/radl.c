@@ -3,6 +3,7 @@
  * rahash.c's and the set file rafetch.c's converter's; this is the order a
  * whole card is asked in. */
 #include "radl.h"
+#include "rapack.h"
 
 #include "cheevos.h"
 #include "fileio.h"
@@ -461,13 +462,16 @@ static void *bjob_run(void *arg)
 	    radl_read_set(j->set, NULL, &count, NULL, names, MAXB, NULL)) {
 		const char *slash = strrchr(j->set, '/');
 		int dlen = slash ? (int)(slash - j->set + 1) : 0;
-		char dir[LIB_PATH * 2 + 80];
+		char dir[LIB_PATH * 2 + 80], pack[RADL_SET_PATH + 32];
 
 		if (count > MAXB) count = MAXB;
+		/* Any the card has loose into the set's pack first (src/rapack.h) */
+		rp_pack(j->set, (const char (*)[RP_NAME])names, count, NULL);
+		rp_pack_path(j->set, pack, sizeof pack);
 		for (i = 0; i < count; i++) {
 			if (!names[i][0]) continue;
 			snprintf(path[n], sizeof path[n], "%.*sbadges/%s.png", dlen, j->set, names[i]);
-			if (access(path[n], R_OK) == 0) continue;
+			if (access(path[n], R_OK) == 0 || rp_has(pack, names[i])) continue;
 			snprintf(url[n], sizeof url[n], RADL_BADGE_URL "%s.png", names[i]);
 			urls[n] = url[n];
 			paths[n] = path[n];
@@ -478,6 +482,7 @@ static void *bjob_run(void *arg)
 			mkdir(dir, 0755);
 			/* As a set's badges after a game (src/rabadge.c) */
 			got = net_get_pngs(urls, paths, n, 30 + n);
+			if (got > 0) rp_pack(j->set, (const char (*)[RP_NAME])names, count, NULL);
 		}
 	}
 	free(names); free(url); free(path); free(urls); free(paths);
@@ -1171,9 +1176,11 @@ static bool badges_missing(const char *set)
 	char (*names)[24] = calloc(CHV_MAX, sizeof *names);
 	const char *slash = strrchr(set, '/');
 	int dlen = slash ? (int)(slash - set + 1) : 0, n = 0, i;
+	char pack[RADL_SET_PATH + 32] = "";
 	bool any = false;
 
 	if (!names) return false;
+	rp_pack_path(set, pack, sizeof pack);
 	if (radl_read_set(set, NULL, &n, NULL, names, CHV_MAX, NULL)) {
 		if (n > CHV_MAX) n = CHV_MAX;
 		for (i = 0; i < n && !any; i++) {
@@ -1181,11 +1188,65 @@ static bool badges_missing(const char *set)
 
 			if (!names[i][0]) continue;
 			snprintf(p, sizeof p, "%.*sbadges/%s.png", dlen, set, names[i]);
-			any = access(p, R_OK) != 0;
+			any = access(p, R_OK) != 0 && !rp_has(pack, names[i]);
 		}
 	}
 	free(names);
 	return any;
+}
+
+_Static_assert(RP_NAME == 24, "a pack's names are a set's badge names");
+
+/* Whether the folder has a loose badge */
+static bool loose_in(const char *dir)
+{
+	DIR *d = opendir(dir);
+	struct dirent *e;
+	bool any = false;
+
+	while (d && !any && (e = readdir(d))) {
+		size_t l = strlen(e->d_name);
+
+		any = l > 4 && !strcmp(e->d_name + l - 4, ".png");
+	}
+	if (d) closedir(d);
+	return any;
+}
+
+int radl_badges_migrate(const char *roms)
+{
+	char (*names)[24] = calloc(CHV_MAX, sizeof *names);
+	DIR *rd = roms ? opendir(roms) : NULL;
+	struct dirent *f;
+	int packed = 0, sets = 0;
+
+	while (names && rd && (f = readdir(rd))) {
+		char dir[RADL_SET_PATH], bdir[RADL_SET_PATH + 16];
+		DIR *cd;
+		struct dirent *e;
+
+		if (f->d_name[0] == '.') continue;
+		snprintf(dir, sizeof dir, "%s/%s/.cheevos", roms, f->d_name);
+		snprintf(bdir, sizeof bdir, "%s/badges", dir);
+		if (!loose_in(bdir) || !(cd = opendir(dir))) continue;
+		while ((e = readdir(cd))) {
+			char set[RADL_SET_PATH + 300];
+			size_t l = strlen(e->d_name);
+			int n = 0, took = 0;
+
+			if (l <= 4 || strcmp(e->d_name + l - 4, ".set")) continue;
+			snprintf(set, sizeof set, "%s/%s", dir, e->d_name);
+			if (!radl_read_set(set, NULL, &n, NULL, names, CHV_MAX, NULL)) continue;
+			if (n > CHV_MAX) n = CHV_MAX;
+			rp_pack(set, (const char (*)[RP_NAME])names, n, &took);
+			if (took > 0) { packed += took; sets++; }
+		}
+		closedir(cd);
+	}
+	if (rd) closedir(rd);
+	free(names);
+	if (sets) fprintf(stderr, "badges: %d loose badges of %d sets into their packs\n", packed, sets);
+	return packed;
 }
 
 /* One step of the game at g.gi: 0 it is waiting, 1 it moved on */

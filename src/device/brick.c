@@ -15,6 +15,7 @@
 #include "linksteps.h"
 #include "nightkeep.h"
 #include "levels.h"
+#include "menuvol.h"
 #include "panelgamma.h"
 #include "panelgamma_sunxi.h"
 #include "platform.h"
@@ -645,6 +646,10 @@ static void stick_apply(in_state *st)
 }
 #endif
 
+/* MENU and volume: brightness together where the profile says so, the Smart
+ * Pro (DEV_BRIGHT_MENU_VOL), and plain keys on the Brick, with F1 and F2 */
+static menuvol menu_chord = MENUVOL_INIT;
+
 static void poll_fd(int fd, in_state *st)
 {
 #ifdef __linux__
@@ -671,8 +676,15 @@ static void poll_fd(int fd, in_state *st)
 			if (keymap[i].code == ev.code) {
 				in_button b = keymap[i].b;
 
+				/* MENU and the volume keys, which are brightness
+				 * together on the Smart Pro (src/device/menuvol.h) */
+				if (b == IN_MENU) {
+					menuvol_menu(&menu_chord, st, ev.value == 1, plat_brightness_on_volume());
+				} else if (b == IN_VOLUP || b == IN_VOLDN) {
+					menuvol_volume(&menu_chord, st, b == IN_VOLUP, ev.value == 1,
+					               plat_brightness_on_volume());
 				/* A d-pad key: held while it or the stick holds it */
-				if (b <= IN_DOWN) {
+				} else if (b <= IN_DOWN) {
 					dpad_key[b] = ev.value == 1;
 					plat_set_btn(st, b, dpad_key[b] || stick.held[b]);
 				/* A repeat is no let-go of POWER (src/powerhold.h) */
@@ -734,6 +746,7 @@ void plat_input_poll(in_state *st)
 	 * input owns the volume, so the launcher must not re-apply a level over
 	 * Diatom's while Diatom holds it. Diatom polls the same switch on its own
 	 * side for the same reason. */
+	menuvol_poll(&menu_chord, st);
 	plat_audio_jack_poll();
 	/* And the mute switch, for the same reason and on the same frame. */
 	plat_mute_poll(true);
@@ -1827,8 +1840,9 @@ bool plat_has_wifi(void)      { return true; }
 /* Bluetooth, CPU shaders (Off and Sharp-Shimmerless, port/brick.c), two
  * speakers, F1 and F2 for brightness, no battery lights and no Player 2:
  * its profile's (src/device/brick_profile.c), or on the host desktop's. */
-/* MENU is a button of its own, and in_state has it. */
-bool plat_menu_held(void) { return false; }
+/* MENU held, for the tutorial's hands, where it is the brightness chord's
+ * (the Smart Pro); on the Brick a button of its own, and in_state has it. */
+bool plat_menu_held(void) { return menu_chord.down && plat_brightness_on_volume(); }
 /* L2 and R2 are buttons of their own too. */
 bool plat_tap_held(in_button b) { (void)b; return false; }
 

@@ -274,6 +274,24 @@ static bool kw_next(kw_walk *w, unsigned now, kw_act *a)
 	}
 }
 
+/* What the walk's end writes to PD11 (GPIO 107), the LEDs' 5 V, given its
+ * sysfs state before the walk ("out, 1", "in, 0", "not exported", "" for
+ * never asked) and whether this is the Smart Pro: "high", "low", "in", or
+ * NULL to write nothing; `unexport` says to give the pin back to the kernel.
+ * On the Smart Pro the pin is also the two controllers' 5 V (plastron's
+ * init.d/brick drives it high before sppad), so there it is never low,
+ * whatever was read: low left the Smart Pro with no buttons. Elsewhere, back
+ * as it was found. */
+static const char *kw_power_end(const char *was, bool smartpro, bool *unexport)
+{
+	*unexport = false;
+	if (!was || !was[0]) return smartpro ? "high" : NULL;
+	if (smartpro || !strncmp(was, "out, 1", 6)) return "high";
+	if (!strncmp(was, "in", 2)) return "in";
+	*unexport = !strcmp(was, "not exported");
+	return "low";
+}
+
 /* The Lights row's value for the walk as it is: idle, as it goes, ended */
 static void kw_text(const kw_walk *w, char *out, size_t n)
 {

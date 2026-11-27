@@ -14,6 +14,7 @@ the boot loader and the closed parts.
 | brick-rootswitch | from its repository | GPL-3.0+ | plastron, https://github.com/ericreinsmidt/plastron |
 | brick-tools | 1.0 | GPL-3.0+ | plastron, https://github.com/ericreinsmidt/plastron |
 | busybox | 1.37.0 | GPL-2.0, bzip2-1.0.4 | https://www.busybox.net/downloads |
+| dav1d | 1.5.3 | BSD-2-Clause | https://download.videolan.org/pub/videolan/dav1d/1.5.3 |
 | dbus | 1.14.10 | AFL-2.1 or GPL-2.0+ (library, tools), GPL-2.0+ (tools) | https://dbus.freedesktop.org/releases/dbus |
 | diatom | from its repository | MPL-2.0 | Diatom, https://github.com/tarikbc/ZyperOS (diatom/) |
 | dropbear | 2026.91 | MIT, BSD-2-Clause, Public domain, Unlicense, WTFPL | https://matt.ucc.asn.au/dropbear/releases |
@@ -44,8 +45,10 @@ the boot loader and the closed parts.
 | splash | 1.0 | GPL-3.0+ | plastron, https://github.com/ericreinsmidt/plastron |
 | sqlite | 3.51.3 | blessing | https://www.sqlite.org/2026 |
 | tzdata | 2026b | Public domain | https://www.iana.org/time-zones/repository/releases |
+| usbdrive | 1.0 | GPL-3.0+ | plastron, https://github.com/ericreinsmidt/plastron |
 | util-linux | 2.41.4 | GPL-2.0+, BSD-4-Clause, LGPL-2.1+ (libblkid, libfdisk, libmount), BSD-3-Clause (libuuid), BSD-2-Clause (xxhash), ISC (rfkill), MIT (hardlink, flock) | https://cdn.kernel.org/pub/linux/utils/util-linux/v2.41 |
 | wpa_supplicant | 2.11 | BSD-3-Clause | http://w1.fi/releases |
 | xr829-firmware | sonic-pad-7f37a7f | PROPRIETARY | XRadio: closed, not in the image or its release; ZyperOS Installer gets each player's own copy (see THIRD-PARTY.md) |
 | xz | 5.8.3 | Public Domain, BSD-0-Clause, GPL-2.0+, GPL-3.0+, LGPL-2.1+ | https://github.com/tukaani-project/xz/releases/download/v5.8.3 |
 | zyperos | from its repository | GPL-3.0+ | ZyperOS, https://github.com/tarikbc/ZyperOS |
+| zyperos-eq | 1.0 | GPL-3.0 (plugin), LGPL-2.1+ (ladspa.h) | plastron, https://github.com/ericreinsmidt/plastron |

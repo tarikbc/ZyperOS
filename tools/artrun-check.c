@@ -66,6 +66,25 @@ static const char *g_serve_dat;      /* the No-Intro list, or NULL for a 404 */
 static const char *INDEX_OTHER =
 	"<a href=\"Unrelated%20Title%20%28USA%29.png\">x</a>\n";
 static const char *g_index = NULL;   /* the catalog; INDEX_OTHER when NULL */
+/* libretro's own host down as on 2026-11-24, every file and listing a 404,
+ * with its GitHub mirror up: its raw files (the served names, and a link's
+ * text for g_serve_link) and its API's tree (g_tree, or a 404 for NULL) */
+static bool g_lr_down;
+
+/* strstr within the first `n` bytes of `s` */
+static const char *strnstr_(const char *s, const char *w, size_t n)
+{
+	size_t k = strlen(w);
+
+	for (size_t i = 0; i + k <= n; i++)
+		if (!memcmp(s + i, w, k)) return s + i;
+	return NULL;
+}
+static bool g_net_down;              /* nothing answers at all */
+static const char *g_serve_link;     /* "Link%20Game": a link's text on the mirror */
+static const char *g_link_text;      /* what that link says */
+static const char *g_tree;
+static int  g_http = 200;            /* the last answer's status */
 static char g_pend_url[2048], g_pend_path[2048];
 static bool g_pending;
 static char g_urls[4096];            /* every URL asked for, one per line */
@@ -133,8 +152,16 @@ int net_async_poll(void)
 
 	if (!g_pending) return -1;
 	g_pending = false;
+	g_http = 200;
 
-	if (n && g_pend_url[n - 1] == '/') {
+	if (g_net_down) { g_http = 0; return -1; }
+	if (g_lr_down && strstr(g_pend_url, "thumbnails.libretro.com")) { g_http = 404; return -1; }
+	if (strstr(g_pend_url, "/git/trees/")) {
+		body = g_tree;
+	} else if (g_serve_link && strstr(g_pend_url, "raw.githubusercontent.com") &&
+	           strstr(g_pend_url, g_serve_link)) {
+		body = g_link_text;
+	} else if (n && g_pend_url[n - 1] == '/') {
 		/* The catalog: by default other games only, so a fuzzy pass finds
 		 * nothing. */
 		body = g_index ? g_index : INDEX_OTHER;
@@ -145,7 +172,7 @@ int net_async_poll(void)
 		body = "NEW";
 		image = true;
 	}
-	if (!body) return -1;
+	if (!body) { g_http = 404; return -1; }
 
 	snprintf(part, sizeof part, "%s.part", g_pend_path);
 	if (!(image ? write_cover(part, body) : write_file(part, body))) return -1;
@@ -153,7 +180,7 @@ int net_async_poll(void)
 }
 
 void net_async_abort(void) { g_pending = false; }
-int  net_async_http(void)  { return 200; }
+int  net_async_http(void)  { return g_http; }
 int  net_async_ms(void)    { return 0; }
 int  net_async_exit(void)  { return 0; }
 
@@ -929,6 +956,122 @@ int main(void)
 		      "with no key the shelf should say it is not in the table: \"%s\"",
 		      st.problem);
 		sg_reset();
+	}
+
+	/* ---- libretro's own host down, its GitHub mirror up --------------- */
+	{
+		/* The mirror's tree as GitHub's API sends it: a cover, a link (mode
+		 * 120000, left out of the index) and another folder's file */
+		static const char *TREE =
+			"{\n  \"sha\": \"a97e\",\n  \"tree\": [\n"
+			"    {\n      \"path\": \"Fuzzy Game (Japan).png\",\n      \"mode\": \"120000\",\n"
+			"      \"type\": \"blob\",\n      \"sha\": \"0122\",\n      \"size\": 22,\n"
+			"      \"url\": \"https://api.github.com/repos/x/y/git/blobs/0122\"\n    },\n"
+			"    {\n      \"path\": \"Fuzzy Game (USA) (\\\"A\\\" 100%).png\",\n      \"mode\": \"100644\",\n"
+			"      \"type\": \"blob\",\n      \"sha\": \"43e3\",\n      \"size\": 6651,\n"
+			"      \"url\": \"https://api.github.com/repos/x/y/git/blobs/43e3\"\n    },\n"
+			"    {\n      \"path\": \"notes.txt\",\n      \"mode\": \"100644\",\n"
+			"      \"type\": \"blob\",\n      \"sha\": \"77aa\",\n      \"size\": 9,\n"
+			"      \"url\": \"https://api.github.com/repos/x/y/git/blobs/77aa\"\n    }\n"
+			"  ],\n  \"truncated\": false\n}\n";
+		char p[700], gba[400];
+		int lr = 0;
+		const char *u;
+
+		snprintf(gba, sizeof gba, "%s/Game Boy Advance", g_root);
+		mkdir(gba, 0755);
+		snprintf(p, sizeof p, "%s/A Game.gb", gba);        write_file(p, "rom");
+		snprintf(p, sizeof p, "%s/Link Game.gb", gba);     write_file(p, "rom");
+		snprintf(p, sizeof p, "%s/Fuzzy Game (Europe).gb", gba); write_file(p, "rom");
+
+		printf("  libretro down: covers from its GitHub mirror, a link followed:\n");
+		g_lr_down = true;
+		g_serve_image = "A%20Game";
+		g_serve_also = "Fuzzy%20Game%20%28USA%29%20%28%22A%22%20100%25%29";
+		g_serve_link = "Link%20Game";
+		g_link_text = "A Game.png";
+		g_tree = TREE;
+		CHECK(run_on("Game Boy Advance", NULL, &st) == 0, "the run did not finish");
+		CHECK(!strcmp(cover_of_in(gba, "A Game"), "NEW"), "A Game reads \"%s\"", cover_of_in(gba, "A Game"));
+		CHECK(!strcmp(cover_of_in(gba, "Link Game"), "NEW"), "the link's game reads \"%s\"",
+		      cover_of_in(gba, "Link Game"));
+		CHECK(!strcmp(cover_of_in(gba, "Fuzzy Game (Europe)"), "NEW"),
+		      "the game the mirror's tree named reads \"%s\"", cover_of_in(gba, "Fuzzy Game (Europe)"));
+		CHECK(st.found == 3 && !st.problem[0], "found %d, problem \"%s\"", st.found, st.problem);
+		/* libretro's host asked until the mirror has a cover it refused,
+		 * then the mirror only: no index asked of the host that refused.
+		 * Which game is first is the folder's order (Linux's readdir put
+		 * Fuzzy Game (Europe) first, which the mirror has under another
+		 * name, so A Game was asked of libretro too), so the asks are
+		 * judged from the first cover the mirror served. */
+		{
+			const char *served = NULL, *m;
+
+			for (m = g_urls; (m = strstr(m, "raw.githubusercontent.com/")); m++) {
+				const char *e = strchr(m, '\n');
+				size_t len = e ? (size_t)(e - m) : strlen(m);
+
+				if ((strnstr_(m, "/A%20Game.png", len) || strnstr_(m, "/Link%20Game.png", len)) &&
+				    (!served || m < served))
+					served = m;
+			}
+			for (u = g_urls; (u = strstr(u, "thumbnails.libretro.com")); u++) {
+				lr++;
+				CHECK(!served || u < served, "libretro's host asked after the mirror served a cover:\n%s",
+				      g_urls);
+			}
+		}
+		CHECK(lr >= 1 && lr <= 3, "libretro's host asked %d times, wanted once a game at most "
+		      "until the mirror served one:\n%s", lr, g_urls);
+		CHECK(strstr(g_urls, "raw.githubusercontent.com/libretro-thumbnails/Nintendo_-_Game_Boy_Advance/"
+		                     "master/Named_Boxarts/") != NULL, "no mirror URL:\n%s", g_urls);
+		CHECK(strstr(g_urls, "api.github.com/repos/libretro-thumbnails/Nintendo_-_Game_Boy_Advance/"
+		                     "git/trees/master:Named_Boxarts") != NULL, "no tree asked for:\n%s", g_urls);
+		CHECK(!strstr(g_urls, "Fuzzy%20Game%20%28Japan%29"), "a link in the tree was asked for:\n%s", g_urls);
+		snprintf(p, sizeof p, "%s/.media/A Game.png.mirror", gba);
+		CHECK(access(p, F_OK) != 0, "a mirror file was left beside the cover");
+
+		printf("  a link's text never lands over a cover:\n");
+		g_serve_image = NULL;
+		g_serve_also = NULL;
+		g_link_text = "not a name";
+		snprintf(p, sizeof p, "%s/.media/Link Game.png", gba);
+		write_cover(p, "OLD");
+		CHECK(run_on("Game Boy Advance", "Link Game", &st) == 0, "the run did not finish");
+		CHECK(!strcmp(cover_of_in(gba, "Link Game"), "OLD"), "the cover reads \"%s\"",
+		      cover_of_in(gba, "Link Game"));
+
+		printf("  an index refused says so, and nothing answering says that:\n");
+		snprintf(p, sizeof p, "%s/.media/Fuzzy Game (Europe).png", gba);
+		remove(p);
+		g_tree = NULL;
+		CHECK(run_on("Game Boy Advance", NULL, &st) == 0, "the run did not finish");
+		CHECK(strstr(st.problem, "index refused by the server") != NULL, "a 404 reads \"%s\"", st.problem);
+		g_net_down = true;
+		CHECK(run_on("Game Boy Advance", NULL, &st) == 0, "the run did not finish");
+		CHECK(strstr(st.problem, "index fetch failed") != NULL, "no answer reads \"%s\"", st.problem);
+
+		printf("  every console passed over is counted:\n");
+		{
+			systems_cfg sys;
+			int steps = 0;
+
+			memset(&sys, 0, sizeof sys);
+			sys.count = 2;
+			snprintf(sys.systems[0].folder, sizeof sys.systems[0].folder, "Game Boy Advance");
+			snprintf(sys.systems[0].exts, sizeof sys.systems[0].exts, "gb");
+			snprintf(sys.systems[1].folder, sizeof sys.systems[1].folder, "Game Boy");
+			snprintf(sys.systems[1].exts, sizeof sys.systems[1].exts, "gb");
+			snprintf(p, sizeof p, "%s/Other Game.png", g_media);
+			remove(p);
+			art_begin(&sys, g_root, NULL);
+			while (art_step() == 1 && steps < 1000) steps++;
+			art_status(&st);
+			CHECK(st.passed == 2 && strstr(st.problem, "2 consoles passed over; Game Boy: index fetch failed"),
+			      "two consoles failed, the line reads \"%s\" (%d)", st.problem, st.passed);
+		}
+		g_net_down = g_lr_down = false;
+		g_serve_link = g_link_text = g_tree = NULL;
 	}
 
 	{

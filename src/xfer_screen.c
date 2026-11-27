@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include "xfer_screen.h"
+#include "radl.h"
 #include "hwreport.h"
 #include "ds/mark.h"   /* ds_bar_in */
 
@@ -1289,6 +1290,9 @@ static int after_start_thread(void *unused)
 	if (g_after.check) lib_check_run(g_after.check);
 	if (g_after.check) lib_check_import(g_after.check);
 	media_tidy();
+	/* A card's loose achievement badges into their sets' packs, once: a
+	 * hundred thousand files made fsck.exfat take minutes (src/rapack.h) */
+	radl_badges_migrate(P_ROMS);
 	SDL_AtomicSet(&g_after.done, 1);
 	return 0;
 }

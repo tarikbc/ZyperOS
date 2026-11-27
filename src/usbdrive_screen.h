@@ -87,6 +87,13 @@ int usb_power_rows(menu_row rows[UP_TILES + 1]);
 void usb_offer_show(app *a);
 bool phone_link_due(bool xfer_on);
 void power_follow(void);
+/* What a plug on the USB port asks, from any screen that waits on the
+ * player (the shelf, MP4's): a computer's question, once per plug, and
+ * "What did you plug in?" for something that wants power, a USB DAC
+ * among them (2026-11-24: a DAC plugged in while MP4 played was never
+ * asked about, so it stayed unpowered). True when one was asked: the
+ * caller's screen is to be drawn again and its input is stale. */
+bool usb_questions(app *a);
 void replug_draw_at(SDL_Renderer *r);
 void replug_overlay(SDL_Renderer *r);
 void replug_game_tick(void);

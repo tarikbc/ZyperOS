@@ -25,6 +25,7 @@
 #include "hwput.h"
 #include "nightkeep.h"
 #include "levels.h"
+#include "menuvol.h"
 #include "panelgamma.h"
 #include "phonelink.h"
 #include "platform.h"
@@ -893,20 +894,8 @@ bool plat_rumble_buzz(float scale, int ms)
 }
 
 /* FUNCTION is MENU, and also the modifier that makes the volume keys
- * brightness: this device has no brightness keys, and MENU plus volume is
- * brightness in games too, so the same chord does the same thing on both
- * sides of a launch.
- *
- * A key that is both cannot report MENU when it goes down, because nothing yet
- * says whether a volume key will follow. So MENU is reported when FUNCTION
- * comes UP, unless a volume key came in between. That costs a tap's length
- * before a menu opens, accepted on 2026-10-01; in games MENU has always worked
- * this way. Holding both volume keys with FUNCTION is holding both brightness
- * keys, which is the Brick's pocket lock, so MP4's lock works unchanged. */
-static bool fn_down;            /* FUNCTION is held */
-static bool fn_chorded;         /* and a volume key was used under it */
-static bool menu_release_next;  /* a MENU tap reported last poll ends this one */
-static in_button vol_as[2] = { IN_NONE, IN_NONE };  /* what each volume key went down as */
+ * brightness (src/device/menuvol.h, the Smart Pro's too). */
+static menuvol fn = MENUVOL_INIT;
 
 /* The lights on the side are plastron's gauge's: the launcher only signals it,
  * SIGUSR1 to flash the level and SIGHUP to read MENU > Side Lights again. */
@@ -955,35 +944,11 @@ static void key_event(in_state *st, const struct input_event *ev)
 	if (dbg_input) fprintf(stderr, "[in] code=%d val=%d\n", ev->code, ev->value);
 
 	if (ev->code == CODE_FUNCTION) {
-		if (ev->value) {
-			fn_down = true;
-			fn_chorded = false;
-		} else {
-			fn_down = false;
-			if (!fn_chorded) {
-				plat_set_btn(st, IN_MENU, true);
-				menu_release_next = true;
-			}
-		}
+		menuvol_menu(&fn, st, ev->value != 0, true);
 		return;
 	}
 	if (ev->code == KEY_VOLUMEUP || ev->code == KEY_VOLUMEDOWN) {
-		int k = ev->code == KEY_VOLUMEUP ? 0 : 1;
-
-		if (ev->value) {
-			if (fn_down) {
-				vol_as[k] = k == 0 ? IN_BRIGHTUP : IN_BRIGHTDN;
-				fn_chorded = true;
-			} else {
-				vol_as[k] = k == 0 ? IN_VOLUP : IN_VOLDN;
-			}
-			plat_set_btn(st, vol_as[k], true);
-		} else if (vol_as[k] != IN_NONE) {
-			/* Released as whatever it went down as, so letting go of
-			 * FUNCTION first does not leave a brightness key stuck down. */
-			plat_set_btn(st, vol_as[k], false);
-			vol_as[k] = IN_NONE;
-		}
+		menuvol_volume(&fn, st, ev->code == KEY_VOLUMEUP, ev->value != 0, true);
 		return;
 	}
 	if (ev->code == KEY_POWER) {
@@ -1084,10 +1049,7 @@ void plat_input_poll(in_state *st)
 	memset(st->pressed, 0, sizeof st->pressed);
 	st->power_tap = false;
 	if (plat_terminating()) st->quit_requested = true;
-	if (menu_release_next) {
-		plat_set_btn(st, IN_MENU, false);
-		menu_release_next = false;
-	}
+	menuvol_poll(&fn, st);
 	if (l2_tap) { plat_set_btn(st, IN_L2, false); l2_tap = false; }
 	if (r2_tap) { plat_set_btn(st, IN_R2, false); r2_tap = false; }
 	/* Whoever pumps input owns the volume; see the Brick's file. */
@@ -2184,7 +2146,7 @@ bool plat_has_wifi(void)      { return access("/sys/class/net/wlan0", F_OK) == 0
 /* Bluetooth, the GPU's shaders, one speaker, brightness on FUNCTION with a
  * volume key (key_event), the side lights and Player 2: its profile's
  * (src/device/pixel2_profile.c). */
-bool plat_menu_held(void) { return fn_down; }
+bool plat_menu_held(void) { return fn.down; }
 bool plat_tap_held(in_button b) { return b == IN_L2 ? l2_down : b == IN_R2 ? r2_down : false; }
 
 /* MENU > Side Lights: one line on the card, in the file plastron's gauge reads

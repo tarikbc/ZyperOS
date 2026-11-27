@@ -43,6 +43,7 @@
 #include "../src/net.h"
 #include "../src/noticeart.h"
 #include "../src/rabadge.h"
+#include "../src/rapack.h"
 
 #ifndef NET_TMP
 #error "build with -DNET_TMP, a folder of this check's own (the Makefile does)"
@@ -329,7 +330,14 @@ static void textures(SDL_Renderer *r, const ds_theme *light, const ds_theme *dar
 		struct stat st;
 
 		rb_path(g_set, "10001", p, sizeof p);
-		CHECK(stat(p, &st) == 0 && st.st_size > 100 && st.st_size < 16384, "a badge is a small file");
+		/* Into the set's pack once fetched (src/rapack.h): no file a badge */
+		CHECK(stat(p, &st) != 0, "a badge fetched is no file of its own: in the set's pack");
+		{
+			char pack[1100];
+
+			CHECK(rp_pack_path(g_set, pack, sizeof pack) && stat(pack, &st) == 0 && st.st_size > 200 &&
+			      st.st_size < 32768, "the set's pack, a small file");
+		}
 		snprintf(p + strlen(p), sizeof p - strlen(p), ".part");
 		CHECK(access(p, F_OK) != 0, "no half-written file is left beside it");
 	}

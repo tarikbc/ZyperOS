@@ -19,8 +19,10 @@
 bool pcm_open(const char *device);   /* "default", or a bluealsa PCM name */
 void pcm_close(void);
 
-/* Blocks until the frames are queued, recovering from an underrun on the way.
- * False on an error that would not recover. */
+/* Into the half second decoded ahead (ahead.h), waiting while it is full; a
+ * writer thread of its own takes it to the output, recovering from an
+ * underrun on the way and saying each on stderr. False once the output has
+ * failed with an error that would not recover. */
 bool pcm_write(const int16_t *frames, int n);
 
 /* Throw away what is queued. For pause and seek: what has been heard is where
@@ -28,9 +30,12 @@ bool pcm_write(const int16_t *frames, int n);
  * old position after the new one had been asked for. */
 void pcm_drop(void);
 
-/* Frames queued but not yet heard, so the caller can say where the listener
- * actually is rather than where the decoder got to. */
+/* Frames queued but not yet heard, decoded ahead and in the output, so the
+ * caller can say where the listener actually is rather than where the
+ * decoder got to. */
 long pcm_queued(void);
+/* ...of them, the ones decoded ahead, not yet handed to the output */
+long pcm_ahead(void);
 
 const char *pcm_error(void);
 /* Whether a device is open at all - pcm_open fails closed. */

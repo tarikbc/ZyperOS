@@ -188,26 +188,40 @@ static void hc_gpio_state(int g, char *out, size_t n)
 	snprintf(out, n, "%s, %s", dir[0] ? dir : "-", val[0] ? val : "-");
 }
 
-/* The LEDs' 5 V on or off: PD11 an output, high or low in one step, so it is
- * never high unasked. Exported first where it is not. False where sysfs
- * refused. */
+/* The LEDs' 5 V on, and back as it was: PD11 an output, high in one step, so
+ * it is never high unasked; exported first where it is not. On the Smart Pro
+ * the same pin is the 5 V of its two controllers too (plastron's
+ * init.d/brick drives it high before sppad starts, as TrimUI's start script
+ * does, and TrimUI's kernel takes it low only to suspend), so the walk's end
+ * puts back the state it found and never takes it low there: driving it low
+ * left the Smart Pro with no buttons until a restart. Its state before the
+ * walk is held from the "on" for the "off". False where sysfs refused. */
+static char hc_power_was[32];
+
 static bool hc_power(bool on)
 {
-	char path[64], before[32], after[32];
-	bool ok;
+	char path[64], before[32], after[32], n[8];
+	const char *to;
+	bool ok, exported, unexport = false;
 
+	snprintf(n, sizeof n, "%d", HC_LED5V);
 	snprintf(path, sizeof path, "/sys/class/gpio/gpio%d/direction", HC_LED5V);
-	if (access(path, F_OK) != 0) {
-		char n[8];
-
-		snprintf(n, sizeof n, "%d", HC_LED5V);
-		hc_put("/sys/class/gpio/export", n);
-	}
+	exported = access(path, F_OK) == 0;
 	hc_gpio_state(HC_LED5V, before, sizeof before);
-	ok = hc_put(path, on ? "high" : "low") == 0;
+	if (on) {
+		snprintf(hc_power_was, sizeof hc_power_was, "%s", before);
+		if (!exported) hc_put("/sys/class/gpio/export", n);
+		to = "high";
+	} else if (!(to = kw_power_end(hc_power_was, !strcmp(plat_profile()->id, "smartpro"), &unexport))) {
+		return true;   /* not turned on by the walk: nothing to put back */
+	}
+	ok = hc_put(path, to) == 0;
+	/* A pin the walk exported goes back unexported, as it found it */
+	if (unexport) hc_put("/sys/class/gpio/unexport", n);
 	hc_gpio_state(HC_LED5V, after, sizeof after);
-	fprintf(stderr, "hwcheck: lights: 5 V %s: gpio%d (PD11) was %s, now %s%s\n", on ? "on" : "off",
-	        HC_LED5V, before, after, ok ? "" : ": refused");
+	fprintf(stderr, "hwcheck: lights: 5 V %s: gpio%d (PD11) was %s, now %s%s\n",
+	        on ? "on" : "back as it was", HC_LED5V, before, after, ok ? "" : ": refused");
+	if (!on) hc_power_was[0] = 0;
 	return ok;
 }
 

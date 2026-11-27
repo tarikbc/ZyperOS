@@ -407,6 +407,10 @@ static osdbar_look g_osd_look;
 #define BIT_IS_SET(a,b) (((a)[(b) / BITS_PER_LONG] >> ((b) % BITS_PER_LONG)) & 1UL)
 
 static int g_jack_fd = -1;
+/* The volume keys on a node of their own, not the gamepad's: the Smart Pro's
+ * (the sunxi keyboard), where sppad's gamepad has no volume. The Brick's are
+ * on its gamepad (plastron's brick kernel patch 0010), and it has none. */
+static int g_keys_fd = -1;
 
 /* The gamepad and the headphone jack, in one pass, as the Pixel 2's port finds
  * its own, keeping the nodes it wants and closing only the rest: closing an
@@ -434,6 +438,7 @@ static void input_scan(void)
 				g_axis_max = ax.maximum;
 		}
 		else if (g_jack_fd < 0 && BIT_IS_SET(sw, SW_HEADPHONE_INSERT))  g_jack_fd = fd;
+		else if (g_keys_fd < 0 && BIT_IS_SET(keys, KEY_VOLUMEUP))       g_keys_fd = fd;
 		else kept = false;
 		if (!kept) close(fd);
 	}
@@ -1505,6 +1510,7 @@ void diatom_port_shutdown(void)
 	if (g_fb)         munmap(g_fb, g_fb_size);
 	if (g_fb_fd >= 0) close(g_fb_fd);
 	if (g_pad_fd >= 0) close(g_pad_fd);
+	if (g_keys_fd >= 0) close(g_keys_fd);
 	if (g_audio)      SDL_CloseAudioDevice(g_audio);
 	SDL_Quit();
 }
@@ -2761,6 +2767,15 @@ static const struct { int code; uint32_t key; } level_buttons[] = {
 static uint32_t g_level_down;      /* held, by the events */
 static uint32_t g_level_pressed;   /* went down since the host last asked */
 
+/* The volume keys on their own node (g_keys_fd, the Smart Pro's): with MENU
+ * held they are brightness, as on the Pixel 2, the Smart Pro having no
+ * brightness keys (its profile's DEV_BRIGHT_MENU_VOL), and as the launcher
+ * reads them (src/device/menuvol.h). The host sees the level move under MENU
+ * and takes MENU's release as the end of a chord. Each key is what it went
+ * down as until it comes up. */
+static const int level_codes[2] = { KEY_VOLUMEUP, KEY_VOLUMEDOWN };
+static struct { bool down, pressed, bright; } g_vol_key[2];
+
 /* Whether `code` is a level button, recorded here if so. */
 static bool level_button(int code, bool down)
 {
@@ -2862,6 +2877,29 @@ void diatom_port_input_poll(void)
 	}
 	/* And a key a resync found down whose press was in the events dropped */
 	g_pressed |= g_buttons & ~before;
+
+	while (g_keys_fd >= 0 && (n = read(g_keys_fd, ev, sizeof ev)) > 0) {
+		for (i = 0; i < (size_t)n / sizeof ev[0]; i++) {
+			int key;
+
+			if (ev[i].type != EV_KEY || ev[i].value == 2) continue;
+			if      (ev[i].code == KEY_VOLUMEUP)   key = 0;
+			else if (ev[i].code == KEY_VOLUMEDOWN) key = 1;
+			else continue;
+			if (g_input_debug) {
+				char msg[48];
+				snprintf(msg, sizeof msg, "volume key %d -> %d", ev[i].code, ev[i].value);
+				diatom_port_log(DIATOM_LOG_DEBUG, msg);
+			}
+			if (!ev[i].value) {
+				g_vol_key[key].down = false;
+				continue;
+			}
+			g_vol_key[key].down    = true;
+			g_vol_key[key].pressed = true;
+			g_vol_key[key].bright  = (g_buttons & DIATOM_BIT(DIATOM_BTN_MENU)) != 0;
+		}
+	}
 }
 
 uint32_t diatom_port_input_state(void) { return g_buttons; }
@@ -2891,7 +2929,9 @@ void diatom_port_input_reset(void)
 	SDL_PumpEvents();
 	SDL_FlushEvents(SDL_FIRSTEVENT, SDL_LASTEVENT);
 	while (g_pad_fd >= 0 && read(g_pad_fd, ev, sizeof ev) > 0) { }
+	while (g_keys_fd >= 0 && read(g_keys_fd, ev, sizeof ev) > 0) { }
 	g_level_down = g_level_pressed = 0;
+	memset(g_vol_key, 0, sizeof g_vol_key);
 	g_pressed = 0;
 	pad_resync();
 }
@@ -2971,6 +3011,22 @@ uint32_t diatom_port_level_keys(void)
 	}
 	out = g_level_down | g_level_pressed;
 	g_level_pressed = 0;
+	/* And the volume keys on their own node, checked against it */
+	if (g_vol_key[0].down || g_vol_key[1].down) {
+		memset(keys, 0, sizeof keys);
+		if (g_keys_fd < 0 || ioctl(g_keys_fd, EVIOCGKEY(sizeof keys), keys) < 0)
+			memset(keys, 0, sizeof keys);
+	}
+	for (k = 0; k < 2; k++) {
+		static const uint32_t as_volume[2] = { DIATOM_LEVEL_KEY_VOLUME_UP, DIATOM_LEVEL_KEY_VOLUME_DOWN };
+		static const uint32_t as_bright[2] = { DIATOM_LEVEL_KEY_BRIGHTNESS_UP,
+		                                       DIATOM_LEVEL_KEY_BRIGHTNESS_DOWN };
+
+		if (g_vol_key[k].down && !BIT_IS_SET(keys, level_codes[k])) g_vol_key[k].down = false;
+		if (g_vol_key[k].down || g_vol_key[k].pressed)
+			out |= g_vol_key[k].bright ? as_bright[k] : as_volume[k];
+		g_vol_key[k].pressed = false;
+	}
 	return out;
 }
 

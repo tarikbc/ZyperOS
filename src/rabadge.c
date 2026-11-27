@@ -4,6 +4,7 @@
 #include "cheevos.h"
 #include "net.h"
 #include "noticeart.h"
+#include "rapack.h"
 
 #include <SDL.h>
 #include <SDL_image.h>
@@ -35,11 +36,56 @@ static void rb_url(const char *name, char *out, size_t n)
 	snprintf(out, n, RB_URL "%s.png", name ? name : "");
 }
 
+/* In the set's pack (src/rapack.h) */
+static bool rb_packed(const char *set_path, const char *name)
+{
+	char pack[1100];
+
+	return rp_pack_path(set_path, pack, sizeof pack) && rp_has(pack, name);
+}
+
 bool rb_have(const char *set_path, const char *name)
 {
 	char p[1024];
 
-	return rb_path(set_path, name, p, sizeof p) && access(p, R_OK) == 0;
+	return rb_path(set_path, name, p, sizeof p) && (access(p, R_OK) == 0 || rb_packed(set_path, name));
+}
+
+/* The badge as a picture, from its own file or else the set's pack */
+static SDL_Surface *rb_load(const char *set_path, const char *name, const char *path)
+{
+	char pack[1100];
+	SDL_Surface *img = NULL;
+	size_t len;
+	void *b;
+
+	if (access(path, R_OK) == 0 && (img = IMG_Load(path))) return img;
+	if (!rp_pack_path(set_path, pack, sizeof pack) || !(b = rp_read(pack, name, &len))) return NULL;
+	img = IMG_Load_RW(SDL_RWFromConstMem(b, (int)len), 1);
+	free(b);
+	return img;
+}
+
+bool rb_file(const char *set_path, const char *name, char *out, size_t n)
+{
+	char pack[1100];
+	size_t len;
+	void *b;
+	FILE *f;
+	bool ok;
+
+	if (!n) return false;
+	if (!rb_path(set_path, name, out, n)) return false;
+	if (access(out, R_OK) == 0) return true;
+	out[0] = '\0';
+	if (!rp_pack_path(set_path, pack, sizeof pack) || !(b = rp_read(pack, name, &len))) return false;
+	mkdir(RB_TMP, 0755);
+	snprintf(out, n, RB_TMP "/%s.png", name);
+	ok = (f = fopen(out, "wb")) && fwrite(b, 1, len, f) == len;
+	if (f && fclose(f) != 0) ok = false;
+	free(b);
+	if (!ok) out[0] = '\0';
+	return ok;
 }
 
 /* ---- as textures ------------------------------------------------------------ */
@@ -150,7 +196,7 @@ SDL_Texture *rb_texture(SDL_Renderer *r, const char *set_path, const char *name,
 	h = key_hash(key);
 	landings = SDL_AtomicGet(&g_landings);
 	if (known_missing(h, landings)) return NULL;
-	if (access(path, R_OK) != 0 || !(img = IMG_Load(path))) {
+	if (!(img = rb_load(set_path, name, path))) {
 		note_missing(h, landings);
 		return NULL;
 	}
@@ -230,6 +276,9 @@ static struct {
 	int         n;
 	char        url[RB_MAX][96];
 	char        path[RB_MAX][1024];
+	char        set[1024];                 /* the set they are for, and its badges' names */
+	char        names[RB_MAX][RP_NAME];
+	int         nnames;
 } g;
 
 static int run(void *unused)
@@ -248,6 +297,8 @@ static int run(void *unused)
 	 * minute: a whole set on the device's Wi-Fi is a few seconds */
 	got = net_get_pngs(urls, paths, g.n, 30 + g.n);
 	fprintf(stderr, "badges: %d of %d fetched into %s\n", got, g.n, dir);
+	/* Into the set's pack, the loose files gone once it is safe */
+	if (got > 0) rp_pack(g.set, (const char (*)[RP_NAME])g.names, g.nnames, NULL);
 	SDL_LockMutex(g.lock);
 	g.landed += got;
 	g.busy = false;
@@ -258,14 +309,24 @@ static int run(void *unused)
 
 void rb_fetch_loaded(void)
 {
-	int i, n = 0;
+	int i, n = 0, took = 0;
 	bool busy;
 
 	if (!g.lock && !(g.lock = SDL_CreateMutex())) return;
 	SDL_LockMutex(g.lock);
 	busy = g.busy;
 	SDL_UnlockMutex(g.lock);
-	if (busy || chv_count() <= 0 || !net_online()) return;
+	if (busy || chv_count() <= 0) return;
+
+	/* The set's badges by name, and any the card has loose (an older
+	 * ZyperOS's, tools/ra-sets.py's) into its pack first (src/rapack.h) */
+	snprintf(g.set, sizeof g.set, "%s", chv_source());
+	g.nnames = 0;
+	for (i = 0; i < chv_count() && g.nnames < RB_MAX; i++)
+		if (chv_at(i)->badge[0]) snprintf(g.names[g.nnames++], RP_NAME, "%s", chv_at(i)->badge);
+	rp_pack(g.set, (const char (*)[RP_NAME])g.names, g.nnames, &took);
+	if (took > 0) SDL_AtomicAdd(&g_landings, 1);
+	if (!net_online()) return;
 
 	for (i = 0; i < chv_count() && n < RB_MAX; i++) {
 		const cheevo *c = chv_at(i);

@@ -3449,7 +3449,7 @@ static void on_cheevo_unlocked(int id)
 
 		/* With its badge, when the card has it (src/rabadge.h) */
 		p[0] = '\0';
-		if (c) rb_path(chv_source(), c->badge, p, sizeof p);
+		if (c) rb_file(chv_source(), c->badge, p, sizeof p);
 		notice_queue(NQ_UNLOCK, id, 4000, head,
 		             c && c->title[0] ? c->title : T(S_CHEEVOS_UNLOCKED), p[0] ? p : NULL, 0, 0);
 	}
@@ -3482,7 +3482,7 @@ static void on_cheevo_progress(int id, const char *text, int value, int target)
 		         text, strchr(text, '/') + 1);
 	else
 		snprintf(count, sizeof count, "%s", text);
-	rb_path(chv_source(), c->badge, p, sizeof p);
+	rb_file(chv_source(), c->badge, p, sizeof p);
 	notice_queue(NQ_PROGRESS, id, 2500, c->title[0] ? c->title : T(S_CHEEVOS_PROGRESS), count,
 	             p[0] ? p : NULL, value, target);
 }
@@ -8756,24 +8756,10 @@ int main(int argc, char *argv[])
 			}
 		}
 
-		/* USB charges only until asked: a computer plugged in gets its
-		 * question here, once per plug (usblink.h). After the dark screen's
-		 * turn, so it waits for the screen to be lit rather than opening
-		 * in the dark. */
-		if (usblink_follow(db_dev(), plat_now_ms())) {
-			saver_stop(&a, "a computer was plugged in");
-			usb_ask(&a);
-		}
-		/* Something on the port wants power: asked too, once per plug;
-		 * the replug message is the overlay's, over any screen */
-		power_follow();
-		if (g_power_ask) {
-			unsigned plug = g_power_ask;
-
-			g_power_ask = 0;
-			saver_stop(&a, "something was plugged in");
-			usb_power_ask(&a, plug);
-		}
+		/* USB's questions (usb_questions), after the dark screen's turn,
+		 * so they wait for the screen to be lit rather than opening in the
+		 * dark */
+		usb_questions(&a);
 		/* Zyper's offer of Automatic, due from a USB Accessory answer
 		 * here or in MENU > USB Device: here, so never over a game */
 		if (g_usb_offer_due && a.running) usb_offer_show(&a);

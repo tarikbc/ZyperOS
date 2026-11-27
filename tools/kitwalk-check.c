@@ -344,6 +344,25 @@ int main(void)
 	kw_start(&w, leds, 0, NULL, 1000);
 	ck(!kw_running(&w) && !kw_next(&w, 2000, &a), "no LEDs: no step, not even the 5 V");
 
+	/* ---- the 5 V at the walk's end (kw_power_end) ---- */
+	{
+		static const char *const WAS[] = { "out, 1", "out, 0", "in, 1", "not exported", "", NULL };
+		bool un;
+		size_t s;
+
+		for (s = 0; s < sizeof WAS / sizeof WAS[0]; s++) {
+			const char *to = kw_power_end(WAS[s], true, &un);
+
+			ck(to && !strcmp(to, "high") && !un, "on the Smart Pro the controllers' 5 V is never low at the end");
+		}
+		ck(!strcmp(kw_power_end("out, 1", false, &un), "high") && !un, "elsewhere a pin found high stays high");
+		ck(!strcmp(kw_power_end("out, 0", false, &un), "low") && !un, "one found low goes low");
+		ck(!strcmp(kw_power_end("in, 1", false, &un), "in") && !un, "one found an input is one again");
+		ck(!strcmp(kw_power_end("not exported", false, &un), "low") && un,
+		   "one found not exported goes low and back to the kernel (the Brick's)");
+		ck(!kw_power_end("", false, &un) && !un, "one the walk never turned on is left alone");
+	}
+
 	if (fails) {
 		printf("kitwalk: %d of %d checks failed\n", fails, checks);
 		return 1;

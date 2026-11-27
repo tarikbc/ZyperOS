@@ -7,7 +7,8 @@
  * here whole, this binary first on its list of curls. Run as curl - -K and a
  * config - it answers a GET by its URL's path: /wait/MS/WORD waits MS and
  * answers WORD, /hold/NAME/WORD waits until the check makes the file NAME in
- * NET_TMP and answers WORD, /code/N answers N with no body.
+ * NET_TMP and answers WORD, /code/N answers N with no body, /down answers
+ * nothing (curl's 000 and its exit 6, a host not found).
  *
  * Two slots carry a slow request and a quick one at once, and each finishes
  * as its own; dropping one leaves the other. Two lanes of three slow
@@ -98,6 +99,9 @@ static int standin(const char *cfg)
 		for (i = 0; i < 30000 && access(go, F_OK) != 0; i++) nanosleep(&t, NULL);
 	} else if (path && sscanf(path, "/code/%d", &code) == 1) {
 		word[0] = '\0';
+	} else if (path && !strcmp(path, "/down")) {
+		printf("000");
+		return 6;
 	} else {
 		code = 404;
 	}
@@ -304,6 +308,13 @@ int main(int argc, char **argv)
 		CHECK(poll_until(WAIT_MS) == 1 && file_is(NET_TMP "/kept", "kept"), "the other ends with its answer");
 		CHECK(net_get_async("https://standin.invalid/code/429", NET_TMP "/busy", 10) && poll_until(WAIT_MS) == -1 &&
 		      net_async_http() == 429, "a refusal is read on its own slot (429)");
+		/* A refusal and no answer are told apart (Box Art's "index refused
+		 * by the server" and "index fetch failed"): both are -1, the
+		 * status says which */
+		CHECK(net_get_async("https://standin.invalid/code/404", NET_TMP "/gone", 10) && poll_until(WAIT_MS) == -1 &&
+		      net_async_http() == 404 && access(NET_TMP "/gone", F_OK) != 0, "a 404 is a refusal, 404, no file");
+		CHECK(net_get_async("https://standin.invalid/down", NET_TMP "/down", 10) && poll_until(WAIT_MS) == -1 &&
+		      net_async_http() == 0 && net_async_exit() == 6, "no answer is status 0, curl's own exit");
 		net_slot_use(was);
 	}
 

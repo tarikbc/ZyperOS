@@ -617,11 +617,13 @@ for _scroll in ("0.5", "1"):
     EXTRA.setdefault("about-3-scroll-" + _scroll, ("demo", "PS1", ["--about", "3", "--about-scroll", _scroll]))
 # The Scraper page's run saying what it is doing past a game's name (the
 # catalog, a game with no art, the checksums), and done with the reason it
-# passed a system over or stopped a source (art_status's lines)
+# passed a system over or stopped a source (art_status's lines), and three
+# systems passed over (art.problems)
 for _k, _w in enumerate(("catalog", "no-art", "checksums")):
     EXTRA.setdefault("scraper-page-run-" + _w, ("demo", "PS1", ["--scraper-page", "17", str(_k)]))
-for _k, _w in enumerate(("no-folder", "not-in-table", "no-curl", "index-failed", "index-bad", "ss-quota",
-                         "ss-too-many", "ss-busy", "ss-no-answer", "sg-refused", "sg-busy", "sg-no-answer")):
+for _k, _w in enumerate(("no-folder", "not-in-table", "no-curl", "index-failed", "index-refused", "index-bad",
+                         "ss-quota", "ss-too-many", "ss-busy", "ss-no-answer", "sg-refused", "sg-busy",
+                         "sg-no-answer", "many")):
     EXTRA.setdefault("scraper-page-done-" + _w, ("demo", "PS1", ["--scraper-page", "16", str(_k)]))
 # Every month: Date & Time's page on the 3rd of each (its name in full), and
 # MENU's Date & Time row on the 15th (its short name, --status's date=), in
