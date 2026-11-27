@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include "bgm_screen.h"
 #include "menu_pick.h"
+#include "ds/hover.h"
+#include "hover_sweep.h"
 
 #include "app.h"
 #include "panel.h"
@@ -27,6 +29,7 @@ void bgm_scan_now(bgm_list *l)
 
 /* Menu Music's rows' choices by place (bgm_build) */
 static menu_choice g_bgm_choice[BGM_ROWS + 3];
+static const ds_hover BGM_VOLUME_HOVER, BGM_TRACK_HOVER;
 
 int bgm_build(void *ctx, menu_row *rows, int max, const char **heading)
 {
@@ -71,15 +74,63 @@ int bgm_build(void *ctx, menu_row *rows, int max, const char **heading)
 		for (i = 0; i < n && i < (int)sizeof v->b.id; i++) {
 			if (v->b.id[i] == BGM_ROW_VOLUME)
 				g_bgm_choice[i] = (menu_choice){ .n = BGM_VOLUME_MAX - BGM_VOLUME_MIN + 1,
-				                                 .cur = (unsigned char)(bgm_volume() - BGM_VOLUME_MIN), .labels = vol };
+				                                 .cur = (unsigned char)(bgm_volume() - BGM_VOLUME_MIN), .labels = vol,
+				                                 .hover = &BGM_VOLUME_HOVER };
 			else if (v->b.id[i] == BGM_ROW_TRACK && v->list.n > 0 && v->list.n + 1 <= MENU_CHOICES_MAX)
 				g_bgm_choice[i] = (menu_choice){ .n = (unsigned char)(v->list.n + 1),
 				                                 .cur = (unsigned char)(bgm_find(&v->list, bgm_track()) + 1),
-				                                 .labels = trk };
+				                                 .labels = trk, .hover = &BGM_TRACK_HOVER };
 		}
 		return n;
 	}
 }
+
+/* Volume's and Track's lists (src/ds/hover.h): the music at the volume
+ * under the cursor, and the track under it once the cursor rests on it,
+ * from its start (bgm_hear); the setting untouched until A takes one. B
+ * goes back to the track that played as the list opened, from its start. */
+static const bgm_view *g_bgm_view;
+static char g_bgm_was[512];
+static bool g_bgm_heard;
+
+static void volume_show(void *app_, int k)
+{
+	(void)app_;
+	bgm_set_volume(BGM_VOLUME_MIN + k);
+}
+
+static void volume_undo(void *app_, int kept)
+{
+	volume_show(app_, kept);
+}
+
+static void track_show(void *app_, int k)
+{
+	(void)app_;
+	if (!g_bgm_heard) {
+		bgm_now(g_bgm_was, sizeof g_bgm_was);
+		g_bgm_heard = true;
+	}
+	/* Shuffle: the one that played */
+	bgm_hear(k > 0 && g_bgm_view && k - 1 < g_bgm_view->list.n ? g_bgm_view->list.names[k - 1] : g_bgm_was);
+}
+
+static void track_undo(void *app_, int kept)
+{
+	char now[512];
+
+	(void)app_;
+	if (!g_bgm_heard) return;
+	g_bgm_heard = false;
+	bgm_now(now, sizeof now);
+	/* A track kept: the setting plays it again, from its start. Shuffle
+	 * kept: the one that played, once, if another plays now */
+	if (kept > 0 || !strcmp(now, g_bgm_was)) bgm_hear("");
+	else bgm_hear_back(g_bgm_was);
+}
+
+static const ds_hover BGM_VOLUME_HOVER = { .show = volume_show, .undo = volume_undo };
+static const ds_hover BGM_TRACK_HOVER = { .show = track_show, .undo = track_undo, .rest_ms = 500 };
 
 static menu_result bgm_key(app *a, void *ctx, in_button key, int sel)
 {
@@ -128,11 +179,13 @@ void bgm_screen(app *a)
 	};
 
 	memset(&v, 0, sizeof v);
+	g_bgm_view = &v;
 	bgm_scan_now(&v.list);
 	bgm_rescan();
 	st.sound = v.b.sound;
 	st.choices = g_bgm_choice;
 	menu_run(a, &st, bgm_build, bgm_key, &v);
+	g_bgm_view = NULL;
 	bgm_free(&v.list);
 }
 
@@ -148,5 +201,27 @@ void bgm_rows_report(app *a)
 	bgm_scan_now(&v.list);
 	n = bgm_build(&v, rows, BGM_ROWS + 3, &h);
 	menu_rows_print("music", rows, n, v.b.sound, g_bgm_choice);
+	bgm_free(&v.list);
+}
+
+/* Menu Music's lists through what their cursors show (src/hover_sweep.h) */
+static int sweep_music(app *a, void *ctx, menu_row *rows, int max, const menu_choice **choices)
+{
+	const char *h;
+
+	(void)a;
+	*choices = g_bgm_choice;
+	return bgm_build(ctx, rows, max, &h);
+}
+
+void bgm_hover_sweep(app *a)
+{
+	static bgm_view v;
+
+	memset(&v, 0, sizeof v);
+	bgm_scan_now(&v.list);
+	g_bgm_view = &v;
+	hover_sweep_page(a, "music", sweep_music, &v);
+	g_bgm_view = NULL;
 	bgm_free(&v.list);
 }

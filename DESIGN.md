@@ -1232,7 +1232,51 @@ Video Snaps, Menu Music:
   cursor's last frame, or a drawn scene for one never played. The column
   is **preview-col-w** (336) units, narrower where the choices run long, to
   **preview-col-min** (200), so every choice keeps its words; the list is as wide as the column and its
-  longest choice need (`menu_pick_preview`, src/menu_pick.h).
+  longest choice need (`menu_pick_hover`, src/menu_pick.h).
+- **What the cursor shows** (Tarik's: "When choosing the options,
+  actually show how it would look like as we hover through"; `src/ds/
+  hover.h`, section 15). A list whose choice can be seen or heard shows the
+  one under the cursor from the frame the cursor reaches it, before A takes
+  it; B, MENU or POWER put back what is kept, and nothing is saved until A.
+  The tick stays on the kept choice, and the list's width with it. Four
+  kinds, by what the choice changes:
+  - *On the whole screen*: Appearance (the theme Light, Dark or Auto gives
+    now), Accent, Light and Dark Background, Folder Color
+    and Highlight (Theme; a ground of the theme that is not on shows that
+    theme while its list is open), MENU's Shader and Strength, Home Screen and Battery Icon (the shelf behind the list, the
+    corner's battery), Night Mode and Night Warmth (the warmth that choice
+    gives now), Screen Colors' Look, Language (every word, as the first
+    start's language step), Time Zone (the corner's clock), and a system's
+    Sort By and View and MP4's Show, Sort By and View (the shelf behind the list,
+    on the same game).
+  - *In the speaker*: UI Sounds and Audio Channels (the cursor's own click
+    in that voice, through those channels), Menu Music's Volume, and its
+    Track once the cursor rests half a second on one (B goes back to the
+    track that played, from its start).
+  - *Felt*: Rumble, each level buzzed as the cursor reaches it, the kept
+    one too (the hover's `at`).
+  - *A picture beside the list* (the column above): a system's Shader,
+    Strength and Display, Border and Handheld Color, Timing, Super Game
+    Boy, Recents' Card Picture, MP4's Player Look, the Equalizer's presets,
+    Folder Color and Highlight (beside their whole screen), a DS game's Screens (the paused game in that layout), Quick
+    Slot (the slot's saved picture, its time under it, Empty for none), and
+    a Controls button's jobs (the handheld beside the list lights the
+    button and the one its job would swap with).
+  - *The page's band over the list*: On-Screen Stats' Corner, Edge
+    Distance, Opacity and Text Color keep the strip of the paused game,
+    the stats where and as the choice puts them.
+
+  No preview, and why: Screensaver and Auto Off (a wait), Charge Limit (how
+  far the battery charges), Night From and Until (a time of day; Night
+  Mode's own rows show the warmth), Core and a DS game's Game Language
+  (only in a game), Disc (it swaps the disc: an action, never on a hover),
+  Video Snaps' Sound (no snap plays there). A show is made once a move,
+  never each frame; Sort By and Track wait for the cursor to rest. While a
+  list shows a choice that is not kept, nothing that keeps the screen's
+  state writes it down (the boot screen's words, the night's hours, a zone
+  Auto found: `ds_hover_showing`). `check-hover-sweep` shows every choice of
+  every list on five cards and fails on a database row or a file written,
+  or a page that reads otherwise after.
 - **A row with a scale** (Screen Colors, 1.0.6; `src/ds/scale.h`, section
   15): a value from -range to +range, zero in the middle, is a graded bar
   where its value would be, its row's words at the left as any row's. The
@@ -6046,8 +6090,8 @@ the tiles' style is read off a name.
 | Distances | `src/ds/sdf.h` | the segment, polygon and rounded-box distances the distance-field marks share: the status corner, the cover badges |
 | Button hints | `src/keyhints.c`, `src/keyhints_draw.c`; `page_hint` in `src/home.c` | 11.4 |
 | Menu panel | `src/menu_panel.c` (its slab `ds_panel_open`, its more marks `ds_more`) | 11.3 |
-| What a list's cursor shows | `src/ds/hover.c`, `hover.h` | 11.3: a list's `ds_hover` (`menu_choice.hover`) - `show(k)` the choice in memory, `undo(kept)` - run by `ds_hover_run`: a show once per choice the cursor comes to, the kept one back on the cursor's return and when the list closes, before A's choice is applied. The runner tells a list its cursor after the keys and before the frame (`menu_style.at`). `ds_hover_showing` holds what would write a shown state down. `check-hover` (its rules), `check-hover-sweep` (Theme's lists, nothing written). |
-| A choice's picture | `src/ds/preview.c`, `preview.h` | 11.3: the column at an option list's left (`menu_pick_preview`): `ds_preview_layout` on the layout engine (the small screen a 4:3 leaf, **preview-note-gap**, the note's room in meta lines, the set's tallest), `ds_preview_screen_begin` / `ds_preview_screen_end` (the screen's ink, its **edge** frame of `DS_FRAME` and its corners `DS_RADIUS_ROW`, the focus fill's beside it), `ds_preview_note`; the column **preview-col-w**, to **preview-col-min** where the choices run long (`ds_preview_col_w`), **preview-gap** from the rows. The Display list's picture is `src/dmodepreview.c`, each mode placed as Diatom places it (`src/dmodefit.c`, `check-dmodefit`). |
+| What a list's cursor shows | `src/ds/hover.c`, `hover.h` | 11.3: a list's `ds_hover` (`menu_choice.hover`) - `show(k)` the choice in memory, `undo(kept)`, `draw(k, box)` its picture, `tick`, `end`, `rest_ms`, `own_sound` (the list's moves quiet, the show's click heard), `at` (told the cursor each pass: Rumble's level felt), `keep_header` (the page's band kept) - run by `ds_hover_run`: a show once per choice the cursor comes to, the kept one back on the cursor's return and when the list closes, before A's choice is applied. The runner tells a list its cursor after the keys and before the frame (`menu_style.at`). `check-hover` (its rules), `check-hover-sweep` (every list on five cards, nothing written). |
+| A choice's picture | `src/ds/preview.c`, `preview.h` | 11.3: the column at an option list's left (`menu_pick_hover`): `ds_preview_layout` on the layout engine (the small screen a 4:3 leaf, **preview-note-gap**, the note's room in meta lines, the set's tallest), `ds_preview_screen_begin` / `ds_preview_screen_end` (the screen's ink, its **edge** frame of `DS_FRAME` and its corners `DS_RADIUS_ROW`, the focus fill's beside it), `ds_preview_note`; the column **preview-col-w**, to **preview-col-min** where the choices run long (`ds_preview_col_w`), **preview-gap** from the rows. The Display list's picture is `src/dmodepreview.c`, each mode placed as Diatom places it (`src/dmodefit.c`, `check-dmodefit`). |
 | A row's scale | `src/ds/scale.c`, `scale.h` | 11.3: the graded bar a row carries as its value (`ds_scale_value`, `ds_scale_parse`), drawn by `menu_draw` in the page's scales' column (`ds_scale_draw`, `DS_SCALE_MIN_W`, `ds_scale_num_w`); `check-scale` holds the value's round trip and range and the knob's place in both themes. |
 | A color chart | `src/ds/colorref.c`, `colorref.h` | 11.3: `ds_color_ref_draw`, the 24-patch chart, a grey ramp and the hues, tall in a column or wide in a list's picture. |
 | Status corner | `src/status.c` | 11.12. Its marks keep drawings of their own, by decision (2026-11-14, round 2 of the design system): at 24 units, 15 pixels on the panel, each shows a state - a signal's lit arcs, a charge, a sweep - and is drawn for that size as a distance field, where `ui_glyph`'s are 56 to 72-unit marks for a choice. They share their distances (`src/ds/sdf.h`), not their shapes. |

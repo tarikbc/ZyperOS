@@ -46,6 +46,8 @@
 #include <sys/stat.h>
 
 #include "shaderdemo.h"
+#include "ds/hover.h"
+#include "ds/preview.h"
 #include "levels.h"
 #include <unistd.h>
 
@@ -1678,7 +1680,7 @@ void gm_preview_frame(SDL_Texture *bg)
 int    shot_gm_src_w, shot_gm_src_h;
 double shot_gm_aspect;
 
-/* The Display list's picture (menu_choice's preview): the paused game as
+/* The Display list's picture (menu_choice's hover): the paused game as
  * mode `k` would draw it, at the size and shape Diatom said */
 /* The Shader and Strength lists' picture (src/shaderdemo.h), with the game's
  * own system's shader and strength (owner_view) as the lists were made */
@@ -1760,6 +1762,185 @@ static void gm_dmode_preview(void *app_, int k, int x, int y, int w, int h)
 	dmode_preview_draw(a, g_gm_frame, sw, sh, aspect, fw, fh, k, x, y, w, h);
 }
 
+/* Quick Slot's list: the picture of the slot under the cursor beside it,
+ * its time under the picture (the choice's note), Empty for a slot with
+ * nothing in it (src/ds/hover.h's draw). The pictures loaded once a list,
+ * as the cursor first comes to each, and let go as it closes (end). Choice
+ * k is slot k + 1. */
+static SDL_Texture *g_qs_tex[GM_SLOTS];
+static bool g_qs_tried[GM_SLOTS];
+
+static bool qs_game(app *a, int *owner, game_entry **g)
+{
+	sysview *v = &a->view[a->sys_cursor];
+
+	if (v->cursor < 0 || v->cursor >= v->list.count) return false;
+	*g = &v->list.items[v->cursor];
+	*owner = shelf_owner(a, a->sys_cursor, v->cursor);
+	return true;
+}
+
+static void qs_draw(void *app_, int k, int x, int y, int w, int h)
+{
+	app *a = app_;
+	const SDL_Rect screen = { x, y, w, h };
+	const ds_theme *t = theme();
+	SDL_Rect in;
+	game_entry *g;
+	int o;
+
+	if (k < 0 || k >= GM_SLOTS) return;
+	if (!g_qs_tried[k] && qs_game(a, &o, &g)) {
+		char pth[LIB_PATH * 2];
+		SDL_Surface *sf;
+
+		g_qs_tried[k] = true;
+		slot_preview_path(a, o, g, k + 1, pth, sizeof pth);
+		if ((sf = IMG_Load(pth))) {
+			g_qs_tex[k] = SDL_CreateTextureFromSurface(a->r, sf);
+			SDL_FreeSurface(sf);
+		}
+	}
+	in = ds_preview_screen_begin(a->r, &screen);
+	if (g_qs_tex[k]) {
+		int tw = 0, th = 0;
+		SDL_Rect pic = in;
+
+		/* The picture whole in the screen, its shape kept */
+		SDL_QueryTexture(g_qs_tex[k], NULL, NULL, &tw, &th);
+		if (tw > 0 && th > 0) {
+			if (in.w * th > in.h * tw) pic.w = in.h * tw / th;
+			else pic.h = in.w * th / tw;
+			pic.x = in.x + (in.w - pic.w) / 2;
+			pic.y = in.y + (in.h - pic.h) / 2;
+		}
+		SDL_RenderCopy(a->r, g_qs_tex[k], NULL, &pic);
+	} else {
+		ui_text(a->r, ui_font(UI_F_MENU), T(S_SLOTS_EMPTY), in.x + in.w / 2,
+		        ui_cap_y(ui_font(UI_F_MENU), in.y + in.h / 2), 0, ui_col(t->text_dim, 255));
+	}
+	ds_preview_screen_end(a->r, &screen);
+}
+
+static void qs_end(void *app_)
+{
+	int k;
+
+	(void)app_;
+	for (k = 0; k < GM_SLOTS; k++) {
+		if (g_qs_tex[k]) SDL_DestroyTexture(g_qs_tex[k]);
+		g_qs_tex[k] = NULL;
+		g_qs_tried[k] = false;
+	}
+}
+
+/* Each slot's time as its note: when it was saved, or nothing (the
+ * picture says Empty). Asked again at most once a second (the menu is built
+ * every pass). */
+static const char *const *qs_notes(app *a)
+{
+	static char when[GM_SLOTS][64];
+	static const char *notes[GM_SLOTS];
+	static unsigned at;
+	static bool have;
+	const unsigned now = plat_now_ms();
+	game_entry *g;
+	int o, k;
+
+	if (have && now - at < 1000) return notes;
+	have = true;
+	at = now;
+	for (k = 0; k < GM_SLOTS; k++) {
+		char pth[LIB_PATH * 2];
+		struct stat st;
+		struct tm *tm;
+
+		notes[k] = "";
+		if (!qs_game(a, &o, &g)) continue;
+		slot_state_path(a, o, g, k + 1, pth, sizeof pth);
+		if (stat(pth, &st) != 0 || st.st_size <= 0 || !(tm = localtime(&st.st_mtime))) continue;
+		slot_when(when[k], sizeof when[k], tm);
+		notes[k] = when[k];
+	}
+	return notes;
+}
+
+static const ds_hover GM_QUICK_HOVER = { .draw = qs_draw, .end = qs_end };
+
+/* Screens' list (a DS game): the paused game in the layout under the
+ * cursor beside the list, as the Display list's picture. The paused frame
+ * is Diatom's preview in the layout on now (diatom/src/screens.h's
+ * scr_compose): both screens stacked, the large one and a quarter-size one
+ * for Top Focus, the one in front alone for Single. Each screen is cut from
+ * it and placed as scr_planes places it on the Pixel 2's 640x480 with the
+ * display mode's aspect; a screen the frame does not hold (the other one,
+ * from Single) is an empty screen. */
+static int g_gm_layout;
+
+static void screens_draw(void *app_, int k, int x, int y, int w, int h)
+{
+	app *a = app_;
+	const SDL_Rect screen = { x, y, w, h };
+	const ds_theme *dk = theme_at(DS_DARK);
+	/* Where each layout puts the screen in front and the other on 640x480 */
+	static const SDL_Rect DST[GM_LAYOUTS][2] = {
+		{ { 160, 0, 320, 240 }, { 160, 240, 320, 240 } },   /* stacked */
+		{ { 0, 48, 512, 384 }, { 512, 336, 128, 96 } },     /* focus */
+		{ { 0, 0, 640, 480 }, { 0, 0, 0, 0 } },             /* single */
+	};
+	SDL_Rect in, src[2];
+	bool have[2] = { false, false };
+	int fw = 0, fh = 0, i;
+
+	if (k < 0 || k >= GM_LAYOUTS) return;
+	if (g_gm_frame) SDL_QueryTexture(g_gm_frame, NULL, NULL, &fw, &fh);
+	if (fw > 0 && fh > 0) {
+		switch (g_gm_layout) {
+		case 1:   /* focus: 320x192, the small one 64x48 at the bottom right */
+			src[0] = (SDL_Rect){ 0, 0, fw * 256 / 320, fh };
+			src[1] = (SDL_Rect){ fw * 256 / 320, fh - fh * 48 / 192, fw * 64 / 320, fh * 48 / 192 };
+			have[0] = have[1] = true;
+			break;
+		case 2:   /* single: the one in front */
+			src[0] = (SDL_Rect){ 0, 0, fw, fh };
+			have[0] = true;
+			break;
+		default:  /* stacked: the front over the other */
+			src[0] = (SDL_Rect){ 0, 0, fw, fh / 2 };
+			src[1] = (SDL_Rect){ 0, fh / 2, fw, fh - fh / 2 };
+			have[0] = have[1] = true;
+			break;
+		}
+	}
+	in = ds_preview_screen_begin(a->r, &screen);
+	SDL_SetRenderDrawColor(a->r, 0, 0, 0, 255);
+	SDL_RenderFillRect(a->r, &in);
+	for (i = 0; i < 2; i++) {
+		const SDL_Rect *d = &DST[k][i];
+		SDL_Rect to;
+
+		if (d->w <= 0) continue;
+		to = (SDL_Rect){ in.x + d->x * in.w / 640, in.y + d->y * in.h / 480,
+		                 d->w * in.w / 640, d->h * in.h / 480 };
+		if (have[i]) {
+			SDL_RenderCopy(a->r, g_gm_frame, &src[i], &to);
+		} else {
+			/* The screen the paused frame does not hold: an unlit one,
+			 * the dark theme's raised ground in either theme */
+			SDL_SetRenderDrawColor(a->r, dk->raised.r, dk->raised.g, dk->raised.b, 255);
+			SDL_RenderFillRect(a->r, &to);
+		}
+	}
+	ds_preview_screen_end(a->r, &screen);
+}
+
+static const ds_hover GM_SCREENS_HOVER = { .draw = screens_draw };
+
+/* The three lists' pictures, as their hovers (src/ds/hover.h) */
+static const ds_hover GM_DMODE_HOVER = { .draw = gm_dmode_preview };
+static const ds_hover GM_SHADER_HOVER = { .draw = gm_shader_preview };
+static const ds_hover GM_STRENGTH_HOVER = { .draw = gm_strength_preview };
+
 /* Over your PICO-8, the Display list's picture (below, with its row) */
 static void port_dmode_preview(void *app_, int k, int x, int y, int w, int h);
 
@@ -1780,17 +1961,20 @@ const menu_choice *gm_choices(app *a, const gm_ui *u)
 		}
 		g_gm_choice[GM_DISPLAY] = (menu_choice){ .n = (unsigned char)DMODE_COUNT, .cur = (unsigned char)v->dmode,
 		                                         .labels = lab[0], .notes = notes,
-		                                         .preview = gm_dmode_preview };
+		                                         .hover = &GM_DMODE_HOVER };
 		/* Over your PICO-8 its own list (port_display_pick): a choice
 		 * applied by steps would start the program again at each */
 		if (u->port) {
+			static const ds_hover PORT_DMODE_HOVER = { .draw = port_dmode_preview };
+
 			g_gm_choice[GM_DISPLAY].own = true;
-			g_gm_choice[GM_DISPLAY].preview = port_dmode_preview;
+			g_gm_choice[GM_DISPLAY].hover = &PORT_DMODE_HOVER;
 		}
 	}
 	{
 		/* Border's offered kinds, each with its note and picture */
 		static const char *labels[BORDER_KINDS], *notes[BORDER_KINDS];
+		static const ds_hover BORDER_HOVER = { .draw = gm_border_preview };
 		const bool room = gm_border_room(a);
 		border_kind kept = border_load_room(a, (int)(v - a->view), room);
 
@@ -1802,18 +1986,19 @@ const menu_choice *gm_choices(app *a, const gm_ui *u)
 		}
 		g_gm_choice[GM_BORDER] = (menu_choice){ .n = (unsigned char)n, .cur = (unsigned char)cur,
 		                                        .labels = labels, .notes = notes,
-		                                        .preview = gm_border_preview, .list = true };
+		                                        .hover = &BORDER_HOVER, .list = true };
 	}
 	{
 		/* Handheld Color's colors, each with the frame in it */
 		static const char *labels[HF_COLORS];
+		static const ds_hover COLOR_HOVER = { .draw = gm_color_preview };
 		const hf_model *m = hf_model_for(a->sys.systems[v - a->view].tag);
 
 		if (m && m->ncolors > 1) {
 			for (i = 0; i < m->ncolors && i < HF_COLORS; i++) labels[i] = border_color_label(m->color_name[i]);
 			g_gm_choice[GM_BORDER_COLOR] = (menu_choice){
 				.n = (unsigned char)m->ncolors, .cur = (unsigned char)border_color_load(a, (int)(v - a->view)),
-				.labels = labels, .preview = gm_color_preview };
+				.labels = labels, .hover = &COLOR_HOVER };
 		}
 	}
 	g_gm_demo_tag = a->sys.systems[v - a->view].tag;
@@ -1830,7 +2015,7 @@ const menu_choice *gm_choices(app *a, const gm_ui *u)
 		g_gm_demo_shader = v->shader;
 		g_gm_demo_strength = strength_clamp(v->strength);
 		g_gm_choice[GM_SHADER] = (menu_choice){ .n = (unsigned char)n, .cur = (unsigned char)cur, .labels = lab[1],
-		                                        .notes = notes, .preview = gm_shader_preview };
+		                                        .notes = notes, .hover = &GM_SHADER_HOVER };
 	}
 	for (i = STRENGTH_MIN, n = 0, cur = 0; i <= STRENGTH_MAX && n < GM_CH_MAX; i += STRENGTH_STEP, n++) {
 		if (i == strength_clamp(v->strength)) cur = n;
@@ -1842,14 +2027,15 @@ const menu_choice *gm_choices(app *a, const gm_ui *u)
 
 		shader_demo_strength_notes(notes, n);
 		g_gm_choice[GM_STRENGTH] = (menu_choice){ .n = (unsigned char)n, .cur = (unsigned char)cur, .labels = lab[2],
-		                                          .notes = notes, .preview = gm_strength_preview };
+		                                          .notes = notes, .hover = &GM_STRENGTH_HOVER };
 	}
 	for (i = 0; i < GM_SLOTS; i++) {
 		snprintf(buf[1][i], sizeof buf[1][i], "%d", i + 1);
 		lab[3][i] = buf[1][i];
 	}
 	if (u->quick >= 1 && u->quick <= GM_SLOTS)
-		g_gm_choice[GM_QUICK] = (menu_choice){ .n = GM_SLOTS, .cur = (unsigned char)(u->quick - 1), .labels = lab[3] };
+		g_gm_choice[GM_QUICK] = (menu_choice){ .n = GM_SLOTS, .cur = (unsigned char)(u->quick - 1), .labels = lab[3],
+		                                       .notes = qs_notes(a), .hover = &GM_QUICK_HOVER };
 	/* The discs Diatom says there are, as many as the list holds: a count
 	 * or an index past what was filled gives no table, and the row keeps
 	 * Left and Right */
@@ -1863,8 +2049,11 @@ const menu_choice *gm_choices(app *a, const gm_ui *u)
 		g_gm_choice[GM_DISC] = (menu_choice){ .n = (unsigned char)n, .cur = (unsigned char)u->disc,
 		                                      .labels = lab[4] };
 	for (i = 0; i < GM_LAYOUTS; i++) lab[5][i] = gm_layout_label(i);
-	if (u->screens && u->layout >= 0 && u->layout < GM_LAYOUTS)
-		g_gm_choice[GM_SCREENS] = (menu_choice){ .n = GM_LAYOUTS, .cur = (unsigned char)u->layout, .labels = lab[5] };
+	if (u->screens && u->layout >= 0 && u->layout < GM_LAYOUTS) {
+		g_gm_layout = u->layout;
+		g_gm_choice[GM_SCREENS] = (menu_choice){ .n = GM_LAYOUTS, .cur = (unsigned char)u->layout, .labels = lab[5],
+		                                         .hover = &GM_SCREENS_HOVER };
+	}
 	return g_gm_choice;
 }
 
@@ -2075,8 +2264,8 @@ static menu_result port_display_pick(app *a, gm_ctx *c)
 	int k;
 
 	gm_preview_frame(p8);
-	k = menu_pick_preview(a, &c->st, c, T(S_GAMEMENU_DISPLAY), ch->labels, ch->notes, ch->preview,
-	                      ch->n, ch->cur, ch->cur);
+	k = menu_pick_hover(a, &c->st, c, T(S_GAMEMENU_DISPLAY), ch->labels, ch->notes, ch->hover,
+	                    ch->n, ch->cur, ch->cur);
 	/* Back to the menu's own (port_menu: the Border list's picture) */
 	gm_preview_frame(was);
 	if (p8) SDL_DestroyTexture(p8);

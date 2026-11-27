@@ -52,6 +52,8 @@ static struct {
 	bool        on;
 	int         volume;
 	char        track[512];
+	char        hear[512];     /* bgm_hear's file; "" none */
+	bool        hear_once;     /* ...until it is open (bgm_hear_back) */
 	unsigned    hold;
 	char        want[64];      /* the device; "" is nowhere */
 	bool        left, right;   /* the sides that carry it */
@@ -148,6 +150,7 @@ static void close_output(player *p, bool drain)
 /* The file the setting says should be playing, or NULL for the deck's next */
 static const char *wanted_file(void)
 {
+	if (g.hear[0] && bgm_find(&g.list, g.hear) >= 0) return g.hear;
 	return g.track[0] && bgm_find(&g.list, g.track) >= 0 ? g.track : NULL;
 }
 
@@ -241,6 +244,12 @@ static bool open_track(player *p, bool ended)
 			p->dec = d;
 			snprintf(p->file, sizeof p->file, "%s", file);
 			snprintf(g.now, sizeof g.now, "%s", file);
+			/* The track that played, back (bgm_hear_back): the setting
+			 * has the player again from its end */
+			if (g.hear_once && !strcmp(file, g.hear)) {
+				g.hear[0] = '\0';
+				g.hear_once = false;
+			}
 			p->fade = 0;
 			p->fade_len = BGM_OUT_RATE * BGM_FADE_IN_MS / 1000;
 			bgm_rs_init(&p->rs, bgm_dec_rate(d), BGM_OUT_RATE);
@@ -471,7 +480,9 @@ void bgm_quit(void)
 
 void bgm_set_on(bool on)              { SET(g.on = on); }
 void bgm_set_volume(int volume)       { SET(g.volume = bgm_volume_step(volume, 0)); }
-void bgm_set_track(const char *file)  { SET(snprintf(g.track, sizeof g.track, "%s", file ? file : "")); }
+void bgm_set_track(const char *file)  { SET(snprintf(g.track, sizeof g.track, "%s", file ? file : ""); g.hear[0] = '\0'; g.hear_once = false); }
+void bgm_hear(const char *file)       { SET(snprintf(g.hear, sizeof g.hear, "%s", file ? file : ""); g.hear_once = false); }
+void bgm_hear_back(const char *file)  { SET(snprintf(g.hear, sizeof g.hear, "%s", file ? file : ""); g.hear_once = true); }
 void bgm_skip(void)                   { SET(g.skips++); }
 void bgm_set_builtin(bool with)       { SET(if (g.with_builtin != with) { g.with_builtin = with; g.rescan = true; }); }
 bool bgm_builtin(void)                { return g.with_builtin; }

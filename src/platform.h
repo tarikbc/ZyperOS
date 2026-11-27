@@ -543,9 +543,10 @@ bool plat_screen_saturation_here(void);
  * portkeys, which turn it on and off at the hour themselves over a game or
  * a port.
  *
- * plat_night_preview: Night Warmth's list, `warmth` (1..10) on the whole
- * screen now and kept nowhere, as the Look list previews; 0 puts the kept
- * Night Mode back. Loads after the gap as plat_screen_colors' preview does,
+ * plat_night_preview: Night Warmth's and Night Mode's lists, `warmth`
+ * (1..10) on the whole screen now and kept nowhere, as the Look list
+ * previews; -1 no warmth at all (Night Mode's Off with On kept); 0 puts the
+ * kept Night Mode back. Loads after the gap as plat_screen_colors' preview does,
  * so the list calls plat_screen_colors_tick every frame, as the Look list's
  * picture does.
  *

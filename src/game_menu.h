@@ -248,7 +248,7 @@ int gm_layout_index(const char *name);                   /* 0 for one it does no
 /* What the in-game menu needs to know, gathered by the caller. */
 typedef struct {
 	/* the display mode's label; what each mode does is said in its list,
-	 * beside a picture of it (menu_pick_preview), not under the row */
+	 * beside a picture of it (menu_pick_hover), not under the row */
 	const char *dmode;
 	const char *shader;   /* the shader's label; NULL reads Off */
 	/* Its strength, "50%", when it is an old screen; NULL: no Strength row */

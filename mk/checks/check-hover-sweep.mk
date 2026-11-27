@@ -1,4 +1,4 @@
 CHECKS += check-hover-sweep
-#| Theme's Accent, Light Background and Dark Background on three cards (Pixel 2 light and dark, the
-#| Brick): every choice shown and the kept one back with no database row and no file written, the
+#| every list whose cursor shows a choice, on five cards (Pixel 2, Night Mode on, Dark, the Brick,
+#| MP4): every choice shown and the kept one back with no database row and no file written, each
 #| page reading the same after, and the slowest show and frame after it on this machine

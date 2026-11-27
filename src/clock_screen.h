@@ -18,6 +18,8 @@
  * Time Zone steps through Auto and then CLOCK_ZONES, and is the library
  * database's "timezone", which the Brick's launch.sh reads at boot as well.
  * The rows are clock_rows', so tools/clock-check.c holds their order. */
+#include "ds/hover.h"
+
 typedef struct {
 	clock_bufs b;
 	char zone[80];   /* a city, an id not on the list as it is, or Auto's */
@@ -30,7 +32,16 @@ typedef struct {
 	char          auto_words[80];
 	int           pick;                         /* the row A picked, -1 */
 	unsigned char sound[CLOCK_ZONE_LIST_MAX];   /* every row plain */
+	ds_hover_run  run;                          /* what its cursor shows */
 } zone_list_ui;
+
+/* The corner's clock at the zone of the row under the cursor (src/ds/
+ * hover.h): the zone in memory (plat_clock_zone), nothing saved; Auto's row
+ * the zone Auto found, or the kept one */
+extern const ds_hover ZONE_HOVER;
+
+/* For check-hover-sweep (src/hover_sweep.h): Time Zone's list */
+void clock_hover_sweep(app *a);
 
 /* Date & Time's Auto, with its screen: true when it set a new zone. Every
  * two seconds from the screens' loops (tick_theme). */

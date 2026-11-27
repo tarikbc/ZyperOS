@@ -93,6 +93,7 @@ Each line has its details in [the guide](docs/guide.md).
 - **Collections of your own:** put any game in a list from its details, mix systems, and find your lists in a group on the home ([collections](docs/guide.md#collections)).
 - **MENU in six tabs,** with **Search Games** and **Random Game** for any system ([menus](docs/guide.md#controls-and-menus)).
 - **Your look:** light and dark, or Auto by Night Mode's hours, ten accents, three backgrounds for each theme, a folder color, rounded or square corners, how the game or system in focus is marked (a bar, a border, a lift, or none), and Zyper on or off ([light and dark](docs/guide.md#light-and-dark)).
+- **See a choice before you take it:** in an option's list, the choice under the cursor shows at once, before you press **A**, and **B** puts back what you had; nothing is saved until **A** ([how](docs/guide.md#see-a-choice-before-you-take-it)).
 - **Screen Colors and Night Mode:** temperature, tint, contrast, saturation and gamma, ready-made looks, set from MENU or a game's own menu, and a warm screen for the night ([how](docs/guide.md#screen-colors-and-night-mode)).
 - **Shaders:** Sharp-Shimmerless for even pixels, and CRT, CRT Curved, Scanlines and LCD Grid for an old screen, each at a strength you set ([how they look](docs/guide.md#shaders)).
 - **Borders round a handheld game:** the three Game Boys' own faces drawn around the game at its scale (the Game Boy Color in its six colors), the game blurred, or a picture of your own ([Border](docs/guide.md#the-system-menu)).

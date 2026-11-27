@@ -1236,13 +1236,23 @@ void view_turn(app *a, int sys, int dir)
 	 * (DESIGN.md 11.67) */
 	do k = (k + (dir < 0 ? VIEW_COUNT - 1 : 1)) % VIEW_COUNT;
 	while (k == VIEW_VIDEO && is_mp4(&a->sys.systems[sys]));
+	view_set(a, sys, k, true);
+}
+
+/* Shelf `sys` in view `k` (VIEW_COVERS, VIEW_GRID, VIEW_LIST, VIEW_VIDEO),
+ * on the same entry; saved with `keep`, or only shown (View's list's cursor,
+ * src/ds/hover.h) */
+void view_set(app *a, int sys, int k, bool keep)
+{
+	sysview *v = &a->view[sys];
+
 	v->listed = k == VIEW_LIST;
 	v->grid = k == VIEW_GRID;
 	v->video = k == VIEW_VIDEO;
 	v->lm.set = false;
 	v->gm.set = false;
 	v->vm.set = false;
-	view_save(a, sys);
+	if (keep) view_save(a, sys);
 	cf_reset(&v->cf, v->cursor);
 	games_reset(&v->row, v->cursor, v->list.count, plat_now_ms());
 }
@@ -2855,8 +2865,13 @@ static const char *const MP4_SHOW[ML_KINDS + 1] = { "music", "books", "videos", 
 
 void mp4_show(sysview *v, ml_kind kind)
 {
-	g_mp4_kind = kind;
 	db_set_str(db_dev(), "mp4.show", MP4_SHOW[kind >= 0 && kind <= ML_ALL ? kind : ML_ALL]);
+	mp4_show_only(v, kind);
+}
+
+void mp4_show_only(sysview *v, ml_kind kind)
+{
+	g_mp4_kind = kind;
 	free_view_textures(v);
 	mp4_order_view(v);
 	v->cursor = 0;
@@ -5121,6 +5136,16 @@ int menu_step_heard(app *a, const menu_row *rows, int n, int sel,
 	                          : menu_step_sel(rows, n, sel, dir);
 
 	step_sound(a, b, sel, to);
+	return to;
+}
+
+int menu_step_quiet(app *a, const menu_row *rows, int n, int sel,
+                    int dir, in_button b)
+{
+	int to = a->in.pressed[b] ? menu_step_round(rows, n, sel, dir)
+	                          : menu_step_sel(rows, n, sel, dir);
+
+	if (to == sel) step_sound(a, b, sel, to);
 	return to;
 }
 

@@ -769,7 +769,7 @@ static void shot_expect_list(const menu_choice *ch)
 
 /* An option row's list as menu_pick draws it: its choices, the one on
  * ticked, and what the one under the cursor does - in a picture column
- * beside them with its preview (menu_pick_preview), or under them */
+ * beside them with its picture (menu_choice's hover draw), or under them */
 static const menu_choice *g_shot_list;
 static int g_shot_list_at, g_shot_list_side;
 /* What the list's cursor shows (src/ds/hover.h): shown in the first
@@ -784,7 +784,7 @@ static void shot_list_side(app *a, const menu_side *at)
 
 	if (!c || at->stage == MENU_SIDE_OVER) return;
 	menu_pick_side_draw(a, at->content_x, at->content_y, g_shot_list_side,
-	                    menu_pick_note_room(c->notes, c->n, g_shot_list_side), c->notes ? c->notes[g_shot_list_at] : NULL, c->preview, g_shot_list_at);
+	                    menu_pick_note_room(c->notes, c->n, g_shot_list_side), c->notes ? c->notes[g_shot_list_at] : NULL, c->hover ? c->hover->draw : NULL, g_shot_list_at);
 }
 
 static void shot_list_draw(app *a, const char *heading, const menu_choice *ch, int width,
@@ -809,11 +809,14 @@ static void shot_list_draw(app *a, const char *heading, const menu_choice *ch, i
 	} else {
 		kept = g_shot_hover_kept;
 	}
+	if (ch->hover && ch->hover->tick) ch->hover->tick(a);
 	for (k = 0; k < ch->n; k++) {
 		menu_pick_word(ch->labels[k], pw[k], (int)sizeof pw[k]);
 		pr[k] = (menu_row){ pw[k], k == kept ? MENU_TICK : NULL, true };
 	}
-	if (ch->notes && !ch->preview) {   /* what the choice under the cursor does */
+	const bool drawn = ch->hover && ch->hover->draw;
+
+	if (ch->notes && !drawn) {   /* what the choice under the cursor does */
 		int nl = menu_pick_note(ch->notes[at], pn);
 
 		/* drawn in lines, said whole to the host's check, as menu_pick says it */
@@ -826,11 +829,11 @@ static void shot_list_draw(app *a, const char *heading, const menu_choice *ch, i
 	g_menu_tabs = NULL;   /* a list of its own: the row's name, no tabs */
 	g_shot_list = ch;
 	g_shot_list_at = at;
-	g_menu_side = ch->preview ? shot_list_side : NULL;
-	width = menu_pick_width(a, width, ch->labels, ch->n, ch->none ? -1 : ch->cur, ch->preview != NULL,
+	g_menu_side = drawn ? shot_list_side : NULL;
+	width = menu_pick_width(a, width, ch->labels, ch->n, ch->none ? -1 : ch->cur, drawn,
 	                        &g_shot_list_side);
 	g_menu_side_w = g_shot_list_side;
-	g_menu_pin_foot = !ch->preview;   /* as menu_pick's style asks */
+	g_menu_pin_foot = !drawn;   /* as menu_pick's style asks */
 	menu_draw(a, heading, pr, np, at, width, accent);
 	g_menu_pin_foot = false;
 	g_menu_side = NULL;
@@ -1322,7 +1325,7 @@ int  shot_hud_pick = -1; /* --hud-pick ROW: that row's list of choices */
 const char *shot_hud_shows; /* --hud-shows WORDS: the items it shows */
 bool shot_hud_alt;      /* --hud-alt: Shadow and Small, the two-choice rows' other values */
 int shot_rows_report;   /* --rows-report: every option page's rows (tools/menu-rows-check.py) */
-int shot_hover_sweep;   /* --hover-sweep: Theme's lists show every choice, writing nothing (check-hover-sweep) */
+int shot_hover_sweep;   /* --hover-sweep: every list's cursor shows, writing nothing (check-hover-sweep) */
 /* --menu's row by its label, found when the menu is built */
 const char *shot_menu_label;
 
@@ -1738,13 +1741,23 @@ static void shot_compose_once(app *a)
 		return;
 	}
 	if (shot_language > -2) {
-		static unsigned char snd[LANG_COUNT];
+		static language_page pg = { .kept = -1 };
 		menu_row rows[LANG_COUNT];
 		const char *heading;
-		int n = language_build(snd, rows, LANG_COUNT, &heading);
+		int n;
 
+		/* The cursor off the one on: the screen in its language, as the
+		 * page shows it (LANGUAGE_HOVER), composed again over it */
+		if (pg.kept < 0) {
+			pg.kept = (int)i18n_lang();
+			if (shot_language >= 0 && shot_language != pg.kept) {
+				LANGUAGE_HOVER.show(a, shot_language);
+				g_shot_hover_again = true;
+			}
+		}
+		n = language_build(&pg, rows, LANG_COUNT, &heading);
 		ui_scrim(a->r, 0);
-		menu_draw(a, heading, rows, n, shot_language >= 0 ? shot_language : (int)i18n_lang(),
+		menu_draw(a, heading, rows, n, shot_language >= 0 ? shot_language : pg.kept,
 		          menu_std_width(a), MENU_ZYPEROS);
 		return;
 	}
@@ -1891,6 +1904,9 @@ static void shot_compose_once(app *a)
 	}
 	if (shot_hover_sweep) {
 		sysmenu_hover_sweep(a);
+		clock_hover_sweep(a);
+		bgm_hover_sweep(a);
+		hud_hover_sweep(a);
 		shot_hover_sweep = 0;
 	}
 	if (shot_handheld_box) handheld_box_report();

@@ -552,6 +552,10 @@ phone's, an Android handheld's or a laptop's. USB tethering from an Android
 phone or handheld is internet too, with no adapter (see **File transfer**):
 while it is on, Album Art is back, and Downloads' download works.
 
+### See a choice before you take it
+
+In an option's list, the choice under the cursor shows at once, before you press **A**. Appearance, the accent, the backgrounds, Folder Color, Highlight and the Shader repaint the whole screen, Home Screen and a shelf's View and Sort By redraw what is behind the list, Battery Icon and Time Zone change the corner, Language puts every word in that language, and Night Mode shows its warmth. UI Sounds and Audio Channels play the cursor's own click that way, Menu Music plays the volume and, once you rest on one, the track, and Rumble buzzes each level. In a game, Screens, Quick Slot and a button's jobs show a picture beside the list, and On-Screen Stats shows the stats where they would go. **B** puts back what you had; nothing is saved until **A**.
+
 ### Downloads
 
 MENU > **Downloads** is every download of game data in one place: covers,

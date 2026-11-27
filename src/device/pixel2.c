@@ -1291,7 +1291,8 @@ static void screen_colors_share(void)
  * Night Mode's */
 static int night_now(time_t now)
 {
-	return night_preview > 0 ? night_preview : panelgamma_night_at(&night_sched, (long long)now);
+	return night_preview > 0 ? night_preview : night_preview < 0 ? 0
+	     : panelgamma_night_at(&night_sched, (long long)now);
 }
 
 /* Night Mode's nights about `now` in this zone, and the file written again
@@ -1407,7 +1408,7 @@ void plat_night(const struct night_cfg *n)
 
 void plat_night_preview(int warmth)
 {
-	night_preview = warmth < 0 ? 0 : warmth > PANELGAMMA_NIGHT_MAX ? PANELGAMMA_NIGHT_MAX : warmth;
+	night_preview = warmth < 0 ? -1 : warmth > PANELGAMMA_NIGHT_MAX ? PANELGAMMA_NIGHT_MAX : warmth;
 	night_want(false);
 }
 

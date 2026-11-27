@@ -3459,8 +3459,8 @@ build-native/flex-check: tools/flex-check.c src/ds/flex.c src/ds/flex.h
 	$(CC) -std=gnu11 -Wall -Wextra -O2 -Isrc $$(pkg-config --cflags sdl2) -o $@ tools/flex-check.c src/ds/flex.c
 
 # What an option list's cursor shows (src/ds/hover.c): a show once per choice
-# the cursor comes to, the kept one back with undo, and an undo on close only
-# for what was shown
+# the cursor comes to, the kept one back with undo, a rest where one is asked,
+# and an undo on close only for what was shown
 .PHONY: check-hover
 check-hover: build-native/hover-check
 	@./build-native/hover-check
@@ -3469,9 +3469,9 @@ build-native/hover-check: tools/hover-check.c src/ds/hover.c src/ds/hover.h
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -O2 -Isrc -o $@ tools/hover-check.c src/ds/hover.c
 
-# Theme's three lists, whose cursors show the choice, swept: every choice
-# shown and the kept one back with no database row and no file written, the
-# page reading the same after, and one show's cost (tools/hover-sweep-check.py)
+# Every list whose cursor shows a choice, swept on five cards: every choice
+# shown and the kept one back, no database row and no file written, and each
+# page reading the same after (tools/hover-sweep-check.py)
 .PHONY: check-hover-sweep
 check-hover-sweep:
 	@if pkg-config --exists sdl2 SDL2_image SDL2_ttf 2>/dev/null; then \
