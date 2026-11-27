@@ -29,6 +29,7 @@
 #include "shelfbuild.h"
 #include "signin_screen.h"
 #include "ss.h"
+#include "spawn.h"
 #include "sshlink.h"
 #include "taskhold.h"
 #include "uisound.h"
@@ -518,9 +519,21 @@ static bool pack_logs(char *path, size_t pn, char *name, size_t nn)
 			fclose(f);
 		}
 	}
+	/* And the system log, the memory ring logread prints: on the Brick it
+	 * runs while Bluetooth is on (/etc/init.d/bluetooth), and bluetoothd's
+	 * and bluealsa's lines are only there, so a pairing that connects
+	 * nothing says why (a tester's Brick, 2026-11-21, sent none). Read here
+	 * and handed to the pack, which keeps those lines alone, masked; none of
+	 * it is written to the card. None where no system logger runs */
+	static char slog[1 << 16];
+	{
+		char *argv[] = { (char *)"/sbin/logread", NULL };
+
+		if (spawn_capture(argv, slog, sizeof slog, 5) != 0) slog[0] = '\0';
+	}
 	snprintf(name, nn, "%s.tar.gz", folder);
 	snprintf(path, pn, "/tmp/%s", name);
-	if (!logpack_build(logs, about, secrets, n, folder, path, err, sizeof err)) {
+	if (!logpack_build(logs, about, slog, secrets, n, folder, path, err, sizeof err)) {
 		fprintf(stderr, "logs: could not pack them: %s\n", err);
 		return false;
 	}

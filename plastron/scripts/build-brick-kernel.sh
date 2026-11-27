@@ -87,11 +87,13 @@ G=$GPU/img-rgx/linux/rogue_km/binary_sunxi_linux_nullws_release/target_aarch64
 cp "$OUT/arch/arm64/boot/Image" "$IMAGES/"
 # The gamepad, the GPU's driver, the XR829's Wi-Fi driver (its own 802.11
 # layer, xr829_mac, takes mac80211's place) and its Bluetooth: the core, the
-# UART transport and XRadio's two helpers
+# UART transport, XRadio's two helpers, and RFCOMM, which a headset's
+# hands-free profile runs on (bluealsa's hfp-ag)
 W=$OUT/drivers/net/wireless/xr829
 for m in "$OUT/drivers/input/joystick/brick-pad.ko" "$G/pvrsrvkm.ko" "$G/dc_sunxi.ko" \
 	"$OUT/net/wireless/cfg80211.ko" "$W/umac/xr829_mac.ko" "$W/wlan/xr829_core.ko" \
 	"$W/wlan/xr829_wlan.ko" "$OUT/net/bluetooth/bluetooth.ko" \
+	"$OUT/net/bluetooth/rfcomm/rfcomm.ko" \
 	"$OUT/drivers/bluetooth/hci_uart.ko" "$OUT/drivers/bluetooth/xradio_btlpm.ko" \
 	"$OUT/drivers/bluetooth/xradio_btfdi.ko"; do
 	${CROSS_COMPILE}strip --strip-debug -o "$IMAGES/$(basename "$m")" "$m"

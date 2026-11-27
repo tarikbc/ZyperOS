@@ -423,6 +423,22 @@ static bool bond_has_key(const char *mac)
 	return found;
 }
 
+/* What bluetoothctl said when a pair or a connect failed, into the
+ * launcher's log: BlueZ's error (org.bluez.Error.*) or its "Failed" line,
+ * the first one found, so a report says why a pad or a headset stayed
+ * paired and never connected (a tester's Brick, 2026-11-21, said nothing).
+ * The address goes in as it is: the logs pack masks it (src/logpack.h). */
+static void log_failed(const char *what, const char *mac, const char *out)
+{
+	const char *p = out ? strstr(out, "org.bluez.Error.") : NULL;
+	int n;
+
+	if (!p && out) p = strstr(out, "Failed");
+	if (!p) p = "no answer";
+	n = (int)strcspn(p, "\r\n\033");
+	fprintf(stderr, "bt: %s %s failed: %.*s\n", what, mac, n > 120 ? 120 : n, p);
+}
+
 bool bt_pair(const char *mac, char *err, size_t n)
 {
 	char out[1024], scratch[256];
@@ -443,6 +459,7 @@ bool bt_pair(const char *mac, char *err, size_t n)
 	btctl(scratch, sizeof scratch, BT_ASK_S, "pairable", "off");
 
 	if (!info_says(mac, "Paired: yes")) {
+		log_failed("pair", mac, out);
 		if (err) snprintf(err, n, "%s", strstr(out, "AuthenticationFailed")
 		                  ? T(S_BTLINK_PAIR_REFUSED)
 		                  : T(S_BTLINK_PAIR_FAILED));
@@ -452,6 +469,7 @@ bool bt_pair(const char *mac, char *err, size_t n)
 	 * that let a memory-only pairing through. Removed rather than left, or a
 	 * retry finds it already paired and never gets a new key. */
 	if (!bond_has_key(mac)) {
+		fprintf(stderr, "bt: pair %s: paired, but no key saved; removed\n", mac);
 		btctl(scratch, sizeof scratch, BT_ASK_S, "remove", mac);
 		if (err) snprintf(err, n, "%s", T(S_BTLINK_PAIR_NOT_SAVED));
 		return false;
@@ -459,6 +477,7 @@ bool bt_pair(const char *mac, char *err, size_t n)
 	/* Trusted, or it will not reconnect on its own at the next boot - which
 	 * is the whole reason the bond is worth having. */
 	btctl(out, sizeof out, BT_ASK_S, "trust", mac);
+	fprintf(stderr, "bt: pair %s: paired and trusted\n", mac);
 	return true;
 }
 
@@ -479,7 +498,12 @@ bool bt_connect(const char *mac, char *err, size_t n)
 	if (err && n) err[0] = '\0';
 	if (!bt_mac_valid(mac)) { if (err) snprintf(err, n, "%s", T(S_BTLINK_NOT_ADDRESS)); return false; }
 	btctl(out, sizeof out, BT_ACT_S, "connect", mac);
-	if (info_says(mac, "Connected: yes")) { publish_soon(); return true; }
+	if (info_says(mac, "Connected: yes")) {
+		fprintf(stderr, "bt: connect %s: connected\n", mac);
+		publish_soon();
+		return true;
+	}
+	log_failed("connect", mac, out);
 	if (err) snprintf(err, n, "%s", T(S_BTLINK_NO_CONNECT));
 	return false;
 }
@@ -498,8 +522,11 @@ bool bt_up(void)
 	char out[512];
 	char *argv[] = { (char *)BT_SCRIPT, (char *)"start", NULL };
 
-	return spawn_capture(argv, out, sizeof out, 70) == 0 &&
-	       access("/sys/class/bluetooth/hci0", F_OK) == 0;
+	bool up = spawn_capture(argv, out, sizeof out, 70) == 0 &&
+	          access("/sys/class/bluetooth/hci0", F_OK) == 0;
+
+	fprintf(stderr, "bt: the stack %s\n", up ? "is up" : "did not come up");
+	return up;
 }
 
 void bt_down(void)
