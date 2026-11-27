@@ -18,6 +18,17 @@ each write of the game's sound (DIATOM_AUDIO_LOG).
     stub's 440 Hz tone at its own level, nothing added, none missing between
     the shots and after them.
 
+On Diatom's test clock (port/desktop.c, DIATOM_TEST_CLOCK), so the buzz's
+length is a game's frames on that clock, the same on any machine: on the
+wall clock a busy one could stall the frame that ends it past the 150 ms
+this allowed. Diatom runs as fast as it can there, and a shot is written
+on a thread of its own, so between the shots the game is in its menu
+(MENU, PAUSED) until the first shot's file is there: a press while one is
+being written is dropped, and the second shot's poll came 120 frames after
+the first's, a few hundredths of a second here. And the game ends once
+both SHOT lines are said, not a fixed half second after its frames
+(2026-11-24).
+
 Needs build/desktop (diatom and stubcore.so) and SKIPS without it, as
 check-proto does. SDL's dummy drivers: no window, no sound.
 
@@ -70,9 +81,10 @@ def png_pixels(path):
     if any(r[0] != 0 for r in rows): return (w, h), None
     return (w, h), b"".join(r[1:] for r in rows)
 
-# Two shots: SELECT, then Y, a frame or so each, the second long after the
-# first's file is written (a press while one is written is dropped)
-SCRIPT = "40:select;43:select+y;47:select;50:;160:select;163:select+y;167:select;170:"
+# Two shots: SELECT, then Y, a frame or so each, and MENU between them, whose
+# PAUSED this script answers once the first shot's file is written (a press
+# while one is written is dropped)
+SCRIPT = "40:select;43:select+y;47:select;50:;100:~menu;101:;160:select;163:select+y;167:select;170:"
 FRAMES = 260
 
 def run(tag, rumble):
@@ -81,23 +93,30 @@ def run(tag, rumble):
     shots = f"{TMP}/{tag}/Screenshots/Stub/Game"
     p = subprocess.Popen([BIN, "--socket", sock, "--save", TMP, "--system", TMP],
                          env=dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_RENDER_DRIVER="software",
-                                  SDL_AUDIODRIVER="dummy", DIATOM_INPUT_SCRIPT=SCRIPT,
+                                  SDL_AUDIODRIVER="dummy", DIATOM_TEST_CLOCK="0",
+                                  DIATOM_INPUT_SCRIPT=SCRIPT,
                                   STUBCORE_INPUT_LOG=ilog, STUBCORE_IMAGE=IMAGE,
                                   DIATOM_RUMBLE_LOG=rlog, DIATOM_RUMBLE_LOG_US="1",
                                   DIATOM_AUDIO_LOG=alog),
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    for _ in range(100):
-        if os.path.exists(sock): break
+    # The waits are the wall clock's, and only waits: each ends as soon as
+    # what it waits for is there
+    end = time.time() + 30
+    while not os.path.exists(sock) and time.time() < end:
         time.sleep(0.05)
     s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     s.connect(sock)
     s.settimeout(0.05)
     buf, got = b"", []
 
-    def pump(seconds):
+    def written():
+        try: return [f for f in os.listdir(os.path.dirname(shots)) if f.endswith(".png")]
+        except OSError: return []
+
+    def pump(seconds, done=lambda: False):
         nonlocal buf
         end = time.time() + seconds
-        while time.time() < end:
+        while time.time() < end and not done():
             try:
                 d = s.recv(65536)
                 if not d: return
@@ -107,23 +126,26 @@ def run(tag, rumble):
             while b"\n" in buf:
                 l, buf = buf.split(b"\n", 1)
                 got.append(l.decode().strip())
+                if l.startswith(b"PAUSED"):
+                    # Between the shots: the first one's file, then on
+                    wait = time.time() + 30
+                    while not written() and time.time() < wait:
+                        time.sleep(0.01)
+                    s.sendall(b"RESUME\n")
 
     def polls():
         try:
             with open(ilog) as f: return sum(1 for _ in f)
         except OSError: return 0
 
-    pump(0.3)
+    pump(30, lambda: any(l.startswith("READY") for l in got))
     extra = f"\trumble={rumble}" if rumble is not None else ""
     s.sendall(f"RUN\tcore={STUB}\thotkeys=shot:y\tshots={shots}{extra}\n".encode())
-    end = time.time() + 90
-    while polls() < FRAMES and time.time() < end:
-        pump(0.2)
-    pump(0.5)
+    pump(90, lambda: polls() >= FRAMES and sum(l.startswith("SHOT\t") for l in got) >= 2)
     s.sendall(b"STOP\n")
-    pump(1.0)
+    pump(30, lambda: any(l.startswith("EXIT") for l in got))
     s.sendall(b"QUIT\n")
-    try: p.wait(5)
+    try: p.wait(30)
     except subprocess.TimeoutExpired: p.kill()
     motor = [list(map(int, l.split())) for l in open(rlog)] if os.path.exists(rlog) else []
     sound = [list(map(int, l.split())) for l in open(alog)] if os.path.exists(alog) else []
@@ -152,8 +174,10 @@ for tag, rumble, strength in (("medium", 65, round(0xFFFF * 0.65)), ("off", 0, 0
     if strength:
         check(f"two shots, two buzzes, each at {strength} ({rumble or 100}% of full)",
               len(b) == 2 and all(s == strength for s, _ in b), b)
-        check("each a short pulse: on 40 ms, off by a frame or so after, never a long rumble",
-              len(b) == 2 and all(ms is not None and 40 <= ms < 150 for _, ms in b), b)
+        # Off at the first frame 40 ms or more after the shot: on the test
+        # clock, 40 ms and less than a frame more
+        check("each a short pulse: on 40 ms, off at the next frame after, never a long rumble",
+              len(b) == 2 and all(ms is not None and 40 <= ms < 40 + 1000 / 59.7275 for _, ms in b), b)
     else:
         check("Rumble Off: no buzz at all", not any(m[0] or m[1] for m in motor), motor)
     for i, l in enumerate(l for l in got if l.startswith("SHOT\tpath=")):

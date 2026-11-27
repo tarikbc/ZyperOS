@@ -37,6 +37,17 @@ static void report(int ok, const char *name, double got)
 	if (!ok) fails++;
 }
 
+/* This thread's own CPU time, in seconds. The costs below are timed on it, the least of 20
+   passes: wall time counted every moment another program held the core, and make check runs
+   four at a time, on a Mac that may be loaded besides (2026-11-24). */
+static double cpu_s(void)
+{
+	struct timespec t;
+
+	clock_gettime(CLOCK_THREAD_CPUTIME_ID, &t);
+	return (double)t.tv_sec + t.tv_nsec / 1e9;
+}
+
 static void tone(int16_t *buf, int n, float hz, float amp)
 {
 	int i;
@@ -409,11 +420,11 @@ static void top_cells(void)
 		       "silence_after_cell_6_is_silence_no_subnormal_no_nan", bad);
 	}
 
-	/* What it costs: a second of stereo at cell 6, and at cell 3 */
+	/* What it costs: a second of stereo at cell 6, and at cell 3. This thread's CPU time, the
+	   least of 20 passes (cpu_s() says why). */
 	{
 		const int reps = 20;
-		struct timespec t0, t1;
-		double s6, s3;
+		double s6 = 1e9, s3 = 1e9, t0, one;
 		eq_state e;
 		int c;
 
@@ -421,13 +432,13 @@ static void top_cells(void)
 			signal_of(SIG_TUNE, ref, RATE);
 			eq_init(&e, RATE);
 			eq_gain_jump(&e, c * EQ_COMP_CELL);
-			clock_gettime(CLOCK_MONOTONIC, &t0);
 			for (k = 0; k < reps; k++) {
 				memcpy(out, ref, sizeof(float) * RATE * 2);
+				t0 = cpu_s();
 				for (i = 0; i < RATE; i += 256) eq_run_f(&e, out + i * 2, 256);
+				one = cpu_s() - t0;
+				if (one < *(c == 3 ? &s3 : &s6)) *(c == 3 ? &s3 : &s6) = one;
 			}
-			clock_gettime(CLOCK_MONOTONIC, &t1);
-			*(c == 3 ? &s3 : &s6) = ((double)(t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec) / 1e9) / reps;
 		}
 		printf("  cost: %.1f ns a stereo frame at cell 6, %.1f at cell 3: %.3f%% and %.3f%% of one core here\n",
 		       s6 * 1e9 / RATE, s3 * 1e9 / RATE, s6 * 100.0, s3 * 100.0);
@@ -598,20 +609,22 @@ int main(void)
 		report(f.now == 0.0f && eq_fade_active(&f), "a_jump_is_at_once", f.now);
 	}
 
-	/* What it costs: a second of stereo through five boosted bands */
+	/* What it costs: a second of stereo through five boosted bands. This thread's CPU time, the
+	   least of 20 passes (cpu_s() says why). */
 	{
 		const int reps = 20;
-		struct timespec t0, t1;
-		double s;
+		double s = 1e9, t0, one;
 
 		eq_init(&e, RATE);
 		g[0] = 5; g[1] = 2; g[2] = -2; g[3] = 3; g[4] = 1;
 		eq_jump(&e, g);
 		tone(a, RATE, 440.0f, 0.3f);
-		clock_gettime(CLOCK_MONOTONIC, &t0);
-		for (k = 0; k < reps; k++) eq_run(&e, a, RATE);
-		clock_gettime(CLOCK_MONOTONIC, &t1);
-		s = ((double)(t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec) / 1e9) / reps;
+		for (k = 0; k < reps; k++) {
+			t0 = cpu_s();
+			eq_run(&e, a, RATE);
+			one = cpu_s() - t0;
+			if (one < s) s = one;
+		}
 		printf("  cost: %.3f ms for a second of 48 kHz stereo, five bands: %.3f%% of one core here\n",
 		       s * 1000.0, s * 100.0);
 		report(s < 0.02, "costs_under_2_percent_of_a_core_here", s * 100.0);

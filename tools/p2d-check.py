@@ -97,6 +97,14 @@ def check(cond, what):
         raise Fail(what)
 
 
+# The ceiling of a wait for something that is to come: each wait ends as
+# soon as it does, so this is only how long a loaded machine may take
+# (2026-11-24: on a loaded Mac under make check's parallel run, p2d once
+# had not exited 9 s after its start, for its 5 s rule).
+# A wait for something that must not come keeps its own short window.
+WAIT = 30
+
+
 def wait_for(pred, timeout, step=0.01):
     end = time.monotonic() + timeout
     while time.monotonic() < end:
@@ -171,9 +179,9 @@ class Rig:
                                              '--port', '0'] + self.args,
                                             stdout=log, stderr=log)
             if self.want_feed:
-                self.port = int(self.logged(r'p2d: http on port (\d+)', 5))
+                self.port = int(self.logged(r'p2d: http on port (\d+)', WAIT))
                 if '--dns' in self.args:
-                    self.dns_port = int(self.logged(r'p2d: dns on port (\d+)', 3))
+                    self.dns_port = int(self.logged(r'p2d: dns on port (\d+)', WAIT))
         except BaseException:
             self.__exit__()
             raise
@@ -195,8 +203,13 @@ class Rig:
         check(got, f'p2d never logged /{pattern}/; its log: {self.log.read_text(errors="replace")!r}')
         return got
 
+    def stamps(self, pattern):
+        """Every match of `pattern` in p2d's log, each a tuple of its groups:
+        p2d's own times (ms since it started), as its lines say them"""
+        return re.findall(pattern, self.log.read_text(errors='replace'))
+
     def get(self, path, host=None, headers=None):
-        c = http.client.HTTPConnection('127.0.0.1', self.port, timeout=3)
+        c = http.client.HTTPConnection('127.0.0.1', self.port, timeout=WAIT)
         h = dict(headers or {})
         if host:
             h['Host'] = host
@@ -216,7 +229,7 @@ class WS:
     def __init__(self, port, upgrade='websocket', origin='', answer=True):
         """origin '' is the page's own, http://127.0.0.1:PORT; None sends none.
         answer=False sends the request and leaves the 101 to answered()."""
-        self.s = socket.create_connection(('127.0.0.1', port), timeout=3)
+        self.s = socket.create_connection(('127.0.0.1', port), timeout=WAIT)
         self.key = base64.b64encode(os.urandom(16)).decode()
         if origin == '':
             origin = f'http://127.0.0.1:{port}'
@@ -303,11 +316,11 @@ class WS:
             if m[0] == want:
                 return m[1]
 
-    def status(self, timeout=2.0):
+    def status(self, timeout=WAIT):
         t = self.until(1, timeout)
         return t.decode() if t is not None else None
 
-    def frame(self, timeout=2.0, picture=None):
+    def frame(self, timeout=WAIT, picture=None):
         """the next frame: (flags, w, h, number); into `picture` too when given"""
         f = self.until(2, timeout)
         if f is not None and picture is not None:
@@ -318,7 +331,7 @@ class WS:
         return f[1], struct.unpack_from('<H', f, 2)[0], struct.unpack_from('<H', f, 4)[0], \
             struct.unpack_from('<I', f, 6)[0]
 
-    def hung_up(self, timeout=2.0):
+    def hung_up(self, timeout=WAIT):
         """the server closed the socket, whatever came before"""
         end = time.monotonic() + timeout
         while True:
@@ -328,7 +341,7 @@ class WS:
             if m[0] == EOF:
                 return True
 
-    def closed_by_server(self, timeout=2.0):
+    def closed_by_server(self, timeout=WAIT):
         """the server's close came, was answered as a browser answers it, and
         the server then hung up"""
         if self.until(8, timeout) is None:
@@ -539,7 +552,7 @@ def origin_checked(tmp):
             a = WS(p, origin=origin)
             check(a.status() == PLAYER2, f'Origin {origin} was not player 2')
             a.close()
-            check(wait_for(lambda: sh.guests == 0, 2), f'the guest from {origin} did not leave')
+            check(wait_for(lambda: sh.guests == 0, WAIT), f'the guest from {origin} did not leave')
         sh.close()
 
 
@@ -555,29 +568,32 @@ def frames_flow_with_acks(tmp):
         check(f[1:3] == (256, 240), f'the first frame is {f[1]}x{f[2]}')
         last = f[3]
         ws.ack(last)
-        # Acked, the frames keep coming. How many is the machine's: a busy
-        # one (CI runs three checks at once on three slow cores) has the feed
-        # itself make fewer, and p2d sends the newest it has, so the measure
-        # is the feed's own frames over the same 3 s, not a rate. Ten is five
-        # times what may come with no ack at all (below); a quarter of what
-        # the feed made is far below what a working p2d sends anywhere, and
-        # far above a p2d that waits on something it should not.
+        # Acked, the frames keep coming: ten of them, waited for as long as
+        # a loaded machine takes. How fast is p2d's own, judged by the
+        # feed's frame count over the time this side waited for each frame
+        # after its ack, never over the time it took itself: a p2d that
+        # sends at once costs the wait for the feed's next frame, one of
+        # its frames a frame; one that waits on something it should not
+        # (a 100 ms look) lets several go by each time. Over a fixed 3 s
+        # this side's own slowness counted too, which on a loaded machine
+        # is not p2d's (2026-11-24).
         sh = r.mapped()
-        made = sh.frame
-        got = 1
-        end = time.monotonic() + 3.0
-        while time.monotonic() < end:
+        got, waited = 1, 0
+        end = time.monotonic() + WAIT
+        while got < 10 and time.monotonic() < end:
+            before = sh.frame
             f = ws.frame(end - time.monotonic())
             if f is None:
                 break
+            waited += sh.frame - before
             check(f[3] > last, f'frame {f[3]} came after {last}')
             last = f[3]
             ws.ack(last)
             got += 1
-        made = sh.frame - made
         sh.close()
-        check(got >= 10 and got * 4 >= made,
-              f'{got} frames in 3 s with every one acked, of {made} the feed made: wanted 10 or more, and a quarter of them')
+        check(got >= 10 and waited <= 4 * (got - 1),
+              f'{got} frames with every one acked, the feed making {waited} while each was waited for: '
+              f'wanted 10, and no more than 4 of the feed\'s frames a frame')
         # Everything that came was acked: from here no more than 2 may come
         unacked = 0
         end = time.monotonic() + 0.6
@@ -592,20 +608,19 @@ def frames_flow_with_acks(tmp):
 def pad_reaches_share(tmp):
     with Rig(tmp) as r:
         sh = r.mapped()
+        # The beat moves: four times, waited for (its rate is idle_wakes_seldom's)
         b0 = sh.beat
-        time.sleep(0.6)
-        check(sh.beat - b0 >= 4, f'pad_beat moved {sh.beat - b0} in 600 ms with no guest')
+        check(wait_for(lambda: sh.beat - b0 >= 4, WAIT), f'pad_beat moved {sh.beat - b0} with no guest')
         check(sh.guests == 0, f'guests is {sh.guests} with nobody there')
         ws = WS(r.port)
         check(ws.status() == PLAYER2, 'not player 2')
         ws.pad(0x0101)
-        check(wait_for(lambda: sh.pad == 0x0101, 2), f'pad is {sh.pad:#06x}, wanted 0x0101')
+        check(wait_for(lambda: sh.pad == 0x0101, WAIT), f'pad is {sh.pad:#06x}, wanted 0x0101')
         check(sh.guests == 1, f'guests is {sh.guests} with player 2 there')
         ws.pad(0xFFFF)
-        check(wait_for(lambda: sh.pad == PAD_MASK, 2), f'pad is {sh.pad:#06x} for 0xffff, wanted 0x01fd')
+        check(wait_for(lambda: sh.pad == PAD_MASK, WAIT), f'pad is {sh.pad:#06x} for 0xffff, wanted 0x01fd')
         b0 = sh.beat
-        time.sleep(0.6)
-        check(sh.beat - b0 >= 4, f'pad_beat moved {sh.beat - b0} in 600 ms with a guest')
+        check(wait_for(lambda: sh.beat - b0 >= 4, WAIT), f'pad_beat moved {sh.beat - b0} with a guest')
         ws.close()
         sh.close()
 
@@ -618,25 +633,32 @@ def pad_clears_on_silence(tmp):
         check(ws.status() == PLAYER2, 'not player 2')
         pressed = time.monotonic()
         ws.pad(0x0100)
-        check(wait_for(lambda: sh.pad == 0x0100, 2), f'pad is {sh.pad:#06x}, wanted 0x0100')
+        check(wait_for(lambda: sh.pad == 0x0100, WAIT), f'pad is {sh.pad:#06x}, wanted 0x0100')
         time.sleep(max(0, pressed + 0.6 - time.monotonic()))
         held, at = sh.pad, time.monotonic() - pressed
         # p2d lets go a second after it reads the press, which is after
         # `pressed`: a look a second or more after it (a loaded machine)
         # cannot tell held from let go, so it does not fail
         check(held == 0x0100 or at >= 1.0, f'the pad was let go {at:.2f} s after the press')
-        check(wait_for(lambda: sh.pad == 0, 1.6), f'pad is {sh.pad:#06x} after 1.6 s more of silence')
+        check(wait_for(lambda: sh.pad == 0, WAIT), f'pad is {sh.pad:#06x} after {WAIT} s more of silence')
         took = time.monotonic() - pressed
         check(took >= 0.9, f'the pad was let go {took:.2f} s after the press, wanted a second')
+        # The late side by p2d's own clock, from when it read the press to
+        # when it let go: this side's look comes as late as a loaded machine
+        # runs it. Half a second over is p2d's nap and a late wakeup; a rule
+        # of 1.5 s or more fails.
+        let = r.stamps(r"p2d: player 2's pad let go at \d+ ms, (\d+) ms after its last")
+        check(len(let) == 1 and 1000 <= int(let[0]) < 1500,
+              f'p2d let the pad go {let} ms after it read the press, wanted a second')
         check(sh.guests == 1, 'the guest was dropped for being quiet')
 
         # Its close: the pad goes with it, and player 2 is free again
         ws.pad(0x0100)
-        check(wait_for(lambda: sh.pad == 0x0100, 2), 'the pad did not come back')
+        check(wait_for(lambda: sh.pad == 0x0100, WAIT), 'the pad did not come back')
         ws.send(8, struct.pack('>H', 1000))
-        check(ws.until(8, 2) is not None, 'the close was not answered with a close')
+        check(ws.until(8, WAIT) is not None, 'the close was not answered with a close')
         check(ws.hung_up(), 'the server did not hang up after the close')
-        check(wait_for(lambda: sh.pad == 0 and sh.guests == 0, 2),
+        check(wait_for(lambda: sh.pad == 0 and sh.guests == 0, WAIT),
               f'after a close pad {sh.pad:#06x} guests {sh.guests}, wanted 0 and 0')
 
         # A hang-up with no close: the same
@@ -645,9 +667,9 @@ def pad_clears_on_silence(tmp):
         f = b.frame()
         check(f and f[0] & 3 == 3, 'the next guest\'s first frame was not KEY and PAL')
         b.pad(0x0040)
-        check(wait_for(lambda: sh.pad == 0x0040 and sh.guests == 1, 2), 'the next guest\'s pad did not come')
+        check(wait_for(lambda: sh.pad == 0x0040 and sh.guests == 1, WAIT), 'the next guest\'s pad did not come')
         b.close()
-        check(wait_for(lambda: sh.pad == 0 and sh.guests == 0, 2),
+        check(wait_for(lambda: sh.pad == 0 and sh.guests == 0, WAIT),
               f'after a hang-up pad {sh.pad:#06x} guests {sh.guests}, wanted 0 and 0')
         sh.close()
 
@@ -662,15 +684,15 @@ def second_guest_is_taken(tmp):
         st = b.status()
         check(st == TAKEN, f'the second guest was told {st!r}')
         check(b.closed_by_server(), 'the second guest was not closed')
-        # Ten frames, in 3 s however busy the machine (see frames_flow_with_acks)
-        got, end = 0, time.monotonic() + 3.0
+        # Ten frames: the first plays on, waited for however busy the machine
+        got, end = 0, time.monotonic() + WAIT
         while got < 10 and time.monotonic() < end:
             f = a.frame(end - time.monotonic())
             if f is None:
                 break
             a.ack(f[3])
             got += 1
-        check(got >= 10, f'the first guest had {got} frames in 3 s after the second came')
+        check(got >= 10, f'the first guest had {got} frames in {WAIT} s after the second came')
         check(sh.guests == 1, f'guests is {sh.guests}')
         a.close()
         sh.close()
@@ -687,9 +709,9 @@ def every_newcomer_is_told(tmp):
         for ws in many:
             ws.answered()
         for i, ws in enumerate(many):
-            st = ws.status(3.0)
+            st = ws.status()
             check(st == TAKEN, f'newcomer {i + 1} of {len(many)} was told {st!r}')
-            check(ws.hung_up(3.0), f'newcomer {i + 1} was not closed')
+            check(ws.hung_up(), f'newcomer {i + 1} was not closed')
         check('no room' in r.log.read_text(errors='replace'),
               f'p2d never ran out of room to turn one away: {r.log.read_text(errors="replace")!r}')
         a.close()
@@ -705,7 +727,7 @@ def buttons_from_the_share(tmp):
         st = ws.status()
         check(st == 'S{"state":"playing","player":2,"buttons":3843}', f'the guest was told {st!r}')
         ws.pad(0xFFFF)
-        check(wait_for(lambda: sh.pad == 0x0F03, 2), f'pad is {sh.pad:#06x} for 0xffff, wanted 0x0f03')
+        check(wait_for(lambda: sh.pad == 0x0F03, WAIT), f'pad is {sh.pad:#06x} for 0xffff, wanted 0x0f03')
         ws.close()
         sh.close()
 
@@ -718,12 +740,12 @@ def more_players(tmp):
         sh = r.mapped()
         a, pa = WS(r.port), Picture()
         check(a.status() == PLAYER2, 'the first guest was not player 2')
-        check(wait_for(lambda: sh.guests == 0b01, 2), f'guests is {sh.guests:#b}, wanted 0b1')
+        check(wait_for(lambda: sh.guests == 0b01, WAIT), f'guests is {sh.guests:#b}, wanted 0b1')
         play(a, pa, 10)
         b, pb = WS(r.port), Picture()
         st = b.status()
         check(st == 'S{"state":"playing","player":3,"buttons":509}', f'the second guest was told {st!r}')
-        check(wait_for(lambda: sh.guests == 0b11, 2), f'guests is {sh.guests:#b}, wanted 0b11')
+        check(wait_for(lambda: sh.guests == 0b11, WAIT), f'guests is {sh.guests:#b}, wanted 0b11')
         f = b.frame(picture=pb)
         check(f is not None and f[0] & 3 == 3, f'player 3\'s first frame has flags {f and f[0]}, wanted KEY and PAL')
         b.ack(f[3])
@@ -741,20 +763,20 @@ def more_players(tmp):
 
         a.pad(0x0101)
         b.pad(0x0040)
-        check(wait_for(lambda: sh.pad_of(0) == 0x0101 and sh.pad_of(1) == 0x0040, 2),
+        check(wait_for(lambda: sh.pad_of(0) == 0x0101 and sh.pad_of(1) == 0x0040, WAIT),
               f'pads {sh.pad_of(0):#06x} {sh.pad_of(1):#06x}, wanted 0x0101 and 0x0040')
         check(sh.pad_of(2) == 0, f'pad[2] is {sh.pad_of(2):#06x} with no player 4')
 
         # Player 2 goes: its pad and its bit, nothing of player 3's
         a.close()
         b.pad(0x0040)
-        check(wait_for(lambda: sh.guests == 0b10 and sh.pad_of(0) == 0, 2),
+        check(wait_for(lambda: sh.guests == 0b10 and sh.pad_of(0) == 0, WAIT),
               f'after player 2 left guests {sh.guests:#b} pad[0] {sh.pad_of(0):#06x}, wanted 0b10 and 0')
         check(sh.pad_of(1) == 0x0040, f'player 3\'s pad is {sh.pad_of(1):#06x}, wanted 0x0040')
         # The lowest free place is the next newcomer's
         d, pd = WS(r.port), Picture()
         check(d.status() == PLAYER2, 'the next guest was not player 2')
-        check(wait_for(lambda: sh.guests == 0b11, 2), f'guests is {sh.guests:#b}, wanted 0b11')
+        check(wait_for(lambda: sh.guests == 0b11, WAIT), f'guests is {sh.guests:#b}, wanted 0b11')
         f = d.frame(picture=pd)
         check(f is not None and f[0] & 3 == 3, 'the new player 2\'s first frame was not KEY and PAL')
         d.ack(f[3])
@@ -764,7 +786,7 @@ def more_players(tmp):
         check(pd.is_the_feeds() and pb.is_the_feeds(), 'both unpack to what the feed drew')
         b.close()
         d.close()
-        check(wait_for(lambda: sh.guests == 0 and sh.pad_of(1) == 0, 2),
+        check(wait_for(lambda: sh.guests == 0 and sh.pad_of(1) == 0, WAIT),
               f'all gone: guests {sh.guests:#b} pad[1] {sh.pad_of(1):#06x}')
         sh.close()
 
@@ -776,13 +798,13 @@ def ping_and_bad_messages(tmp):
         ws = WS(r.port)
         check(ws.status() == PLAYER2, 'not player 2')
         ws.send(9, b'hi')
-        check(ws.until(10, 2) == b'hi', 'the ping had no pong')
+        check(ws.until(10, WAIT) == b'hi', 'the ping had no pong')
         for bad in (b'Q12', b'A\x01\x02', b'P\x01', b'P\x01\x00\x00', b'KK', b'K\x00'):
             ws.pad(0x0001)
-            check(wait_for(lambda: sh.pad == 1, 2), 'the pad did not come')
+            check(wait_for(lambda: sh.pad == 1, WAIT), 'the pad did not come')
             ws.send(2, bad)
             check(ws.closed_by_server(), f'{bad!r} did not close the guest')
-            check(wait_for(lambda: sh.pad == 0 and sh.guests == 0, 2),
+            check(wait_for(lambda: sh.pad == 0 and sh.guests == 0, WAIT),
                   f'after {bad!r} pad {sh.pad:#06x} guests {sh.guests}')
             ws = WS(r.port)
             check(ws.status() == PLAYER2, f'no player 2 after {bad!r}')
@@ -801,9 +823,11 @@ def key_on_request(tmp):
     with Rig(tmp, feed_args=['--frames', '20']) as r:
         ws, pic = WS(r.port), Picture()
         check(ws.status() == PLAYER2, 'not player 2')
+        # Every frame of the feed's 20, acked: the last one is known, so it
+        # is waited for rather than a pause of 1.5 s taken for the end
         last = 0
-        while True:
-            f = ws.frame(1.5, picture=pic)
+        while last < 20:
+            f = ws.frame(picture=pic)
             if f is None:
                 break
             ws.ack(f[3])
@@ -811,7 +835,7 @@ def key_on_request(tmp):
         check(last == 20, f'the frames stopped at {last}, wanted the feed\'s 20')
         check(ws.frame(0.3) is None, 'a frame came with the feed stopped')
         ws.send(2, b'K')
-        f = ws.frame(2.0, picture=pic)
+        f = ws.frame(picture=pic)
         check(f is not None, 'no frame came after K')
         check(f[0] & 3 == 3 and f[3] == 20, f'after K the frame is {f}, wanted frame 20 as KEY and PAL')
         check(pic.is_the_feeds(), 'and it unpacks to what the feed drew')
@@ -847,7 +871,7 @@ def ended_when_share_goes(tmp):
             check(ws.status() == PLAYER2, 'not player 2')
             check(ws.frame() is not None, 'no frame came')
             ws.pad(0x0100)
-            check(wait_for(lambda: sh.pad == 0x0100, 2), 'the pad did not come')
+            check(wait_for(lambda: sh.pad == 0x0100, WAIT), 'the pad did not come')
             t0 = time.monotonic()
             if how.startswith('removed'):
                 os.unlink(r.share)
@@ -855,16 +879,26 @@ def ended_when_share_goes(tmp):
                 struct.pack_into('<I', sh.m, 0, 0)
             if how.endswith('SIGTERM'):
                 r.p2d.send_signal(signal.SIGTERM)
-            st = ws.status(2.0)
+            st = ws.status()
             check(st == f'S{{"state":"{want}"}}', f'share {how}: the guest was told {st!r}, wanted {want}')
             check(ws.closed_by_server(), f'share {how}: the guest was not closed')
             try:
-                rc = r.p2d.wait(timeout=1.5)
+                rc = r.p2d.wait(timeout=WAIT)
             except subprocess.TimeoutExpired:
                 rc = None
-            took = time.monotonic() - t0
             check(rc == 0, f'share {how}: p2d exited {rc}, wanted 0')
-            check(took < 1.0, f'share {how}: p2d took {took:.2f} s to go, wanted under 1')
+            # Within a second by p2d's own clock: from the last look that
+            # found the game going (a SIGTERM wakes it at once) to its end,
+            # after its guests heard. The wall clock here counted this
+            # side's own steps too, on a loaded machine (2026-11-24).
+            end = r.stamps(r'p2d: the game ended at (\d+) ms, (\d+) ms after the look before')
+            end = [(int(at), int(look)) for at, look in end] or \
+                [(int(at), 0) for at in r.stamps(r'p2d: stopped at (\d+) ms')]
+            gone = r.stamps(r'p2d: gone at (\d+) ms')
+            took = end[0][1] + int(gone[0]) - end[0][0] if len(end) == 1 and len(gone) == 1 else None
+            check(took is not None and took < 1000,
+                  f'share {how}: p2d took {took} ms by its own clock to go, wanted under 1000 '
+                  f'({time.monotonic() - t0:.2f} s here)')
             check(sh.pad == 0 and sh.guests == 0,
                   f'share {how}: p2d left pad {sh.pad:#06x} guests {sh.guests}')
             sh.close()
@@ -899,9 +933,9 @@ def feed_writes_buttons_and_players(tmp):
         feed = subprocess.Popen([str(FEED), '--share', str(share), '--frames', '1'] + args,
                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         try:
-            check(wait_for(lambda: share.exists() and share.stat().st_size >= SIZE, 2), 'no share file')
+            check(wait_for(lambda: share.exists() and share.stat().st_size >= SIZE, WAIT), 'no share file')
             sh = Share(share)
-            check(wait_for(lambda: sh.magic == MAGIC, 2), 'the share has no magic')
+            check(wait_for(lambda: sh.magic == MAGIC, WAIT), 'the share has no magic')
             got = (sh.word(20), sh.word(16))
             check(got == want, f'p2d-feed {args}: buttons and players {got}, wanted {want}')
             sh.close()
@@ -921,9 +955,9 @@ def feed_replays_rgba(tmp):
     feed = subprocess.Popen([str(FEED), '--share', str(share), '--fps', '60', '--rgba', str(fixture),
                              '--frames', '5'], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
     try:
-        check(wait_for(lambda: share.exists() and share.stat().st_size >= SIZE, 2), 'no share file')
+        check(wait_for(lambda: share.exists() and share.stat().st_size >= SIZE, WAIT), 'no share file')
         sh = Share(share)
-        check(wait_for(lambda: sh.magic == MAGIC and sh.frame == 5, 2), f'frame is {sh.frame}, wanted 5')
+        check(wait_for(lambda: sh.magic == MAGIC and sh.frame == 5, WAIT), f'frame is {sh.frame}, wanted 5')
         time.sleep(0.1)
         check(sh.frame == 5, f'the feed went on past --frames 5 to {sh.frame}')
         for s in range(3):
@@ -935,7 +969,7 @@ def feed_replays_rgba(tmp):
                 check(px[:3] == bytes([b, g, r]), f'share frame {n} at {x},{y} is {list(px)}, '
                       f'wanted fixture frame {(n - 1) % 3} as XRGB8888')
         feed.send_signal(signal.SIGTERM)
-        check(feed.wait(timeout=2) == 0, 'the feed did not exit 0 on SIGTERM')
+        check(feed.wait(timeout=WAIT) == 0, 'the feed did not exit 0 on SIGTERM')
         check(sh.magic == 0, 'the feed left the magic set')
         check(not share.exists(), 'the feed left the share file')
         sh.close()
@@ -966,10 +1000,20 @@ def quiet_guest_is_dropped(tmp):
         ws = WS(r.port)
         check(ws.status() == PLAYER2, 'not player 2')
         check(ws.frame() is not None, 'no frame came')
-        gone = wait_for(lambda: sh.guests == 0, 8, step=0.05)
+        gone = wait_for(lambda: sh.guests == 0, WAIT, step=0.05)
         took = time.monotonic() - t0
-        check(gone, 'a guest that said nothing for 8 s is still player 2')
-        check(4.9 <= took <= 7.0, f'the quiet guest was dropped after {took:.1f} s, wanted 5')
+        check(gone, f'a guest that said nothing for {WAIT} s is still player 2')
+        # Never early, by this side's clock: load only makes it later. The
+        # late side by p2d's own, from the join to the drop, as its log
+        # says them: this side's look comes as late as a loaded machine
+        # runs it, and 7.3 s here was a load, not a rule (2026-11-24). A
+        # second over is p2d's nap and a late wakeup; a 6 s rule fails.
+        check(took >= 4.9, f'the quiet guest was dropped after {took:.1f} s, wanted 5')
+        came = r.stamps(r'p2d: player 2 joined at (\d+) ms')
+        went = r.stamps(r'p2d: player 2 left at (\d+) ms: (.*)')
+        silent = int(went[0][0]) - int(came[0]) if came and went else None
+        check(silent is not None and 4999 <= silent < 6000 and went[0][1] == '5 s silent with a frame not acked',
+              f'p2d dropped the quiet guest {silent} ms after it joined, by its own clock ({went}), wanted 5000')
         check(ws.hung_up(), 'the quiet guest\'s socket was not closed')
         b = WS(r.port)
         check(b.status() == PLAYER2, 'the next guest was not player 2')
@@ -1002,8 +1046,11 @@ def idle_wakes_seldom(tmp):
     with Rig(tmp, ['--dns', '--dns-port', '0']) as r:
         sh = r.mapped()
         time.sleep(0.3)
+        # Some 2 s of beats, waited for, not slept for: a loaded machine
+        # runs p2d late and moved it fewer times in a fixed 2 s
+        # (2026-11-24). The wakeups are counted over however long it took.
         b0 = sh.beat
-        time.sleep(2.0)
+        wait_for(lambda: sh.beat - b0 >= 40, WAIT, step=0.05)
         beats = sh.beat - b0
         # Still at once for a browser and a phone's question
         s, _, _ = r.get('/play/')
@@ -1011,7 +1058,7 @@ def idle_wakes_seldom(tmp):
         _, status, ru = os.wait4(r.p2d.pid, 0)
         secs = time.monotonic() - r.started
         woke = ru.ru_nvcsw + ru.ru_nivcsw
-        check(beats >= 20, f'the beat moved {beats} times in 2 s with nobody there, wanted some 40')
+        check(beats >= 40, f'the beat moved {beats} times in {WAIT} s with nobody there, wanted 40')
         check(s == 200, f'GET /play/ after the idle wait was {s}')
         check(os.WIFEXITED(status) and os.WEXITSTATUS(status) == 0, f'p2d ended with {status}')
         check(woke < 120 * secs, f'p2d woke {woke} times in {secs:.1f} s with nobody there, '
@@ -1024,13 +1071,19 @@ def no_share_gives_up(tmp):
     with Rig(tmp, feed=False, share=tmp / 'never') as r:
         t0 = r.started                  # before p2d's own 5 s began
         try:
-            rc = r.p2d.wait(timeout=9)
+            rc = r.p2d.wait(timeout=WAIT)
         except subprocess.TimeoutExpired:
             rc = None
         took = time.monotonic() - t0
         check(rc == 1, f'p2d with no share exited {rc}, wanted 1')
-        check(4.9 <= took <= 7.0, f'p2d gave up on the share after {took:.1f} s, wanted 5')
-        check('share' in r.log.read_text(errors='replace'), 'p2d said nothing about the share')
+        # Never early by this side's clock, which began before p2d's: load
+        # only makes it later. The late side by p2d's own, as its log says
+        # it: 7.3 s here was a loaded machine, not a rule (2026-11-24). A
+        # second over is p2d's 20 ms nap and a late wakeup; a 6 s rule fails.
+        check(took >= 4.9, f'p2d gave up on the share after {took:.1f} s, wanted 5')
+        at = r.stamps(r'p2d: no share at .* after 5 s, at (\d+) ms')
+        check(len(at) == 1 and 5000 <= int(at[0]) < 6000,
+              f'p2d gave up on the share at {at} ms by its own clock, wanted 5000')
 
 
 # ---- the run -------------------------------------------------------------

@@ -126,6 +126,11 @@ bool texload_take(texload_got *g);
  * Pixel 2's 16.7 ms at 60 Hz, the rest the frame's own to draw. */
 #define TEXLOAD_SHARE_MS 4.0f
 
+/* The clock texload_deliver times its share on, in ms: the performance
+ * counter's, or a check's when `now_ms` is not NULL (tools/putpace-check.c,
+ * whose uploads cost what it says on it, whatever the machine does). */
+void texload_test_clock(double (*now_ms)(void));
+
 /* For the frame: hand finished pictures to `put`, oldest first, while they
  * fit in this frame's share (src/putpace.h), and at least one when any is
  * waiting, so a slow device still fills its shelf; the rest stay waiting for

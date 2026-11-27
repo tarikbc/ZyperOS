@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #ifndef ZYPEROS_RAQUEUE_H
 #define ZYPEROS_RAQUEUE_H
+#include <stdbool.h>
 
 /* RetroAchievements' unlocks: what the account already holds merged into the
  * local store, and what is owed sent behind the shelf, on a thread of its
@@ -19,6 +20,8 @@ void ra_flush_stop(void);
  * waiting sends them, and one that stays up tries again every few minutes
  * after a pass that stopped short. Cheap between looks: a compare. */
 void ra_flush_watch(unsigned now_ms);
+/* A pass handed to the worker whose answers are not applied yet */
+bool ra_flush_in_flight(void);
 /* How many unlocks that had waited - earned offline, or owed from before -
  * the account has taken since the last call, for the notice */
 int  ra_flush_take_sent(void);

@@ -24,11 +24,26 @@
 #ifndef DIATOM_PORT_CLOCK_H
 #define DIATOM_PORT_CLOCK_H
 
+#include <math.h>
 #include <stdint.h>
+#include <time.h>
 
 static inline uint64_t diatom_ticks_to_us(uint64_t ticks, uint64_t freq)
 {
 	return ticks / freq * 1000000ull + ticks % freq * 1000000ull / freq;
+}
+
+/* A sleep of `us` microseconds, for diatom_port_sleep_us: the frame loop's
+ * own conversion, whole seconds and the rest, as it was before it moved
+ * here */
+static inline void diatom_nanosleep_us(double us)
+{
+	struct timespec ts;
+
+	if (us <= 0) return;
+	ts.tv_sec  = (time_t)(us / 1000000.0);
+	ts.tv_nsec = (long)(fmod(us, 1000000.0) * 1000.0);
+	nanosleep(&ts, NULL);
 }
 
 #endif /* DIATOM_PORT_CLOCK_H */

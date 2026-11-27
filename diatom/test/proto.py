@@ -44,14 +44,17 @@ class Diatom:
         self.p = subprocess.Popen([BIN, "--socket", SOCK] + self.args, env=ENV,
                                   stdout=subprocess.DEVNULL,
                                   stderr=self.stderr)
-        for _ in range(100):
+        # Every wait here is a wait for something, at most 30 s: each ends as
+        # soon as it is there, so a busy machine makes them longer, never a
+        # check different. They were 2 s until 2026-11-24.
+        for _ in range(600):
             if os.path.exists(SOCK): break
             time.sleep(0.05)
         else:
             raise RuntimeError("diatom never listened")
         self.c = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.c.connect(SOCK)
-        self.c.settimeout(2.0)
+        self.c.settimeout(0.5)
         self.buf = b""
         return self
 
@@ -70,7 +73,7 @@ class Diatom:
         Filtering matters: these are a shared channel and an unsolicited event
         may land between a question and its answer, which is the plane working
         rather than a fault."""
-        deadline = time.time() + 2.0
+        deadline = time.time() + 30
         while time.time() < deadline:
             while b"\n" in self.buf:
                 l, self.buf = self.buf.split(b"\n", 1)
@@ -79,7 +82,7 @@ class Diatom:
             try:
                 d = self.c.recv(4096)
             except socket.timeout:
-                break
+                continue
             if not d: break
             self.buf += d
         return None
@@ -200,10 +203,12 @@ def main():
     # Every one has to be greeted - READY is what an accepted launcher hears
     # first - which the old code never did for any of them.
     def ready(c):
-        buf, deadline = b"", time.time() + 2.0
+        buf, deadline = b"", time.time() + 30
         while time.time() < deadline:
             try:
                 got = c.recv(4096)
+            except socket.timeout:
+                continue
             except OSError:
                 return False
             if not got: return False
@@ -216,7 +221,7 @@ def main():
         stale, newer, greeted = d.c, [], True
         for _ in range(3):
             c = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            c.settimeout(2.0)
+            c.settimeout(0.5)
             try:
                 c.connect(SOCK)
             except OSError:
@@ -231,12 +236,12 @@ def main():
         if newer:
             last, buf, ans = newer[-1], b"", None
             last.sendall(b"AUDIO\n")
-            deadline = time.time() + 2.0
+            deadline = time.time() + 30
             while ans is None and time.time() < deadline:
                 try:
                     got = last.recv(4096)
                 except socket.timeout:
-                    break
+                    continue
                 if not got: break
                 buf += got
                 ans = next((l for l in buf.decode().split("\n")
@@ -244,7 +249,7 @@ def main():
             ck(ans == "AUDIO\tdevice=", "the newest connection is the one answered")
 
             def closed(c):
-                c.settimeout(2.0)
+                c.settimeout(30)
                 try:
                     while True:
                         got = c.recv(4096)
@@ -272,7 +277,7 @@ def main():
             time.sleep(0.3)
             ck(not mapped(), "the cores wait for the launcher's PREMAP")
             d.send("PREMAP")
-            deadline = time.time() + 1.0
+            deadline = time.time() + 30
             while not mapped() and time.time() < deadline:
                 time.sleep(0.02)
             ck(mapped(), "and are mapped once it comes")

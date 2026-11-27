@@ -1,0 +1,4 @@
+{
+	diatom_test_clock_spend;
+	diatom_port_now_us;
+};

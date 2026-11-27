@@ -57,8 +57,10 @@ class Run:
                      DIATOM_RUMBLE_LOG=self.rlog, STUBCORE_INPUT_LOG=self.ilog,
                      DIATOM_INPUT_SCRIPT=script),
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        for _ in range(100):
-            if os.path.exists(self.sock): break
+        # The waits are the wall clock's, and only waits: each ends as soon
+        # as what it waits for is there
+        end = time.time() + 30
+        while not os.path.exists(self.sock) and time.time() < end:
             time.sleep(0.05)
         self.s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.s.connect(self.sock)
@@ -105,6 +107,13 @@ class Run:
             self.pump(0.05)
         return self.levels()
 
+    def frame(self):
+        """The last frame the stub ran, -1 before its first"""
+        try:
+            with open(self.ilog) as f: lines = f.read().split("\n")[:-1]
+            return int(lines[-1].split()[0]) if lines else -1
+        except (OSError, ValueError): return -1
+
     def levels(self):
         try:
             with open(self.rlog) as f: return [l.strip() for l in f if l.strip()]
@@ -113,12 +122,12 @@ class Run:
     def end(self, how="QUIT"):
         if how == "SIGTERM": self.p.send_signal(signal.SIGTERM)
         else: self.send(how)
-        try: self.p.wait(10)
+        try: self.p.wait(30)
         except subprocess.TimeoutExpired: self.p.kill(); self.p.wait()
 
 # ---- the game's own stop, MENU, a reset, a load, STOP ---------------------
 r = Run("main", "30:on,60:off,90:on", "150:menu;154:")
-r.pump(0.3)
+r.wait_for("READY")
 check("READY", any(l.startswith("READY") for l in r.got), r.got[:2])
 r.send(f"RUN\tcore={STUB}")
 lv = r.wait_level(ON)
@@ -136,12 +145,15 @@ r.send("RESUME")
 lv = r.wait_for("RUNNING")
 check("RESUME: the game's rumble is back by RUNNING",
       lv is not None and len(lv) > n and lv[-1] == ON, lv)
-r.send("RESET")
+# Saved early in the reset game, before its frame 30 turns the motor on: sent
+# with the RESET in one write, so the SAVE is the next turn's message, at the
+# reset game's first frame, however late this script reads RESETDONE. Sent
+# after RESETDONE until 2026-11-24, which a busy machine could let reach
+# frame 30 first
+state = f"{TMP}/Game.1.state"
+r.send(f"RESET\nSAVE\tpath={state}")
 lv = r.wait_for("RESETDONE")
 check("a RESET while it runs: stopped by RESETDONE", lv is not None and lv[-1] == OFF, lv)
-# Saved early in the reset game, before its frame 30 turns the motor on
-state = f"{TMP}/Game.1.state"
-r.send(f"SAVE\tpath={state}")
 r.wait_for("SAVED")
 lv = r.wait_level(ON, after=len(lv or []))
 check("on again after the reset, at its frame 30", lv[-1:] == [ON], lv)
@@ -159,7 +171,7 @@ r.end("QUIT")
 # ---- QUIT and the power key while it runs ---------------------------------
 for how in ("QUIT", "SIGTERM"):
     r = Run(how.lower(), "20:on")
-    r.pump(0.3)
+    r.wait_for("READY")
     r.send(f"RUN\tcore={STUB}")
     lv = r.wait_level(ON)
     r.end(how)
@@ -171,7 +183,7 @@ for how in ("QUIT", "SIGTERM"):
 # PrBoom shakes on every shot, pickup and hit, at up to full: ZyperOS sends
 # rumble=35 for Doom (systems.cfg). The next game, sent no share, is as asked.
 r = Run("share", "20:on,40:off")
-r.pump(0.3)
+r.wait_for("READY")
 r.send(f"RUN\tcore={STUB}\trumble=35")
 lv = r.wait_level("22937 22937")
 check("RUN rumble=35: the core's full on reaches the port at 35%",
@@ -188,16 +200,21 @@ r.end("QUIT")
 
 # ---- RUN rumble=0: the player's Rumble at Off ------------------------------
 r = Run("off", "20:on,40:off,60:on")
-r.pump(0.3)
+r.wait_for("READY")
 r.send(f"RUN\tcore={STUB}\trumble=0")
-r.pump(1.5)
+# Past the stub's frame 60, its last on, by its own count: 1.5 s of this
+# script's time until 2026-11-24, which a busy machine could end before
+end = time.time() + 30
+while r.frame() < 70 and time.time() < end:
+    r.pump(0.05)
 lv = r.levels()
-check("RUN rumble=0: the core's on never runs the motor", lv and all(l == OFF for l in lv), lv)
+check("RUN rumble=0: the core's on never runs the motor, to its frame 70",
+      r.frame() >= 70 and lv and all(l == OFF for l in lv), (r.frame(), lv))
 r.end("QUIT")
 
 # ---- SETRUMBLE: the in-game menu's Rumble row, live ------------------------
 r = Run("live", "20:on", "300:menu;304:")
-r.pump(0.3)
+r.wait_for("READY")
 r.send(f"RUN\tcore={STUB}")
 lv = r.wait_level(ON)
 r.send("SETRUMBLE\trumble=65")

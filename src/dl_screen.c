@@ -2993,13 +2993,17 @@ static void sysgames_keys(dl_view *v, dl_frame *f, unsigned now)
  * guess at how long a loaded machine takes.
  * look=FOLDER|NAME: a game's panel looking at the card (one_look), the
  * game as its system's list read it the first time its folder is looked at,
- * each kind's mark said before and after.
+ * each kind's mark said before and after. gone=PATH: until the file at PATH
+ * is gone, as the check deletes one between two looks (check-dl-look: a
+ * wait of 1500 ms on the launcher's clock raced the check's delete on a
+ * loaded machine, 2026-11-24).
  * Each step said on stderr with the page's state; the launcher quits at the
  * script's end. The real loop and the real card: what the shots' stand-in
  * counts cannot show. */
 static const char *g_dl_test;
 static unsigned g_dl_until, g_dl_wait_end;
-static bool g_dl_count_wait, g_dl_run_wait, g_dl_hold_wait, g_dl_pics_wait;
+static bool g_dl_count_wait, g_dl_run_wait, g_dl_hold_wait, g_dl_pics_wait, g_dl_gone_wait;
+static char g_dl_gone[512];
 #define DL_TEST_WAIT_MS 30000
 
 /* An arrival kept with no picture yet */
@@ -3120,6 +3124,8 @@ static void dl_test(dl_view *v, app *a)
 	g_dl_hold_wait = false;
 	if (g_dl_pics_wait && test_pics_missing() && now < g_dl_wait_end) return;
 	g_dl_pics_wait = false;
+	if (g_dl_gone_wait && access(g_dl_gone, F_OK) == 0 && now < g_dl_wait_end) return;
+	g_dl_gone_wait = false;
 	if (!*g_dl_test) { want_quit = 1; return; }
 	n = strcspn(g_dl_test, ",");
 	snprintf(tok, sizeof tok, "%.*s", (int)n, g_dl_test);
@@ -3138,6 +3144,11 @@ static void dl_test(dl_view *v, app *a)
 	}
 	if (!strcmp(tok, "pics")) {
 		g_dl_pics_wait = true;
+		g_dl_wait_end = now + DL_TEST_WAIT_MS;
+	}
+	if (!strncmp(tok, "gone=", 5)) {
+		snprintf(g_dl_gone, sizeof g_dl_gone, "%s", tok + 5);
+		g_dl_gone_wait = true;
 		g_dl_wait_end = now + DL_TEST_WAIT_MS;
 	}
 	if (!strncmp(tok, "fake=", 5)) fake_start(v, atoi(tok + 5));

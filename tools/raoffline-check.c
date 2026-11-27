@@ -163,15 +163,21 @@ static void field(const char *req, const char *k, char *out, size_t n)
 	snprintf(out, n, "%.*s", (int)strcspn(p, " \n"), p);
 }
 
-/* Apply the worker's answers until a pass is over, as the main loop does */
+/* Apply the worker's answers until a pass is over, as the main loop does: until no pass is in
+ * flight, the follow-on one a pass may start when it is applied too. Not a fixed 150 x 10 ms,
+ * which a loaded Mac running make check four at a time could use up before the stand-in had
+ * answered (2026-11-24); and it makes "nothing is sent" certain rather than "nothing was sent
+ * in 1.5 s": no pass is in flight, so none will be. 30 s only for a pass that never ends. */
 static void settle(void)
 {
-	int i;
+	const Uint32 until = SDL_GetTicks() + 30000;
 
-	for (i = 0; i < 150; i++) {
+	do {
 		ra_flush_poll();
-		SDL_Delay(10);
-	}
+		if (!ra_flush_in_flight()) return;
+		SDL_Delay(1);
+	} while (SDL_GetTicks() < until);
+	CHECK(!ra_flush_in_flight(), "a pass is still in flight after 30 s");
 }
 
 static void write_set(void)

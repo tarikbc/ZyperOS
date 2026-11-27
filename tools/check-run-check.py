@@ -72,14 +72,61 @@ def shards(cr):
     check(len(one) == 1 and len(two) == 1, 'two checks the table has not met: one a part')
 
 
+# A stand-in check: "start NAME" in the trace, then held until what the run
+# is to show has happened (CHECKRUN_HEAVY_WAIT for a heavy one,
+# CHECKRUN_LIGHT_WAIT for the rest), then "end NAME". The trace's lines are
+# in the order they were written (each a single append), so what ran beside
+# what is read from their order, not from clocks: the stand-ins used to sleep
+# 0.15 and 0.4 s and the check to read overlap from their times, which a
+# loaded Mac running make check four at a time could stretch past it
+# (2026-11-24). What is to be shown, waited for: "together:N", N checks
+# running at once at some point; "heavies-together:N", N heavy ones;
+# "lights-ended:N", N light ones ended. 30 s at most, then "gave-up NAME":
+# what was to be shown never happened.
 STAND_IN = r'''
 import os, sys, time
 name = sys.argv[1]
-with open(os.environ['CHECKRUN_TRACE'], 'a') as f:
-    f.write('start %s %.4f\n' % (name, time.time()))
-time.sleep(0.4 if name.startswith('heavy') else 0.15)
-with open(os.environ['CHECKRUN_TRACE'], 'a') as f:
-    f.write('end %s %.4f\n' % (name, time.time()))
+trace = os.environ['CHECKRUN_TRACE']
+
+
+def say(kind):
+    with open(trace, 'a') as f:
+        f.write('%s %s\n' % (kind, name))
+
+
+def most_at_once(ev, which):
+    now = top = 0
+    for kind, n in ev:
+        if which(n) and kind in ('start', 'end'):
+            now += 1 if kind == 'start' else -1
+            top = max(top, now)
+    return top
+
+
+def shown(rule):
+    if not rule:
+        return True
+    what, n = rule.split(':')
+    with open(trace) as f:
+        ev = [line.split() for line in f.read().splitlines()]
+    if what == 'together':
+        return most_at_once(ev, lambda c: True) >= int(n)
+    if what == 'heavies-together':
+        return most_at_once(ev, lambda c: c.startswith('heavy')) >= int(n)
+    if what == 'lights-ended':
+        return sum(1 for k, c in ev if k == 'end' and c.startswith('light')) >= int(n)
+    raise SystemExit('stand-in: no such wait ' + rule)
+
+
+say('start')
+rule = os.environ.get('CHECKRUN_HEAVY_WAIT' if name.startswith('heavy') else 'CHECKRUN_LIGHT_WAIT', '')
+until = time.monotonic() + 30
+while not shown(rule):
+    if time.monotonic() > until:
+        say('gave-up')
+        break
+    time.sleep(0.005)
+say('end')
 sys.exit(1 if name == 'light-fails' else 0)
 '''
 
@@ -93,12 +140,28 @@ time.sleep(float(sys.argv[2]))
 '''
 
 
+def events(trace):
+    try:
+        return [line.split() for line in trace.read_text().splitlines()]
+    except FileNotFoundError:
+        return []
+
+
 def spans(trace):
+    """Each check's start and end, as the places of its lines in the trace"""
     start, end = {}, {}
-    for line in trace.read_text().splitlines():
-        kind, name, t = line.split()
-        (start if kind == 'start' else end)[name] = float(t)
-    return {n: (start[n], end[n]) for n in start}
+    for i, (kind, name) in enumerate(events(trace)):
+        if kind in ('start', 'end'):
+            (start if kind == 'start' else end)[name] = i
+    return {n: (start[n], end.get(n, float('inf'))) for n in start}
+
+
+def gave_up(trace):
+    return [name for kind, name in events(trace) if kind == 'gave-up']
+
+
+def at(trace, kind, name):
+    return next((i for i, e in enumerate(events(trace)) if e == [kind, name]), None)
 
 
 def most_at_once(sp, names):
@@ -125,39 +188,62 @@ def slots(cr):
     heavy = sorted(cr.HEAVY)
     light = ['light-1', 'light-2', 'light-3', 'light-4', 'light-5', 'light-6']
 
-    # One slot, four at a time: one heavy one at once, the light ones beside
+    # One slot, four at a time: one heavy one at once, the light ones beside.
+    # The light ones held until three ran at once, the heavy ones until every
+    # light one has ended: so the first heavy one holds the slot while all six
+    # light ones go, or gives up
     os.environ['CHECK_HEAVY_SLOTS'] = '1'
+    os.environ['CHECKRUN_LIGHT_WAIT'] = 'together:3'
+    os.environ['CHECKRUN_HEAVY_WAIT'] = f'lights-ended:{len(light)}'
     rc = cr.main(['-j', '4'] + heavy + light)
     sp = spans(trace)
     check(rc == 0 and len(sp) == 10, f'one slot: every check ran and passed ({len(sp)} of 10)')
     check(most_at_once(sp, heavy) == 1, f'one slot: one heavy check at a time ({most_at_once(sp, heavy)})')
-    check(most_at_once(sp, heavy + light) >= 3, 'one slot: the light ones run beside it')
-    check(max(sp[n][1] for n in light) < max(sp[n][1] for n in heavy),
+    check(most_at_once(sp, heavy + light) >= 3 and not gave_up(trace),
+          f'one slot: the light ones run beside it (gave up: {gave_up(trace)})')
+    check(max(sp[n][1] for n in light) < min(sp[n][1] for n in heavy),
           'one slot: the light ones done before the heavy ones, which waited')
 
-    # Two slots: two at once, never three
+    # Two slots: two at once, never three. The heavy ones held until two ran
+    # at once
     trace.unlink()
     os.environ['CHECK_HEAVY_SLOTS'] = '2'
+    os.environ['CHECKRUN_LIGHT_WAIT'] = ''
+    os.environ['CHECKRUN_HEAVY_WAIT'] = 'heavies-together:2'
     rc = cr.main(['-j', '6'] + heavy + light)
     sp = spans(trace)
-    check(rc == 0 and most_at_once(sp, heavy) == 2, f'two slots: two heavy checks at a time '
-          f'({most_at_once(sp, heavy)})')
+    check(rc == 0 and most_at_once(sp, heavy) == 2 and not gave_up(trace),
+          f'two slots: two heavy checks at a time ({most_at_once(sp, heavy)}, gave up: {gave_up(trace)})')
 
     # Another run holds the only slot: the heavy ones wait for it, the light
-    # ones do not, and the slot is taken once the other run is killed
+    # ones do not, and the slot is taken once the other run is killed. Killed
+    # once the light ones have all ended, and 1.5 s at least (the wait is said
+    # on its line from 1 s), "kill other" in the trace as it is: the order of
+    # the lines says the rest
     trace.unlink()
+    trace.write_text('')
     os.environ['CHECK_HEAVY_SLOTS'] = '1'
+    os.environ['CHECKRUN_LIGHT_WAIT'] = os.environ['CHECKRUN_HEAVY_WAIT'] = ''
     cr.SLOTS_DIR.mkdir(exist_ok=True)
-    other = subprocess.Popen([sys.executable, '-c', HOLD, str(cr.SLOTS_DIR / 'slot-1'), '30'],
+    other = subprocess.Popen([sys.executable, '-c', HOLD, str(cr.SLOTS_DIR / 'slot-1'), '120'],
                              stdout=subprocess.PIPE, text=True)
     check(other.stdout.readline().strip() == 'held', 'the other run holds the slot')
     held = cr.Slots(1).take('mine')
     check(held is None, 'a slot another process holds is not taken')
     check(cr.Slots(1).holders() == ['the other run'], 'the slot says who holds it')
-    t_kill = time.time() + 1.5
 
     def killer():
-        time.sleep(1.5)
+        soonest, until = time.monotonic() + 1.5, time.monotonic() + 30
+        while time.monotonic() < until:
+            ended = {n for k, n in events(trace) if k == 'end'}
+            if {'light-1', 'light-2', 'light-fails'} <= ended and time.monotonic() >= soonest:
+                break
+            time.sleep(0.005)
+        else:
+            with open(trace, 'a') as f:
+                f.write('gave-up killer\n')
+        with open(trace, 'a') as f:
+            f.write('kill other\n')
         other.kill()
     import threading
     threading.Thread(target=killer, daemon=True).start()
@@ -172,10 +258,11 @@ def slots(cr):
     check(any('waiting for a heavy slot' in line and 'the other run' in line for line in said),
           'and while it waits, for whom')
     sp = spans(trace)
+    killed = at(trace, 'kill', 'other')
     check(rc == 1, 'a failing check still fails the run')
-    check(sp['heavy-1'][0] >= t_kill - 0.05, f'the heavy one started after the other run ended '
-          f'({sp["heavy-1"][0] - t_kill:+.2f} s)')
-    check(all(sp[n][1] < t_kill for n in ('light-1', 'light-2')), 'the light ones did not wait for it')
+    check(killed is not None and sp['heavy-1'][0] > killed, 'the heavy one started after the other run ended')
+    check(not gave_up(trace) and all(sp[n][1] < killed for n in ('light-1', 'light-2', 'light-fails')),
+          f'the light ones did not wait for it (gave up: {gave_up(trace)})')
     times = cr.read_times(cr.TIMES)
     check({'heavy-1', 'light-6'} <= set(times), 'times.tsv keeps the checks a smaller run did not run')
     got = cr.Slots(1).take('mine')
@@ -196,6 +283,8 @@ def slots(cr):
     except cr.Refused as e:
         check('mode' in str(e), f'a slots folder anyone writes is refused ({e})')
     cr.SLOTS_DIR = open_dir
+    os.environ.pop('CHECKRUN_LIGHT_WAIT', None)
+    os.environ.pop('CHECKRUN_HEAVY_WAIT', None)
     trace.write_text('')
     rc = cr.main(['-j', '2', 'heavy-1', 'light-1'])
     check(rc == 2 and spans(trace) == {}, f'and the run with it, nothing run ({rc})')

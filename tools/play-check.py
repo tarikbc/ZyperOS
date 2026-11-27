@@ -189,7 +189,7 @@ class Rig:
         self.feed = subprocess.Popen([str(FEED), '--share', str(self.share), '--fps', '60',
                                       '--rgba', str(fixture)],
                                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        if not wait_for(lambda: self.share.exists() and self.share.stat().st_size >= SHARE_SIZE, 10):
+        if not wait_for(lambda: self.share.exists() and self.share.stat().st_size >= SHARE_SIZE, 30):
             raise RuntimeError('p2d-feed made no share')
         with open(self.share, 'rb') as f:
             self.m = mmap.mmap(f.fileno(), SHARE_SIZE, access=mmap.ACCESS_READ)
@@ -202,7 +202,7 @@ class Rig:
                                          '--addr', '127.0.0.1', '--port', port, '--lang', LANG,
                                          '--theme', str(Path(self.root).parent / 'theme.css')],
                                         stdout=log, stderr=log)
-        got = wait_for(lambda: re.search(r'p2d: http on port (\d+)', self.log.read_text(errors='replace')), 10)
+        got = wait_for(lambda: re.search(r'p2d: http on port (\d+)', self.log.read_text(errors='replace')), 30)
         if not got:
             raise RuntimeError(f'p2d never said its port: {self.log.read_text(errors="replace")!r}')
         self.port = got.group(1)
@@ -296,7 +296,11 @@ class Tab:
             raise RuntimeError(f'{expr[:60]}...: {r["exceptionDetails"]}')
         return r.get('result', {}).get('value')
 
-    def until(self, expr, seconds=15):
+    def until(self, expr, seconds=30):
+        """expr again until it holds, at most `seconds`: it returns as soon
+        as it holds, so the ceiling is only how long a loaded machine may
+        take (2026-11-24: 3 s to 15 s waits were guesses under make check's
+        parallel run)"""
         return wait_for(lambda: self.js(expr), seconds, 0.1)
 
     def open(self, url, before=None):
@@ -304,7 +308,7 @@ class Tab:
         if before:
             self.dt.call('Page.addScriptToEvaluateOnNewDocument', source=before)
         self.dt.call('Page.navigate', url=url)
-        return self.until("document.readyState === 'complete' && typeof window.p2 === 'object'", 20)
+        return self.until("document.readyState === 'complete' && typeof window.p2 === 'object'")
 
     def state(self):
         return self.js("(document.getElementById('state') || {}).textContent || ''")
@@ -319,11 +323,13 @@ class Tab:
         self.dt.call('Input.dispatchKeyEvent', type='keyDown' if down else 'keyUp', key=k, code=code,
                      windowsVirtualKeyCode=vk, nativeVirtualKeyCode=vk)
 
-    def touch(self, kind, points):
+    def touch(self, kind, points, at=None):
         """touchStart, touchMove or touchEnd with every finger down after it:
-        {id: (x, y)}"""
+        {id: (x, y)}; at the event time `at` (seconds since 1970) when given,
+        which the page reads as the event's timeStamp"""
+        more = {} if at is None else {'timestamp': at}
         self.dt.call('Input.dispatchTouchEvent', type=kind,
-                     touchPoints=[{'x': x, 'y': y, 'id': i} for i, (x, y) in points.items()])
+                     touchPoints=[{'x': x, 'y': y, 'id': i} for i, (x, y) in points.items()], **more)
 
     def drawn(self):
         """(the frame number the page drew, the canvas's size, its RGBA), read
@@ -384,7 +390,7 @@ def player(say, n):
 
 
 def draws_the_frames(tab, rig, fixture, say):
-    check(tab.until('window.p2.frame > 0', 20), 'the first frame was drawn')
+    check(tab.until('window.p2.frame > 0'), 'the first frame was drawn')
     first = tab.js('window.p2.frame')
     check(tab.state() == player(say, 2), f"the page says it is player 2: {tab.state()!r}")
     check(rig.guests == 1, 'p2d has the page as player 2')
@@ -420,9 +426,19 @@ def keyboard_to_pad(tab, rig, fixture, say):
         tab.key('x', True)
         tab.key('ArrowRight', True)
         out = [(wait_for(lambda: rig.pad == A | RIGHT, PAD_WAIT), f'X and Right are 0x0180: {rig.pad:#06x}')]
-        # p2d lets a pad go after 1 s with no 'P'; the page repeats a held one
-        time.sleep(1.6)
-        out.append((rig.pad == A | RIGHT, f'still 0x0180 after 1.6 s held: {rig.pad:#06x}'))
+        # p2d lets a pad go after 1 s with no 'P'; the page repeats a held
+        # one every 100 ms. Held for 16 of the page's repeats, counted, and
+        # their cadence by the page's own clock: a sleep of 1.6 s judged a
+        # loaded machine's late timers as much as the page (2026-11-24). Its
+        # middle gap is under p2d's second unless the page does not repeat
+        # in time; a late timer now and then does not move it.
+        n = tab.js('window.__pads.length')
+        repeated = tab.until(f"window.__pads.slice({n}).filter((m) => m === {A | RIGHT}).length >= 16")
+        gaps = sorted(tab.js(f"window.__padT.slice({n}).map((t, i, a) => i ? t - a[i - 1] : 0).slice(1)"))
+        mid = gaps[len(gaps) // 2] if gaps else None
+        out.append((repeated and mid is not None and mid < 1000 and rig.pad == A | RIGHT,
+                    f'held, the page sends it again and again, every {mid and round(mid)} ms in the middle '
+                    f'(p2d lets go after 1000), and it is still 0x0180: {rig.pad:#06x}'))
         tab.key('x', False)
         tab.key('ArrowRight', False)
         out.append((wait_for(lambda: rig.pad == 0, PAD_WAIT), f'let go, 0: {rig.pad:#06x}'))
@@ -549,7 +565,7 @@ YXLR = 0x0E02                   # Y, X, L and R: no NES has them
 
 # A press's way to the share, on a runner three times slower than a Mac
 # with two other checks beside it: a long wait costs nothing when it comes
-PAD_WAIT = 10
+PAD_WAIT = 30
 
 
 def lifted(tab):
@@ -575,9 +591,9 @@ def on_one_link(tab, block, rig=None, reset=None, tries=3):
     has it, with `rig`), reset() lets go of what the block held and the
     block runs again on the new link."""
     for i in range(tries):
-        tab.until(PLAYING, 20)
+        tab.until(PLAYING)
         if rig:
-            wait_for(lambda: rig.guests & 1, 20)
+            wait_for(lambda: rig.guests & 1, 30)
         link = tab.js(LINK)
         got = block()
         if tab.js(LINK) == link:
@@ -608,9 +624,9 @@ def status_and_buttons(tab, rig, fixture, say):
                 f'"playing" as player 3 says so, and in the tab: {tab.state()!r}, {tab.js("document.title")!r}'),
                (tab.js(DRAWN) == 'l y b x a r select start', f'a game with more buttons draws them: {tab.js(DRAWN)!r}')]
         tab.key('a', True)
-        out.append((tab.until('window.__pads[window.__pads.length - 1] === 2', 5), 'its Y is the A key, bit 1'))
+        out.append((tab.until('window.__pads[window.__pads.length - 1] === 2'), 'its Y is the A key, bit 1'))
         tab.key('a', False)
-        out.append((tab.until('window.__pads[window.__pads.length - 1] === 0', 5), 'let go, 0'))
+        out.append((tab.until('window.__pads[window.__pads.length - 1] === 0'), 'let go, 0'))
         return out
 
     def nes_again():
@@ -653,7 +669,7 @@ def settled(tab, metrics, touch):
     before = tab.js(LAYOUT)['pic']
     tab.dt.call('Emulation.setDeviceMetricsOverride', **metrics)
     tab.dt.call('Emulation.setTouchEmulationEnabled', enabled=touch, maxTouchPoints=5)
-    tab.until(f"document.getElementById('screen').getBoundingClientRect().width !== {before['w']}", 5)
+    tab.until(f"document.getElementById('screen').getBoundingClientRect().width !== {before['w']}")
     time.sleep(0.3)
     return tab.js(LAYOUT)
 
@@ -699,30 +715,45 @@ def picture_off(tab, rig, fixture, say):
     check(tab.js(shown), 'the picture shows')
     a = tab.center('#a')
     tab.js("document.getElementById('picoff').click()")
-    check(tab.until('!' + shown, 5), 'Picture off hides the picture')
+    check(tab.until('!' + shown), 'Picture off hides the picture')
     big = tab.center('#a')
     check(a and big and big[2] > a[2], f'and the pad takes the screen: A {a and a[2]} px wide, now {big and big[2]}')
     bad = apart(tab)
     check(not bad, f'its parts on the screen and clear of each other{": " + str(bad) if bad else ""}')
-    time.sleep(0.3)                       # a frame decoding as it was switched lands
+    # A frame decoding as it was switched lands: the page takes its frames
+    # one after another, each acked when it is done, so two acks on, the
+    # one that was decoding is drawn. Then still over 60 more frames, a
+    # second of the feed's, counted in the page's acks rather than slept
+    # for (2026-11-24: a loaded machine drew one after 0.3 s)
+    acks = tab.js('window.p2.acks')
+    tab.until(f'window.p2.acks >= {acks + 2}')
     frame, _, px = tab.drawn()
     acks = tab.js('window.p2.acks')
-    time.sleep(1)
+    acked = tab.until(f'window.p2.acks >= {acks + 60}')
     frame2, _, px2 = tab.drawn()
-    check(frame2 == frame and px2 == px, f'the canvas held still for a second: frame {frame}, then {frame2}')
-    check(tab.until(f'window.p2.acks >= {acks + 3}', 10) and tab.js('window.p2.frame') == frame,
-          f'while the acks went on: {acks}, then {tab.js("window.p2.acks")}')
+    check(acked and frame2 == frame and px2 == px,
+          f'the canvas held still while 60 frames were acked: frame {frame}, then {frame2}; '
+          f'acks {acks}, then {tab.js("window.p2.acks")}')
     check(rig.guests == 1, 'and p2d still has player 2')
     asks, at = tab.js('window.__asks'), rig.frame
+    got = tab.js('window.__got.length')
     tab.js("document.getElementById('picoff').click()")
-    check(tab.until(shown, 5), 'Picture off switched off shows it again')
-    check(tab.until(f'window.p2.frame > {frame}', 20), 'and frames are drawn again')
+    check(tab.until(shown), 'Picture off switched off shows it again')
+    check(tab.until(f'window.p2.frame > {frame}'), 'and frames are drawn again')
     # Its deltas skipped, it had no frame to add the next to: it asked p2d
-    # for a KEY once, and drew from about the frame it asked at, where the
-    # codec's own KEY could have been up to 120 frames on
+    # for a KEY once, and the KEY came among the next three frames (two may
+    # have been on their way as it asked), where the codec's own could have
+    # been up to 120 frames on. Counted in frames, as they came: by the
+    # share's frame number when this side looked, a loaded machine's own
+    # slowness counted against it (2026-11-24, 45 frames in 0.75 s).
     first = tab.js('window.p2.frame')
     check(tab.js('window.__asks') == asks + 1, f"it asked for a KEY ('K') once: {asks}, then {tab.js('window.__asks')}")
-    check(first - at <= 45, f'and drew again from frame {first}, {first - at} past the one it asked at, wanted 45 or fewer')
+    after = tab.js(f'window.__got.slice({got})')
+    k = after.index('K') if 'K' in after else None
+    key = next((i - k for i in range(k + 1, len(after)) if after[i] == 3), None) if k is not None else None
+    check(key is not None and key <= 3,
+          f'and the KEY came {key} frames after it asked, wanted 3 or fewer; '
+          f'drawn again from frame {first}, {first - at} past the share when it was switched')
     ok, why = matches(fixture, *tab.drawn())
     check(ok, f'the right frames{": " + why if why else ""}')
 
@@ -734,41 +765,50 @@ def left_and_back(tab, rig, fixture, say):
     check(rig.guests == 1, 'p2d has the page as player 2')
     tab.dt.call('Page.navigate', url='about:blank')
     t0 = time.monotonic()
-    check(wait_for(lambda: rig.guests == 0, 3.5), f'left, its place is free well before 5 s: guests {rig.guests}')
+    check(wait_for(lambda: rig.guests == 0, 30), f'left, its place is free: guests {rig.guests}')
     took = time.monotonic() - t0
-    check(took < 3.5, f'in {took:.1f} s')
+    # Free because the page's socket went, not by p2d's 5 s rule: as p2d's
+    # log says why. A wall clock of 3.5 s told them apart until a loaded
+    # machine took longer (2026-11-24).
+    why = re.findall(r'p2d: player 2 left at \d+ ms: (.*)', rig.log.read_text(errors='replace'))
+    check(why and why[-1] != '5 s silent with a frame not acked',
+          f'its socket went with the page, not by the 5 s rule: {why[-1:]}, in {took:.1f} s')
     tab.js('history.back()')
     check(tab.until(f"document.getElementById('state') && "
                     f"document.getElementById('state').textContent === {json.dumps(player(say, 2))}", 20),
           f'back, it is player 2 again: {tab.state()!r}')
     frame = tab.js('window.p2.frame')
-    check(tab.until(f'window.p2.frame > {frame}', 20), 'and draws the game')
-    check(wait_for(lambda: rig.guests == 1, 5), 'p2d has it as player 2')
+    check(tab.until(f'window.p2.frame > {frame}'), 'and draws the game')
+    check(wait_for(lambda: rig.guests == 1, 30), 'p2d has it as player 2')
 
 
 def full_then_player(tab, rig, fixture, say, browser, origin):
     """The second tab, which is player 2 at the end"""
     other = browser.tab()
     other.open(origin + '/play/')
-    check(other.until(f"document.getElementById('state').textContent === {json.dumps(say['play.state.full'])}", 15),
+    check(other.until(f"document.getElementById('state').textContent === {json.dumps(say['play.state.full'])}"),
           f'a second tab is told the game is full: {other.state()!r}')
     frame = tab.js('window.p2.frame')
-    check(tab.until(f'window.p2.frame > {frame}', 10) and tab.state() == player(say, 2), 'and the first plays on')
+    check(tab.until(f'window.p2.frame > {frame}') and tab.state() == player(say, 2), 'and the first plays on')
     check(rig.guests == 1, 'p2d has one player 2')
     # A full game is tried again, as a lost link is: the slot it waits for
     # may be its own, held by p2d until it finds the old link gone
     tab.close()
-    check(other.until(f"document.getElementById('state').textContent === {json.dumps(player(say, 2))}", 15),
+    check(other.until(f"document.getElementById('state').textContent === {json.dumps(player(say, 2))}"),
           f'the first tab closed, the second is player 2: {other.state()!r}')
-    check(other.until('window.p2.frame > 0', 20), 'and draws the game')
-    check(wait_for(lambda: rig.guests == 1, 5), 'p2d has it as player 2')
+    check(other.until('window.p2.frame > 0'), 'and draws the game')
+    check(wait_for(lambda: rig.guests == 1, 30), 'p2d has it as player 2')
     return other
 
 
-# What the page sends, recorded on the way out (the pad's masks), its
-# socket, for a status the check puts to it as p2d's, how many links it
-# opened and saw closed, and its ticks under the finger (navigator.vibrate)
+# What the page sends, recorded on the way out (the pad's masks, and when by
+# the page's clock), its socket, for a status the check puts to it as p2d's,
+# how many links it opened and saw closed, and its ticks under the finger
+# (navigator.vibrate); and in __got, in the order they came and went, each
+# frame's KEY and PAL bits and each 'K' it sent
 RECORD = """window.__pads = [];
+window.__padT = [];
+window.__got = [];
 window.__asks = 0;
 window.__buzz = [];
 navigator.vibrate = (ms) => { window.__buzz.push(ms); return true; };
@@ -779,6 +819,10 @@ window.WebSocket = function (...args) {
     const s = new RealWebSocket(...args);
     window.__opens++;
     s.addEventListener('close', () => { window.__closes++; });
+    s.addEventListener('message', (e) => {
+        if (e.data instanceof ArrayBuffer && new Uint8Array(e.data)[0] === 0x46)
+            window.__got.push(new Uint8Array(e.data)[1] & 3);
+    });
     return s;
 };
 window.WebSocket.prototype = RealWebSocket.prototype;
@@ -786,8 +830,14 @@ for (const k of ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED']) window.WebSocket[k]
 const RealSend = WebSocket.prototype.send;
 WebSocket.prototype.send = function (data) {
     window.__ws = this;
-    if (data instanceof Uint8Array && data[0] === 0x50) window.__pads.push(data[1] | data[2] << 8);
-    if (data instanceof Uint8Array && data[0] === 0x4b && data.length === 1) window.__asks++;
+    if (data instanceof Uint8Array && data[0] === 0x50) {
+        window.__pads.push(data[1] | data[2] << 8);
+        window.__padT.push(performance.now());
+    }
+    if (data instanceof Uint8Array && data[0] === 0x4b && data.length === 1) {
+        window.__asks++;
+        window.__got.push('K');
+    }
     return RealSend.call(this, data);
 };
 """
@@ -835,7 +885,7 @@ def theme_from_handheld(browser, origin, root, say):
             t.scheme(scheme)
             t.open(origin + '/play/')
             t.key('x', True)              # A held: the accent fill
-            t.until("document.getElementById('a').classList.contains('on')", 5)
+            t.until("document.getElementById('a').classList.contains('on')")
             got = t.js(LOOK)
             t.key('x', False)
             check(got == want, f'{case}: {got}')
@@ -879,48 +929,45 @@ def no_zoom(browser, origin, say):
         for kind in ('gesturestart', 'gesturechange', 'gestureend', 'dblclick'):
             check(t.js(f"{CANCELLED}('{kind}', '.bar')"), f"Safari's {kind} is cancelled")
         # A double tap on the bar: the second tap's end is cancelled, the
-        # first not. Judged by the gap the page saw: a pair the machine was
-        # too busy to give inside a double tap's 350 ms is tried again
+        # first not. Its taps at event times of the check's own (the page
+        # judges a double tap by the events' timeStamp): 120 ms apart, and
+        # one 1 s after, however late a loaded machine hands them over. By
+        # the gap the page saw from taps sent at once, a loaded machine gave
+        # them more than 350 ms apart (2026-11-24).
         t.js("window.__ends = []; window.addEventListener('touchend', "
              "(e) => window.__ends.push([e.timeStamp, e.defaultPrevented])); true")
         bar = t.center('.bar')
-        pair = None
-        for _ in range(3):
-            time.sleep(0.5)
-            for _ in range(2):
-                t.touch('touchStart', {0: bar[:2]})
-                t.touch('touchEnd', {})
-            (t1, p1), (t2, p2) = t.js('window.__ends')[-2:]
-            pair = (round(t2 - t1), p1, p2)
-            if t2 - t1 < 300:
-                break
-        check(pair[0] < 300 and not pair[1] and pair[2],
+        at = time.time()
+
+        def tap(xy, after):
+            t.touch('touchStart', {0: xy}, at + after)
+            t.touch('touchEnd', {}, at + after + 0.02)
+        tap(bar[:2], 0)
+        tap(bar[:2], 0.12)
+        (t1, p1), (t2, p2) = t.js('window.__ends')[-2:]
+        pair = (round(t2 - t1), p1, p2)
+        check(pair[0] == 120 and not pair[1] and pair[2],
               f'a double tap: the second is cancelled, not the first (ms apart, first, second): {pair}')
-        time.sleep(0.5)
-        t.touch('touchStart', {0: bar[:2]})
-        t.touch('touchEnd', {})
+        tap(bar[:2], 1.12)
         check(t.js('window.__ends')[-1][1] is False, 'a tap well after is a tap')
-        # Picture off: a tap always switches it, a quick second one and one
-        # right after a press of A too
+        # Picture off: a tap always switches it, a quick second one (120 ms
+        # on, by the events' times) and one right after a press of A too
         sw, a = t.center('.switch'), t.center('#a')
         on = lambda: t.js("document.getElementById('picoff').checked")
         was = on()
-        t.touch('touchStart', {0: sw[:2]})
-        t.touch('touchEnd', {})
-        first = t.until(f"document.getElementById('picoff').checked === {json.dumps(not was)}", 3)
-        t.touch('touchStart', {0: sw[:2]})
-        t.touch('touchEnd', {})
-        second = t.until(f"document.getElementById('picoff').checked === {json.dumps(was)}", 3)
-        check(first and second, f'two quick taps on Picture off switch it twice: {first}, {second}')
-        t.touch('touchStart', {0: a[:2]})
-        t.touch('touchEnd', {})
-        t.touch('touchStart', {0: sw[:2]})
-        t.touch('touchEnd', {})
-        check(t.until(f"document.getElementById('picoff').checked === {json.dumps(not was)}", 3),
-              f'a tap on Picture off right after a press of A switches it: {on()}')
-        t.touch('touchStart', {0: sw[:2]})
-        t.touch('touchEnd', {})
-        t.until(f"document.getElementById('picoff').checked === {json.dumps(was)}", 3)
+        t.js("window.__flips = []; document.getElementById('picoff').addEventListener('change', "
+             "(e) => window.__flips.push(e.target.checked)); true")
+        tap(sw[:2], 2.0)
+        tap(sw[:2], 2.12)
+        t.until("window.__flips.length >= 2")
+        flips = t.js("window.__flips")
+        check(flips == [not was, was], f'two quick taps on Picture off switch it twice: {flips}')
+        tap(a[:2], 3.0)
+        tap(sw[:2], 3.12)
+        check(t.until("window.__flips.length >= 3") and t.js("window.__flips")[2:] == [not was],
+              f'a tap on Picture off right after a press of A switches it: {t.js("window.__flips")}')
+        tap(sw[:2], 4.0)
+        t.until(f"document.getElementById('picoff').checked === {json.dumps(was)}")
         # Two fingers that move off the pad: cancelled; on the pad, the pad's
         t.js("window.__moves = []; window.addEventListener('touchmove', (e) => window.__moves.push(e.defaultPrevented)); true")
         t.touch('touchStart', {0: bar[:2], 1: (bar[0] + 60, bar[1])})
@@ -930,7 +977,7 @@ def no_zoom(browser, origin, say):
         # Zoomed anyway: the viewport's limits put again, and so back to 1
         t.js("window.__vv.scale = 2.5; window.__vv.dispatchEvent(new Event('resize')); true")
         check(t.until(f"window.__metas.length >= 2 && document.querySelector('meta[name=\"viewport\"]')"
-                      f".getAttribute('content') === {json.dumps(VIEWPORT)}", 3),
+                      f".getAttribute('content') === {json.dumps(VIEWPORT)}"),
               f'zoomed to 2.5, the limits are put again: {t.js("window.__metas")}')
         n = t.js('window.__metas.length')
         t.js("window.__vv.scale = 1; window.__vv.dispatchEvent(new Event('resize')); true")
@@ -974,7 +1021,7 @@ def stopped_then_back(tab, rig, fixture, say, browser, origin):
     the same address), the page plays again by itself."""
     stopped = json.dumps(say['play.state.stopped'])
     rig.p2d.send_signal(signal.SIGTERM)
-    check(tab.until(f"document.getElementById('state').textContent === {stopped}", 10),
+    check(tab.until(f"document.getElementById('state').textContent === {stopped}"),
           f'p2d stopped, the game going on: the page says multiplayer is off: {tab.state()!r}')
     try:
         code = rig.p2d.wait(timeout=10)
@@ -985,10 +1032,10 @@ def stopped_then_back(tab, rig, fixture, say, browser, origin):
     check(tab.state() == say['play.state.stopped'], f'and still says so past a try: {tab.state()!r}')
     rig.serve(rig.port)
     check(rig.origin == origin, f'the new p2d is on the page\'s address: {rig.origin}')
-    check(tab.until(f"document.getElementById('state').textContent === {json.dumps(player(say, 2))}", 15),
+    check(tab.until(f"document.getElementById('state').textContent === {json.dumps(player(say, 2))}"),
           f'turned on again, the page is player 2 again by itself: {tab.state()!r}')
     frame = tab.js('window.p2.frame')
-    check(tab.until(f'window.p2.frame > {frame}', 20), 'and draws the game')
+    check(tab.until(f'window.p2.frame > {frame}'), 'and draws the game')
 
 
 def ended_message(tab, rig, fixture, say, browser, origin):
@@ -996,11 +1043,11 @@ def ended_message(tab, rig, fixture, say, browser, origin):
     full = browser.tab()
     try:
         full.open(origin + '/play/')
-        check(full.until(f"document.getElementById('state').textContent === {json.dumps(say['play.state.full'])}", 15),
+        check(full.until(f"document.getElementById('state').textContent === {json.dumps(say['play.state.full'])}"),
               f'another tab is told the game is full: {full.state()!r}')
         os.unlink(rig.share)
         ended = json.dumps(say['play.state.ended'])
-        check(tab.until(f"document.getElementById('state').textContent === {ended}", 10),
+        check(tab.until(f"document.getElementById('state').textContent === {ended}"),
               f'the share removed, the page says the game ended: {tab.state()!r}')
         try:
             code = rig.p2d.wait(timeout=10)
@@ -1011,7 +1058,7 @@ def ended_message(tab, rig, fixture, say, browser, origin):
         check(tab.state() == say['play.state.ended'], f'and it still says so: {tab.state()!r}')
         # Its retries reach nothing now: not "full" for ever
         connecting = json.dumps(say['play.state.connecting'])
-        check(full.until(f"document.getElementById('state').textContent === {connecting}", 10),
+        check(full.until(f"document.getElementById('state').textContent === {connecting}"),
               f'the tab that was told the game is full says it is connecting once p2d has gone: {full.state()!r}')
     finally:
         full.close()
