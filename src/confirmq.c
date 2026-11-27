@@ -42,6 +42,8 @@ static const cq_def CQ[CQ_COUNT] = {
 	                          CANCEL, DEL, CQ_LOSES },
 	[CQ_STORE_OLD_STATES] = { "storage-old-states", S_STORAGE_OLD_HEADING, S_STORAGE_OLD_ASK, NONE,
 	                          CANCEL, DEL, CQ_LOSES | CQ_COUNTED },
+	[CQ_STORE_DS_COPIES] = { "storage-ds-copies", S_STORAGE_DS_HEADING, S_STORAGE_DS_ASK, NONE,
+	                         CANCEL, DEL, CQ_LOSES },
 	[CQ_STORE_SYS_SNAPS] = { "storage-system-snaps", S_STORAGE_DELETE_SNAPS, S_DOWNLOADS_DELETE_SYS_VIDEOS_ASK,
 	                         S_DOWNLOADS_DELETE_VIDEOS_BODY, CANCEL, DEL, CQ_LOSES },
 	[CQ_STORE_MEDIA_FOLDER] = { "storage-media-folder", S_STORAGE_MEDIA_HEADING_FOLDER, S_STORAGE_MEDIA_ASK_FOLDER,
@@ -87,6 +89,10 @@ static const cq_def CQ[CQ_COUNT] = {
 	                       S_DOWNLOADS_DELETE_CHEATS_BODY, CANCEL, DEL, CQ_LOSES },
 	/* Tarik's, after the lab (2026-11-23): Bluetooth's Forget asks, as Wi-Fi's does */
 	[CQ_BT_FORGET] = { "bt-forget", S_BT_FORGET_HEADING, S_BT_FORGET_ASK, NONE, CANCEL, S_BT_FORGET, CQ_LOSES },
+	/* Tarik's decision, 2026-11-27: the link is Gambatte's, so on mGBA the
+	 * game starts again on it; play since its last save is lost */
+	[CQ_LINK_GAMBATTE] = { "link-gambatte", S_LINK_GAMBATTE_HEADING, S_LINK_GAMBATTE_ASK,
+	                       S_LINK_GAMBATTE_LOST, CANCEL, S_LINK_GAMBATTE_YES, CQ_LOSES },
 };
 
 const cq_def *cq_of(cq_id q)

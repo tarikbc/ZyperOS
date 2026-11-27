@@ -114,9 +114,10 @@ if px:
 sock = f"{TMP}/b.sock"
 p = subprocess.Popen([BIN, "--socket", sock, "--save", TMP, "--system", TMP], env=ENV,
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-for _ in range(100):
-    if os.path.exists(sock):
-        break
+# The waits are the wall clock's, and only waits: each ends as soon as what
+# it waits for is there (5 s until 2026-11-24)
+end = time.time() + 30
+while not os.path.exists(sock) and time.time() < end:
     time.sleep(0.05)
 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 s.connect(sock)
@@ -124,7 +125,7 @@ s.settimeout(0.1)
 buf, got = b"", []
 
 
-def until(prefix, limit=5.0):
+def until(prefix, limit=30.0):
     global buf
     end = time.time() + limit
     while time.time() < end:
@@ -168,10 +169,8 @@ for line, want, name in ((f"SETBORDER\tpath={pic}\trect=999x10+0+0", "ERROR\tcod
 send("STOP")
 until("EXIT")
 send("QUIT")
-time.sleep(0.3)
-p.terminate()
 try:
-    p.wait(3)
+    p.wait(30)
 except subprocess.TimeoutExpired:
     p.kill()
 

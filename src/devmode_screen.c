@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include "devmode_screen.h"
+#include "link.h"
 
 #include "aout_route.h"
 #include "app.h"
@@ -124,7 +125,8 @@ static void dev_image_name(unsigned now)
 	if (g_dimg.at && now - g_dimg.at < 2000u) return;
 	g_dimg.at = now ? now : 1;
 	wip[0] = '\0';
-	if (!g_xs.on) sshlink_radio(ifn, sizeof ifn, wip, sizeof wip);
+	/* Not on the Link Cable's network: no name there (src/link.h) */
+	if (!g_xs.on && !link_holds_radio()) sshlink_radio(ifn, sizeof ifn, wip, sizeof wip);
 	if (!sshlink_dev_image_name(true, g_xs.on, wip)) {
 		/* File Transfer's now, or no address: ours stops, and File
 		 * Transfer's stays its own */
@@ -200,6 +202,10 @@ void dev_ssh_tick(void)
 	wip[0] = '\0';
 	f.radio = g_dv.radio = sshlink_radio(ifn, sizeof ifn, wip, f.over_wifi ? sizeof wip : 0);
 	f.cable_spent = false;                   /* sshlink_step's to say */
+	/* The Link Cable's network is the game's alone: SSH over Wi-Fi and its
+	 * name end while the link holds the radio, and come back after */
+	f.link = link_holds_radio();
+	if (f.link) wip[0] = '\0';
 	{
 		sshlink_plan p = { g_dv.run ? (sshlink_mode)g_dv.mode : SSHLINK_OFF, g_dv.spent };
 

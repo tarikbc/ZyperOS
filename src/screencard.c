@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* Recents' Last Screen card. See src/screencard.h. */
 #include "screencard.h"
+#include "cartlabel.h"
 
 #include <SDL_image.h>
 #include <math.h>
@@ -160,7 +161,7 @@ SDL_Surface *screen_card_make(const char *frame, const char *cover, const ui_car
 	bool painted = false;
 
 	if (!frame || !*frame || !(f = IMG_Load(frame))) return NULL;
-	if (cover && *cover) c = IMG_Load(cover);
+	if (cover && *cover) c = cart_label_load(cover);   /* a PICO-8 cart as its label */
 	if (!c && card && (c = ui_card_paint(card, away))) painted = true;
 	out = screen_card_from(f, c);
 	SDL_FreeSurface(f);

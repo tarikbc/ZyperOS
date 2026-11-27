@@ -13,7 +13,11 @@ end to end, against the stub core.
 
 The stub declares mGBA's two options as libretro/mgba e31759b does
 (STUBCORE_MGBA) and writes what each game loaded with to stderr; it says a
-message on a frame of its choosing (STUBCORE_MESSAGE).
+message on a frame of its choosing (STUBCORE_MESSAGE), and a line for each
+frame it runs (STUBCORE_INPUT_LOG): each game runs 30 frames, past frame
+20's message, before its STOP, and a DISK line is sent as the core says it,
+so one is in before EXIT or never. Until 2026-11-24 each game ran 1.2 s of
+this script's time, which a busy machine could end before frame 20.
 
 Needs build/desktop (diatom and stubcore.so) and SKIPS without it, as
 check-proto does. SDL's dummy drivers: no window, no sound.
@@ -51,16 +55,17 @@ def gb_rom(name, cgb, sgb, licensee):
 
 def session(tag, runs, **env):
     """One Diatom: each (rom, extra RUN keys, SETOPTs) in turn, RUN, a while,
-    then STOP. Returns the lines it sent and its stderr's lines."""
-    sock, err_path = f"{TMP}/{tag}.sock", f"{TMP}/{tag}.err"
+    then STOP. Returns the lines it sent and its stderr's lines. The waits
+    are the wall clock's, and only waits: each ends as soon as what it waits
+    for is there."""
+    sock, err_path, log = f"{TMP}/{tag}.sock", f"{TMP}/{tag}.err", f"{TMP}/{tag}.input"
     err = open(err_path, "w")
     p = subprocess.Popen([BIN, "--socket", sock, "--save", TMP, "--system", TMP],
                          env=dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_RENDER_DRIVER="software",
-                                  SDL_AUDIODRIVER="dummy", **env),
+                                  SDL_AUDIODRIVER="dummy", STUBCORE_INPUT_LOG=log, **env),
                          stdout=subprocess.DEVNULL, stderr=err)
-    for _ in range(100):
-        if os.path.exists(sock):
-            break
+    end = time.time() + 30
+    while not os.path.exists(sock) and time.time() < end:
         time.sleep(0.05)
     s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     s.connect(sock)
@@ -87,20 +92,28 @@ def session(tag, runs, **env):
     def send(m):
         s.sendall((m + "\n").encode())
 
-    pump(2.0, "READY")
+    def frames():
+        try:
+            with open(log) as f:
+                return sum(1 for _ in f)
+        except OSError:
+            return 0
+
+    pump(30.0, "READY")
     for rom, keys, opts in runs:
         for k, v in opts:
             send(f"SETOPT\tkey={k}\tvalue={v}")
+        n = frames()
         send(f"RUN\tcore={STUB}" + (f"\trom={rom}" if rom else "") + "".join(f"\t{k}" for k in keys))
-        pump(4.0, "RUNNING")
-        pump(1.2)
+        pump(30.0, "RUNNING")
+        end = time.time() + 30
+        while frames() < n + 30 and time.time() < end:
+            pump(0.05)
         send("STOP")
-        pump(3.0, "EXIT")
+        pump(30.0, "EXIT")
     send("QUIT")
-    time.sleep(0.4)
-    p.terminate()
     try:
-        p.wait(3)
+        p.wait(30)
     except subprocess.TimeoutExpired:
         p.kill()
     err.close()

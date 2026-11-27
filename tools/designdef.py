@@ -184,7 +184,10 @@ FONT_FILES = {"Regular": "menu.ttf", "SemiBold": "title.ttf",
               # 简体中文's (tools/cjkfont.py): Noto Sans SC, Regular and Bold
               "CJK": "zh-menu.otf", "CJK title": "zh-title.otf",
               # 日本語's: Noto Sans JP, Regular and Bold
-              "JA": "ja-menu.otf", "JA title": "ja-title.otf"}
+              "JA": "ja-menu.otf", "JA title": "ja-title.otf",
+              # MP4's tape labels, handwritten (my pick in the Tape Styles
+              # labs, 2026-11-23): Caveat SemiBold (tools/handfont.py)
+              "Hand": "hand.ttf"}
 TYPE = [
     # role    px   weight      for
     ("title", 60, "SemiBold", "the name under the cursor; screen titles"),
@@ -371,7 +374,7 @@ LAYOUT = [
     ("line-clock",      128, "Classic: the clock's line, as a box"),
     ("look-cover",      192, "Spectrum: the cover beside the names"),
     ("look-record",     448, "Vinyl: the platter, a 12-inch record and its rim, 424 and 12 each side"),
-    ("look-cassette-w", 592, "Cassette: a C-cassette, 100.4 x 63.8 mm, 74 x 47 grid steps (592 x 376), the nearest whole steps to its proportions"),
+    ("look-tape-h",     608, "Cassette: the full-screen tape at its highest, 960 x 608 (a C-cassette's 100.4 x 63.8 mm on the 16-unit grid); 544 over two rows of keys"),
 ]
 
 # ---- elevation -----------------------------------------------------------------
@@ -439,7 +442,9 @@ MOTION = [
     ("wind",        180,  "follow", "MP4's cassette winding to a seek's place: follow's tau"),
     ("arm-glide",   180,  "follow", "MP4's tonearm gliding to the song's place on the record: follow's tau"),
     ("hold-snap",   1000, "-",     "a game focused on the shelf before its cover turns into its video snap"),
-    ("hold-band",   2000, "-",     "the Video view's band of covers and keys, after the last press on a game whose snap plays, before it goes down to its strip"),
+    ("hold-band",   2000, "-",     "the Video view's band of covers and keys, and the List view's details over the media, after the last press on a game whose snap plays, before they go down"),
+    ("slide-hold",  1400, "-",     "a name or a line too long for its place, still before it slides (at 70 units a second, its ends faded over 36: src/ui.c's marquee)"),
+    ("slide-end",   900,  "-",     "...and still at its far end before it slides back"),
     ("sheen",       480,  "turn",  "one light crossing a game's card with no art, once, as the cover row stops on it"),
     ("sharpen",     200,  "fade",  "a played game's card with no art turning from its blurred frame of play to the sharp one, as the cover row stops on it"),
     ("hold-low-battery", 6000, "-", "the low-battery start screen before the handheld powers off"),
@@ -465,6 +470,8 @@ SOUNDS = [
     ("deny",   "a press nothing can act on"),
     ("reward", "something good"),
     ("shutter", "the Screenshot hotkey's shot, over a game or your PICO-8"),
+    ("tape-key", "MP4's tape, A pressed: its mechanism's click (the Cassette look)"),
+    ("tape-wind", "MP4's tape, a new song: the click as it winds (the Cassette look)"),
 ]
 
 # The shutter, the same in every voice (2026-11-20, on the PICO-8 hotkeys
@@ -479,6 +486,13 @@ SHUTTER = [
     ("noise", 4400, 12, 0.22, 115), ("noise", (2200, 1500), 60, 0.12, 115),
     ("sine", (190, 140), 55, 0.06, 117),
 ]
+
+# MP4's tape's clicks, the same in every voice, heard with the voice's own
+# accept or move (my pick in the Tape Styles lab, 2026-11-23: "a click", no
+# hiss): a bright snap of noise, 40 ms, and a soft thump under it, as the
+# lab's; A's higher and drier, a new song's lower, as the tape winds.
+TAPE_KEY = [("noise", 2600, 40, 0.16, 0), ("sine", 140, 60, 0.06, 30)]
+TAPE_WIND = [("noise", 1600, 40, 0.16, 0), ("sine", 210, 60, 0.06, 30)]
 
 VOICES = [
     # A soft mallet on a wooden bar. Each note settles from 5% sharp as it is
@@ -495,6 +509,8 @@ VOICES = [
         "reward": [("sine", (1098.825, 1046.5), 220, 0.080, 0), ("sine", 4186.0, 8, 0.015, 0),
                    ("sine", (1646.4, 1568.0), 380, 0.070, 100), ("sine", 6272.0, 8, 0.012, 100)],
         "shutter": SHUTTER,
+        "tape-key": TAPE_KEY,
+        "tape-wind": TAPE_WIND,
     }),
     # Pure high ticks and clicks: what the design lab played and DESIGN.md
     # first wrote down.
@@ -506,6 +522,8 @@ VOICES = [
         "deny":   [("square", 330, 40, 0.04, 0), ("square", 330, 40, 0.04, 70)],
         "reward": [("triangle", 1318.5, 160, 0.08, 0), ("triangle", 1975.5, 260, 0.07, 90)],
         "shutter": SHUTTER,
+        "tape-key": TAPE_KEY,
+        "tape-wind": TAPE_WIND,
     }),
     # Drops that pop: forward runs up, back runs down, the end and deny are
     # short falls.
@@ -517,6 +535,8 @@ VOICES = [
         "deny":   [("triangle", (520, 400), 45, 0.070, 0), ("triangle", (520, 400), 45, 0.070, 80)],
         "reward": [("sine", (900, 1318.5), 160, 0.075, 0), ("sine", (1300, 1975.5), 280, 0.065, 90)],
         "shutter": SHUTTER,
+        "tape-key": TAPE_KEY,
+        "tape-wind": TAPE_WIND,
     }),
 ]
 VOICE_DEFAULT = "wood"
@@ -692,6 +712,7 @@ def design_h():
     L.append('#define DS_FONT_CJK_TITLE "%s"' % FONT_FILES["CJK title"])
     L.append('#define DS_FONT_JA "%s"' % FONT_FILES["JA"])
     L.append('#define DS_FONT_JA_TITLE "%s"' % FONT_FILES["JA title"])
+    L.append('#define DS_FONT_HAND "%s"' % FONT_FILES["Hand"])
     L.append("")
     L.append("/* Space and shape, in units. */")
     for name, v, _ in SPACE + SHAPE:

@@ -2,7 +2,9 @@
 #include "saver_screen.h"
 
 #include "app.h"
+#include "cartlabel.h"
 #include "ctl_channel.h"
+#include "esmedia.h"
 #include "mp4video.h"
 #include "mp4c.h"
 #include "panel.h"
@@ -53,7 +55,8 @@
 static struct {
 	bool         on;
 	bool         video;              /* the pool is of snaps; else of covers */
-	unsigned     started, last_pass, last_draw;
+	unsigned     started, last_draw;
+	saver_beat   beat;               /* its passes' ends: another had the screen */
 	saver_start  st;                 /* when it starts: lives while it is off too */
 	saver_show   show;
 	saver_recent recent;
@@ -126,9 +129,13 @@ static char **saver_cover_stems(const char *folder, int *count)
 
 /* The games it may show: those Random Game picks from every system (not MP4's
  * albums, not Favorites' copies, not a Ports shelf with only PortMaster's
- * offer) that have a snap on the card and on for their console with `video`
- * (snap_names_for), else a cover. One listing of each console's .media, here
- * and once, as the screensaver begins. */
+ * offer) that have a snap on the card and on for their console with `video`,
+ * else a cover, as the shelf finds them (src/esmedia.h's game_media_listed:
+ * the game's own in .media, else EmulationStation's, gamelist.xml's
+ * ./images/... too). One listing of each console's .media and its index,
+ * here and once, as the screensaver begins: no file is looked at per game.
+ * Until 2026-11-23 it read .media alone, and a system whose gamelist.xml
+ * named its pictures never came on (moroboshi69 on the Discord). */
 static void saver_pool_build(app *a, bool video)
 {
 	int i, j;
@@ -143,20 +150,23 @@ static void saver_pool_build(app *a, bool video)
 		int n = 0;
 
 		if (is_mp4(s) || a->view[i].owner || pm_only_offer(a, i) || !s->folder[0]) continue;
+		/* EmulationStation's index of the folder, as the shelf's cover
+		 * worker builds it (nothing to read where there is none) */
+		es_build(P_ROMS, s->folder);
 		if (video) {
 			const snap_names *sn = snap_names_for(s->folder);
 
-			if (!sn->on || !sn->n) continue;
+			if (!sn->on) continue;
 			stems = sn->stems;
 			n = sn->n;
 		} else {
 			stems = saver_cover_stems(s->folder, &n);
-			if (!n) continue;
 		}
 		for (j = 0; j < gl->count; j++) {
-			const char *name = gl->items[j].name;
+			const game_entry *g = &gl->items[j];
 
-			if (bsearch(&name, stems, (size_t)n, sizeof *stems, snap_name_cmp) &&
+			if (g->folder) continue;
+			if (game_media_listed(s->folder, g->file, g->name, video ? ES_VIDEO : ES_COVER, stems, n) &&
 			    !saver_pool_add(i, j))
 				break;
 		}
@@ -173,14 +183,12 @@ static void saver_pool_build(app *a, bool video)
  * from IMG_LoadTexture of an RGB file drew nothing on the Pixel 2's GL). */
 static SDL_Texture *saver_cover_load(SDL_Renderer *r, const char *path, int *w, int *h)
 {
-	SDL_Surface *raw = IMG_Load(path), *conv;
+	SDL_Surface *conv = cart_label_load(path);   /* a PICO-8 cart as its label */
 	SDL_Texture *t;
 
-	if (!raw) return NULL;
-	conv = SDL_ConvertSurfaceFormat(raw, SDL_PIXELFORMAT_ARGB8888, 0);
-	SDL_FreeSurface(raw);
 	if (!conv) return NULL;
 	t = SDL_CreateTextureFromSurface(r, conv);
+	cart_label_sharp(t, conv);
 	*w = conv->w;
 	*h = conv->h;
 	SDL_FreeSurface(conv);
@@ -200,7 +208,6 @@ static bool saver_next(app *a, unsigned now)
 		const system_cfg *s;
 		const game_entry *g;
 		char path[LIB_PATH * 2];
-		struct stat st;
 
 		if (i < 0) return false;
 		saver_recent_add(&g_sv.recent, i);
@@ -208,15 +215,11 @@ static bool saver_next(app *a, unsigned now)
 			continue;
 		s = &a->sys.systems[g_sv.shelf[i]];
 		g = &sys_games(&a->view[g_sv.shelf[i]])->items[g_sv.game[i]];
-		if (g_sv.video) {
-			if (!snaps_path(P_ROMS, s->folder, g->name, path, sizeof path) ||
-			    stat(path, &st) != 0 || st.st_size <= 0)
-				continue;
-		} else {
-			box_art_path(s->folder, g->name, path, sizeof path);
-			if (stat(path, &st) != 0 || st.st_size <= 0) continue;
-			if (!(g_sv.cover = saver_cover_load(a->r, path, &g_sv.cw, &g_sv.ch))) continue;
-		}
+		/* The file as the shelf takes it: its own, else EmulationStation's */
+		if (!game_media(P_ROMS, s->folder, g->file, g->name, g_sv.video ? ES_VIDEO : ES_COVER, true,
+		                path, sizeof path))
+			continue;
+		if (!g_sv.video && !(g_sv.cover = saver_cover_load(a->r, path, &g_sv.cw, &g_sv.ch))) continue;
 		g_sv.at = i;
 		snprintf(g_sv.title, sizeof g_sv.title, "%s", g->title[0] ? g->title : g->name);
 		snprintf(g_sv.sysname, sizeof g_sv.sysname, "%s", s->name);
@@ -240,6 +243,7 @@ void saver_stop(app *a, const char *why)
 	(void)a;
 	if (!g_sv.on) return;
 	g_sv.on = false;
+	saver_beat_clear(&g_sv.beat);
 	/* The daemon stops that same frame, and the picture is let go */
 	snap_off();
 	if (g_sv.cover) { SDL_DestroyTexture(g_sv.cover); g_sv.cover = NULL; }
@@ -271,15 +275,6 @@ static bool saver_begin(app *a, unsigned now)
 	return true;
 }
 
-/* The picture's rectangle: `w` by `h` as large as `box` takes, centered */
-static SDL_FRect saver_fit(const SDL_Rect *box, int w, int h, float most)
-{
-	float k = fminf((float)box->w / w, (float)box->h / h);
-
-	if (k > most) k = most;
-	return (SDL_FRect){ box->x + (box->w - w * k) / 2, box->y + (box->h - h * k) / 2, w * k, h * k };
-}
-
 /* One frame, `alpha` of the clip faded up. The picture on the ink both
  * themes keep for content (MP4's full view does too), and the game's name and
  * system and the two keys on slabs of the theme's surface at 85%, the notice's
@@ -291,9 +286,31 @@ static void saver_draw(app *a, float alpha)
 	const int margin = 48, padx = 28, pady = 14, gap = 12;
 	TTF_Font *fl = ui_font(UI_F_LABEL), *fm = ui_font(UI_F_META), *fc = page_font(PAGE_CHROME);
 	SDL_Texture *t = NULL;
-	SDL_Rect src = { 0, 0, 0, 0 }, box = { 0, 24, ZYPEROS_SCREEN_W, 552 };
+	SDL_Rect src = { 0, 0, 0, 0 };
 	int w = 0, h = 0;
 	Uint8 al = (Uint8)(255 * (alpha < 0 ? 0 : alpha > 1 ? 1 : alpha) + 0.5f);
+	/* The two slabs' places first: a cover goes where they are not
+	 * (saver_art_place) */
+	const char *back = T(S_SAVER_BACK), *play = T(S_GAMES_PLAY);
+	int hint_w = page_hint_width("START", play, false);
+	int back_w = ui_text_width(fc, back);
+	int rw = (hint_w > back_w ? hint_w : back_w) + 2 * padx;
+	int line_m = ui_font_line(UI_F_META), line_l = ui_font_line(UI_F_LABEL);
+	int sh = pady * 2 + line_m + gap + line_l;           /* the game slab's height */
+	int top = ZYPEROS_SCREEN_H - margin - sh;
+	int maxw = ZYPEROS_SCREEN_W - 2 * margin;
+	int kh = pady * 2 + 40 + 44;                          /* the keys slab's height */
+	int dot = 14, dgap = 14, tw, sw, lw;
+	char fit_t[LIB_NAME], fit_s[CFG_STR];
+	SDL_Rect game_q, keys_q;
+
+	ui_fit_text(fl, g_sv.title, fit_t, sizeof fit_t, maxw - 2 * padx);
+	ui_fit_text(fm, g_sv.sysname, fit_s, sizeof fit_s, maxw - 2 * padx - dot - dgap);
+	tw = ui_text_width(fl, fit_t);
+	sw = dot + dgap + ui_text_width(fm, fit_s);
+	lw = (tw > sw ? tw : sw) + 2 * padx;
+	game_q = (SDL_Rect){ margin, top, lw, sh };
+	keys_q = (SDL_Rect){ ZYPEROS_SCREEN_W - margin - rw, margin, rw, kh };
 
 	SDL_SetRenderDrawColor(r, ink.r, ink.g, ink.b, 255);
 	SDL_RenderClear(r);
@@ -317,19 +334,22 @@ static void saver_draw(app *a, float alpha)
 			src = (SDL_Rect){ 0, 0, 0, 0 };
 		}
 		if (t && w > 0 && h > 0) {
-			/* The whole screen, in its own shape, never stretched */
-			SDL_FRect d = saver_fit(&(SDL_Rect){ 0, 0, ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H }, w, h, 8.0f);
+			/* The whole screen, in its own shape, never stretched, the
+			 * slabs over it */
+			saver_rect at = saver_fit((saver_rect){ 0, 0, ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H }, w, h, 8.0f);
 
-			SDL_RenderCopyF(r, t, src.w > 0 ? &src : NULL, &d);
+			SDL_RenderCopyF(r, t, src.w > 0 ? &src : NULL, &(SDL_FRect){ at.x, at.y, at.w, at.h });
 		}
 	} else if (g_sv.cover && g_sv.cw > 0 && g_sv.ch > 0) {
 		/* A cover is small: not blown up past a third more, on a ground of
-		 * its own, with the foot's room left under it */
-		SDL_FRect d = saver_fit(&box, g_sv.cw, g_sv.ch, 1.34f);
+		 * its own, as large as it goes clear of both slabs */
+		saver_rect at = saver_art_place(ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H,
+		                                (saver_rect){ game_q.x, game_q.y, game_q.w, game_q.h },
+		                                (saver_rect){ keys_q.x, keys_q.y, keys_q.w, keys_q.h },
+		                                gap, g_sv.cw, g_sv.ch, 1.34f);
 
-		SDL_RenderCopyF(r, g_sv.cover, NULL, &d);
+		SDL_RenderCopyF(r, g_sv.cover, NULL, &(SDL_FRect){ at.x, at.y, at.w, at.h });
 	}
-	(void)t;
 	/* Fading up from black, and to it */
 	if (al < 255) {
 		SDL_SetRenderDrawColor(r, ink.r, ink.g, ink.b, (Uint8)(255 - al));
@@ -338,41 +358,24 @@ static void saver_draw(app *a, float alpha)
 	if (al > 0) {
 		const SDL_Color text = ui_fade(UI_TEXT, alpha), dim = ui_fade(UI_TEXT_DIM, alpha);
 		const SDL_Color slab = ui_col(theme()->surface, (Uint8)(al * 0.85f + 0.5f));
-		const char *back = T(S_SAVER_BACK), *play = T(S_GAMES_PLAY);
-		int hint_w = page_hint_width("START", play, false);
-		int back_w = ui_text_width(fc, back);
-		int rw = (hint_w > back_w ? hint_w : back_w) + 2 * padx;
-		int line_m = ui_font_line(UI_F_META), line_l = ui_font_line(UI_F_LABEL);
-		int sh = pady * 2 + line_m + gap + line_l;           /* the game slab's height */
-		int top = ZYPEROS_SCREEN_H - margin - sh;
-		int maxw = ZYPEROS_SCREEN_W - 2 * margin;
-		int kh = pady * 2 + 40 + 44;                          /* the keys slab's height */
-		int dot = 14, dgap = 14, tw, sw, lw, x;
 		unsigned mark = ui_sys_mark(g_sv.accent);
-		char fit_t[LIB_NAME], fit_s[CFG_STR];
-		SDL_Rect q;
+		SDL_Rect q = game_q;
+		int x;
 
-		ui_fit_text(fl, g_sv.title, fit_t, sizeof fit_t, maxw - 2 * padx);
-		ui_fit_text(fm, g_sv.sysname, fit_s, sizeof fit_s, maxw - 2 * padx - dot - dgap);
-		tw = ui_text_width(fl, fit_t);
-		sw = dot + dgap + ui_text_width(fm, fit_s);
-		lw = (tw > sw ? tw : sw) + 2 * padx;
 		/* The game, at the foot: its system in the quiet line over its name,
 		 * as a notice says its heading over its body */
-		q = (SDL_Rect){ margin, top, lw, sh };
 		ui_round_rect(r, &q, DS_RADIUS_PANEL < sh / 2 ? DS_RADIUS_PANEL : sh / 2, slab);
 		x = q.x + padx;
 		ui_round_rect(r, &(SDL_Rect){ x, top + pady + line_m / 2 - dot / 2, dot, dot }, dot / 2,
 		              (SDL_Color){ (Uint8)(mark >> 16), (Uint8)(mark >> 8), (Uint8)mark, al });
 		ui_text(r, fm, fit_s, x + dot + dgap, ui_line_y(UI_F_META, top + pady), -1, dim);
 		ui_text(r, fl, fit_t, x, ui_line_y(UI_F_LABEL, top + pady + line_m + gap), -1, text);
-		/* The keys, at the top's right where they cover little: START plays
-		 * it, anything else goes back */
-		q = (SDL_Rect){ ZYPEROS_SCREEN_W - margin - rw, margin, rw, kh };
+		/* The keys, at the top's right: START plays it, anything else goes
+		 * back */
+		q = keys_q;
 		ui_round_rect(r, &q, DS_RADIUS_PANEL < kh / 2 ? DS_RADIUS_PANEL : kh / 2, slab);
 		page_hint_fade(r, "START", play, q.x + padx, q.y + pady + 20, false, false, al);
 		ui_text(r, fc, back, q.x + padx, ui_cap_y(fc, q.y + pady + 20 + 44), -1, dim);
-		(void)line_l;
 	}
 	plat_draw_osd(r);
 	plat_present();
@@ -401,11 +404,18 @@ void saver_shot(app *a)
 	}
 	g_sv.video = g_shot_saver == 0;
 	if (!g_sv.video && !g_sv.cover) {
-		/* A file given is loaded as saver_next loads a cover */
+		/* A file given is loaded as saver_next loads a cover; with none, a
+		 * cover of the card's, as the screensaver picks one (saver_pool_build,
+		 * saver_next) */
 		if (g_shot_saver_pic &&
 		    (g_sv.cover = saver_cover_load(a->r, g_shot_saver_pic, &g_sv.cw, &g_sv.ch))) {
 			/* loaded as saver_next loads one */
+		} else if (!g_shot_saver_pic && (saver_pool_build(a, false), g_sv.n > 0) &&
+		           saver_next(a, plat_now_ms())) {
+			/* the card's own, its title and system with it */
+			saver_pool_free();
 		} else {
+			saver_pool_free();
 			if (!mp4v_texture(NULL)) mp4v_test_picture(a->r, 640, 480);
 			g_sv.cover = mp4v_texture(NULL);
 			g_sv.cw = 640;
@@ -416,10 +426,22 @@ void saver_shot(app *a)
 	g_sv.cover = NULL;
 }
 
+static bool saver_pass_once(app *a);
+
 /* One pass of the shelf's loop, after the power button and Auto Off have had
  * theirs. True when the screensaver took the pass (the loop goes round
- * again). */
+ * again). Its end is kept, whatever the pass did and however long its snap
+ * took to open, so the next pass's gap is only what came between
+ * (saver_beat_lost). */
 bool saver_pass(app *a)
+{
+	bool took = saver_pass_once(a);
+
+	if (g_sv.on) saver_beat_done(&g_sv.beat, plat_now_ms());
+	return took;
+}
+
+static bool saver_pass_once(app *a)
 {
 	unsigned now = plat_now_ms();
 	bool any = false, press = false, busy, newpic = false, ready, draw;
@@ -430,7 +452,7 @@ bool saver_pass(app *a)
 
 	/* A gap: a menu, a game or a message had the screen in between, and
 	 * whatever this drew is not on it any more */
-	if (g_sv.on && now - g_sv.last_pass >= 500) saver_stop(a, "something else had the screen");
+	if (g_sv.on && saver_beat_lost(&g_sv.beat, now)) saver_stop(a, "something else had the screen");
 	for (b = 0; b < IN_COUNT && !any; b++)
 		any = a->in.pressed[b] || a->in.down[b];
 	if (!battery_now(&pct, &charging)) pct = -1;
@@ -446,8 +468,6 @@ bool saver_pass(app *a)
 			return false;
 		if (!saver_begin(a, now)) return false;
 	}
-	g_sv.last_pass = now;
-
 	/* Decoding video warms the chip: "Getting hot" (src/heat.h) is due, so
 	 * the screensaver goes, and the shelf says it as it does on any pass
 	 * (heat_watch takes it). It stays gone until a button. */

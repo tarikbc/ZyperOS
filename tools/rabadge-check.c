@@ -17,8 +17,11 @@
  * its own for the request's config (NET_TMP, from the Makefile). Run as curl
  * - with -K and a config - it answers each url/output pair as the server it
  * plays does, which STANDIN in its environment chooses: `fast` writes a 64
- * pixel PNG for every name but "gone", which gets a 404 page; `slow` is `fast`
- * after a pause, so a frame that waited could be told by its time.
+ * pixel PNG for every name but "gone", which gets a 404 page; `held` is `fast`
+ * once the check lets it go (the file GO), so the fetch is in flight for as
+ * long as the check says, and a call that waited for it is one that came back
+ * only after it was done. Each run writes "call" as it starts and "done" as it
+ * ends.
  *
  * Then the two pictures the launcher draws itself (src/noticeart.h): the
  * plain badge in both looks and both themes, and Zyper, in his own colors,
@@ -40,6 +43,7 @@
 #include "../src/net.h"
 #include "../src/noticeart.h"
 #include "../src/rabadge.h"
+#include "../src/rapack.h"
 
 #ifndef NET_TMP
 #error "build with -DNET_TMP, a folder of this check's own (the Makefile does)"
@@ -47,6 +51,11 @@
 
 #define ROOT NET_TMP "-card"      /* the card: the set, and its badges beside it */
 #define LOG  NET_TMP "-log"       /* what the stand-in was asked, run by run */
+#define GO   NET_TMP "-go"        /* there: a `held` stand-in goes on */
+
+/* How long a wait below waits for what it waits for, in ms. Each returns as soon as that holds,
+ * so this is only how long a broken fetch keeps the check (2026-11-24). */
+#define WAIT_MS 30000
 
 static int failures;
 
@@ -110,7 +119,15 @@ static int standin(int argc, char **argv)
 
 	if (!log || argc != 3 || strcmp(argv[1], "-K") || !(cfg = fopen(argv[2], "r"))) return 99;
 	fputs("call\n", log);
-	if (mode && !strcmp(mode, "slow")) usleep(700 * 1000);
+	fflush(log);
+	/* Held until the check lets go, or 20 s, so a launcher that waits for the
+	 * fetch is a failing check rather than a hung one; under net.c's own 30 s
+	 * for the run, so it is this that ends it */
+	if (mode && !strcmp(mode, "held")) {
+		const long until = now_ms() + 20000;
+
+		while (access(GO, F_OK) != 0 && now_ms() < until) usleep(2000);
+	}
 	while (fgets(line, sizeof line, cfg)) {
 		line[strcspn(line, "\n")] = '\0';
 		if (cfg_value(line, "url", url, sizeof url)) continue;
@@ -127,6 +144,7 @@ static int standin(int argc, char **argv)
 		}
 	}
 	fclose(cfg);
+	fputs("done\n", log);
 	fclose(log);
 	return pairs ? 0 : 98;
 }
@@ -245,7 +263,7 @@ static void textures(SDL_Renderer *r, const ds_theme *light, const ds_theme *dar
 {
 	int w = 0, h = 0, ow = 0, oh = 0;
 	SDL_Texture *plain_e, *plain_l, *real, *miss;
-	long t0;
+	long until;
 	int i;
 
 	/* ---- nothing on the card: every icon is a plain badge ---------------- */
@@ -274,23 +292,30 @@ static void textures(SDL_Renderer *r, const ds_theme *light, const ds_theme *dar
 	CHECK(rb_landed() == 0, "offline, nothing lands");
 	CHECK(!rb_have(g_set, "10001"), "offline, the card still has no badge");
 
-	/* ---- online, on a slow link: the call returns, frames go on ------------ */
+	/* ---- online, on a link held still: the call returns, frames go on ------
+	 * The fetch cannot end before GO is there, so every call here that came
+	 * back before it ended did not wait for it: told by the stand-in's "done",
+	 * not by a time. Times were how it was told (under 200 ms, under 500 ms,
+	 * with a stand-in asleep 700 ms) until make check four at a time on a
+	 * loaded Mac took longer than that for calls that never waited
+	 * (2026-11-24). */
 	g_online = true;
-	setenv("STANDIN", "slow", 1);
-	t0 = now_ms();
+	setenv("STANDIN", "held", 1);
+	remove(GO);
 	rb_fetch_loaded();
-	CHECK(now_ms() - t0 < 200, "starting the fetch took %ld ms: it waited for the network", now_ms() - t0);
-	t0 = now_ms();
+	CHECK(log_count("done") == 0, "starting the fetch waited for the network");
 	for (i = 0; i < 2000; i++) {
 		rb_icon(r, g_set, "10001", i & 1, light);
 		rb_icon(r, g_set, "10002", false, light);
 	}
-	CHECK(now_ms() - t0 < 500, "4000 icons while the fetch ran took %ld ms: a frame would have waited", now_ms() - t0);
+	CHECK(log_count("done") == 0, "4000 icons while the fetch ran waited for it: a frame would have");
 	CHECK(rb_icon(r, g_set, "10001", false, light) == plain_e, "while it runs, the badge is the plain one");
 	rb_fetch_loaded();   /* a second ask while one runs starts nothing */
+	CHECK(log_count("done") == 0, "a second ask while the fetch ran waited for it");
+	sh("touch '%s'", GO);
 
-	for (i = 0; i < 100 && !rb_landed(); i++) usleep(100 * 1000);
-	CHECK(i < 100, "the badges never landed");
+	for (until = now_ms() + WAIT_MS; !rb_landed() && now_ms() < until; ) usleep(10 * 1000);
+	CHECK(now_ms() < until, "the badges never landed");
 	usleep(100 * 1000);
 	CHECK(log_count("call") == 1, "one curl for the whole set, not one a badge or a second for the second ask: %d", log_count("call"));
 	CHECK(log_count("url ") == 3, "the three missing badges were asked for: %d", log_count("url "));
@@ -305,7 +330,14 @@ static void textures(SDL_Renderer *r, const ds_theme *light, const ds_theme *dar
 		struct stat st;
 
 		rb_path(g_set, "10001", p, sizeof p);
-		CHECK(stat(p, &st) == 0 && st.st_size > 100 && st.st_size < 16384, "a badge is a small file");
+		/* Into the set's pack once fetched (src/rapack.h): no file a badge */
+		CHECK(stat(p, &st) != 0, "a badge fetched is no file of its own: in the set's pack");
+		{
+			char pack[1100];
+
+			CHECK(rp_pack_path(g_set, pack, sizeof pack) && stat(pack, &st) == 0 && st.st_size > 200 &&
+			      st.st_size < 32768, "the set's pack, a small file");
+		}
 		snprintf(p + strlen(p), sizeof p - strlen(p), ".part");
 		CHECK(access(p, F_OK) != 0, "no half-written file is left beside it");
 	}
@@ -326,9 +358,10 @@ static void textures(SDL_Renderer *r, const ds_theme *light, const ds_theme *dar
 	sh("rm -f '%s'", LOG);
 	setenv("STANDIN", "fast", 1);
 	rb_fetch_loaded();
-	for (i = 0; i < 100 && log_count("call") == 0; i++) usleep(50 * 1000);
-	for (i = 0; i < 100 && !rb_landed() && log_count("call") == 1 && i < 20; i++) usleep(50 * 1000);
-	usleep(200 * 1000);
+	/* Until the stand-in is done, so it has written every url it was asked:
+	 * a 404 lands nothing, so rb_landed cannot say so */
+	for (until = now_ms() + WAIT_MS; log_count("done") == 0 && now_ms() < until; ) usleep(10 * 1000);
+	CHECK(log_count("done") == 1, "the fetch for what is missing ran once: %d", log_count("done"));
 	CHECK(log_count("url ") == 1 && log_has("/Badge/gone3.png"),
 	      "the next ask is for the one badge still missing, not the set: %d asked", log_count("url "));
 	rb_textures_free();
@@ -417,6 +450,7 @@ int main(int argc, char **argv)
 	sh("rm -rf '%s'", ROOT);
 	sh("rm -rf '%s'", NET_TMP);
 	sh("rm -f '%s'", LOG);
+	sh("rm -f '%s'", GO);
 	SDL_DestroyRenderer(r);
 	SDL_FreeSurface(target);
 	SDL_Quit();

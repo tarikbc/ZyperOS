@@ -26,6 +26,11 @@
 
 static int failures;
 
+/* What plat_resident_sync_line is given to wait for an answer the fake Diatom sends: it returns
+ * as soon as the answer comes, so this is only how long a broken reader keeps the check. 1000 ms
+ * were too few once make check ran four at a time on a loaded Mac (2026-11-24). */
+#define SYNC_MS 30000
+
 #define CHECK(c, what) do { if (!(c)) { printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, what); failures++; } \
                             else printf("  ok   %s\n", what); } while (0)
 
@@ -128,9 +133,9 @@ static const char *const ANSWERS[] = {
 	 * the d-pad back in the game before MENU pauses it again */
 	"STICK\ton=1\n",
 	"STICK\ton=0\nPAUSED\n",
-	/* SETSTICK again, its answer taken by a paused reader; then RESUME and
-	 * R2's turn */
-	"STICK\ton=0\n",
+	/* SETSTICK again, its answer taken by a paused reader on its way to the
+	 * line it waits for, said after it; then RESUME and R2's turn */
+	"STICK\ton=0\nNOPE\tthere\n",
 	"STICK\ton=1\nPAUSED\n",
 	/* RESUME, and the core crashes as the game ends: the EXIT comes from
 	 * the signal handler, and the socket stays open while it finishes */
@@ -298,7 +303,7 @@ int main(void)
 
 	printf("Diatom's answer to SETPLAYER2, read while paused:\n");
 	CHECK(plat_resident_line("SETPLAYER2\ton=1\tbuttons=0x01FD\tplayers=2"), "the line goes");
-	CHECK(plat_resident_sync_line("PLAYER2\t", out, sizeof out, 1000) &&
+	CHECK(plat_resident_sync_line("PLAYER2\t", out, sizeof out, SYNC_MS) &&
 	      !strcmp(out, "PLAYER2\ton=1\tbuttons=0x01FD\tplayers=2"), "the answer is the line asked for");
 	CHECK(!strcmp(plat_resident_last_preview(), "/tmp/resident-check.png"),
 	      "and the picture on the way is noted, as the other readers note it");
@@ -306,8 +311,12 @@ int main(void)
 	printf("a game that ended before the answer:\n");
 	CHECK(plat_resident_line("SETPLAYER2\ton=1\tbuttons=0x01FD\tplayers=2"), "the line goes");
 	t0 = plat_now_ms();
-	CHECK(!plat_resident_sync_line("PLAYER2\t", out, sizeof out, 1000), "no answer is taken past its EXIT");
-	CHECK(plat_now_ms() - t0 < 500, "and it does not wait out its time for one");
+	CHECK(!plat_resident_sync_line("PLAYER2\t", out, sizeof out, SYNC_MS), "no answer is taken past its EXIT");
+	/* Against the time it was given, not the time it should take: a reader
+	 * that waits it out takes all 30 s, one that stops at the EXIT takes the
+	 * time of a line on a socket, and no load closes that gap. It was under
+	 * 500 ms of 1000 (2026-11-24). */
+	CHECK(plat_now_ms() - t0 < SYNC_MS / 2, "and it does not wait out its time for one");
 	CHECK(plat_resident_wait() == RES_EXIT, "the EXIT is left for the wait loop, which ends the game");
 
 	printf("nothing at all:\n");
@@ -324,8 +333,12 @@ int main(void)
 	CHECK(stick_calls == 1 && !stick_last,
 	      "the answer reached no callback (no pop-up); R2's turn back did");
 	CHECK(plat_resident_set_stick("toggle"), "SETSTICK again");
-	CHECK(!plat_resident_sync_line("NOPE\t", out, sizeof out, 200),
-	      "a paused reader takes its answer on the way");
+	/* Its answer before the line waited for, so the reader has read past it
+	 * when it returns: a wait of 200 ms for a line never sent left it
+	 * unread when the fake Diatom answered later than that, on a loaded Mac
+	 * (2026-11-24), and the wait loop then heard it as R2's turn */
+	CHECK(plat_resident_sync_line("NOPE\t", out, sizeof out, SYNC_MS) && !strcmp(out, "NOPE\tthere"),
+	      "a paused reader takes its answer on the way to the line it waits for");
 	CHECK(plat_resident_line("RESUME"), "RESUME");
 	CHECK(plat_resident_wait() == RES_PAUSED, "paused again");
 	CHECK(stick_calls == 2 && stick_last, "and still R2's turn alone is heard");

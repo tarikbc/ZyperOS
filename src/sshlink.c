@@ -113,6 +113,8 @@ sshlink_mode sshlink_step(sshlink_plan *p, const sshlink_facts *f, sshlink_mode 
 	sshlink_facts g = *f;
 	sshlink_mode want;
 
+	/* The Link Cable's network: nothing of ours listens on it */
+	if (g.link) g.radio = g.over_wifi = false;
 	if (!f->cable) p->spent = false;            /* the next plug is a fresh one */
 	/* The cable's ended by itself, the cable still in: a lockout or a
 	 * dropbear gone stays so until a replug */
@@ -133,7 +135,7 @@ sshlink_owner sshlink_owner_of(bool port_running, bool port_menu)
 sshlink_mode sshlink_want_port(const sshlink_facts *f, bool devmode)
 {
 	if (!devmode) return SSHLINK_OFF;
-	if (f->radio) return f->over_wifi ? SSHLINK_NET : SSHLINK_OFF;
+	if (f->radio && !f->link) return f->over_wifi ? SSHLINK_NET : SSHLINK_OFF;
 	return f->cable ? SSHLINK_CABLE_KEYS : SSHLINK_OFF;
 }
 
@@ -658,6 +660,9 @@ static void lock_pin(void)
 	free(out);
 }
 
+/* The cable's address dropbear listens on, for sshlink_repin */
+static char g_addr[64];
+
 static bool start(sshlink_mode mode, const char *addr, const char *pin, const char *keydir)
 {
 	char listen[80], key[600];
@@ -718,7 +723,41 @@ static bool start(sshlink_mode mode, const char *addr, const char *pin, const ch
 	}
 	g_st = ST_ON;
 	g_mode = mode;
+	snprintf(g_addr, sizeof g_addr, "%s", addr ? addr : "");
 	fprintf(stderr, "ssh: dropbear %d on %s\n", (int)g_pid, listen);
+	return true;
+}
+
+bool sshlink_repin(const char *addr, const char *pin)
+{
+	char hash[160], *sh, *out;
+	ssize_t got;
+	bool ok = false;
+	int fd;
+
+	/* The password never with a radio there (sshlink.h): start says why */
+	if (g_st != ST_ON || g_mode != SSHLINK_CABLE || !addr || strcmp(addr, g_addr) || !pin ||
+	    radio_up() || !pin_hash(pin, hash, sizeof hash))
+		return false;
+	sh = malloc(SHADOW_MAX);
+	out = malloc(SHADOW_MAX + sizeof hash);
+	fd = open(RUN_SHADOW, O_RDWR | O_CLOEXEC);
+	if (sh && out && fd >= 0 && (got = read(fd, sh, SHADOW_MAX - 1)) > 0) {
+		sh[got] = '\0';
+		ok = sshlink_shadow(sh, hash, out, SHADOW_MAX + sizeof hash) && ftruncate(fd, 0) == 0 &&
+		     lseek(fd, 0, SEEK_SET) == 0 && write(fd, out, strlen(out)) == (ssize_t)strlen(out);
+	}
+	if (fd >= 0) close(fd);
+	if (sh) memset(sh, 0, SHADOW_MAX);
+	if (out) memset(out, 0, SHADOW_MAX + sizeof hash);
+	free(sh);
+	free(out);
+	memset(hash, 0, sizeof hash);
+	if (!ok) return false;
+	/* A fresh count of wrong PINs, as a start has */
+	g_c.bad = 0;
+	g_web_bad = 0;
+	fprintf(stderr, "ssh: dropbear %d goes on with File Transfer's PIN, its sessions kept\n", (int)g_pid);
 	return true;
 }
 
@@ -873,6 +912,11 @@ bool sshlink_start(const char *addr, const char *pin, const char *keydir)
 bool sshlink_start_net(const char *keydir)
 {
 	(void)keydir;
+	return false;
+}
+bool sshlink_repin(const char *addr, const char *pin)
+{
+	(void)addr; (void)pin;
 	return false;
 }
 bool sshlink_start_cable_keys(const char *addr, const char *keydir)

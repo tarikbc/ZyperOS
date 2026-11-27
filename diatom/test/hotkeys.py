@@ -8,7 +8,10 @@ slot's round trip as the launcher drives it.
     never sees their SELECT or their shoulder.
   - SELECT then A: the game has SELECT on A's frame.
   - SELECT+R2 and SELECT+L2 step the speed, 1.5x, 2x, back, and answer at
-    1x again when it is already there.
+    1x again when it is already there; past 3x is Max, said x=max.
+  - Fast Forward (ffwd): one press from 1x to RUN ffspeed='s speed (2x
+    without one, SETHOTKEYS ffspeed= while it runs), one from any fast step
+    back to 1x.
   - MENU+R1 steps nothing any more: R1 under MENU is the game's.
   - A SAVE sent while the game runs (the launcher's answer to the hotkey) is
     written on Diatom's thread, answered SAVED, with its picture beside it,
@@ -23,12 +26,23 @@ slot's round trip as the launcher drives it.
     where RUN shots= says and answers SHOT path=, SELECT+X says HOTKEY
     key=shader, SELECT+B pauses with PAUSED for=reset, and SELECT+R1 is the
     game's when no hotkey is on R1; SETHOTKEYS changes them while it runs.
+  - RUN menukeys= gives MENU two chords in a game: MENU+L1 a screenshot,
+    MENU+L2 the lock's pause (PAUSED for=lock), the game never reading
+    their L1 or L2 and MENU opening no menu after them; without it MENU+L1
+    is the game's L1, as ever.
   - RUN stick=toggle (the PSP's) with the map's r2:stick: R2 turns the
     d-pad into the left stick and back, says STICK each time, and never
     reaches the game; with no such pair R2 is the game's and turns nothing.
   - A map's stickhold (Stick While Held): while that button is held the
     d-pad is on its other side, and STICK is not said; stick=dpad-pad starts
     the N64's stick on the d-pad's side for such a button to turn.
+
+On Diatom's test clock (port/desktop.c, DIATOM_TEST_CLOCK): a frame is a
+frame's time on it, so SELECT held six polls is 100 ms of the 400 ms
+CHORD_HOLD_MS allows on any machine, where on the wall clock a busy one
+could stretch those polls past it and the tap be held SELECT. Each game
+runs until the core has read its polls, its lines are read until the
+STOP's EXIT, and every other wait is only that (2026-11-24).
 
 Needs build/desktop (diatom and stubcore.so) and SKIPS without it, as
 check-proto does. SDL's dummy drivers: no window, no sound.
@@ -72,22 +86,23 @@ def check(name, ok, got=None):
 
 p = subprocess.Popen([BIN, "--socket", SOCK, "--save", TMP, "--system", TMP],
                      env=dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_RENDER_DRIVER="software",
-                              SDL_AUDIODRIVER="dummy", DIATOM_INPUT_SCRIPT=SCRIPT,
+                              SDL_AUDIODRIVER="dummy", DIATOM_TEST_CLOCK="0", DIATOM_INPUT_SCRIPT=SCRIPT,
                               STUBCORE_INPUT_LOG=LOG),
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-for _ in range(100):
-    if os.path.exists(SOCK): break
+end = time.time() + 30
+while not os.path.exists(SOCK) and time.time() < end:
     time.sleep(0.05)
 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 s.connect(SOCK)
 s.settimeout(0.05)
 buf, got = b"", []
 
-def pump(seconds):
-    """Read for `seconds`, answering the hotkeys as the launcher does"""
+def pump(seconds, until=None):
+    """Read for `seconds`, or until a line that starts with `until`,
+    answering the hotkeys as the launcher does"""
     global buf
     end = time.time() + seconds
-    while time.time() < end:
+    while time.time() < end and not (until and any(l.startswith(until) for l in got)):
         try:
             d = s.recv(65536)
             if not d: return
@@ -121,16 +136,18 @@ def pump_until(path, n, limit=90.0):
     end = time.time() + limit
     while frames_logged(path) < n and time.time() < end:
         pump(0.2)
-    pump(0.5)
+    # A hotkey said before the core's last poll is in the socket by then:
+    # read and answered before the STOP
+    pump(0.2)
 
-pump(0.5)
+pump(30, "READY")
 check("READY says proto=14", any(l.startswith("READY\tproto=14") for l in got), got[:2])
 s.sendall(f"RUN\tcore={STUB}\n".encode())
 pump_until(LOG, 300)
 s.sendall(b"STOP\n")
-pump(1.5)
+pump(30, "EXIT")
 s.sendall(b"QUIT\n")
-try: p.wait(5)
+try: p.wait(30)
 except subprocess.TimeoutExpired: p.kill()
 
 check("SELECT+R1 says HOTKEY key=save once", got.count("HOTKEY\tkey=save") == 1, got)
@@ -182,23 +199,23 @@ RB, RY = 1 << 0, 1 << 1
 SOCK2, LOG2 = f"{TMP}/n64.sock", f"{TMP}/n64.log"
 p = subprocess.Popen([BIN, "--socket", SOCK2, "--save", TMP, "--system", TMP],
                      env=dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_RENDER_DRIVER="software",
-                              SDL_AUDIODRIVER="dummy", DIATOM_INPUT_SCRIPT=N64_SCRIPT,
+                              SDL_AUDIODRIVER="dummy", DIATOM_TEST_CLOCK="0", DIATOM_INPUT_SCRIPT=N64_SCRIPT,
                               STUBCORE_INPUT_LOG=LOG2),
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-for _ in range(100):
-    if os.path.exists(SOCK2): break
+end = time.time() + 30
+while not os.path.exists(SOCK2) and time.time() < end:
     time.sleep(0.05)
 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 s.connect(SOCK2)
 s.settimeout(0.05)
 buf, got = b"", []
-pump(0.3)
+pump(30, "READY")
 s.sendall(f"RUN\tcore={STUB}\nSETMAP\tmap=select:r2,r2:none,a:b,b:y,y:none,select+a:a,select+b:b,select+y:y\n".encode())
 pump_until(LOG2, 200)
 s.sendall(b"STOP\n")
-pump(1.0)
+pump(30, "EXIT")
 s.sendall(b"QUIT\n")
-try: p.wait(5)
+try: p.wait(30)
 except subprocess.TimeoutExpired: p.kill()
 check("the N64's map is taken, no ERROR for it", not any(l.startswith("ERROR") for l in got), got)
 frames = [int(line.split()[1]) for line in open(LOG2)]
@@ -232,23 +249,23 @@ UP = 1 << 4
 SOCK3, LOG3 = f"{TMP}/psp.sock", f"{TMP}/psp.log"
 p = subprocess.Popen([BIN, "--socket", SOCK3, "--save", TMP, "--system", TMP],
                      env=dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_RENDER_DRIVER="software",
-                              SDL_AUDIODRIVER="dummy", DIATOM_INPUT_SCRIPT=PSP_SCRIPT,
+                              SDL_AUDIODRIVER="dummy", DIATOM_TEST_CLOCK="0", DIATOM_INPUT_SCRIPT=PSP_SCRIPT,
                               STUBCORE_INPUT_LOG=LOG3),
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-for _ in range(100):
-    if os.path.exists(SOCK3): break
+end = time.time() + 30
+while not os.path.exists(SOCK3) and time.time() < end:
     time.sleep(0.05)
 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 s.connect(SOCK3)
 s.settimeout(0.05)
 buf, got = b"", []
-pump(0.3)
+pump(30, "READY")
 s.sendall(f"RUN\tcore={STUB}\tstick=toggle\nSETMAP\tmap=r2:stick\n".encode())
 pump_until(LOG3, 150)
 s.sendall(b"STOP\n")
-pump(1.0)
+pump(30, "EXIT")
 s.sendall(b"QUIT\n")
-try: p.wait(5)
+try: p.wait(30)
 except subprocess.TimeoutExpired: p.kill()
 frames = [int(line.split()[1]) for line in open(LOG3)]
 up = [i for i, b in enumerate(frames) if b & UP]
@@ -270,23 +287,23 @@ def live_run(tag, script, lines_out, nframes, run_extra=""):
     global s, buf, got, p
     p = subprocess.Popen([BIN, "--socket", sock, "--save", TMP, "--system", TMP],
                          env=dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_RENDER_DRIVER="software",
-                                  SDL_AUDIODRIVER="dummy", DIATOM_INPUT_SCRIPT=script,
+                                  SDL_AUDIODRIVER="dummy", DIATOM_TEST_CLOCK="0", DIATOM_INPUT_SCRIPT=script,
                                   STUBCORE_INPUT_LOG=log, STUBCORE_INPUT_ANALOG="1"),
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    for _ in range(100):
-        if os.path.exists(sock): break
+    end = time.time() + 30
+    while not os.path.exists(sock) and time.time() < end:
         time.sleep(0.05)
     s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     s.connect(sock)
     s.settimeout(0.05)
     buf, got = b"", []
-    pump(0.3)
+    pump(30, "READY")
     s.sendall(f"RUN\tcore={STUB}{run_extra}\n{lines_out}".encode())
     pump_until(log, nframes)
     s.sendall(b"STOP\n")
-    pump(1.0)
+    pump(30, "EXIT")
     s.sendall(b"QUIT\n")
-    try: p.wait(5)
+    try: p.wait(30)
     except subprocess.TimeoutExpired: p.kill()
     rows = [list(map(int, l.split())) for l in open(log)]
     return [r[1] for r in rows], [r[5] for r in rows]
@@ -399,11 +416,63 @@ bits, ax = live_run("hkbad", "60:select;63:select+r1;67:;", "SETHOTKEYS\tkeys=sh
 check("a bad SETHOTKEYS: ok=0, and the keys as they were (SELECT+R1 still saves)",
       "HOTKEYS\tok=0" in got and "HOTKEY\tkey=save" in got, got)
 
+# Fast Forward (ffwd), one press each way: from 1x to the speed it is given
+# (RUN ffspeed=, 2x without one), from any fast step back to 1x, one SELECT+R2
+# reached too. And Max, past 3x: SELECT+R2 reaches it and stays, SELECT+L2
+# steps back to 3x.
+def speeds():
+    return [l[8:] for l in got if l.startswith("SPEED\tx=")]
+bits, ax = live_run("ff", "40:select;43:select+y;47:;70:select;73:select+y;77:;"
+                    "100:select;103:select+r2;107:;130:select;133:select+y;137:;",
+                    "", 170, "\thotkeys=save:r1,load:l1,faster:r2,slower:l2,ffwd:y")
+check("ffwd: SELECT+Y goes to 2x with no ffspeed=, back to 1x, and from SELECT+R2's 1.5x to 1x",
+      speeds() == ["2", "1", "1.5", "1"], speeds())
+check("ffwd: the game never sees that SELECT or Y", not any(bits[i] & (Y | SEL) for i in range(40, 50)), bits[38:52])
+# At Max a turn of the stub runs up to 64 polls, so the presses are a few
+# hundred polls apart, each in a turn of its own, as a hand's are
+bits, ax = live_run("ffmax", "40:select;43:select+y;47:;300:select;303:select+l2;307:;"
+                    "600:select;603:select+r2;607:;900:select;903:select+r2;907:;",
+                    "", 1100, "\thotkeys=faster:r2,slower:l2,ffwd:y\tffspeed=max")
+check("ffspeed=max: SELECT+Y goes to Max, said x=max; SELECT+L2 steps back to 3x; "
+      "SELECT+R2 past 3x is Max again, and stays", speeds() == ["max", "3", "max", "max"], speeds())
+bits, ax = live_run("ffset", "60:select;63:select+x;67:;90:select;93:select+x;97:;",
+                    "SETHOTKEYS\tkeys=ffwd:x\tffspeed=1.5\n", 130)
+check("SETHOTKEYS keys=ffwd:x ffspeed=1.5: SELECT+X goes to 1.5x and back",
+      "HOTKEYS\tok=1" in got and speeds() == ["1.5", "1"], (got, speeds()))
+bits, ax = live_run("ffsteps", "40:select;43:select+r2;46:select;49:select+r2;52:select;"
+                    "55:select+r2;58:select;61:select+r2;64:select;67:select+r2;70:;",
+                    "", 110)
+check("SELECT+R2 steps 1.5x, 2x, 3x, Max, and Max again at the end",
+      speeds() == ["1.5", "2", "3", "max", "max"], speeds())
+
 # A remapped SELECT (select:start): the chords go by the SELECT key, not by
 # what it is mapped to, so SELECT+R1 still saves and the core never reads START.
 bits, ax = live_run("selmap", "40:select;44:select+r1;50:select;54:", "SETMAP\tmap=select:start\n", 70)
 check("select:start: SELECT+R1 still says HOTKEY key=save", got.count("HOTKEY\tkey=save") == 1, got)
 check("select:start: the core never reads START", not any(b & START for b in bits), [i for i, b in enumerate(bits) if b & START][:5])
+
+# MENU's chords in a game (RUN menukeys=, chord.h's mchord; ZyperOS's
+# 1.1.1-test.3 notes: the screenshot and the lock work everywhere, in games
+# too): MENU held, then L1, a screenshot as SELECT's (HOTKEY key=shot, SHOT
+# path=); MENU held, then L2, the lock's pause (PAUSED for=lock); MENU let go
+# after either opens no menu, and the game never reads that L1 or L2; L1
+# alone is the game's. With no menukeys= (an old launcher), MENU+L1 is the
+# game's L1 and MENU let go opens the menu, as ever.
+MK_SCRIPT = "40:menu;43:menu+l1;47:menu;50:;70:menu;73:menu+l2;77:menu;80:;100:l1;104:;"
+bits, ax = live_run("mk", MK_SCRIPT, "", 140, f"\tmenukeys=shot:l1,lock:l2\tshots={SHOTS}")
+shot = [l for l in got if l.startswith("SHOT\tpath=")]
+check("menukeys=: MENU+L1 says HOTKEY key=shot and answers SHOT path= under shots=",
+      "HOTKEY\tkey=shot" in got and len(shot) == 1 and shot[0][10:].startswith(SHOTS + " "), got)
+check("menukeys=: MENU+L2 pauses for the lock: PAUSED for=lock", got.count("PAUSED\tfor=lock") == 1, got)
+check("menukeys=: MENU let go after either opens no menu (no PAUSED of MENU's)", "PAUSED" not in got, got)
+check("menukeys=: the game never reads the chords' L1 or L2",
+      not any(bits[i] & (L1 | L2) for i in range(40, 90)), [i for i in range(40, 90) if bits[i] & (L1 | L2)])
+check("menukeys=: L1 alone is the game's", any(bits[i] & L1 for i in range(100, 104)), bits[98:106])
+bits, ax = live_run("nomk", MK_SCRIPT, "", 140, f"\tshots={SHOTS}")
+check("no menukeys=: MENU+L1 is the game's L1, as ever", any(bits[i] & L1 for i in range(43, 47)), bits[40:50])
+check("no menukeys=: no screenshot, no lock", not any(l.startswith("SHOT\t") for l in got) and
+      "PAUSED\tfor=lock" not in got, got)
+check("no menukeys=: MENU let go opens the menu", "PAUSED" in got, got)
 
 if fails:
     print(f"FAIL: {len(fails)} hotkey check(s)")

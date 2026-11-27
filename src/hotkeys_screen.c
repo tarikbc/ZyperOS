@@ -14,6 +14,7 @@
 #include "hkstore.h"
 #include "home.h"
 #include "hotkeys.h"
+#include "menukeys_screen.h"
 #include "i18n.h"
 #include "menu.h"
 #include "platform.h"
@@ -22,14 +23,20 @@
 #include "uisound.h"
 #include "zyperdraw.h"
 
-/* The rows that are no action (the actions are 0 to HK_ACTS - 1) */
-enum { HKR_SCOPE = 100, HKR_HOME, HKR_NOTE, HKR_RESET, HKR_ALL };
-#define HKR_MAX (HK_ACTS + 6)
+/* The rows that are no action (the actions are 0 to HK_ACTS - 1); their
+ * numbers are the shots' (--hotkeys), so a row gone keeps its number free */
+enum { HKR_SCOPE = 100, HKR_HOME, HKR_FOOT_RULE, HKR_RESET, HKR_ALL,
+       /* MENU's chords on every screen, MENU > System's alone (src/menukeys.h) */
+       HKR_MK_RULE, HKR_FOOT, HKR_MK_SHOT, HKR_MK_LOCK, HKR_MK_HOLD };
+#define HKR_MAX (HK_ACTS + 11)
 
 /* The capture screen's glyphs, as the keyboard's big keys: 11.9's 112 */
 #define HK_CAPTURE_GLYPH 112
 /* ...and the room for them, a glyph and the grid's eight above and below */
 #define HK_CAPTURE_H     (HK_CAPTURE_GLYPH + DS_GRID * 8)
+
+/* Fast Forward's speed, the row under it (HKR_MAX had a row spare for it) */
+enum { HKR_FF_SPEED = 120 };
 
 typedef struct {
 	app              *a;
@@ -45,14 +52,20 @@ typedef struct {
 	int               n;
 	unsigned          vcol[HKR_MAX];
 	unsigned char     sound[HKR_MAX];
+	char              ff_val[16];
 	char              val[HK_ACTS][CTL_KEYS_MAX];
 	char              home[CTL_KEYS_MAX];
 	char              scope_val[CFG_STR];
+	char              mk_val[MK_ACTS][CTL_KEYS_MAX];
+	char              hold_val[24];
+	/* The footer's line, for the group the cursor is in (foot_for) */
+	char              foot[160];
 } hk_page;
 
 static const str_id ACT_LABEL[HK_ACTS] = {
 	S_HOTKEYS_QUICK_SAVE, S_HOTKEYS_QUICK_LOAD, S_CONTROLS_FASTER, S_CONTROLS_SLOWER,
-	S_HOTKEYS_SHOT, S_HOTKEYS_SHADER, S_HOTKEYS_DISPLAY, S_HOTKEYS_RESET, S_GAMEMENU_QUIT
+	S_HOTKEYS_SHOT, S_HOTKEYS_SHADER, S_HOTKEYS_DISPLAY, S_HOTKEYS_RESET, S_GAMEMENU_QUIT,
+	S_HOTKEYS_FFWD
 };
 
 /* The handheld's buttons a key is, as the capture screen reads them */
@@ -61,6 +74,13 @@ static const in_button KEY_IN[HK_KEYS] = {
 };
 
 /* ---- what is shown --------------------------------------------------------- */
+
+void speed_said(int half, char *out, size_t n)
+{
+	if (half <= 0)    snprintf(out, n, "%s", T(S_POPUP_SPEED_MAX));
+	else if (half % 2) snprintf(out, n, T(S_POPUP_SPEED_HALF), half / 2);
+	else              snprintf(out, n, T(S_POPUP_SPEED_WHOLE), half / 2);
+}
 
 static void shown(const hk_page *p, hk_table *t, hk_table *back, bool *own)
 {
@@ -82,8 +102,8 @@ static void send(const hk_page *p)
 	if (!p->running || !p->s) return;
 	hks_get(HKS_GAME, p->s->tag, p->file, &t);
 	hk_run(&t, run, sizeof run);
-	fprintf(stderr, "hotkeys: %s %s\n", p->s->tag, run);
-	plat_resident_line("SETHOTKEYS\tkeys=%s", run);
+	fprintf(stderr, "hotkeys: %s %s ffspeed=%s\n", p->s->tag, run, hk_ff_word(t.ff));
+	plat_resident_line("SETHOTKEYS\tkeys=%s\tffspeed=%s", run, hk_ff_word(t.ff));
 }
 
 static const char *scope_said(hk_page *p)
@@ -96,13 +116,59 @@ static const char *scope_said(hk_page *p)
 	return T(S_HOTKEYS_EVERY_GAME);
 }
 
+/* The footer under the list says what the row under the cursor is, or
+ * nothing where there is nothing to say (the Pixel 2 test of 1.1.1-test.3:
+ * it said "Home Screen is fixed" on every row, where Home is a quiet row
+ * the cursor never lands on). The game's hotkeys work in a game, with
+ * SELECT held; MENU's chords on every screen, in a game too; Hold to
+ * Unlock is how long SELECT and START open the lock; Applies To, Reset
+ * Hotkeys and All Controls say what they are themselves. One line under a
+ * rule, pinned under the rows as an option list's note is, the same
+ * height whatever it says (an empty line too), so the panel holds still
+ * as the cursor moves. (2026-11-26, the test of 1.1.1-test.2: the quiet
+ * lines between the rows read as observations among them, so they went
+ * under the list.) */
+static str_id foot_id(int id)
+{
+	if (id >= 0 && id < HK_ACTS) return S_HOTKEYS_GAME_NOTE;
+	if (id == HKR_MK_SHOT || id == HKR_MK_LOCK) return S_HOTKEYS_MENU_NOTE;
+	if (id == HKR_MK_HOLD) return S_HOTKEYS_HOLD_NOTE;
+	return S_COUNT;
+}
+
+static void foot_for(hk_page *p, int id)
+{
+	const str_id f = foot_id(id);
+
+	snprintf(p->foot, sizeof p->foot, "%s", f < S_COUNT ? T(f) : "");
+	/* Said as it changes, for check-menukeys: the line each row has */
+	{
+		static char said[160] = "-";
+
+		if (strcmp(said, p->foot)) {
+			snprintf(said, sizeof said, "%s", p->foot);
+			fprintf(stderr, "hotkeys: the footer says '%s'\n", p->foot);
+		}
+	}
+}
+
+/* The cursor's row each pass, before the frame: the footer follows it in
+ * the frame it lands (the rows point at p->foot) */
+static void at_row(app *a, void *ctx, int sel)
+{
+	hk_page *p = ctx;
+
+	(void)a;
+	if (sel >= 0 && sel < p->n) foot_for(p, p->ids[sel]);
+}
+
 static int build(void *ctx, menu_row *rows, int max, const char **heading)
 {
 	hk_page *p = ctx;
 	hk_table t, back;
 	const char *home = dev_role_keys(&plat_profile()->chords, DEV_ROLE_HOME);
 	bool own;
-	int n = 0, i;
+	int n = 0, j;
 
 #define ROW(id_, r_, c_, snd_) do { if (n < max && n < HKR_MAX) { p->ids[n] = (id_); rows[n] = (r_); \
 	p->vcol[n] = (c_); p->sound[n] = (snd_); n++; } } while (0)
@@ -113,24 +179,63 @@ static int build(void *ctx, menu_row *rows, int max, const char **heading)
 	if (p->s)
 		ROW(HKR_SCOPE, ((menu_row){ T(S_GAMEMENU_APPLIES_TO), scope_said(p), true }),
 		    own && p->scope != HKS_EVERY ? 1u : 0u, MENU_SND_RING);
-	for (i = 0; i < HK_ACTS; i++) {
+	for (j = 0; j < HK_ACTS; j++) {
+		const hk_act i = hk_order[j];
 		char chord[24];
 
-		hk_chord(&t, (hk_act)i, chord, sizeof chord);
+		hk_chord(&t, i, chord, sizeof chord);
 		if (chord[0]) snprintf(p->val[i], sizeof p->val[i], "%s%s", MENU_KEYS_MARK, chord);
 		else snprintf(p->val[i], sizeof p->val[i], "%s", T(S_HOTKEYS_NONE));
 		ROW(i, ((menu_row){ T(ACT_LABEL[i]), p->val[i], true }),
 		    t.key[i] != back.key[i] ? 1u : 0u, 0);
+		/* Fast Forward's speed under it, round on Left and Right as
+		 * Applies To: 1.5x, 2x, 3x, Max, as the speed pop-up says them */
+		if (i == HK_FFWD) {
+			speed_said(hk_ff_half(t.ff), p->ff_val, sizeof p->ff_val);
+			ROW(HKR_FF_SPEED, ((menu_row){ T(S_HOTKEYS_FF_SPEED), p->ff_val, true }),
+			    t.ff != back.ff ? 1u : 0u, MENU_SND_RING);
+		}
 	}
-	/* Home, the way out of anything, the same on every card: fixed, and the
-	 * line under it says so */
+	/* Home, the way out of anything, the same on every card: fixed, a quiet
+	 * row the cursor passes */
 	if (home) {
 		snprintf(p->home, sizeof p->home, "%s%s", MENU_KEYS_MARK, home);
 		ROW(HKR_HOME, ((menu_row){ T(S_CONTROLS_HOME), p->home, false }), 0u, 0);
-		ROW(HKR_NOTE, MENU_NOTE(T(S_HOTKEYS_HOME_NOTE)), 0u, 0);
 	}
 	ROW(HKR_RESET, ((menu_row){ T(S_HOTKEYS_RESET_ALL), NULL, own }), 0u, own ? 0 : MENU_SND_NO_A);
 	if (p->s) ROW(HKR_ALL, ((menu_row){ T(S_HOTKEYS_ALL_CONTROLS), NULL, true }), 0u, 0);
+	/* MENU held with a button, on every screen and in a game (2026-11-22):
+	 * a screenshot, the lock, and how long SELECT+START is held to open it.
+	 * The launcher's own, so only on MENU > System's list, not a game's */
+	if (!p->s) {
+		const mk_table *m = mk_now();
+		mk_table def;
+		int i;
+
+		mk_default(&def);
+		ROW(HKR_MK_RULE, MENU_RULE, 0u, 0);
+		for (i = 0; i < MK_ACTS; i++) {
+			char chord[24];
+
+			mk_chord(m, (mk_act)i, chord, sizeof chord);
+			snprintf(p->mk_val[i], sizeof p->mk_val[i], "%s%s", MENU_KEYS_MARK, chord);
+		}
+		ROW(HKR_MK_SHOT, ((menu_row){ T(S_HOTKEYS_SHOT), p->mk_val[MK_SHOT], true }),
+		    m->key[MK_SHOT] != def.key[MK_SHOT] ? 1u : 0u, 0);
+		ROW(HKR_MK_LOCK, ((menu_row){ T(S_SYSMENU_MP4_LOCK), p->mk_val[MK_LOCK], true }),
+		    m->key[MK_LOCK] != def.key[MK_LOCK] ? 1u : 0u, 0);
+		{
+			/* "0.5 s" or "0,5 s", the language's decimal mark */
+			char secs[12];
+
+			mk_secs(m->hold_ms, i18n_decimal_comma(), secs, sizeof secs);
+			snprintf(p->hold_val, sizeof p->hold_val, T(S_HOTKEYS_UNLOCK_SECS), secs);
+		}
+		ROW(HKR_MK_HOLD, ((menu_row){ T(S_HOTKEYS_UNLOCK_HOLD), p->hold_val, true }),
+		    m->hold_ms != def.hold_ms ? 1u : 0u, MENU_SND_RING);
+	}
+	ROW(HKR_FOOT_RULE, MENU_RULE, 0u, 0);
+	ROW(HKR_FOOT, MENU_NOTE(p->foot), 0u, 0);
 #undef ROW
 	p->n = n;
 	return n;
@@ -160,8 +265,12 @@ static menu_result power(app *a, void *ctx)
 }
 
 /* The capture screen's keys, for its header (menu_style.header has no
- * context): SELECT while held, and the button with it */
-static struct { bool sel; int key; } g_cap;
+ * context): SELECT (or MENU) while held, and the button with it. Kept as
+ * they were when the capture ends, until the next one starts: the panel's
+ * copy draws the header again as it leaves (snap_draw), and a MENU chord's
+ * glyph turned into SELECT's in that leave when `menu` was cleared at the
+ * end (the Pixel 2 test of 1.1.1-test.3) */
+static struct { bool sel; int key; bool menu; } g_cap;
 
 static void capture_header(app *a, const SDL_Rect *r)
 {
@@ -174,18 +283,31 @@ static void capture_header(app *a, const SDL_Rect *r)
 		ui_text(a->r, f, T(S_HOTKEYS_CAPTURE_WAIT), cx, ui_cap_y(f, cy), 0, UI_TEXT_DIM);
 		return;
 	}
-	if (g_cap.key >= 0) snprintf(keys, sizeof keys, "SELECT+%s", hk_key_name(g_cap.key));
-	else snprintf(keys, sizeof keys, "SELECT");
+	if (g_cap.key >= 0) snprintf(keys, sizeof keys, "%s+%s", g_cap.menu ? "MENU" : "SELECT", hk_key_name(g_cap.key));
+	else snprintf(keys, sizeof keys, "%s", g_cap.menu ? "MENU" : "SELECT");
+	/* Said when it changes, for check-menukeys: the keys never turn into
+	 * another's, the leave included */
+	{
+		static char said[24];
+
+		if (strcmp(said, keys)) {
+			snprintf(said, sizeof said, "%s", keys);
+			fprintf(stderr, "hotkeys: the capture shows %s\n", keys);
+		}
+	}
 	/* lit as they go down, the tutorial's pressed look */
 	ui_button_pressed(a->r, keys, cx, cy, HK_CAPTURE_GLYPH, UI_BUTTON_PLAIN, 1.0f, 1.0f, 1.0f);
 }
 
-static void capture_draw(app *a, hk_page *p, hk_act act, float k)
+static void capture_draw_as(app *a, hk_page *p, const char *heading, float k)
 {
 	menu_row rows[2];
 	menu_style st = p->st;
+	static char hint[128];
 
-	rows[0] = MENU_NOTE(T(S_HOTKEYS_CAPTURE_HINT));
+	/* MENU's as the handheld prints it: FN on the R36S */
+	if (g_cap.menu) snprintf(hint, sizeof hint, T(S_HOTKEYS_MENU_CAPTURE_HINT), dev_menu_word(plat_profile()));
+	rows[0] = MENU_NOTE(g_cap.menu ? hint : T(S_HOTKEYS_CAPTURE_HINT));
 	rows[1] = MENU_NOTE(T(g_cap.key >= 0 ? S_HOTKEYS_CAPTURE_KEEP : S_HOTKEYS_CAPTURE_BACK));
 	/* the widest panel, the lab's 800, so the line under the keys stays
 	 * whole in every language */
@@ -194,8 +316,109 @@ static void capture_draw(app *a, hk_page *p, hk_act act, float k)
 	st.header_h = HK_CAPTURE_H;
 	st.sound = NULL;
 	st.vcolors = NULL;
+	st.at = NULL;
+	st.pin_foot = false;
 	backdrop(a, p, k);
-	menu_draw_styled(a, &st, T(ACT_LABEL[act]), rows, 2, -1);
+	menu_draw_styled(a, &st, heading, rows, 2, -1);
+}
+
+static void capture_draw(app *a, hk_page *p, hk_act act, float k)
+{
+	capture_draw_as(a, p, T(ACT_LABEL[act]), k);
+}
+
+/* A MENU chord's row's name: Screenshot or Lock Screen */
+static const char *mk_label(mk_act m)
+{
+	return T(m == MK_SHOT ? S_HOTKEYS_SHOT : S_SYSMENU_MP4_LOCK);
+}
+
+/* A on Screenshot or Lock Screen under MENU's rule: MENU held, then a
+ * button, taken by the platform as a chord would be (mk_capture) so no
+ * screenshot or lock comes of it; MENU let go keeps it. MENU tapped alone
+ * or B with nothing held leaves with no change. The key (HK_*) or -1. */
+static int capture_menu(app *a, hk_page *p, mk_act m)
+{
+	int lv = panel_open(), key = -1;
+	bool done = false;
+	float k;
+
+	g_cap.sel = false;
+	g_cap.key = -1;
+	g_cap.menu = true;
+	plat_input_flush();
+	memset(&a->in, 0, sizeof a->in);
+	mk_capture(true);
+	while (!done && !want_quit && a->running) {
+		bool held;
+
+		plat_input_poll(&a->in);
+		ui_sounds_follow();
+		held = plat_menu_held() || a->in.down[IN_MENU];
+		if (a->in.quit_requested) { a->running = false; break; }
+		if (a->in.pressed[IN_POWER] || idle_due(a)) { power(a, p); break; }
+		if (mk_caught() >= 0 && mk_caught() != g_cap.key) {
+			g_cap.key = mk_caught();
+			uisound_play(DS_SOUND_ACCEPT);
+		}
+		if (held && !g_cap.sel) {
+			g_cap.sel = true;
+			uisound_play(DS_SOUND_MOVE);
+		}
+		if (!held && g_cap.sel && g_cap.key >= 0) {
+			key = g_cap.key;
+			done = true;
+		} else if (a->in.pressed[IN_MENU]) {
+			break;                      /* MENU alone: no change */
+		} else if (!g_cap.sel && a->in.pressed[IN_BACK]) {
+			uisound_play(DS_SOUND_BACK);
+			break;
+		}
+		if (!panel_frame(a, lv, &k)) continue;
+		tick_theme(a);
+		capture_draw_as(a, p, mk_label(m), k);
+		plat_draw_osd(a->r);
+		plat_present();
+		ui_frame_rest(8);
+	}
+	mk_capture(false);
+	/* g_cap stays MENU's: the panel leaving draws it again */
+	panel_close(a, lv, !a->running);
+	plat_input_flush();
+	memset(&a->in, 0, sizeof a->in);
+	return key;
+}
+
+/* Screenshot or Lock Screen given `key`: the other's already, the swap
+ * question first, as a game's hotkeys ask it */
+/* The swap question's words for a MENU chord, as a game's hotkeys say it
+ * (CQ_HOTKEYS_SWAP): MENU+L2 to this one? the other has it and moves to
+ * this one's keys */
+static void mk_swap_text(const mk_table *t, mk_act m, int key, int other, char *q, size_t n)
+{
+	char chord[24], was[24];
+
+	/* the keys in words, MENU as the handheld prints it (FN on the R36S) */
+	snprintf(chord, sizeof chord, "%s+%s", dev_menu_word(plat_profile()), hk_key_name(key));
+	if (hk_key_name(t->key[m])) snprintf(was, sizeof was, "%s+%s", dev_menu_word(plat_profile()), hk_key_name(t->key[m]));
+	else was[0] = '\0';
+	cq_text(CQ_HOTKEYS_SWAP, q, n, chord, mk_label(m), mk_label((mk_act)other), was);
+}
+
+static void mk_take_key(app *a, hk_page *p, mk_act m, int key)
+{
+	mk_table t = *mk_now();
+	int other = mk_act_on(&t, key);
+
+	if (t.key[m] == key) return;
+	if (other >= 0) {
+		char q[320];
+
+		mk_swap_text(&t, m, key, other, q, sizeof q);
+		if (!confirm_ask_over(a, CQ_HOTKEYS_SWAP, q, &p->st, p)) return;
+	}
+	mk_swap(&t, m, key);
+	mk_put(&t);
 }
 
 /* A on an action's row: every button read as a key until SELECT is let go,
@@ -209,6 +432,7 @@ static int capture(app *a, hk_page *p, hk_act act)
 
 	g_cap.sel = false;
 	g_cap.key = -1;
+	g_cap.menu = false;
 	plat_input_flush();
 	memset(&a->in, 0, sizeof a->in);
 	while (!done && !want_quit && a->running) {
@@ -285,10 +509,33 @@ static menu_result key(app *a, void *ctx, in_button k, int sel)
 	const bool side = k == IN_LEFT || k == IN_RIGHT;
 
 	if (id < 0 || (!side && k != IN_ACCEPT)) return MENU_STAY;
+	if (id == HKR_MK_HOLD) {
+		mk_table t = *mk_now();
+
+		t.hold_ms = mk_hold_step(t.hold_ms, k == IN_LEFT ? -1 : 1);
+		mk_put(&t);
+		return MENU_STAY;
+	}
+	if (!side && (id == HKR_MK_SHOT || id == HKR_MK_LOCK)) {
+		const mk_act m = id == HKR_MK_SHOT ? MK_SHOT : MK_LOCK;
+		int got = capture_menu(a, p, m);
+
+		if (got >= 0 && a->running) mk_take_key(a, p, m, got);
+		return MENU_STAY;
+	}
 	if (id == HKR_SCOPE) {
 		const int d = k == IN_LEFT ? -1 : 1;
 
 		p->scope = (hks_scope)((p->scope + 3 + d) % 3);
+		return MENU_STAY;
+	}
+	if (id == HKR_FF_SPEED) {
+		hk_table t, back;
+
+		shown(p, &t, &back, NULL);
+		t.ff = (signed char)((t.ff + HK_FF_STEPS + (k == IN_LEFT ? -1 : 1)) % HK_FF_STEPS);
+		hks_put(p->scope, p->s ? p->s->tag : NULL, p->file, &t);
+		send(p);
 		return MENU_STAY;
 	}
 	if (side) return MENU_STAY;
@@ -347,6 +594,8 @@ static void page_init(hk_page *p, app *a, const menu_style *over, void *ctx, con
 	p->st.on_power = power;
 	p->st.sound = p->sound;
 	p->st.vcolors = p->vcol;
+	p->st.at = at_row;
+	p->st.pin_foot = true;
 }
 
 void hotkeys_screen(app *a)
@@ -380,7 +629,11 @@ void hotkeys_shot(app *a, const system_cfg *s, const char *file, int sel, int ca
 	if (capture_at) {
 		g_cap.sel = capture_at == 2;
 		g_cap.key = capture_at == 2 ? k : -1;
-		capture_draw(a, &p, sel >= 0 && sel < HK_ACTS ? (hk_act)sel : HK_SHOT, 1.0f);
+		/* A MENU chord's row's capture (sel its row's id) */
+		g_cap.menu = sel == HKR_MK_SHOT || sel == HKR_MK_LOCK;
+		if (g_cap.menu) capture_draw_as(a, &p, mk_label(sel == HKR_MK_SHOT ? MK_SHOT : MK_LOCK), 1.0f);
+		else capture_draw(a, &p, sel >= 0 && sel < HK_ACTS ? (hk_act)sel : HK_SHOT, 1.0f);
+		g_cap.menu = false;
 		return;
 	}
 	if (ask == 2 || ask == 3) {
@@ -394,6 +647,19 @@ void hotkeys_shot(app *a, const system_cfg *s, const char *file, int sel, int ca
 		cq_text(which, q, sizeof q, s ? s->name : "", file ? file : "");
 		backdrop(a, &p, 1.0f);
 		confirm_preview(a, which, q);
+		return;
+	}
+	if (ask == 1 && (sel == HKR_MK_SHOT || sel == HKR_MK_LOCK)) {
+		/* A MENU chord given the other's key (--hk-key) */
+		const mk_act m = sel == HKR_MK_SHOT ? MK_SHOT : MK_LOCK;
+		mk_table t;
+		char q[320];
+
+		mk_default(&t);
+		mk_swap_text(&t, m, t.key[m == MK_SHOT ? MK_LOCK : MK_SHOT], m == MK_SHOT ? MK_LOCK : MK_SHOT,
+		             q, sizeof q);
+		backdrop(a, &p, 1.0f);
+		confirm_preview(a, CQ_HOTKEYS_SWAP, q);
 		return;
 	}
 	if (ask) {
@@ -419,6 +685,7 @@ void hotkeys_shot(app *a, const system_cfg *s, const char *file, int sel, int ca
 		for (i = 0; i < n && p.ids[i] != sel; i++) ;
 		if (i >= n) i = 0;
 		if (!rows[i].live) i = menu_step_sel(rows, n, i, +1);
+		foot_for(&p, p.ids[i]);
 		backdrop(a, &p, 1.0f);
 		menu_draw_styled(a, &p.st, heading, rows, n, i);
 	}

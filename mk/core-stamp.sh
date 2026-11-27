@@ -43,6 +43,7 @@ CORES='dsperate dsperate-lr- build-dsperate.sh
 fake08 fake08- build-fake08.sh
 flycast2021 flycast2021- build-flycast2021.sh
 freej2me_plus freej2me-plus- build-freej2me.sh
+gambatte gambatte- build-small-cores.sh
 mupen64plus_next mupen64plus-next- build-mupen64plus-next.sh
 parallel_n64 parallel-n64- build-parallel-n64.sh
 pcsx_rearmed pcsx_rearmed- build-pcsx-rearmed.sh

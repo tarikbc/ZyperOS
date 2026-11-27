@@ -80,21 +80,29 @@ static size_t slurp(const char *path, char *out)
 }
 
 /* What themefile_read says about path, asked of a child process that is given
- * two seconds: a reader that blocks on the file (a FIFO nobody writes to) must
- * fail this check and not hang it. -1 if the child did not come back. */
+ * 30 s on the monotonic clock: a reader that blocks on the file (a FIFO nobody
+ * writes to) must fail this check and not hang it. -1 if the child did not
+ * come back. It is waited for only until it comes back, so the 30 s are only
+ * a blocked reader's: two seconds were too few for a child to start and read
+ * once make check ran four at a time on a loaded Mac (2026-11-24). */
 static int read_in_child(const char *path)
 {
-	struct timespec nap = { 0, 10 * 1000 * 1000 };
-	int i, status;
+	struct timespec nap = { 0, 10 * 1000 * 1000 }, now;
+	long until;
+	int status;
 	pid_t pid;
 
 	fflush(stdout);
 	pid = fork();
 	if (pid < 0) return -1;
 	if (pid == 0) _exit(themefile_read(path) == DS_DARK ? 1 : 0);
-	for (i = 0; i < 200; i++) {
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	until = (long)now.tv_sec * 1000 + now.tv_nsec / 1000000 + 30000;
+	for (;;) {
 		if (waitpid(pid, &status, WNOHANG) == pid)
 			return WIFEXITED(status) ? WEXITSTATUS(status) ? DS_DARK : DS_LIGHT : -1;
+		clock_gettime(CLOCK_MONOTONIC, &now);
+		if ((long)now.tv_sec * 1000 + now.tv_nsec / 1000000 >= until) break;
 		nanosleep(&nap, NULL);
 	}
 	kill(pid, SIGKILL);

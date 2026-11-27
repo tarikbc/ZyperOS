@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include "xfer_screen.h"
+#include "radl.h"
 #include "hwreport.h"
 #include "ds/mark.h"   /* ds_bar_in */
 
@@ -29,6 +30,7 @@
 #include "shelfbuild.h"
 #include "signin_screen.h"
 #include "ss.h"
+#include "spawn.h"
 #include "sshlink.h"
 #include "taskhold.h"
 #include "uisound.h"
@@ -37,6 +39,7 @@
 #include "xfer.h"
 #include "zyperdraw.h"
 #include "levels.h"
+#include "wdog.h"
 
 #include <SDL.h>
 #include <SDL_image.h>
@@ -76,21 +79,23 @@
  * it contains a newline, which is exactly two things worth copying.
  *
  * Everything else is status and belongs below the rule. */
-/* With the handheld's name (zyperos.local, mdns.h). Over the cable the name
- * first, as http:// so a browser opens it rather than searching for it, and
- * the address beside the PIN under it: only the computer is on that link, so
- * only the handheld can answer for the name. Over Wi-Fi the address first,
- * as it was, and the name beside the PIN: anybody on the network could
- * answer for a name, and what a person types should come from the
- * handheld's own screen. With no name (mDNS could not start, gave the name
- * up, or the link is down and `addr` says so), the address over the PIN. */
+/* With the handheld's name (zyperos.local, mdns.h): the address first, over
+ * the cable as over Wi-Fi, and the name beside the PIN. Over the cable the
+ * name went first until 2026-11-23, but Windows does not resolve it there
+ * (Discord: Edge, Chrome and Firefox could not open http://zyperos.local
+ * over the cable, the address could), and the address works on every
+ * computer. The name is written bare here, as Wi-Fi's is: with http:// it
+ * no longer fit beside the PIN in a heading's line, and slid; the way in,
+ * which has the room, writes it with http:// over the cable (xs_way_set).
+ * With no name (mDNS could not start, gave the name up, or the link is down
+ * and `addr` says so), the address over the PIN. */
 void hare_head(char *out, size_t n, bool cable, const char *name, const char *addr,
                const char *pin)
 {
 	/* A fixture's "http://192.168.1.42" is the address the screen shows */
 	if (name && name[0] && !strncmp(addr, "http://", 7)) addr += 7;
-	if (name && name[0] && cable) snprintf(out, n, "http://%s\n%s · PIN %s", name, addr, pin);
-	else if (name && name[0]) snprintf(out, n, "%s\nPIN %s · %s", addr, pin, name);
+	(void)cable;
+	if (name && name[0]) snprintf(out, n, "%s\nPIN %s · %s", addr, pin, name);
 	else snprintf(out, n, "%s\nPIN %s", addr, pin);
 }
 
@@ -149,24 +154,19 @@ static void xs_way_header(app *a, const SDL_Rect *q)
 	}
 }
 
-/* What the way in shows: over the cable the name with http:// first and the
- * address under it; over Wi-Fi the address first and the name under it, as
- * the heading orders them (hare_head) */
+/* What the way in shows: the address first and the name under it, over the
+ * cable as over Wi-Fi and a phone's tethering, as the heading orders them
+ * (hare_head); over the cable the name with http:// */
 void xs_way_set(bool cable, bool phone, const char *name, const char *addr, const char *pin)
 {
 	if (name && name[0] && !strncmp(addr, "http://", 7)) addr += 7;
-	/* a phone's tethering is the USB cable too, its address the phone's to
-	 * give, so it is shown as Wi-Fi's is: first, the name (if any) under it */
 	g_way.title = cable || phone ? XFER_NAME_CABLE : XFER_NAME_WIFI;
-	if (name && name[0] && cable) {
-		snprintf(g_way.first, sizeof g_way.first, "http://%s", name);
-		snprintf(g_way.second, sizeof g_way.second, "%s", addr);
-	} else {
-		snprintf(g_way.first, sizeof g_way.first, "%s", addr);
-		/* a phone's: where to type it, as no name is shown there */
-		snprintf(g_way.second, sizeof g_way.second, "%s",
-		         name && name[0] ? name : phone ? T(S_XFER_PHONE_WHERE) : "");
-	}
+	snprintf(g_way.first, sizeof g_way.first, "%s", addr);
+	/* a phone's: where to type it, as no name is shown there */
+	if (name && name[0])
+		snprintf(g_way.second, sizeof g_way.second, "%s%s", cable ? "http://" : "", name);
+	else
+		snprintf(g_way.second, sizeof g_way.second, "%s", phone ? T(S_XFER_PHONE_WHERE) : "");
 	snprintf(g_way.pin, sizeof g_way.pin, "%s", pin);
 }
 
@@ -521,12 +521,28 @@ static bool pack_logs(char *path, size_t pn, char *name, size_t nn)
 			fclose(f);
 		}
 	}
+	/* And the system log, the memory ring logread prints: on the Brick it
+	 * runs while Bluetooth is on (/etc/init.d/bluetooth), and bluetoothd's
+	 * and bluealsa's lines are only there, so a pairing that connects
+	 * nothing says why (a tester's Brick, 2026-11-21, sent none). Read here
+	 * and handed to the pack, which keeps those lines alone, masked; none of
+	 * it is written to the card. None where no system logger runs */
+	static char slog[1 << 16];
+	{
+		char *argv[] = { (char *)"/sbin/logread", NULL };
+
+		if (spawn_capture(argv, slog, sizeof slog, 5) != 0) slog[0] = '\0';
+	}
 	snprintf(name, nn, "%s.tar.gz", folder);
 	snprintf(path, pn, "/tmp/%s", name);
-	if (!logpack_build(logs, about, secrets, n, folder, path, err, sizeof err)) {
+	/* tar, waited for as long as it takes (wdog.h) */
+	wdog_hold("Download logs");
+	if (!logpack_build(logs, about, slog, secrets, n, folder, path, err, sizeof err)) {
+		wdog_release();
 		fprintf(stderr, "logs: could not pack them: %s\n", err);
 		return false;
 	}
+	wdog_release();
 	fprintf(stderr, "logs: packed %s, %d names masked\n", name, n);
 	return true;
 }
@@ -1274,6 +1290,9 @@ static int after_start_thread(void *unused)
 	if (g_after.check) lib_check_run(g_after.check);
 	if (g_after.check) lib_check_import(g_after.check);
 	media_tidy();
+	/* A card's loose achievement badges into their sets' packs, once: a
+	 * hundred thousand files made fsck.exfat take minutes (src/rapack.h) */
+	radl_badges_migrate(P_ROMS);
 	SDL_AtomicSet(&g_after.done, 1);
 	return 0;
 }
@@ -1364,9 +1383,32 @@ void after_start_step(app *a, bool drawn)
 
 /* Open the server: the hooks, the hotspot when there is no network, the PIN,
  * SSH over the cable. False when it could not, having said why. */
+/* The cable's SSH and its name, once usb0 has its address and the page's
+ * first frame is up: not as the screen opens, when the link may still be on
+ * its way (gadget.h) and dropbear would find no address to listen on, and
+ * never between the press and the page. A Developer Mode SSH already there
+ * on the cable takes File Transfer's PIN in place, its sessions kept
+ * (sshlink_repin), rather than a stop and a start (which waited for the old
+ * dropbear to end, and ended its sessions). */
+static void xs_cable_services(const char *ip)
+{
+	char keys[600];
+	unsigned t0 = plat_now_ms();
+
+	snprintf(keys, sizeof keys, "%s/ssh", P_USERDATA);
+	snprintf(g_xs.login, sizeof g_xs.login, "root@%s", ip);
+	if (!sshlink_repin(ip, g_xs.pin)) sshlink_start(ip, g_xs.pin, keys);
+	/* zyperos.local on the cable: only the computer is on this link, so
+	 * the name is ours at once, with no probing (mdns.h) */
+	if (!mdns_start("usb0", ip, false)) fprintf(stderr, "xfer: no zyperos.local on the cable\n");
+	g_xs.services = true;
+	fprintf(stderr, "xfer: the cable's SSH and name in %u ms\n", plat_now_ms() - t0);
+}
+
 static bool xs_open(app *a, int way)
 {
 	char        ip[64], path[512];
+	unsigned    t0 = plat_now_ms(), t_link, t_art, t_sys;
 	/* A phone's tethering (way 2, or whichever: the port a host with a
 	 * phone's network on it, which the cable cannot be then) */
 	const bool  phone = way == 2 || (way < 0 && !plat_cable_link(NULL, 0) &&
@@ -1385,12 +1427,15 @@ static bool xs_open(app *a, int way)
 	g_xs.hs = HOTSPOT_OFF;
 	g_logs_app = a;
 	/* The link on, since USB charges only until asked (usblink.h); and a
-	 * fresh one each time this opens, since a computer can drop it while the
-	 * device believes it is still up (plat_cable_reconnect) */
+	 * fresh one when it needs it, since a computer can drop it while the
+	 * device believes it is still up: not whole, or the computer not
+	 * answering over it (plat_cable_reconnect, cablefresh.h). Neither waits
+	 * on the controller for long (hwput.h). */
 	if (cable) {
 		usblink_for_transfer();
 		plat_cable_reconnect();
 	}
+	t_link = plat_now_ms();
 	hare_set_logs(pack_logs);
 	hare_set_before_delete(mp4_before_delete);
 	hare_set_after_rename(mp4_after_rename);
@@ -1398,6 +1443,7 @@ static bool xs_open(app *a, int way)
 	 * a cover uploaded into a shelf's .media is shrunk on every device. */
 	hareart_init(&a->sys, P_ROMS);
 	singles_cover();                /* back, if it was taken off the card */
+	t_art = plat_now_ms();
 	/* the phone's browser has the phone's internet, as a computer's has */
 	if (cable || phone) {
 		hare_set_art(hareart_wanted, hareart_match, hareart_crc, hareart_nointro);
@@ -1428,6 +1474,7 @@ static bool xs_open(app *a, int way)
 	xfer_set_systems(g_xfer_sys_ok ? xfer_folder_known : NULL);
 	snprintf(path, sizeof path, "%s/system-icons", P_ROOT);
 	hare_set_icons(path);
+	t_sys = plat_now_ms();
 	if (hot) {
 		wait_panel(a, name, T(S_XFER_STARTING_HOTSPOT));
 		/* Up before the code is shown, so a phone that scans it at once can
@@ -1465,18 +1512,13 @@ static bool xs_open(app *a, int way)
 		mdns_start("wlan0", hotspot_addr(), true);
 	}
 	snprintf(g_xs.pin, sizeof g_xs.pin, "%s", hare_pin());
-	/* SSH over the same cable, behind the same PIN (sshlink.h) */
-	if (cable && plat_cable_link(ip, sizeof ip)) {
-		char keys[600];
-
-		snprintf(keys, sizeof keys, "%s/ssh", P_USERDATA);
-		snprintf(g_xs.login, sizeof g_xs.login, "root@%s", ip);
-		sshlink_start(ip, g_xs.pin, keys);
-		/* zyperos.local on the cable: only the computer is on this link,
-		 * so the name is ours at once, with no probing (mdns.h) */
-		if (!mdns_start("usb0", ip, false)) fprintf(stderr, "xfer: no zyperos.local on the cable\n");
-	}
+	/* SSH over the same cable, behind the same PIN (sshlink.h), and its
+	 * name: once the page is up and usb0 has its address (xs_tick) */
 	g_xs.on = true;
+	/* Where the opening's time went: the link is asked for, never waited
+	 * on (gadget.h), so it is a few ms; the rest is the card's */
+	fprintf(stderr, "xfer: opened in %u ms (link %u, art %u, systems %u, server and SSH %u)\n",
+	        plat_now_ms() - t0, t_link - t0, t_art - t_link, t_sys - t_art, plat_now_ms() - t_sys);
 	return true;
 }
 
@@ -1506,6 +1548,8 @@ void xs_tick(app *a)
 	/* A key the page sent, settled the frame its check ends */
 	sgdb_try_poll();
 	mdns_poll(now);
+	if (g_xs.cable && g_xs.drawn && !g_xs.services && sshlink_if_addr("usb0", ip, sizeof ip))
+		xs_cable_services(ip);
 	/* The link, step by step (linksteps.h): the cable's facts five times a
 	 * second; Wi-Fi's from the address check below */
 	if (g_xs.cable) {
@@ -1705,6 +1749,7 @@ static void xs_stop(app *a, bool panels)
 	bool changed;
 
 	if (!g_xs.on) return;
+	fprintf(stderr, "xfer: closed\n");
 	/* Asked before hare_stop, which is what owning the server means: after
 	 * it, there is nobody left to ask. */
 	changed = hare_shelf_changed();
@@ -1983,6 +2028,8 @@ void xfer_screen_way(app *a, int way)
 	/* Left alone on the cable, Auto Off's time turns the screen off, or
 	 * only dims it while files move (src/pace.h, pace_screen_step) */
 	pace_screen scr;
+	unsigned   asked_at = plat_now_ms(), drawn_at;
+	bool       first = true;
 
 	if (!g_xs.on && !xs_open(a, way)) return;
 	g_xs.shown = true;
@@ -2202,8 +2249,23 @@ void xfer_screen_way(app *a, int way)
 			else if (view == WAY_LOAD) xs_load_draw(a, rows, nrows, g_xs.load_k);
 			else xs_page_show(a, head, rows, nrows);
 			plat_draw_osd(a->r);
+			drawn_at = plat_now_ms();
 			plat_present();
 			pace_drawn(&pc, key, nowp);
+			/* The press to the page's first frame, for the log: the link is
+			 * never waited on (gadget.h), so this is a frame or two. Its
+			 * present apart: on the handheld a flip, in desk mode the
+			 * window's face drawn around it */
+			if (first) {
+				first = false;
+				g_xs.drawn = true;
+				fprintf(stderr, "xfer: the page's first frame %u ms after it was asked for (%s; "
+				        "drawn by %u ms, its present %u ms)\n",
+				        plat_now_ms() - asked_at,
+				        view == WAY_LOAD ? "the loading bar" : view == WAY_STEPS ? "the steps"
+				        : view == WAY_IN ? "the way in" : view == WAY_HOT ? "the hotspot" : "the page",
+				        drawn_at - asked_at, plat_now_ms() - drawn_at);
+			}
 		}
 		/* Shorter than the usual 8ms: this loop is also the server's, and a
 		 * transfer moves POLL_BUDGET per pass. */

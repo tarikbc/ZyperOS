@@ -62,6 +62,12 @@ bool es_media(const char *roms, const char *folder, const char *file, const char
  * frame. False while the index is not built. */
 bool es_has_video(const char *folder, const char *file, const char *name);
 
+/* Whether the game has an EmulationStation cover, as es_has_video: a
+ * picture gamelist.xml names for it (thumbnail, image, marquee), or one of
+ * es_media's names in the folder's picture folders. From the index alone;
+ * false while it is not built. */
+bool es_has_cover(const char *folder, const char *file, const char *name);
+
 /* Whether `folder`'s index is built, so es_media without `wait` answers */
 bool es_ready(const char *folder);
 
@@ -102,12 +108,31 @@ void es_forget_folder(const char *folder);
  * would be cut short. Says nothing about whether it is there.
  *
  * game_media: that file when it is there with something in it, else
- * es_media's (`wait` as there), its full path into `out`; false, and `out`
- * empty, for a game with neither. */
+ * es_media's (`wait` as there), else for a cover the game's own cart
+ * (game_media_cart), its full path into `out`; false, and `out` empty, for
+ * a game with none of them.
+ *
+ * game_media_cart: a PICO-8 game whose file is a .p8.png cart is its own
+ * cover, last, after every other (src/cartlabel.h): the cart's path, when it
+ * is there. Drawn as its label by cart_label_load. Box Art's question of
+ * whether a game has a cover (es_art_cover) leaves it out, so a cover can
+ * still be fetched for it. */
 bool game_media_own(const char *roms, const char *folder, const char *name, es_kind kind,
                     char *out, size_t n);
 bool game_media(const char *roms, const char *folder, const char *file, const char *name,
                 es_kind kind, bool wait, char *out, size_t n);
+bool game_media_cart(const char *roms, const char *folder, const char *file, char *out, size_t n);
+
+/* game_media's question without a look at a file, for a whole shelf at once:
+ * whether the game is in `own`, its own files' stems of that kind in the
+ * folder's .media, sorted by strcmp (snap_names_for's for videos), else
+ * whether the folder's index has one for it (es_has_video, es_has_cover).
+ * The shelf's play mark and the screensaver's games ask this, and both then
+ * take the file from game_media (2026-11-23, moroboshi69 on the Discord: the
+ * screensaver showed only the systems with .media, never those whose
+ * gamelist.xml names ./images/..., which the shelf shows). */
+bool game_media_listed(const char *folder, const char *file, const char *name, es_kind kind,
+                       char *const *own, int nown);
 
 /* ---- into the library database ------------------------------------------
  *

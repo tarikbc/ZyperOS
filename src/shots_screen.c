@@ -42,6 +42,9 @@ const char *shots_facts(app *a, int o, const game_entry *g)
 	struct tm tm, nt;
 	long days;
 
+	/* A shot of the launcher's own screens is the group's (src/shelfbuild.c): ZyperOS */
+	const char *sys = o == shelf_shots_at(a) ? SHOT_LAUNCHER_DIR : a->sys.systems[o].name;
+
 	/* When, by the calendar's days as Played says it (stats_ago), and the
 	 * time it was taken for today and yesterday */
 	shot_parts(g->added, &y, &mo, &d, &h, &mi, &s);
@@ -60,10 +63,10 @@ const char *shots_facts(app *a, int o, const game_entry *g)
 	                                           nt.tm_hour, nt.tm_min, nt.tm_sec));
 	if (days <= 1) {
 		strftime(clock, sizeof clock, g_clock24 ? "%H:%M" : "%I:%M %p", &tm);
-		snprintf(line, sizeof line, "%s \xc2\xb7 %s %s", a->sys.systems[o].name, ago,
+		snprintf(line, sizeof line, "%s \xc2\xb7 %s %s", sys, ago,
 		         clock[0] == '0' && !g_clock24 ? clock + 1 : clock);
 	} else {
-		snprintf(line, sizeof line, "%s \xc2\xb7 %s", a->sys.systems[o].name, ago);
+		snprintf(line, sizeof line, "%s \xc2\xb7 %s", sys, ago);
 	}
 	return line;
 }
@@ -265,7 +268,7 @@ bool shots_keys(app *a, sysview *v)
 		g_back = v->grid ? BACK_GRID : v->listed ? BACK_LIST : BACK_COVERS;
 		v->video = true;
 		v->grid = v->listed = false;
-		vv_reset(&v->vm, plat_now_ms());
+		snaprest_reset(&v->vm, plat_now_ms());
 		games_reset(&v->row, v->cursor, v->list.count, plat_now_ms());
 		return true;
 	}
@@ -275,7 +278,7 @@ bool shots_keys(app *a, sysview *v)
 	 * needing to wait for it to collapse"); the next press brings them
 	 * back. The shot's game still starts only from its own shelf (pick 6) */
 	uisound_play(DS_SOUND_ACCEPT);
-	vv_rest(&v->vm, plat_now_ms());
+	snaprest_rest(&v->vm, plat_now_ms());
 	return true;
 }
 

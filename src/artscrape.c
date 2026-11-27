@@ -31,6 +31,17 @@
 
 #define BASE "https://thumbnails.libretro.com"
 
+/* libretro's covers' GitHub mirror, one repository a collection, named for
+ * it with its spaces as underscores: the raw files, and the API's tree of
+ * Named_Boxarts for the index. Asked when libretro's own host refuses: on
+ * 2026-11-24 it answered 404 for every file and for every listing, while
+ * the mirror had them. A run asks the mirror for a cover libretro refused
+ * only until libretro has served one, and once the mirror has served one
+ * libretro refused, asks only the mirror for the rest of the run, so a game
+ * costs one request as before. */
+#define MIRROR_RAW "https://raw.githubusercontent.com/libretro-thumbnails"
+#define MIRROR_API "https://api.github.com/repos/libretro-thumbnails"
+
 /* No-Intro's list for a collection, as libretro-database carries it: every dump
  * with its CRC32, under the name libretro files its covers by. Fetched when a
  * run needs it, like the index, rather than shipped. See the checksum pass. */
@@ -46,7 +57,7 @@
  * the only place it shows up. */
 #define NAME_MAX_   192
 #define ARTPATH_MAX (LIB_PATH + NAME_MAX_ * 2 + 32)
-#define ARTURL_MAX  (sizeof BASE + 384 + NAME_MAX_ * 3 + 32)
+#define ARTURL_MAX  (sizeof MIRROR_RAW + 384 + NAME_MAX_ * 3 + 64)
 
 /* MEASURED, 2026-08-30, not guessed:
  *
@@ -829,13 +840,102 @@ static bool art_rom_crc_at(const char *dir, int i, const char *exts, uint32_t *c
 #define INDEX_TMP "/tmp/zyperos-artindex"
 #endif
 
-static bool start_index(const char *remote)
+/* Where the run's covers and indexes come from (MIRROR_RAW above) */
+static bool g_lr_good;     /* libretro's own host served a cover this run */
+static bool g_lr_dead;     /* it refused one the mirror then had: mirror only */
+static bool g_index_mirror;   /* the index in flight is the mirror's tree */
+
+/* A collection's repository on the mirror: its name, spaces as underscores,
+ * encoded for a path */
+static void mirror_repo(const char *remote, char *out, size_t n)
+{
+	char repo[256];
+	size_t i;
+
+	snprintf(repo, sizeof repo, "%s", remote);
+	for (i = 0; repo[i]; i++)
+		if (repo[i] == ' ') repo[i] = '_';
+	urlenc(repo, out, n);
+}
+
+static bool start_index_at(const char *remote, bool mirror)
 {
 	char url[ARTURL_MAX], enc[384];
 
-	urlenc(remote, enc, sizeof enc);
-	snprintf(url, sizeof url, BASE "/%s/Named_Boxarts/", enc);
+	g_index_mirror = mirror;
+	if (mirror) {
+		/* One request for the folder's whole listing: the tree of
+		 * master:Named_Boxarts, not the repository's, which is three folders
+		 * and past what the API sends for the biggest */
+		mirror_repo(remote, enc, sizeof enc);
+		snprintf(url, sizeof url, MIRROR_API "/%s/git/trees/master:Named_Boxarts", enc);
+	} else {
+		urlenc(remote, enc, sizeof enc);
+		snprintf(url, sizeof url, BASE "/%s/Named_Boxarts/", enc);
+	}
 	return net_get_async(url, INDEX_TMP, 60);
+}
+
+static bool start_index(const char *remote)
+{
+	return start_index_at(remote, g_lr_dead);
+}
+
+/* The mirror's tree (JSON) as libretro's listing has it, in place: an
+ * href="name" for each entry's "path", with only '%' and '"' encoded (the
+ * matcher decodes), so the rest reads one listing. A link (mode 120000) is
+ * left out: its raw file is the name of another cover, whose own entry is
+ * there. Each entry's JSON is far longer than its href (a sha and a URL),
+ * so the write never passes the read; checked anyway. */
+static void tree_to_hrefs(char *buf)
+{
+	char *r = buf, *w = buf;
+
+	while ((r = strstr(r, "\"path\""))) {
+		char name[NAME_MAX_ * 2], *end, *close;
+		size_t o = 0, i, need;
+		bool link;
+
+		r = strchr(r + 6, '"');
+		if (!r) break;
+		for (r++; *r && *r != '"'; r++) {
+			char c = *r;
+
+			if (c == '\\' && r[1]) {
+				r++;
+				c = *r == 'n' ? '\n' : *r == 't' ? '\t' : *r;
+				/* \uXXXX is a control character or one GitHub would send
+				 * as UTF-8 itself: dropped, which makes the name match
+				 * nothing rather than something else */
+				if (*r == 'u') {
+					for (i = 0; i < 4 && r[1]; i++) r++;
+					continue;
+				}
+			}
+			if (o + 1 < sizeof name) name[o++] = c;
+		}
+		name[o] = '\0';
+		if (!*r) break;
+		end = r + 1;
+		close = strchr(end, '}');
+		link = false;
+		if (close && (r = strstr(end, "\"mode\"")) && r < close && (r = strchr(r + 6, '"')))
+			link = !strncmp(r, "\"120000\"", 8);
+		r = close ? close : end;
+		if (link || o < 5 || strcmp(name + o - 4, ".png")) continue;
+		for (i = 0, need = 9; i < o; i++) need += name[i] == '%' || name[i] == '"' ? 3 : 1;
+		if (w + need > end) break;
+		memcpy(w, "href=\"", 6);
+		w += 6;
+		for (i = 0; i < o; i++) {
+			if (name[i] == '%')      { memcpy(w, "%25", 3); w += 3; }
+			else if (name[i] == '"') { memcpy(w, "%22", 3); w += 3; }
+			else *w++ = name[i];
+		}
+		*w++ = '"';
+		*w++ = '\n';
+	}
+	*w = '\0';
 }
 
 /* Every .png href in one directory listing.
@@ -855,6 +955,7 @@ static bool parse_index(void)
 	fclose(f);
 	remove(INDEX_TMP);
 	g_html[n] = '\0';
+	if (g_index_mirror) tree_to_hrefs(g_html);
 
 	/* A full buffer means the index outgrew it and the tail is missing, which
 	 * shows up as games libretro "does not have". Refuse, rather than match
@@ -1516,6 +1617,7 @@ void art_begin(const systems_cfg *sys, const char *roms_dir, const char *only)
 
 	art_cancel();
 	memset(&g_st, 0, sizeof g_st);
+	g_lr_good = g_lr_dead = false;
 	g_si = g_ri = 0;
 	g_nretry = g_qi = 0;
 	g_nleft = g_rem = 0;
@@ -1597,16 +1699,89 @@ static bool art_paths(const char *dir, const char *stem,
 /* Ask for one image by the name libretro would file it under. Used by both
  * passes: pass one guesses the card's own name, pass two passes the name the
  * catalog gave. */
-static bool start_image(const char *remote, const char *name, const char *dest)
+/* Which host the image in flight was asked of: libretro's, the mirror's,
+ * or the mirror's again for the file a link of its names */
+enum { IMG_LR, IMG_MIRROR, IMG_LINK };
+static int  g_img_via;
+static char g_img_remote[256];
+static char g_side[ARTPATH_MAX + 8];   /* a mirror file lands here, then over g_pending */
+
+static bool fetch_image(int via, const char *name)
 {
 	char url[ARTURL_MAX], er[384], en[NAME_MAX_ * 3 + 1];
 
-	urlenc(remote, er, sizeof er);
+	g_img_via = via;
 	urlenc(name, en, sizeof en);
-	snprintf(url, sizeof url, BASE "/%s/Named_Boxarts/%s.png", er, en);
+	if (via == IMG_LR) {
+		urlenc(g_img_remote, er, sizeof er);
+		snprintf(url, sizeof url, BASE "/%s/Named_Boxarts/%s.png", er, en);
+		return net_get_async(url, g_pending, 60);
+	}
+	/* Beside the cover, not over it: the mirror answers a link with its
+	 * text, which must never replace a cover that is there */
+	mirror_repo(g_img_remote, er, sizeof er);
+	snprintf(url, sizeof url, MIRROR_RAW "/%s/master/Named_Boxarts/%s.png", er, en);
+	snprintf(g_side, sizeof g_side, "%s.mirror", g_pending);
+	return net_get_async(url, g_side, 60);
+}
+
+static bool start_image(const char *remote, const char *name, const char *dest)
+{
 	snprintf(g_pending, sizeof g_pending, "%s", dest);
 	snprintf(g_asked, sizeof g_asked, "%s", name);
-	return net_get_async(url, g_pending, 60);
+	snprintf(g_img_remote, sizeof g_img_remote, "%s", remote);
+	return fetch_image(g_lr_dead ? IMG_MIRROR : IMG_LR, name);
+}
+
+/* A mirror link's text, the name of the cover it points at, less ".png";
+ * false for anything else */
+static bool link_target(const char *path, char *out, size_t n)
+{
+	char buf[NAME_MAX_ + 8];
+	FILE *f = fopen(path, "rb");
+	size_t got;
+
+	if (!f) return false;
+	got = fread(buf, 1, sizeof buf - 1, f);
+	fclose(f);
+	buf[got] = '\0';
+	buf[strcspn(buf, "\r\n")] = '\0';
+	got = strlen(buf);
+	if (got < 5 || got - 4 >= n || strcmp(buf + got - 4, ".png") || strchr(buf, '/')) return false;
+	snprintf(out, n, "%.*s", (int)(got - 4), buf);
+	return true;
+}
+
+/* The image in flight's answer, as net_async_poll's: 1 there (at g_pending),
+ * 0 still going, -1 not. A refusal from libretro's own host (an HTTP error,
+ * not the network) before it has served a cover this run is asked of the
+ * mirror once; a link from the mirror is followed once. */
+static int image_poll(void)
+{
+	char target[NAME_MAX_];
+	int r = net_async_poll();
+
+	if (r == 0) return 0;
+	if (g_img_via == IMG_LR) {
+		if (r > 0) g_lr_good = true;
+		else if (!g_lr_good && net_async_http() >= 400 && fetch_image(IMG_MIRROR, g_asked)) return 0;
+		return r;
+	}
+	if (r < 0) return -1;
+	if (art_is_cover(g_side)) {
+		if (!g_lr_dead && !g_lr_good) {
+			g_lr_dead = true;
+			say("art: libretro's own host refused a cover its GitHub mirror has: the mirror for the rest of the run\n");
+		}
+		return rename(g_side, g_pending) == 0 ? 1 : (remove(g_side), -1);
+	}
+	if (g_img_via == IMG_MIRROR && link_target(g_side, target, sizeof target)) {
+		remove(g_side);
+		if (fetch_image(IMG_LINK, target)) return 0;
+		return -1;
+	}
+	remove(g_side);
+	return -1;
 }
 
 /* Finish with this system and move to the next, saying why.
@@ -1633,7 +1808,12 @@ static int next_system(int why)
 		const char *folder = g_si < g_nsys ? g_sys[g_si].folder : "?";
 
 		snprintf(g_st.now, sizeof g_st.now, T(S_ART_PROBLEM), folder, T(why));
-		snprintf(g_st.problem, sizeof g_st.problem, "%s", g_st.now);
+		/* Each console passed over is counted: the last one's reason alone
+		 * read as though only that console had failed */
+		if (++g_st.passed == 1)
+			snprintf(g_st.problem, sizeof g_st.problem, "%s", g_st.now);
+		else
+			snprintf(g_st.problem, sizeof g_st.problem, T(S_ART_PROBLEMS), g_st.passed, g_st.now);
 		fprintf(stderr, "art: %s: %s\n", folder, T_en((str_id)why));
 	}
 	if (g_sys_on)
@@ -2196,7 +2376,7 @@ int art_step(void)
 
 	/* libretro's direct try for the game ScreenScraper just missed */
 	case P_SS_LR_WAIT: {
-		int r = net_async_poll();
+		int r = image_poll();
 
 		if (r == 0) return 1;
 		say("art: %s from libretro by its own name: %s, %s\n", g_roms[g_ri],
@@ -2253,7 +2433,7 @@ int art_step(void)
 		return 1;
 
 	case P_TRY_WAIT: {
-		int r = net_async_poll();
+		int r = image_poll();
 
 		if (r == 0) return 1;
 		say("art: %s from libretro by its own name: %s, %s\n", g_roms[g_ri],
@@ -2295,7 +2475,16 @@ int art_step(void)
 		/* Distinguished on purpose: a network or TLS failure is not "these
 		 * games have no art", and reporting it as one is how a certificate
 		 * change gets mistaken for a library full of missing games. */
-		if (r < 0) return leftover(g_retry, g_nretry, S_ART_WHY_INDEX_FAILED);
+		/* libretro's listing refused or not there: the mirror's, once. A
+		 * refusal (an HTTP error) says its covers are refused too, so the
+		 * rest of the run asks the mirror. */
+		if (r < 0 && !g_index_mirror) {
+			if (net_async_http() >= 400) g_lr_dead = !g_lr_good;
+			if (start_index_at(remote_nth(g_sys[g_si].folder, g_rem), true)) return 1;
+		}
+		if (r < 0)
+			return leftover(g_retry, g_nretry,
+			                net_async_http() > 0 ? S_ART_WHY_INDEX_REFUSED : S_ART_WHY_INDEX_FAILED);
 		if (!parse_index()) return leftover(g_retry, g_nretry, S_ART_WHY_INDEX_BAD);
 		g_qi = 0;
 		g_phase = P_FUZZY;
@@ -2360,7 +2549,7 @@ int art_step(void)
 		return 1;
 
 	case P_FUZZY_WAIT: {
-		int r = net_async_poll();
+		int r = image_poll();
 
 		if (r == 0) return 1;
 		say("art: %s from libretro as \"%s\": %s, %s\n", g_roms[g_retry[g_qi]],
@@ -2441,7 +2630,7 @@ int art_step(void)
 	}
 
 	case P_CRC_WAIT: {
-		int r = net_async_poll();
+		int r = image_poll();
 
 		if (r == 0) return 1;
 		say("art: %s from libretro as \"%s\": %s, %s\n", g_roms[g_retry[g_qi]],

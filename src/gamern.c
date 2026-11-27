@@ -2,11 +2,14 @@
 #include "gamern.h"
 
 #include "db.h"
+#include "dscache.h"
 #include "favorites.h"
 #include "library.h"
+#include "titletext.h"
 
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -110,6 +113,46 @@ bool gr_renames(const char *core, const char *file, unsigned dir)
 	return true;
 }
 
+/* ---- the name shown, for a game whose file keeps its name ----------------- */
+
+bool gr_shown_only(const char *core, const char *file, unsigned dir)
+{
+	return core && file && file[0] && own_part(file, dir) && !gr_renames(core, file, dir);
+}
+
+bool gr_shown_ok(const char *typed, char *out, size_t n)
+{
+	const unsigned char *p = (const unsigned char *)typed;
+
+	if (!typed || !out || !n) return false;
+	title_text(typed, out, n);
+	/* Typed and nothing kept: broken UTF-8, which title_text refuses (white
+	 * space and control characters it drops, as an empty name) */
+	while (*p && (*p <= 0x20 || *p == 0x7f)) p++;
+	return !*p || out[0];
+}
+
+void gr_shown_plain(const char *folder, const char *file, const char *name, char *out, size_t n)
+{
+	if (!out || !n) return;
+	if (!db_game_title(db_lib(), folder, file, out, n)) lib_title(name ? name : "", out, n);
+}
+
+gr_why gr_shown_set(const char *folder, const char *file, const char *name, const char *typed)
+{
+	char want[LIB_NAME], plain[LIB_NAME], had[LIB_NAME];
+
+	if (!gr_shown_ok(typed, want, sizeof want)) return GR_BAD_NAME;
+	if (!db_lib() || !folder || !file || !name) return GR_NOT_SAVED;
+	/* What it shows with no name of the player's: an empty name, or that
+	 * name typed again, is that one back */
+	gr_shown_plain(folder, file, name, plain, sizeof plain);
+	if (!strcmp(want, plain)) want[0] = '\0';
+	db_user_title(db_lib(), folder, file, had, sizeof had);
+	if (!strcmp(want, had)) return GR_SAME;
+	return db_user_title_set(db_lib(), folder, file, want) ? GR_OK : GR_NOT_SAVED;
+}
+
 /* ---- the plan --------------------------------------------------------------- */
 
 static bool exists(const char *p)
@@ -158,6 +201,15 @@ static void pair(gr_plan *p, const char *from, const char *to, bool copy, bool m
 	snprintf(p->from[p->n], GD_PATH, "%s", from);
 	snprintf(p->to[p->n], GD_PATH, "%s", to);
 	p->copy[p->n] = copy;
+	p->n++;
+}
+
+/* A cache file's move: no refusal, the caller has looked */
+static void cache_pair(gr_plan *p, const char *from, const char *to)
+{
+	snprintf(p->from[p->n], GD_PATH, "%s", from);
+	snprintf(p->to[p->n], GD_PATH, "%s", to);
+	p->copy[p->n] = false;
 	p->n++;
 }
 
@@ -316,6 +368,29 @@ bool gr_plan_make(const gd_card *card, const gd_game *g, const gd_other *others,
 		}
 	}
 
+	/* 2b. A zipped DS game's copy DSperate unpacked, and its tag, in
+	 * .dsperate beside the zip (src/dscache.h): so the next launch maps it
+	 * at once, where under the old name it would be unpacked again and the
+	 * old copy left until DSperate sweeps it. Only a cache, so a file under
+	 * the new name (a copy of a game deleted elsewhere) does not refuse the
+	 * rename: this copy stays behind then, and DSperate sweeps it, and
+	 * rebuilds the other one, whose tag names another zip. */
+	if (!slash && !strcmp(g->tag, "NDS") && dsc_image(romdir, g->file, a, sizeof a) &&
+	    dsc_image(romdir, p->new_file, b, sizeof b)) {
+		char ta[GD_PATH + 8], tb[GD_PATH + 8];
+
+		snprintf(ta, sizeof ta, "%s.tag", a);
+		snprintf(tb, sizeof tb, "%s.tag", b);
+		if (exists(a) && (!exists(b) || same_file(a, b)) && (!exists(tb) || same_file(ta, tb)) &&
+		    p->n + 2 <= GR_MAX) {
+			cache_pair(p, a, b);
+			if (exists(ta)) {
+				p->ds_tag = p->n;
+				cache_pair(p, ta, tb);
+			}
+		}
+	}
+
 	/* 3. Its states and their pictures, the six slots, Auto and Undo Load's, and the
 	 * language a DS game's Auto was left in: by the launch file's base, or
 	 * a hooked shelf's folder name (gd_state_base) */
@@ -443,6 +518,38 @@ static void mkdir_for(const char *path)
 	if ((s = strrchr(d, '/'))) { *s = '\0'; mkdir(d, 0755); }
 }
 
+/* The "archive " line of the tag at `tag` naming `zip` (by its realpath, as
+ * DSperate writes it), written whole beside it and renamed into place. Only
+ * a tag that names a zip already; anything else is left as it is. */
+static void retag(const char *tag, const char *zip)
+{
+	char buf[8192], out[8192 + PATH_MAX + 16], real[PATH_MAX], tmp[GD_PATH + 16];
+	const char *at, *end;
+	size_t n;
+	FILE *f;
+	int w;
+
+	if (!(f = fopen(tag, "rb"))) return;
+	n = fread(buf, 1, sizeof buf - 1, f);
+	fclose(f);
+	buf[n] = '\0';
+	if (!(at = strstr(buf, "\narchive "))) return;
+	at += strlen("\narchive ");
+	if (!(end = strchr(at, '\n'))) return;
+	if (!realpath(zip, real) && snprintf(real, sizeof real, "%s", zip) >= (int)sizeof real) return;
+	w = snprintf(out, sizeof out, "%.*s%s%s", (int)(at - buf), buf, real, end);
+	if (w < 0 || (size_t)w >= sizeof out ||
+	    snprintf(tmp, sizeof tmp, "%s.zyperos-rn", tag) >= (int)sizeof tmp ||
+	    !(f = fopen(tmp, "wb")))
+		return;
+	{
+		bool ok = fwrite(out, 1, (size_t)w, f) == (size_t)w;
+
+		ok = fclose(f) == 0 && ok;
+		if (!ok || rename(tmp, tag) != 0) unlink(tmp);
+	}
+}
+
 void gr_plan_run(const gr_plan *p, gr_done *d)
 {
 	memset(d, 0, sizeof *d);
@@ -458,6 +565,12 @@ void gr_plan_run(const gr_plan *p, gr_done *d)
 		else if (p->copy[i]) d->copied++;
 		else d->moved++;
 	}
+	/* The DS copy's tag names its zip by its whole path (DSperate's
+	 * make_tag: realpath of the zip): the new one now, or DSperate would
+	 * take the copy for another zip's and unpack the game again. Its other
+	 * lines (the zip's size and time, the entry's name, CRC and size) are
+	 * the same after a rename. */
+	if (p->ds_tag > 0) retag(p->to[p->ds_tag], p->to[0]);
 	/* gamelist.xml's entry, with what moved of its */
 	d->es_list = es_list_rename(p->roms, p->folder, p->file, p->name, p->new_file,
 	                            (char (*)[ES_PATH])p->es_rel, (char (*)[ES_PATH])p->es_to, p->nes);

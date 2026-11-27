@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* The Display list's picture (menu_pick_preview, DESIGN.md 11.3): the
+/* The Display list's picture (a hover's draw, menu_pick_hover, DESIGN.md 11.3): the
  * handheld's screen in small, and a game's frame on it as display mode `k`
  * would put it (src/dmodefit.h) - bars where the mode leaves the screen
  * bare, the edges gone where it crops, the shape it gives the picture - so

@@ -40,6 +40,10 @@ static int      g_binds;
 
 usb_peer plat_usb_peer(void) { return g_port; }
 
+/* The controller's say on the link: -1 cannot tell (the Brick), 0, 1 */
+static int g_configured = -1;
+int plat_usb_configured(void) { return g_configured; }
+
 bool plat_usb_link(int op)
 {
 	if (op == 2) g_bound = false;            /* a fresh link: off, then on */
@@ -199,6 +203,32 @@ int main(void)
 		CHECK(!step() && g_binds == was + 1, "the link was made fresh again with no new plug");
 		g_port = USB_PEER_NONE;
 		step();
+	}
+	/* Where the controller tells (the Pixel 2): a link the computer took is
+	 * left alone, one it did not take in 3 s is made fresh (2026-11-24: a
+	 * rebind at every plug, the computer meeting the handheld three times) */
+	{
+		int was = g_binds, k;
+
+		g_configured = 1;
+		g_port = USB_PEER_COMPUTER;
+		for (k = 0; k < 8; k++) step();              /* 4.8 s */
+		CHECK(g_bound && g_binds == was, "a link the computer took was bound again (%d binds)",
+		      g_binds - was);
+		g_port = USB_PEER_NONE;
+		step();
+		g_configured = 0;
+		g_port = USB_PEER_COMPUTER;
+		step();
+		CHECK(g_binds == was, "a fresh link before the computer had its 3 s");
+		for (k = 0; k < 6; k++) step();              /* 3.6 s more */
+		CHECK(g_binds == was + 1, "a link the computer did not take in 3 s got no fresh one (%d binds)",
+		      g_binds - was);
+		for (k = 0; k < 6; k++) step();
+		CHECK(g_binds == was + 1, "the fresh link came again on the same plug");
+		g_port = USB_PEER_NONE;
+		step();
+		g_configured = -1;
 	}
 
 	printf("  Developer Mode off: the link goes, the next computer is asked:\n");

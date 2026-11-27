@@ -93,23 +93,13 @@ typedef struct menu_choice {
 	const char *const *labels;   /* their words, n of them (NULL with own) */
 	const char *const *notes;    /* what each one does, shown under the list for the one under
 	                              * the cursor (Display Mode's); NULL for none */
-	/* A picture of what choice `k` does, drawn by its screen in the box
-	 * x, y, w x h (units) at the top of a column at the list's left, its
-	 * note under it in place of under the list (the Display list's mini
-	 * screen: menu_pick, DESIGN.md 11.3). `app` is the app. NULL: none.
-	 * With `hover` too, both (Theme's Folder Color). */
-	void (*preview)(void *app, int k, int x, int y, int w, int h);
-	/* The choice under the cursor shown on the whole screen while the list
-	 * is open, with no picture: Night Warmth's list warms the screen as the
-	 * cursor moves (DESIGN.md 11.42). Called each pass
-	 * with the cursor's choice, and with -1 once the list has closed,
-	 * whichever way, before a choice is applied. NULL: none. */
-	void (*focus)(void *app, int k);
-	/* What the cursor shows on the whole screen while the list is open
-	 * (src/ds/hover.h, DESIGN.md 11.3): the choice under it shown once a
-	 * move and the kept one put back as the list closes, whichever way;
-	 * nothing saved until A. Theme's lists (1.0.6). The hover's ctx is the
-	 * app. NULL: none. */
+	/* What the cursor shows on the list (src/ds/hover.h, DESIGN.md 11.3):
+	 * the choice under it on the whole screen or in the speaker (show,
+	 * undo: Night Warmth's warmth, Accent's color, UI Sounds' voice), or a
+	 * picture of it in a column at the list's left, its note under it in
+	 * place of under the list (draw: the Display list's mini screen), or
+	 * both (Theme's Folder Color: the folders, in a picture of the shelf).
+	 * The hover's ctx is the app. NULL: none. */
 	const struct ds_hover *hover;
 	/* Two choices whose list opens on A all the same, for the picture and
 	 * the note that tell them apart (Timing, DESIGN.md 9); Left and Right

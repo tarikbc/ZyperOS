@@ -9,6 +9,7 @@
 #include "keyhints_draw.h"
 #include "theme.h"
 #include "ui.h"
+#include "zyperdraw.h"
 #include "ds/layout.h"
 
 #include <math.h>
@@ -26,8 +27,6 @@
 #define VV_REACH        5     /* covers drawn either side of the focus */
 /* The band's ground: surface at 92%, so the snap shows through a little */
 #define VV_BAND_ALPHA 235
-/* The rail in the strip: the page's margins, its middle down the strip's */
-#define VV_RAIL_Y     (VV_STRIP_TOP + (ZYPEROS_SCREEN_H - VV_STRIP_TOP) / 2)
 /* The name's card at the top left, under the header row, and the room its
  * name may take before it slides */
 #define VV_CARD_X     DS_INSET
@@ -37,45 +36,6 @@
 #define VV_CARD_TEXT  640
 /* The ground's fade under the status corner while the snap plays */
 #define VV_TOP_FADE   150
-
-void vv_reset(vv_motion *m, uint32_t now)
-{
-	*m = (vv_motion){ .set = true, .from = 0, .to = 0, .t = now, .ms = DS_MS_QUICK, .touched = now };
-}
-
-float vv_band(const vv_motion *m, uint32_t now)
-{
-	float p;
-
-	if (!m->set || m->ms == 0 || now - m->t >= m->ms) return m->set ? m->to : 0;
-	p = ds_out((float)(now - m->t) / (float)m->ms);
-	return m->from + (m->to - m->from) * p;
-}
-
-/* The band to `to` from wherever it is, over `ms`: a new press retargets */
-static void slide(vv_motion *m, float to, uint32_t ms, uint32_t now)
-{
-	float at = vv_band(m, now);
-
-	if (m->to == to && at == to) return;
-	m->from = at;
-	m->to = to;
-	m->t = now;
-	m->ms = ms;
-}
-
-void vv_touch(vv_motion *m, uint32_t now)
-{
-	if (!m->set) vv_reset(m, now);
-	m->touched = now;
-	slide(m, 0, DS_MS_QUICK, now);
-}
-
-void vv_rest(vv_motion *m, uint32_t now)
-{
-	if (!m->set) vv_reset(m, now);
-	slide(m, 1, DS_MS_MOVE, now);
-}
 
 /* A picture whole inside `box`, at its own shape, its middle on the box's */
 static SDL_FRect fit(float w, float h, SDL_FRect box)
@@ -104,7 +64,7 @@ static void top_fade(SDL_Renderer *r, float k)
 }
 
 /* The name's card: the shelf and the place in it, the name, its facts;
- * `gone` 0 in its place up to 1 off the top of the screen (a shot's) */
+ * `gone` 0 in its place up to 1 off the top of the screen, as the band goes */
 static uint32_t name_card(SDL_Renderer *r, const vv_info *in, uint32_t phase, float gone)
 {
 	TTF_Font *meta = page_font(PAGE_META), *title = page_font(PAGE_GAME_TITLE);
@@ -113,6 +73,10 @@ static uint32_t name_card(SDL_Renderer *r, const vv_info *in, uint32_t phase, fl
 	const char *name = in->count > 0 && in->title && in->title[0] ? in->title : T(S_SHELF_NO_GAMES);
 	uint32_t wait = UINT32_MAX;
 	int dot = 14, w, tw, x, y, h, dy, lines;
+	/* A favorite's heart before its name, sized and spaced as the cover
+	 * row's (src/games.c): the name moves over for it, in the card's room */
+	float hr = in->favorite && in->count > 0 ? (float)ui_cap_height(title) * .55f : 0;
+	int hw = hr > 0 ? (int)lroundf(hr * 2) + 16 : 0, room = VV_CARD_TEXT - hw;
 	size_t lead = 0;
 	SDL_Rect q;
 
@@ -155,7 +119,8 @@ static uint32_t name_card(SDL_Renderer *r, const vv_info *in, uint32_t phase, fl
 	}
 	lines = facts[0] ? (more[0] ? 2 : 1) : 0;
 	tw = ui_text_width(title, name);
-	if (tw > VV_CARD_TEXT) tw = VV_CARD_TEXT;
+	if (tw > room) tw = room;
+	tw += hw;
 	w = ui_text_width(meta, head) + dot + 12;
 	if (tw > w) w = tw;
 	if (facts[0] && ui_text_width(chrome, facts) > w)
@@ -181,11 +146,12 @@ static uint32_t name_card(SDL_Renderer *r, const vv_info *in, uint32_t phase, fl
 	}
 	ui_text(r, meta, head, x + dot + 12, ui_cap_y(meta, y), -1, UI_TEXT_SOFT);
 	y += DS_LINE_META / 2 + 12 + ui_font_line(UI_F_TITLE) / 2;
-	if (ui_text_width(title, name) <= VV_CARD_TEXT) {
-		ui_text(r, title, name, x, ui_cap_y(title, y), -1, UI_TEXT);
+	if (hr > 0) draw_heart(r, (float)x + hr, (float)y, hr, ui_col(theme()->favorite, 255));
+	if (ui_text_width(title, name) <= room) {
+		ui_text(r, title, name, x + hw, ui_cap_y(title, y), -1, UI_TEXT);
 	} else {
-		ui_text_marquee(r, title, name, x, ui_cap_y(title, y), VV_CARD_TEXT, phase, UI_TEXT);
-		wait = ui_pingpong_wait(ui_text_width(title, name) - VV_CARD_TEXT, phase);
+		ui_text_marquee(r, title, name, x + hw, ui_cap_y(title, y), room, phase, UI_TEXT);
+		wait = ui_pingpong_wait(ui_text_width(title, name) - room, phase);
 	}
 	for (int l = 0; l < lines; l++) {
 		const char *t = l ? more : facts;
@@ -218,15 +184,12 @@ static void ring(SDL_Renderer *r, SDL_FRect f, float fade)
 }
 
 /* The band, its top at `top`: the covers in a row, the focused one ringed,
- * and the keys; the strip's rail in it at `strip` (0 to 1), none for a
- * shot's, whose band goes off the screen (`in->clear`) */
+ * and the keys, fading out as it goes `down` (0 to 1) off the screen */
 static void band(SDL_Renderer *r, const games_row *row, const vv_info *in, cf_tex_fn texture,
-                 void *ctx, uint32_t now, int top, float strip)
+                 void *ctx, uint32_t now, int top, float down)
 {
 	const int dy = top - VV_BAND_TOP;
-	/* The covers and the keys go as the band goes down, the rail comes:
-	 * the strip holds the rail alone */
-	const float fade = 1 - strip;
+	const float fade = 1 - down;
 	games_slot slots[GAMES_WINDOW];
 	int n, i;
 
@@ -279,27 +242,14 @@ static void band(SDL_Renderer *r, const games_row *row, const vv_info *in, cf_te
 		keyhints_draw(r, foot, nf, sf.keys.x, sf.keys.x + sf.keys.w, sf.keys.y + sf.keys.h / 2 + dy,
 		              KEYHINTS_SPREAD, true, (Uint8)lroundf(255 * fade));
 	}
-	/* The strip's rail: where the game is in the shelf (DESIGN.md 11.2) */
-	if (strip > 0 && in->count > 1 && !in->clear) {
-		const int x0 = DS_MARGIN, tw = ZYPEROS_SCREEN_W - 2 * DS_MARGIN;
-		int mw = tw / in->count, mx;
-		Uint8 al = (Uint8)lroundf(255 * strip);
-
-		if (mw < DS_RAIL_MIN) mw = DS_RAIL_MIN;
-		mx = x0 + (int)lroundf((float)(tw - mw) * in->cursor / (in->count - 1));
-		ui_round_rect(r, &(SDL_Rect){ x0, top + (VV_RAIL_Y - VV_STRIP_TOP) - DS_BAR / 2, tw, DS_BAR },
-		              DS_BAR / 2, ui_col(theme()->track, al));
-		ui_round_rect(r, &(SDL_Rect){ mx, top + (VV_RAIL_Y - VV_STRIP_TOP) - DS_BAR / 2, mw, DS_BAR },
-		              DS_BAR / 2, ui_col(theme()->accent_ink, al));
-	}
 }
 
-uint32_t vv_draw(vv_motion *m, const games_row *row, SDL_Renderer *r, const vv_info *in,
+uint32_t vv_draw(snaprest *m, const games_row *row, SDL_Renderer *r, const vv_info *in,
                  cf_tex_fn texture, void *ctx, uint32_t now, uint32_t phase)
 {
 	SDL_BlendMode blend;
 	Uint8 red, green, blue, alpha;
-	uint32_t wait = UINT32_MAX, next;
+	uint32_t wait = UINT32_MAX, next, rest;
 	float k = in->snap && in->snap_w > 0 && in->snap_h > 0 ? fminf(fmaxf(in->snap_k, 0), 1) : 0;
 	float down;
 	int top;
@@ -307,19 +257,12 @@ uint32_t vv_draw(vv_motion *m, const games_row *row, SDL_Renderer *r, const vv_i
 	SDL_GetRenderDrawColor(r, &red, &green, &blue, &alpha);
 	SDL_GetRenderDrawBlendMode(r, &blend);
 	SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
-	if (!m->set) vv_reset(m, now);
-	if (in->playing && !m->was_playing && now > m->touched) m->touched = now;
-	m->was_playing = in->playing;
-	/* The rest: down to the strip once the snap has played hold-band
-	 * after the last press; no snap, no strip */
-	if (!in->playing && m->to > 0) slide(m, 0, DS_MS_QUICK, now);
-	if (in->playing && m->to == 0 && now - m->touched >= DS_MS_HOLD_BAND)
-		slide(m, 1, DS_MS_MOVE, now);
-	down = in->band >= 0 ? fminf(in->band, 1) : vv_band(m, now);
-	if (in->band < 0) {
-		if (now - m->t < m->ms) wait = 0;
-		else if (in->playing && m->to == 0) wait = m->touched + DS_MS_HOLD_BAND - now;
-	}
+	/* The rest: the band and the name's card away once the snap has
+	 * played hold-band after the last press; no snap, no rest
+	 * (src/snaprest.h) */
+	down = snaprest_step(m, in->playing, now, &rest);
+	if (in->band >= 0) down = fminf(in->band, 1);
+	else wait = rest;
 	/* The covers' glide, a frame each until it lands, as the cover row's
 	 * (games_draw). Without it the shelf drew the glide only while the
 	 * band slid or a button was down, and its last frame stayed up until
@@ -327,7 +270,7 @@ uint32_t vv_draw(vv_motion *m, const games_row *row, SDL_Renderer *r, const vv_i
 	 * the band, half faded, for up to a second after the press (2026-11-19,
 	 * on the 1.1.0 test build: "a black box stays on the side") */
 	if (row_moving(&row->motion, now)) wait = 0;
-	top = (int)lroundf(VV_BAND_TOP + ((in->clear ? ZYPEROS_SCREEN_H : VV_STRIP_TOP) - VV_BAND_TOP) * down);
+	top = (int)lroundf(VV_BAND_TOP + (ZYPEROS_SCREEN_H - VV_BAND_TOP) * down);
 
 	/* The focused game's card, whole above the band, until its snap is in */
 	if (k < 1 && in->count > 0) {
@@ -358,9 +301,9 @@ uint32_t vv_draw(vv_motion *m, const games_row *row, SDL_Renderer *r, const vv_i
 		SDL_SetTextureAlphaMod(in->snap, (Uint8)lroundf(255 * k));
 		SDL_RenderCopyF(r, in->snap, in->snap_src.w > 0 ? &in->snap_src : NULL, &dst);
 		SDL_SetTextureAlphaMod(in->snap, 255);
-		top_fade(r, in->clear ? k * (1 - down) : k);
+		top_fade(r, k * (1 - down));
 	}
-	next = name_card(r, in, phase, in->clear ? down : 0);
+	next = name_card(r, in, phase, down);
 	if (next < wait) wait = next;
 	if (top < ZYPEROS_SCREEN_H) band(r, row, in, texture, ctx, now, top, down);
 	SDL_SetRenderDrawColor(r, red, green, blue, alpha);

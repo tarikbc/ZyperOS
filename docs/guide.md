@@ -12,7 +12,7 @@ the reasons behind them.
 - [Controls and menus](#controls-and-menus), [Scraper](#scraper), [Achievements](#achievements), [Screensaver](#screensaver), [Date & Time](#date--time), [Shaders](#shaders) and [in a game](#in-a-game)
 - [Languages](#languages), [Light and dark](#light-and-dark), [Screen Colors and Night Mode](#screen-colors-and-night-mode), [Battery and power](#battery-and-power) and [Rumble](#rumble)
 - [File transfer](#file-transfer), [System Update](#system-update) and [PortMaster](#portmaster)
-- [Changing discs](#changing-discs), [Player 2](#player-2), [Audio](#audio), [Equalizer](#equalizer) and [MP4](#mp4)
+- [Changing discs](#changing-discs), [Player 2](#player-2), [Link Cable](#link-cable), [Audio](#audio), [Equalizer](#equalizer) and [MP4](#mp4)
 - [The shelf](#the-shelf), [Delete Game](#delete-game), [Storage](#storage), [Ports](#ports) and [Coming from EmulationStation](#coming-from-emulationstation)
 - [Questions](#questions), [How it compares](#how-it-compares) and [Screens](#screens)
 
@@ -103,9 +103,9 @@ The Pixel 2 has no radio of its own. A USB Wi-Fi adapter in its USB-C port gives
 
 ### The first start
 
-The first time ZyperOS starts on a handheld, Zyper says hello in each of its eight languages in turn, each named in its own words: **UP** and **DOWN** look, the screen speaks the one you are on, and **A** keeps it (**MENU > Language** changes it later). Then he teaches the buttons, one step each: the D-pad, A, B, X, Y (a favorite, in the details), MENU, SELECT, the volume, the brightness and POWER. A small picture of the handheld, turned to show where each one is, shows what it does, and the step waits for you to press it. The shoulder keys come with two of them, lit beside the D-pad (L1/R1 jump) and SELECT (L2/R2 change the song). A press of another button gets Zyper's answer, which button that was and which to try. POWER does not turn the handheld off in its own step, so it can be tried, and the volume and brightness keys change the real levels.
+The first time ZyperOS starts on a handheld, Zyper says hello in each of its eight languages in turn, each named in its own words: **UP** and **DOWN** look, the screen speaks the one you are on, and **A** keeps it (**MENU > Language** changes it later). Then he teaches the buttons, one step each: the D-pad, A, B, X, Y (a favorite, in the details), MENU, leaving a game (MENU, then X), locking the screen (MENU+L2) and unlocking it (SELECT and START held), SELECT, the volume, the brightness and POWER. The lock lessons lock only the picture on the screen, never the handheld. A small picture of the handheld, turned to show where each one is, shows what it does, and the step waits for you to press it. The shoulder keys come with two of them, lit beside the D-pad (L1/R1 jump) and SELECT (L2/R2 change the song). A press of another button gets Zyper's answer, which button that was and which to try. POWER does not turn the handheld off in its own step, so it can be tried, and the volume and brightness keys change the real levels.
 
-Then he asks four things, each shown as you look at it: the theme, the home screen, the button sounds (Wood, Glass, Bubble or Off) and, on a card with tracks, the menu music, which plays while On is chosen. **LEFT** and **RIGHT** look, **A** keeps it, and **START** skips the rest at any point. The whole start takes about a minute. Each choice is a MENU row later, and **MENU > Show Tutorial** runs the tutorial again. A start straight back into a game skips it until the next start that comes to the shelf, and a handheld turned off before the power step starts it again. A handheld updated from a ZyperOS that had no tutorial shows it once too.
+Then he asks four things, each shown as you look at it: the theme, the home screen, the button sounds (Wood, Glass, Bubble or Off) and, on a card with tracks, the menu music, which plays while On is chosen. **LEFT** and **RIGHT** look, **A** keeps it, and **START** skips the rest at any point but the unlock step, where it is half of the hold. The whole start takes about a minute. Each choice is a MENU row later, and **MENU > Show Tutorial** runs the tutorial again. A start straight back into a game skips it until the next start that comes to the shelf, and a handheld turned off before the power step starts it again. A handheld updated from a ZyperOS that had no tutorial shows it once too.
 
 <div align="center">
 
@@ -221,7 +221,7 @@ A PC Engine CD will not start without `syscard3.pce`, and ZyperOS says so by nam
 
 ### Nintendo DS
 
-Nintendo DS runs on DSperate, which ZyperOS ships, with ZyperOS's own in-game menu. A game starts with the top screen alone. While it runs, DSperate gives its threads a core each, as its own frontend does, and the CPU stays at its top clock. On my Pixel 2, light scenes hold 60 frames a second, and a busy Mario Kart DS race drops to about 40: the game keeps its speed and sound, and the frames it cannot draw in time are left out. **L1** and **R1** are the DS's L and R. **L2** shows the other screen. **R2** shows the bottom screen and turns the stylus on: the d-pad moves a cursor and **A** touches. **R2** again turns the stylus off and goes back. The in-game menu's Display tab also has **Screens** (Single, Stacked or Top Focus), **Swap Screens** and **Stylus**. A DraStic save (`Saves/<game>.dsv`, from ROGUE OS or another system) is taken over the first time a game runs on DSperate. Encrypted ROM dumps need `bios7.bin`, `bios9.bin` and `firmware.bin` in `Bios/`. A DS game reads its language from the firmware, and a `firmware.bin` carries the language of the console it was dumped from, so ZyperOS tells DSperate which language to use with each game and leaves the file alone. **Game Language** in the console's menu, under **Core**, is **Auto** to start with (the language of **MENU > Language** where the DS has it, English where it doesn't, as Português (Brasil) and 简体中文 are not on a DS) or one of English, Español, Français, Deutsch, Italiano, 日本語 and 简体中文 outright; 简体中文 is for the iQue DS's games, which are the only ones that have it. A game resumes where you left it only in the language it was left in: after a change of **Game Language** it starts fresh, in the new one, with a note that says why, and its battery save keeps your progress. A save state you load yourself keeps the language it was saved in, and **Reset** in the in-game menu starts the game again in the row's language.
+Nintendo DS runs on DSperate, which ZyperOS ships, with ZyperOS's own in-game menu. A game starts with the top screen alone. While it runs, DSperate gives its threads a core each, as its own frontend does, and the CPU stays at its top clock. On my Pixel 2, light scenes hold 60 frames a second, and a busy Mario Kart DS race drops to about 40: the game keeps its speed and sound, and the frames it cannot draw in time are left out. **L1** and **R1** are the DS's L and R. **L2** shows the other screen. **R2** shows the bottom screen and turns the stylus on: the d-pad moves a cursor and **A** touches. **R2** again turns the stylus off and goes back. The in-game menu's Display tab also has **Screens** (Single, Stacked or Top Focus), **Swap Screens** and **Stylus**. A DraStic save (`Saves/<game>.dsv`, from ROGUE OS or another system) is taken over the first time a game runs on DSperate. Encrypted ROM dumps need `bios7.bin`, `bios9.bin` and `firmware.bin` in `Bios/`. A DS game reads its language from the firmware, and a `firmware.bin` carries the language of the console it was dumped from, so ZyperOS tells DSperate which language to use with each game and leaves the file alone. **Game Language** in the console's menu, under **Core**, is **Auto** to start with (the language of **MENU > Language** where the DS has it, English where it doesn't, as Português (Brasil) and 简体中文 are not on a DS) or one of English, Español, Français, Deutsch, Italiano, 日本語 and 简体中文 outright; 简体中文 is for the iQue DS's games, which are the only ones that have it. A game resumes where you left it only in the language it was left in: after a change of **Game Language** it starts fresh, in the new one, with a note that says why, and its battery save keeps your progress. A save state you load yourself keeps the language it was saved in, and **Reset** in the in-game menu starts the game again in the row's language. A zipped DS game is unpacked the first time it runs, into a hidden `.dsperate` folder beside the zip, so it starts at once the next time. ZyperOS keeps the most recently played of those copies, up to 2 GB a folder, and removes the oldest ones. **Delete Game** takes a game's copy with it, **Rename** renames it, and **MENU > Storage** shows them all as **Unpacked DS Games**, which deletes them in one go. Saves and save states do not need the copy: a game whose copy was removed is unpacked again the next time it starts, which takes a few seconds.
 
 ### Arcade and Neo Geo
 
@@ -326,7 +326,7 @@ Dreamcast games run on flycast2021, the 2021 libretro [Flycast](https://github.c
 | **F1/F2** | brightness, everywhere, including in game |
 | **MENU** (on the systems row) | the ZyperOS menu - settings that are about the firmware |
 | **MENU** (inside a system) | that system's menu, below |
-| **MENU** (in game) | the in-game menu, in four tabs that L1 and R1 go round: **Game** (Continue, Save, Load, Undo Load after a load, Quick Slot, Disc in a game on more than one disc, Player 2 in an NES game on the Pixel 2, Achievements, Reset, Quit), **Display** (Display, Shader, Strength while the shader is an old screen, a DS game's Screens, Swap Screens and Stylus, and On-Screen Stats), **Controls** (what each button does, Pak in a Nintendo 64 game) and **Achievements** (the game's list, A opening one, or why it has none; A on the Game tab's Achievements row turns to it). See **Changing a button** below and **Player 2**. It opens when you let go, so MENU can be held for brightness, and it opens on the tab and row you left while you play the same game |
+| **MENU** (in game) | the in-game menu, in four tabs that L1 and R1 go round: **Game** (Continue, Save, Load, Undo Load after a load, Quick Slot, Disc in a game on more than one disc, Player 2 in an NES game on the Pixel 2, Link Cable in a Game Boy or Game Boy Color game on Gambatte on the Pixel 2, Achievements, Reset, Quit), **Display** (Display, Shader, Strength while the shader is an old screen, a DS game's Screens, Swap Screens and Stylus, and On-Screen Stats), **Controls** (what each button does, Pak in a Nintendo 64 game) and **Achievements** (the game's list, A opening one, or why it has none; A on the Game tab's Achievements row turns to it). See **Changing a button** below and **Player 2**. It opens when you let go, so MENU can be held for brightness, and it opens on the tab and row you left while you play the same game |
 | **X** (in the in-game menu) | Quit, from any row of any tab: the game ends and the shelf comes back, as A on Quit does. The Quit row shows the X button to remind you |
 | **SELECT+R1** (in game) | quick save: a state into the Quick Slot |
 | **SELECT+L1** (in game) | quick load: the state in the Quick Slot |
@@ -334,6 +334,8 @@ Dreamcast games run on flycast2021, the 2021 libretro [Flycast](https://github.c
 | **SELECT+L2** (in game) | slower, a step a press, back to normal speed |
 | **SELECT + a button you choose** (in game) | your own hotkeys: Screenshot, Next Shader, Next Display, Reset Game and Quit, none until you set them in **Hotkeys** (below) |
 | **MENU** (inside any menu) | closes the whole menu, however deep in it you are. B goes back one screen |
+| **MENU+L1** | a screenshot of the screen, on any screen: the home, a shelf, a menu. It goes to Screenshots/ZyperOS on the card and shows on the home's Screenshots group, named ZyperOS, beside your games' screenshots. In a game it is the game's own picture, as your SELECT Screenshot hotkey takes it. MENU opens the menu when it is let go, so a button pressed while it is held does not open it |
+| **MENU+L2** | locks the handheld, on any screen and in a game, as MP4's Lock Screen does: the screen goes dark and every button but the volume does nothing. Hold **SELECT+START** to unlock; a game goes on where it was. Both chords' buttons and how long you hold to unlock (0.5 to 5 s) are in **MENU > System > Hotkeys** |
 | **SELECT** | MP4, the music, audiobook and video player, from anywhere but a running game - the in-game menu included. Again to close it |
 | **POWER** | powers off. In a game, the game is saved first, and the next start goes straight back into it. After a crash or a power cut, the next start is the home instead. With **MENU > Power Button** on **Hold**, POWER has to be held for a second, and a press alone does nothing: a bar at the top of the screen fills while it is held, on the home, in a game and over a port |
 
@@ -545,8 +547,14 @@ USB Wi-Fi adapter is plugged in: Wi-Fi and Wi-Fi File Transfer here (USB
 File Transfer stays, with a computer on the cable), and Album Art in MP4's.
 Downloads stays, here and in a console's menu: its download says it needs
 Wi-Fi, and its counts, Systems and accounts need none. Bluetooth is never
-there. A phone's USB tethering is internet too (see **File transfer**):
+there. With an adapter in, any Wi-Fi network will do, a hotspot too: a
+phone's, an Android handheld's or a laptop's. USB tethering from an Android
+phone or handheld is internet too, with no adapter (see **File transfer**):
 while it is on, Album Art is back, and Downloads' download works.
+
+### See a choice before you take it
+
+In an option's list, the choice under the cursor shows at once, before you press **A**. Appearance, the accent, the backgrounds, Folder Color, Highlight and the Shader repaint the whole screen, Home Screen and a shelf's View and Sort By redraw what is behind the list, Battery Icon and Time Zone change the corner, Language puts every word in that language, and Night Mode shows its warmth. UI Sounds and Audio Channels play the cursor's own click that way, Menu Music plays the volume and, once you rest on one, the track, and Rumble buzzes each level. In a game, Screens, Quick Slot and a button's jobs show a picture beside the list, and On-Screen Stats shows the stats where they would go. **B** puts back what you had; nothing is saved until **A**.
 
 ### Downloads
 
@@ -850,7 +858,7 @@ The system menu opens on a shelf of games and applies to that system alone:
 | **Super Game Boy** | the Game Boy and Game Boy Color shelves', under Core, on mGBA: `Off` to start with, as before, or `Its Games`, where a game made for the Super Game Boy starts as one, in its own colors and border (no BIOS needed; other games start as before). For this system alone, saved the moment it changes, for the next game started. With its border the picture is 256x224: 2x on the Pixel 2, 3x on the Brick at Sharp Pixels |
 | **Timing** | the Game Boy, Game Boy Color, Game Boy Advance, Nintendo DS and Genesis shelves', under Core (and under Game Language on the DS's): `Smooth` to start with, or `Exact`, for this system alone; left/right/A flip it, saved the moment it changes, for the next game started. The screen refreshes 60.08 times a second and these consoles make 59.7 to 59.9 frames. `Smooth` shows one game frame each refresh, so motion is even, and the game runs up to 0.6% faster than the console: a GBA game 3.5 seconds fast in 10 minutes. `Exact` keeps the console's own speed, for timers and rhythm games, and about every 3 seconds one frame stays on the screen for two refreshes |
 | **Sort By** | left/right; `Name`, `Play Time`, `Last Played` or `Recently Added` |
-| **View** | left/right, or A for the list; `Covers`, the row of covers, `Grid`, two rows of covers in cells shaped like the shelf's own art, `List`, the games as a list of names with the focused one's cover beside it, or `Video`, the focused game's video snap on the whole screen with the covers in a band at the foot; after 2 seconds with no press while a snap plays, the band goes down to a thin strip so the video has the screen, and any button brings it back. START on the shelf steps it too, without the menu |
+| **View** | left/right, or A for the list; `Covers`, the row of covers, `Grid`, two rows of covers in cells shaped like the shelf's own art, `List`, the games as a list of names with the focused one's cover beside it, or `Video`, the focused game's video snap on the whole screen with the covers in a band at the foot; after 2 seconds with no press while a snap plays, the band and the game's name go away so the video has the whole screen, and any button brings them back. START on the shelf steps it too, without the menu |
 | **Display** | how the picture fills the screen: Full Screen, Original Shape, Square Pixels, Sharp Pixels, Sharp Pixels, Tall, Sharp Pixels, Zoomed, Fill, Edges Cut or Actual Size; left/right cycles it, and A opens the list, with a small picture of your game in the mode under the cursor and a line that says what it does; saved the moment it changes. `Square Pixels` (1.1.0) draws every pixel of the game square, whatever shape its core asks for, as tall as the screen (as wide, for a wide game such as the GBA's): an NES or SNES game at 8:7, a Game Gear game at 10:9, a PC Engine game at 16:15, as RetroArch's 1:1 PAR does with integer scaling off. `Sharp Pixels` draws them square too, at a whole number of times their size, so it can leave a border all round |
 | **Border** | under Display, while the display mode leaves room around the system's games, and always on the Game Boys (the Game Boys and other handhelds, a Sharp Pixels picture smaller than the screen): `Off` to start with, black as before; `Blur`, the game's own picture blurred and darker around it; on the Game Boy, Game Boy Color and Game Boy Advance, in any display mode, `Handheld`, a drawing of the handheld's own face around the game at its full size, cut at the screen's edge, and `Handheld, Whole`, the game smaller so the whole screen glass and some of the body show (not for the Advance on the Pixel 2, where the game would be tiny); choosing either turns the system's Display to Sharp Pixels, the size the frames are drawn for; or `Your Own`, the first PNG in `Borders/<the system's folder>/` on the card (or in NextUI's `Overlays/<tag>/`), shown only when there is one. For this system alone; the same row is in a game's Display tab, where it changes the game's at once |
 | **Handheld Color** | under Border while it is a Game Boy Color frame: the handheld's color, `Yellow`, `Red`, `Purple`, `Green`, `Teal` or `Clear Purple` |
@@ -1149,6 +1157,12 @@ sun whose rays grow with the brightness. The mark and the segments are lime
 for volume and amber for brightness, on a bar in the theme that is on, light
 or dark.
 
+**The Brick's mute switch.** The switch on the Brick's side mutes everything,
+the speaker and headphones alike. While it is down, a crossed speaker sits
+next to the battery at the top right, and the volume keys show the bar with
+the speaker crossed and the word **Muted** in place of its steps (in a game,
+the crossed speaker alone). Flip the switch back to hear sound again.
+
 ### Past the top: the boost
 
 Some films and games are quiet even at the top of the volume. At the top,
@@ -1298,12 +1312,12 @@ browser: ROMs, Music, Audiobooks, Videos, Menu Music, BIOS, Saves and Save
 States. The screen
 shows the handheld's address, its name (`zyperos.local`) and a four-digit
 PIN, new each time it opens. Either opens the page; the name is the easier
-one to type, and the address works where the name does not. Over the USB
-cable the name comes first, `http://zyperos.local`, with the address and the
-PIN under it: only the computer is on that link. Over Wi-Fi the address
-comes first and the name sits beside the PIN: anyone on the network could
-answer for a name, so the address on the handheld's own screen is the one
-to trust.
+one to type, and the address works where the name does not. The address
+comes first, over the USB cable as over Wi-Fi, and the name under it
+(`http://zyperos.local` over the cable): Windows does not always find the
+name over the cable, and the address works on every computer. Over Wi-Fi
+anyone on the network could answer for a name, so the address on the
+handheld's own screen is the one to trust.
 The page asks for the PIN and opens as the fourth digit goes in. Five wrong
 PINs and the page waits 30 seconds.
 
@@ -1315,7 +1329,7 @@ shows how far it is. Under them, **Now** says what happened last, with the
 file's name, and **Browsers** (and **SSH** over the cable) who is connected.
 The address and the PIN stay at the top for the next browser.
 
-On the Pixel 2, an Android phone with USB tethering opens it too on the USB
+On the Pixel 2, an Android phone or handheld with USB tethering opens it too on the USB
 cable, with no adapter: answer **Phone** when the handheld asks what you
 plugged in, and turn on the phone's **USB tethering**. The phone shares its
 network over the cable and gives the handheld an address there, and **USB
@@ -1329,9 +1343,12 @@ it closes 10 seconds later). While USB tethering is on, the handheld also
 has the phone's internet: its clock sets itself from it, and **MENU >
 Downloads**, Cover and Video, System Update
 and PortMaster's install work over it as over Wi-Fi. Close File Transfer
-with **B** and the phone stays connected for them. Over the phone, which may
-be on mobile data, nothing large starts by itself: a System Update download
-cut short waits for **A**. An iPhone shares its network over USB only with a
+with **B** and the phone stays connected for them. Box art and video snaps
+download over it as over Wi-Fi. The one thing held back, since the phone may
+be on mobile data, is System Update's download: one cut short waits for **A**
+rather than starting again by itself. A phone's or a handheld's Wi-Fi
+hotspot, joined with a USB Wi-Fi adapter, is Wi-Fi like any other and holds
+nothing back. An iPhone shares its network over USB only with a
 computer it trusts, which the handheld cannot be, so use Wi-Fi File Transfer
 with an iPhone. Some Android devices have no USB tethering at all (the AYN
 Thor, an Android gaming handheld, offers it neither in Settings nor in its
@@ -1369,8 +1386,8 @@ shows them, and Zyper cheers.
 
 The same thing over a cable, with no Wi-Fi, called USB File Transfer. It works with a Mac, Linux, or Windows 11; Windows 10 has no driver for this kind of connection.
 
-1. Plug the device into the computer with a USB cable, and choose **File Transfer**. Or open **MENU > USB File Transfer**, which takes Wi-Fi File Transfer's place while a computer is on the cable. While the computer connects, it shows a bar; then its name, `http://zyperos.local`, in large type, its address under it, and a PIN.
-2. Open `http://zyperos.local` in a browser on that computer, or the address, `http://10.42.0.1` on the Pixel 2 or `http://10.55.0.2` on the Brick, and type the PIN.
+1. Plug the device into the computer with a USB cable, and choose **File Transfer**. Or open **MENU > USB File Transfer**, which takes Wi-Fi File Transfer's place while a computer is on the cable. While the computer connects, it shows a bar; then its address, `10.42.0.1` on the Pixel 2 and `10.55.0.2` on the Brick, in large type, its name, `http://zyperos.local`, under it, and a PIN.
+2. Open the address in a browser on that computer, `http://10.42.0.1` on the Pixel 2 or `http://10.55.0.2` on the Brick, or `http://zyperos.local`, and type the PIN. On Windows, use the address if the name does not open.
 3. Drag games into their console's folder, albums into `Music`, books into `Audiobooks` or films into `Videos`. They're on the shelf when you leave the screen, or, with the transfer behind the shelf, a moment after they arrive.
 
 ### Leaving the transfer screen
@@ -1693,6 +1710,49 @@ no other site can show the page inside its own.
 A game controller paired with the phone or the computer does not work yet.
 It needs the page over HTTPS, which comes with a later update.
 
+## Link Cable
+
+On two Pixel 2s, a Game Boy or Game Boy Color game can be linked as by the
+Game Boy's link cable: trade and battle in Pokémon, or play Tetris against
+each other. Each Pixel 2 needs a Wi-Fi adapter in, and the game runs on
+**Gambatte**: in the Game Boy's (or the Game Boy Color's) system menu, set
+**Core** to gambatte. mGBA has no link.
+
+1. Start the same game on both, or two that link (Pokémon Red and Blue).
+2. On one: MENU, then **Link Cable** on the Game tab, then **Host**. It makes
+   its own Wi-Fi network, says its name, `Pixel 2 7F2A`, and shows a code of
+   four digits, `4821`. The code is new each time it hosts.
+3. On the other: MENU, **Link Cable**, **Join**. It looks for a Pixel 2 that
+   hosts and lists it; choose it with **A**, type the four digits the first
+   one shows (the keyboard's top row), and press **START**.
+4. Both close their menus by themselves and the games go on, linked. A
+   notice says **Linked with Pixel 2 ...** on each. Use the link in the game
+   as with a real cable (in Pokémon, the Cable Club).
+
+Four digits are quick to type, not strong: someone nearby who records the
+handhelds joining could find the code. So while the link is up, nothing else
+of the handheld's (Developer Mode's SSH over Wi-Fi among it) answers on its
+network.
+
+**With a USB-C cable instead:** take the Wi-Fi adapters out and join the two
+Pixel 2s with one USB-C to USB-C cable. The page then says the link goes over
+the cable, with no code. Choose **Host** on one first, then **Join** on the
+other: the one that joins gives the other power for as long as they are
+linked, so its battery goes down faster. The port stays powering the other
+until you pull the cable out.
+
+The row says `Off`, `Waiting` (hosting, nobody yet), `Linked` or `Lost`.
+With no adapter in, it says `Needs Wi-Fi`. The two games run in step, so
+while a menu is open on one, the other's game stands still at its next
+transfer on the link; after ten seconds it gives that transfer up, as if the
+cable were pulled out, and the link comes back once the menu closes. If the other one goes
+out of range or turns off, a notice says **Link lost** after six seconds and
+the game goes on alone; if it stops the link or quits its game, the notice
+says it left. If the code was typed wrong, the page says to check it; choose
+Join again. Choose Host or Join again to link once more. The game's end
+stops the link, however it ends, and each handheld's Wi-Fi comes back as it
+was. Nothing is saved to the Wi-Fi list.
+
 ## Audio
 
 Sound can come out of four places, and ZyperOS picks in a fixed order:
@@ -1827,7 +1887,7 @@ does not wait for the launcher to notice the headset is gone.
 
 **MENU > Sound > Equalizer** shapes the sound by its low, middle and high notes: the music and videos in MP4, the menu music, games and ports. It is the same row in **MP4's MENU**, so you can open it while a song or a video plays and hear each change as you make it.
 
-The speaker and headphones each keep their own preset, `Off`, `Bass`, `Voice`, `Treble` or `Custom`, so the bass you like on headphones does not make the small speaker strain. The page shows the one in use now (**Speaker** or **Headphones**, which covers the jack, a USB-C adapter and a Bluetooth headset). **A** on it opens the presets, each with a picture of its curve, and you hear the one under the cursor before you choose it. Under it are five bands, `60 Hz`, `250 Hz`, `1 kHz`, `4 kHz` and `12 kHz`, each from -6 to +6 dB: change one and the preset becomes `Custom`, starting from the curve you had. `Off` on a new card, and `Off` is no filter at all, so nothing changes until you choose a preset.
+The speaker and headphones each keep their own preset, `Off`, `Bass`, `Voice`, `Treble` or `Custom`, so the bass you like on headphones does not make the small speaker strain. The page shows the one in use now (**Speaker** or **Headphones**, which covers the jack, a USB-C adapter and a Bluetooth headset). **A** on it opens the presets, each with a picture of its curve, and you hear the one under the cursor before you choose it. Under it are five bands, `120 Hz`, `250 Hz`, `1 kHz`, `4 kHz` and `7 kHz`, each from -6 to +6 dB: change one and the preset becomes `Custom`, starting from the curve you had. `Off` on a new card, and `Off` is no filter at all, so nothing changes until you choose a preset.
 
 While the page is open, MP4 keeps only a little sound waiting, so a step is heard in under a tenth of a second, and each gain moves over 20 ms, so a step never clicks. A boost that takes a loud song past full scale is bent gently rather than cut. Ports get the equalizer on a system that has its plugin; a port that plays straight to the hardware keeps its own sound.
 
@@ -2137,7 +2197,7 @@ A file that another game on the card still uses stays: a save two systems' games
 
 <table>
   <tr>
-    <td align="center"><img src="../res/readme/storage.png" width="320" alt="MENU > Storage: 120.5 GB used and 7.4 GB free of 128 GB, a bar by part, two recommendations, then PlayStation, Videos and Sega CD by size"><br><sub>The card by part, then by size</sub></td>
+    <td align="center"><img src="../res/readme/storage.png" width="320" alt="MENU > Storage: 120.5 GB used and 7.4 GB free of 128 GB, a bar by part, three recommendations, then PlayStation, Videos and Sega CD by size"><br><sub>The card by part, then by size</sub></td>
     <td align="center"><img src="../res/readme/storage-system.png" width="320" alt="PlayStation's page: 3.8 GB in six games, its bar of games, saves and art, Delete Video Snaps, then its games largest first"><br><sub>A system's games, largest first</sub></td>
     <td align="center"><img src="../res/readme/storage-music.png" width="320" alt="Music's page: 5.2 GB in 318 songs, then its albums largest first, and X beside the list for the order"><br><sub>Music's albums; X changes the order</sub></td>
   </tr>
@@ -2145,7 +2205,7 @@ A file that another game on the card still uses stays: a save two systems' games
 
 </div>
 
-**Unused Art** deletes the covers and video snaps of games that are no longer on the card; a fetch in **MENU > Downloads** can bring them back. **Old Save States** deletes the save states of games none of whose states was written in a year and that you have not played in one. Your saves stay. Each asks first, with the room it gives back, and the cursor on Cancel.
+**Unused Art** deletes the covers and video snaps of games that are no longer on the card; a fetch in **MENU > Downloads** can bring them back. **Old Save States** deletes the save states of games none of whose states was written in a year and that you have not played in one. Your saves stay. **Unpacked DS Games** deletes the copies of zipped Nintendo DS games that DSperate unpacked so they start at once; your saves and states stay, and each game unpacks again the next time it starts. Each asks first, with the room it gives back, and the cursor on Cancel.
 
 ### Ports
 
@@ -2310,6 +2370,12 @@ Battery saves are `.srm` files in `Saves/`, named after the game. Save states, t
 
 Open **MENU > Wi-Fi File Transfer** (**USB File Transfer** over the USB cable), open its address in a browser, and click **Download logs** under the folders (behind the ⋯ on a phone). You get one `.tar.gz` file holding the last ten boots' logs, on the Pixel 2 the USB port's last 50 plugs (`usb.log`: what was plugged in, what the handheld asked and did, and how long it stayed) and the Wi-Fi adapter's joins and drops, each drop with the reason the network or the adapter gave and the last signal seen (`wifi.log`), and a short summary of the device, ready to send to whoever is helping you. Wi-Fi network, headset and account names are masked in it, and the logs on the card are left as they are. The logs themselves are on the card, in `.userdata/brick/logs/` on the Brick and `.userdata/pixel2/logs/` on the Pixel 2.
 
+### A start that takes too long, or a restart
+
+A start normally reaches the home in about 2 seconds. If it takes longer, the boot screen says what it is doing after 5 seconds ("Checking the card · C3"), and after 20 seconds "Taking longer than usual" and what to do: if it stays like that, hold **POWER** for 10 seconds and turn the handheld on again. Testers can hold **SELECT** for 2 seconds on the boot screen to see the system's latest lines.
+
+If a start never finished, or the handheld froze while you played, and it was restarted, Zyper says so once on the home, with a short code such as **K1W · 0.6 s**: where it stopped (K1 is the kernel before the card was found, C3 the card's check, L1 ZyperOS starting, H while playing) and why (W a watchdog, P a crash). **MENU > About ZyperOS** keeps that code as **Last Restart** for 30 days. The full report is in your logs ([above](#sending-the-logs)) and, on the Pixel 2, in `zyperos-crash.txt` on the card's PX2BOOT drive; sending it with the code on the Discord helps find the cause.
+
 ## How it compares
 
 The GKD Pixel 2 has several operating systems to choose from. This is ZyperOS beside the one it comes with and four others, from what each one's own pages, code and releases say in November 2026. ROGUE OS set the bar for this handheld, and ZyperOS set out to match it.
@@ -2390,7 +2456,7 @@ The GKD Pixel 2 has several operating systems to choose from. This is ZyperOS be
   </tr>
   <tr>
     <td align="center"><img src="../res/readme/portmaster.png" width="240" alt="Install PortMaster: its crane icon, PortMaster's version, what it is, and the download's bar at 9.8 of 24 MB"><br><sub>PortMaster with one press</sub></td>
-    <td align="center"><img src="../res/readme/storage.png" width="240" alt="MENU > Storage: the card in one bar by part, two recommendations, then every system by size"><br><sub>What fills the card</sub></td>
+    <td align="center"><img src="../res/readme/storage.png" width="240" alt="MENU > Storage: the card in one bar by part, three recommendations, then every system by size"><br><sub>What fills the card</sub></td>
     <td align="center"><img src="../res/readme/battery.png" width="240" alt="MENU > Battery Icon set to Time Left: the corner reads 3 h 25 min beside the battery"><br><sub>The battery, as time left</sub></td>
   </tr>
   <tr>

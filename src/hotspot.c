@@ -40,6 +40,7 @@ int         hotspot_phones(void)   { return g_phones; }
 #include <unistd.h>
 
 #include "wifi.h"
+#include "wdog.h"
 
 #define HOSTAPD   "/usr/sbin/hostapd"
 #define UDHCPD    "/usr/sbin/udhcpd"
@@ -306,7 +307,32 @@ static bool ask_status(void)
 
 bool hotspot_start(void) { return hotspot_start_dns(true); }
 
-bool hotspot_start_dns(bool own_dns)
+static bool start_now(bool own_dns, const char *ssid, const char *pass);
+
+/* Wi-Fi off first, then hostapd: Wi-Fi's waits have no end of their own, so
+ * a long task to the launcher's watchdog (wdog.h) */
+static bool start(bool own_dns, const char *ssid, const char *pass)
+{
+	bool ok;
+
+	wdog_hold("the hotspot");
+	ok = start_now(own_dns, ssid, pass);
+	wdog_release();
+	return ok;
+}
+
+bool hotspot_start_dns(bool own_dns) { return start(own_dns, NULL, NULL); }
+
+bool hotspot_start_named(const char *ssid, const char *pass)
+{
+	if (!ssid || !*ssid || strlen(ssid) > 32 || !pass || strlen(pass) < 8 || strlen(pass) >= sizeof g_pass)
+		return false;
+	return start(false, ssid, pass);
+}
+
+/* With `ssid` NULL, File Transfer's and Player 2's: the adapter's name and a
+ * new password */
+static bool start_now(bool own_dns, const char *ssid, const char *pass)
 {
 	uint8_t rnd[CAPTIVE_PASS_RANDOM];
 	char mac[32], conf[1024];
@@ -331,7 +357,13 @@ bool hotspot_start_dns(bool own_dns)
 	/* A new password every time the screen opens, from the kernel's
 	 * generator, which on a handheld that has just booted may still be
 	 * gathering: urandom does not wait, and neither should this. */
-	if (getrandom(rnd, sizeof rnd, GRND_NONBLOCK) != (ssize_t)sizeof rnd) {
+	if (ssid) {
+		/* The caller's: the name and the password as given, and the QR
+		 * text for them, though nobody scans it */
+		snprintf(g_ssid, sizeof g_ssid, "%s", ssid);
+		snprintf(g_pass, sizeof g_pass, "%s", pass);
+		captive_wifi_qr(g_qr, sizeof g_qr, g_ssid, g_pass);
+	} else if (getrandom(rnd, sizeof rnd, GRND_NONBLOCK) != (ssize_t)sizeof rnd) {
 		fd = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
 		if (fd >= 0) { got = read(fd, rnd, sizeof rnd); close(fd); }
 		if (got != (ssize_t)sizeof rnd) {
@@ -340,11 +372,13 @@ bool hotspot_start_dns(bool own_dns)
 			return false;
 		}
 	}
-	file_head("/sys/class/net/" WLAN "/address", mac, sizeof mac);
-	captive_ssid(g_ssid, sizeof g_ssid, mac);
-	captive_password(g_pass, sizeof g_pass, rnd);
-	memset(rnd, 0, sizeof rnd);
-	captive_wifi_qr(g_qr, sizeof g_qr, g_ssid, g_pass);
+	if (!ssid) {
+		file_head("/sys/class/net/" WLAN "/address", mac, sizeof mac);
+		captive_ssid(g_ssid, sizeof g_ssid, mac);
+		captive_password(g_pass, sizeof g_pass, rnd);
+		memset(rnd, 0, sizeof rnd);
+		captive_wifi_qr(g_qr, sizeof g_qr, g_ssid, g_pass);
+	}
 
 	/* One fixed channel, 6, the middle of the three that never overlap: a
 	 * channel survey would cost seconds the player is watching, for a link
@@ -456,7 +490,9 @@ void hotspot_stop(void)
 	memset(g_qr, 0, sizeof g_qr);
 	if (was) {
 		fprintf(stderr, "hotspot: stopped, Wi-Fi back on\n");
+		wdog_hold("Wi-Fi");          /* its waits have no end of their own */
 		wifi_up();
+		wdog_release();
 	}
 }
 
@@ -465,6 +501,7 @@ void hotspot_stop(void)
 bool          hotspot_available(void) { return false; }
 bool          hotspot_start(void)     { return false; }
 bool          hotspot_start_dns(bool own_dns) { (void)own_dns; return false; }
+bool          hotspot_start_named(const char *ssid, const char *pass) { (void)ssid; (void)pass; return false; }
 hotspot_state hotspot_poll(void)      { return g_state; }
 void          hotspot_stop(void)      { g_state = HOTSPOT_OFF; }
 

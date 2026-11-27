@@ -39,7 +39,12 @@
  * binds it. */
 #define MAX_TABLES  DIATOM_MAX_RESIDENT
 #define MAX_OPTS    96      /* measured worst case is 40; headroom is cheap */
-#define MAX_PENDING 32
+/* What a launcher asks for one game. 32 until 2026-11-22: ZyperOS sends
+ * every system's options to every game (some 20), and the Game Boy's Link
+ * Cable (its src/link.h) adds Gambatte's fourteen, the mode, the port and
+ * the server's address a digit a key; the 33rd was refused. 208 bytes an
+ * entry. */
+#define MAX_PENDING 64
 
 typedef struct {
 	char        key[80];

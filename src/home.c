@@ -4,6 +4,7 @@
 #include "design.h"
 #include "ds/focus.h"
 #include "focusgeo.h"
+#include "keyrepeat.h"   /* repeat_stage: a held step growing */
 #include "look.h"
 #include "ds/layout.h"   /* DS_HINT_*: a hint's glyph and the gap to its word */
 #include "platform.h"    /* ZYPEROS_SCREEN_W: the stage's middle and right */
@@ -191,6 +192,23 @@ int home_letter_jump(const unsigned char *keys, int count, int cursor, int dir)
     start = p;
     while (start > 0 && keys[start - 1] == keys[p]) start--;
     return start;
+}
+int home_letter_held(const unsigned char *keys, int count, int cursor, int dir)
+{
+    int to = home_letter_jump(keys, count, cursor, dir);
+    return (dir > 0 && to < cursor) || (dir < 0 && to > cursor) ? cursor : to;
+}
+int home_held_step(const unsigned char *keys, int count, int cursor, int dir, unsigned held_ms)
+{
+    int times = 1 << repeat_stage(held_ms), to = cursor, i;
+
+    if (count <= 0) return 0;
+    if (!keys) {
+        to = cursor + (dir > 0 ? 1 : -1) * HOME_HELD_ROWS * times;
+        return to < 0 ? 0 : to >= count ? count - 1 : to;
+    }
+    for (i = 0; i < times; i++) to = home_letter_held(keys, count, to, dir);
+    return to;
 }
 bool home_song_update(home_song *song, bool active, bool paused, const char *title)
 {

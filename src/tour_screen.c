@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include "tour_screen.h"
+#include "menukeys_screen.h"
 
 #include "aout_route.h"
 #include "app.h"
@@ -160,12 +161,28 @@ void tour_run(app *a, bool first)
 	bool saved = false, shown = false, kept[TOUR_CHOICES] = { false };
 	int snd[IN_COUNT], n, i, at[TOUR_CHOICES], looked[TOUR_CHOICES];
 	tour_step was_step = TOUR_WELCOME;
+	tour_step said_step = TOUR_STEPS;
 	/* What Appearance was, Auto too, for a theme looked at and not kept */
 	const appearance look_was = theme_appearance();
 
 	bool lang_kept = false;
 
+	/* MENU's chords as MENU > System > Hotkeys has them, for its lesson
+	 * and the lock's, and how long SELECT and START open the lock. The
+	 * lock's chord is the tutorial's while it runs: its lesson locks a
+	 * stand-in on the stage, never the handheld (mk_tour). */
+	unsigned locks = mk_tour_locks();
+	{
+		const mk_table *m = mk_now();
+		char shot[16], lock[16];
+
+		mk_chord(m, MK_SHOT, shot, sizeof shot);
+		mk_chord(m, MK_LOCK, lock, sizeof lock);
+		tour_menu_keys(mk_in_of(m->key[MK_SHOT]), mk_in_of(m->key[MK_LOCK]), shot, lock);
+		tour_lock_hold(m->hold_ms);
+	}
 	tour_menu_word(dev_menu_word(plat_profile()));
+	mk_tour(true);
 	tour_start(&t, plat_now_ms(), &plat_profile()->chords,
 	           dev_tutorial_model(plat_profile(), &plat_profile()->chords));
 	tour_lang_from(&t, (int)i18n_lang());
@@ -195,6 +212,14 @@ void tour_run(app *a, bool first)
 		/* The levels' keys work in every step, as on every screen, and
 		 * answer their own. */
 		levels_keys(&a->in, BOOST_HIDE);
+		/* MENU and its button during that poll: the lock lesson's press
+		 * (and nothing in any other step), the launcher's lock left out */
+		if (mk_tour_locks() != locks) {
+			locks = mk_tour_locks();
+			tour_sound(tour_press(&t, TK_LOCK, now));
+		}
+		/* SELECT and START held together: the unlock lesson's hold */
+		tour_sound(tour_hold(&t, a->in.down[IN_SELECT], a->in.down[IN_START], now));
 		tour_set_music(&t, bgm_count() > 0);
 		n = tour_buttons(&t, a->in.pressed, now, snd);
 		/* A choice looked at is applied before its press is heard, so the
@@ -240,6 +265,12 @@ void tour_run(app *a, bool first)
 			tour_hands(&t, held, plat_menu_held(), now);
 		}
 		tour_tick(&t, now);
+		/* Each step as it comes on, for the checks that press through it
+		 * (check-menukeys) */
+		if (t.step != said_step) {
+			said_step = t.step;
+			fprintf(stderr, "tour: the %s step\n", TOUR_STEP_NAMES[t.step]);
+		}
 		/* The language step (DESIGN.md 11.30): the screen in the language
 		 * under the cursor from the frame it lands on, going round or
 		 * moved, and the one kept saved once A leaves the step or START
@@ -271,6 +302,7 @@ void tour_run(app *a, bool first)
 		shown = true;
 		ui_frame_rest(6);
 	}
+	mk_tour(false);
 	tour_draw_free();
 	if (!saved) tour_save(db_dev(), &t);
 	if (t.over && t.skipped && first) tour_skip_message(a);

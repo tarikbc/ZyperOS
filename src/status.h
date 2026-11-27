@@ -3,8 +3,8 @@
  * (src/topbar.h), on the ground and in no shape. My pick in the status
  * lab, 2026-11-04, "the quiet corner".
  *
- * Right to left, all on one row 24 units tall: the battery, Wi-Fi, a
- * Bluetooth headset on the Brick, File Transfer. The top bar puts the row's
+ * Right to left, all on one row 24 units tall: the battery, the mute switch
+ * down, Wi-Fi, a Bluetooth headset on the Brick, File Transfer. The top bar puts the row's
  * right end at x 960 and its top at y 52, and the clock at its left end;
  * STATUS_RIGHT and STATUS_TOP below are the row as this file measures it, at
  * the screen's edge less the inset. The marks are 12 apart and drawn here, as pixels, into one small buffer the
@@ -137,6 +137,11 @@ typedef struct {
 	 * 100; 0 the ring's track alone). Right of the USB plug. */
 	bool update;
 	int  update_pct;
+	/* The Brick's side switch down (plat_muted), every output silent:
+	 * a speaker crossed, 26 wide, a 3-unit stroke as the headphones', in
+	 * **text-soft**, between the fan and the battery. #482: "no sound" from
+	 * a switch nothing on the screen showed. */
+	bool muted;
 } status_marks;
 
 /* The battery mark's width and the space between its number and it */
@@ -149,8 +154,8 @@ typedef struct {
 #define STATUS_CALC_W   27
 
 /* The marks' width in units, gaps between them included: 0 for none, 120
- * for all three, 156 with File Transfer's 24, 36 more with headphones', and
- * 36 more with a USB plug waiting. */
+ * for all three, 156 with File Transfer's 24, 36 more with headphones', 36
+ * more with a USB plug waiting, and 38 more muted. */
 int status_marks_width(const status_marks *m);
 
 /* The buffer for the marks at `scale` pixels a unit, margin and all. */

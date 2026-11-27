@@ -43,6 +43,7 @@ const device_profile device_profile_brick = {
 	 * (src/device/brick_coreopts.c) */
 	.coreopts = dev_coreopts_brick,
 	.speaker_mono = false,
+	.mute_switch = true,   /* the side switch, gpio243, 1 when down */
 	/* PH3 (GPIO 227) on BLDO3: two testers felt kit v1.0.7-kit.1's
 	 * Hardware Check buzz it (a white and a red Brick, 2026-11-20 and 21),
 	 * so games run it, as a duty cycle (diatom/port/brick_motor.h) */

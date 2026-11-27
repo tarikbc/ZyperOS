@@ -89,34 +89,73 @@ void language_apply(app *a, lang l, bool keep)
  * menu, which is drawn in it from the next frame; B leaves it as it was. */
 int language_build(void *ctx, menu_row *rows, int max, const char **heading)
 {
-	unsigned char *sound = ctx;
-	int i, on = (int)i18n_lang();
+	language_page *pg = ctx;
+	int i;
 
 	*heading = T(S_MENU_LANGUAGE);
 	for (i = 0; i < LANG_COUNT && i < max; i++) {
 		/* Each name in its own face: ui_text draws Chinese in the Chinese
-		 * face whatever is on (src/ui.h) */
-		rows[i] = (menu_row){ lang_name((lang)i), i == on ? MENU_TICK : NULL, true };
-		sound[i] = 0;
+		 * face whatever is on (src/ui.h); the tick on the one kept, while
+		 * the screen is in the one under the cursor */
+		rows[i] = (menu_row){ lang_name((lang)i), i == pg->kept ? MENU_TICK : NULL, true };
+		pg->sound[i] = 0;
 	}
 	return i;
 }
 
+static void language_show(void *app_, int k)
+{
+	if (k >= 0 && k < LANG_COUNT && (lang)k != i18n_lang()) language_apply(app_, (lang)k, false);
+}
+
+static void language_undo(void *app_, int kept)
+{
+	language_show(app_, kept);
+}
+
+const ds_hover LANGUAGE_HOVER = { .show = language_show, .undo = language_undo };
+
+/* POWER or the idle timer on the page: the kept language back, then off */
+static menu_result language_power(app *a, void *ctx)
+{
+	ds_hover_end(&((language_page *)ctx)->run);
+	power_off(a);
+	return MENU_DONE;
+}
+
+static void language_at(app *a, void *ctx, int sel)
+{
+	language_page *pg = ctx;
+
+	(void)a;
+	ds_hover_at(&pg->run, sel, plat_now_ms());
+}
+
+/* A takes the one under the cursor: the kept one back first, then the
+ * chosen one on and saved */
 static menu_result language_key(app *a, void *ctx, in_button key, int sel)
 {
-	(void)ctx;
+	language_page *pg = ctx;
+
 	if (key != IN_ACCEPT || sel < 0 || sel >= LANG_COUNT) return MENU_STAY;
-	if ((lang)sel != i18n_lang()) language_apply(a, (lang)sel, true);
+	ds_hover_end(&pg->run);
+	if (sel != pg->kept) language_apply(a, (lang)sel, true);
 	return MENU_DONE;
 }
 
 void language_screen(app *a)
 {
-	static unsigned char sound[LANG_COUNT];
+	static language_page pg;
 
+	memset(&pg, 0, sizeof pg);
+	pg.kept = (int)i18n_lang();
+	ds_hover_begin(&pg.run, &LANGUAGE_HOVER, a, pg.kept, pg.kept, plat_now_ms());
 	menu_run(a, &(menu_style){ .accent = MENU_ZYPEROS, .fixed_w = menu_std_width(a),
-	                           .sound = sound, .start_sel = (int)i18n_lang() },
-	         language_build, language_key, sound);
+	                           .sound = pg.sound, .start_sel = pg.kept, .at = language_at,
+                           .on_power = language_power },
+	         language_build, language_key, &pg);
+	/* B, MENU or POWER: the kept one back */
+	ds_hover_end(&pg.run);
 }
 
 /* --lights-page ROW: the page over the shelf, as menu_run draws it, the

@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include "zyperdraw.h"
+#include "link_screen.h"
 #include "zyperplace.h"
 
 #include "battery_eta.h"
@@ -354,7 +355,9 @@ bool long_task_busy(void)
  * music is the screens' own, and is added by idle_due. */
 bool idle_held(void)
 {
-	return on_charger() || long_task_busy();
+	/* Desk mode as the Link Cable's joiner (ZYPEROS_DESK_LINK_CABLE): a
+	 * test with a Pixel 2 that hosts, nobody at this keyboard for minutes */
+	return on_charger() || long_task_busy() || link_desk_holds_idle();
 }
 
 /* Has the player been away long enough to power the device off?

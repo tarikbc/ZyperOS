@@ -9,8 +9,9 @@
 
 static const struct { const char *key; int bars; } LOOKS[MP4L_COUNT] = {
 	[MP4L_COVER]    = { "cover",    0 },
-	/* Under the cassette, as wide as it: 25 on the grid */
-	[MP4L_CASSETTE] = { "cassette", 25 },
+	/* None: the tape fills the screen and its reels are the motion (the
+	 * Tape Styles lab, my pick); 25 under it until then */
+	[MP4L_CASSETTE] = { "cassette", 0 },
 	/* In the column beside the record, under the names */
 	[MP4L_VINYL]    = { "vinyl",    15 },
 	/* A Winamp's window of bars, under the clock: as many as fit the
@@ -165,6 +166,7 @@ void mp4l_tape_step(mp4l_tape *t, float dt, int song, float target, float spin, 
                     float hub_r, float full_r, float wind)
 {
 	float f0, moved = 0;
+	bool wound = false;
 	int k;
 
 	if (target < 0) target = 0;
@@ -190,18 +192,31 @@ void mp4l_tape_step(mp4l_tape *t, float dt, int song, float target, float spin, 
 			t->f = t->from * (1.0f - ds_turn(t->t / (float)DS_MS_REWIND));
 		}
 		moved = t->f - f0;
+		wound = true;
 	}
 	if (t->t < 0) {
 		float gap = target - t->f;
-
 		/* Playing on, the tape is where the song is; a seek's jump is wound
 		 * on follow, which is all the tape the reels turn for past their
-		 * own speed */
-		if (fabsf(gap) < 0.002f) t->f = target;
+		 * own speed. Playing never goes back: any way back past a hair is
+		 * wound, its last stretch too */
+		bool on = gap >= 0 ? gap < 0.002f : gap > -TAPE_NEAR;
+
+		if (on) t->f = target;
 		else t->f += gap * (1.0f - expf(-dt / (float)DS_MS_WIND));
 		if (fabsf(target - t->f) < TAPE_NEAR) t->f = target;
-		if (fabsf(gap) >= 0.002f) moved = t->f - f0;
+		if (!on) {
+			moved = t->f - f0;
+			wound = true;
+		}
 	}
+	/* Rewinding or winding, the motor turns the reels for the wind alone:
+	 * the playing turn on top of it would turn them forward wherever the
+	 * wind is slow (a rewind's ends, a rewind from a song's start, a seek's
+	 * last stretch), so it is off, and comes back up over spin-up after */
+	if (wound) t->up = (float)DS_MS_SPIN_UP;
+	else if (t->up > 0) t->up = t->up > dt ? t->up - dt : 0;
+	spin *= ds_out(1.0f - t->up / (float)DS_MS_SPIN_UP);
 	for (k = 0; k < 2; k++) {
 		float r = mp4l_tape_r(t->f, k, hub_r, full_r);
 		/* Playing, the tape leaves the left pack down its outer side and
@@ -262,4 +277,95 @@ float mp4l_arm_angle(float r, float d, float pivot_deg, float len)
 	if (c > 1) c = 1;
 	if (c < -1) c = -1;
 	return phi - acosf(c) * deg;
+}
+
+/* ---- the cassette's styles ------------------------------------------------------ */
+
+static const char *const TAPE_KEY[MP4T_COUNT] = {
+	[MP4T_PINSTRIPE] = "pinstripe", [MP4T_BAND] = "band", [MP4T_FERRIC] = "ferric",
+	[MP4T_METAL] = "metal", [MP4T_CLEAR] = "clear", [MP4T_RED] = "red", [MP4T_WORN] = "worn",
+};
+/* My picks: all seven kept (the Tape Styles lab, 2026-11-23; Smoke, the
+ * smooth one, gone after the Pixel 2). One left out here leaves the row's
+ * list and Up and Down. */
+static const bool TAPE_KEPT[MP4T_COUNT] = {
+	[MP4T_PINSTRIPE] = true, [MP4T_BAND] = true, [MP4T_FERRIC] = true, [MP4T_METAL] = true,
+	[MP4T_CLEAR] = true, [MP4T_RED] = true, [MP4T_WORN] = true,
+};
+
+const char *mp4t_key(mp4t_id id)
+{
+	return id >= 0 && id < MP4T_COUNT ? TAPE_KEY[id] : TAPE_KEY[MP4T_DEFAULT];
+}
+
+mp4t_id mp4t_from_key(const char *key)
+{
+	int i;
+
+	for (i = 0; key && i < MP4T_COUNT; i++)
+		if (!strcmp(key, TAPE_KEY[i])) return (mp4t_id)i;
+	return MP4T_DEFAULT;
+}
+
+bool mp4t_kept(mp4t_id id)
+{
+	return id >= 0 && id < MP4T_COUNT && TAPE_KEPT[id];
+}
+
+mp4t_id mp4t_step(mp4t_id id, int d)
+{
+	int i = mp4t_kept(id) ? (int)id : (d > 0 ? -1 : 0), k;
+
+	d = d < 0 ? -1 : 1;
+	for (k = 0; k < MP4T_COUNT; k++) {
+		i = (i + d + MP4T_COUNT) % MP4T_COUNT;
+		if (TAPE_KEPT[i]) return (mp4t_id)i;
+	}
+	return MP4T_DEFAULT;
+}
+
+int mp4t_tape_no(double album_s)
+{
+	double m = album_s / 60.0;
+
+	if (album_s <= 0) return 0;
+	return m <= 46 ? 46 : m <= 60 ? 60 : m <= 90 ? 90 : 120;
+}
+
+char mp4t_side(int place, int n)
+{
+	if (n < 1) n = 1;
+	return place < (n + 1) / 2 ? 'A' : 'B';
+}
+
+int mp4t_hub_frame(float ang)
+{
+	int f = (int)lroundf(ang / MP4T_HUB_STEP) % MP4T_HUB_FRAMES;
+
+	return f < 0 ? f + MP4T_HUB_FRAMES : f;
+}
+
+int mp4t_pack_half(float r_cells)
+{
+	return (int)lroundf(r_cells * 2.0f);
+}
+
+int mp4t_cell(float px_per_unit)
+{
+	static const int CELLS[2] = { 8, 16 };
+	int i;
+
+	for (i = 0; i < 2; i++) {
+		float px = (float)CELLS[i] * px_per_unit;
+
+		if (px >= 1.0f && fabsf(px - roundf(px)) < 1e-3f) return CELLS[i];
+	}
+	return 0;
+}
+
+float mp4t_px_per_unit(int panel_w, int panel_h, int turn)
+{
+	int h = turn == 90 || turn == 270 ? panel_w : panel_h;
+
+	return (float)h / 768.0f;
 }

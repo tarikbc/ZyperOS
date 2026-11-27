@@ -233,6 +233,39 @@ ja = 1 年遊んでいない %d 本のゲームのステートセーブを削除
 it.one = Eliminare gli stati salvati di %d gioco non giocato da un anno? %s. I suoi salvataggi restano.
 it.other = Eliminare gli stati salvati di %d giochi non giocati da un anno? %s. I loro salvataggi restano.
 
+[storage.ds_copies]
+note = A recommendation's row: the copies DSperate unpacked of zipped Nintendo DS games (in .dsperate beside them), kept so a game starts at once; they can be deleted and are unpacked again when the game starts. tight
+en = Unpacked DS Games
+zh-Hans = 已解压的 DS 游戏
+es = Juegos DS extraídos
+pt-BR = Jogos DS extraídos
+fr = Jeux DS décompressés
+de = Entpackte DS-Spiele
+ja = 展開済みの DS ゲーム
+it = Giochi DS decompressi
+
+[storage.ds_caption]
+note = The line under the list for Unpacked DS Games: what it is. Saves and save states are never deleted, and it says so. A sentence, at most two lines.
+en = Copies of zipped DS games, so they start at once. Saves and states stay.
+zh-Hans = 压缩 DS 游戏的解压副本，让游戏立即启动。存档和即时存档会保留。
+es = Copias de juegos de DS en zip, para que arranquen ya. Partidas y estados se quedan.
+pt-BR = Cópias de jogos de DS em zip, para abrirem na hora. Saves e save states ficam.
+fr = Copies des jeux DS zippés, pour un lancement immédiat. Sauvegardes et états restent.
+de = Kopien gezippter DS-Spiele, damit sie sofort starten. Spielstände bleiben.
+ja = zip の DS ゲームをすぐ起動するためのコピー。セーブデータとステートセーブは残ります。
+it = Copie dei giochi DS in zip, per avviarli subito. Salvataggi e stati restano.
+
+[storage.ds_ask]
+note = The yes/no question for Unpacked DS Games; %s is the room it gives back ("1.8 GB"). Saves and save states stay, and each game is unpacked again (a few seconds) the next time it starts.
+en = Delete the unpacked copies of zipped DS games? %s. Saves and states stay, and each game unpacks again when it starts.
+zh-Hans = 要删除压缩 DS 游戏的解压副本吗？共 %s。存档和即时存档会保留，游戏下次启动时会重新解压。
+es = ¿Borrar las copias de DS extraídas? %s. Partidas y estados se quedan, y cada juego se extrae otra vez al iniciarlo.
+pt-BR = Apagar as cópias extraídas dos jogos de DS em zip? %s. Saves e save states ficam, e cada jogo é extraído de novo ao abrir.
+fr = Supprimer les copies DS décompressées ? %s. Sauvegardes et états restent, chaque jeu sera redécompressé.
+de = Entpackte DS-Spiele löschen? %s. Spiel- und Speicherstände bleiben, jedes Spiel wird beim Start neu entpackt.
+ja = zip の DS ゲームの展開済みコピーを削除しますか？%s。セーブデータとステートセーブは残り、次の起動時にもう一度展開します。
+it = Eliminare le copie decompresse dei giochi DS in zip? %s. Salvataggi e stati restano, e ogni gioco si decomprime all'avvio.
+
 [storage.old_heading]
 note = The heading of the question for Old Save States. A heading, the action.
 en = Delete Old Save States
@@ -243,6 +276,17 @@ fr = Supprimer les anciens états
 de = Alte Speicherstände löschen
 ja = 古いステートセーブを削除
 it = Elimina stati salvati vecchi
+
+[storage.ds_heading]
+note = The heading of the question for Unpacked DS Games. A heading, the action.
+en = Delete Unpacked DS Games
+zh-Hans = 删除已解压的 DS 游戏
+es = Borrar juegos DS extraídos
+pt-BR = Apagar jogos DS extraídos
+fr = Supprimer les copies DS
+de = Entpackte DS-Spiele löschen
+ja = 展開済みの DS ゲームを削除
+it = Elimina le copie DS
 
 [storage.saves_part]
 note = A part of a system's line under the list: its saves and save states take %s ("1.3 GB"). Lowercase: it follows a dot in the line.

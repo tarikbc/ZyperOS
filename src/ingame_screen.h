@@ -115,6 +115,9 @@ void game_menu(app *a);
 /* Reset Game's hotkey: its question over the paused game, then RESET or
  * not and back to the game (PAUSED for=reset) */
 void game_reset_ask(app *a);
+/* MENU's lock chord over a game Diatom paused for it (PAUSED for=lock):
+ * locked as on every screen, then the game again (src/menukeys.h) */
+void game_lock(app *a);
 /* Next Shader (`shader`) or Next Display, the hotkeys, while the game runs:
  * stepped, kept and sent; the name now on into out, for the pop-up */
 void gm_hotkey_step(app *a, bool shader, char *out, size_t n);
@@ -152,5 +155,9 @@ const menu_choice *gm_choices(app *a, const gm_ui *u);
 
 /* --rows-report: the in-game menu's Game and Display tabs (menu_rows_print) */
 void gm_rows_report(app *a);
+
+/* The Link Cable's page over a game just started on Gambatte for it (the
+ * question on mGBA, link_restart_on_core), then the game goes on */
+void game_link_open(app *a);
 
 #endif

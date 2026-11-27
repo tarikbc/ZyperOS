@@ -1,0 +1,435 @@
+# The Game Boy's Link Cable (src/link.c, src/link_screen.c, src/linkpanel.c): the in-game
+# menu's row on a Game Boy or Game Boy Color game on Gambatte, the page it opens over the
+# paused game (Host and Join, waiting for the other handheld, the hosts found, linked), and the
+# notices over the game as the link is made, lost or left; the code the host shows and the
+# joiner types. Pixel 2 is the handheld's name and
+# is never translated, and never broken: a no-break space between its two words. Its keys are keyhint.txt's, its Needs Wi-Fi menu.txt's.
+
+[link.row]
+note = The in-game menu's row on a Game Boy or Game Boy Color game on Gambatte, the heading of the page it opens and of its notices: two handhelds linked as by the Game Boy's link cable, over Wi-Fi. A name: as Nintendo's cable, without "Game".
+en = Link Cable
+zh-Hans = 联机线
+es = Cable Link
+pt-BR = Cabo Link
+fr = Câble Link
+de = Link-Kabel
+ja = 通信ケーブル
+it = Cavo Link
+
+[link.host]
+note = A tile on the Link Cable page: this handheld makes the network and the other one joins it. One word, a tile's name.
+en = Host
+zh-Hans = 主持
+es = Anfitrión
+pt-BR = Hospedar
+fr = Héberger
+de = Hosten
+ja = ホスト
+it = Ospita
+
+[link.host_line]
+note = The small line on the Host tile, under link.host. Pixel 2 is the handheld's name, never translated.
+en = The other Pixel 2 joins this one.
+zh-Hans = 另一台 Pixel 2 加入这台。
+es = El otro Pixel 2 se une a este.
+pt-BR = O outro Pixel 2 entra neste.
+fr = L'autre Pixel 2 rejoint celui-ci.
+de = Der andere Pixel 2 verbindet sich mit diesem.
+ja = もう一台の Pixel 2 がこちらに参加します。
+it = L'altro Pixel 2 si unisce a questo.
+
+[link.join]
+note = A tile on the Link Cable page: this handheld finds the other one, which hosts, and joins it. One word, a tile's name.
+en = Join
+zh-Hans = 加入
+es = Unirse
+pt-BR = Entrar
+fr = Rejoindre
+de = Beitreten
+ja = 参加
+it = Unisciti
+
+[link.join_line]
+note = The small line on the Join tile, under link.join.
+en = Find a Pixel 2 that hosts.
+zh-Hans = 寻找正在主持的 Pixel 2。
+es = Busca un Pixel 2 anfitrión.
+pt-BR = Encontre um Pixel 2 hospedando.
+fr = Trouvez un Pixel 2 qui héberge.
+de = Einen hostenden Pixel 2 finden.
+ja = ホストしている Pixel 2 を探します。
+it = Trova un Pixel 2 che ospita.
+
+[link.adapters]
+note = The line under the Host and Join tiles: the link is over Wi-Fi, and the Pixel 2 has Wi-Fi only through a USB Wi-Fi adapter, so both need one.
+en = Each handheld needs a Wi-Fi adapter in.
+zh-Hans = 两台掌机都需要插入 Wi-Fi 适配器。
+es = Cada consola necesita un adaptador Wi-Fi conectado.
+pt-BR = Cada portátil precisa de um adaptador Wi-Fi conectado.
+fr = Chaque console doit avoir un adaptateur Wi-Fi branché.
+de = Jeder Handheld braucht einen eingesteckten WLAN-Adapter.
+ja = どちらの本体にも Wi-Fi アダプターが必要です。
+it = Ogni console deve avere un adattatore Wi-Fi inserito.
+
+[link.waiting]
+note = The large line of the page while this handheld hosts and the other has not joined yet. No full stop: a heading-like line.
+en = Waiting for the other Pixel 2
+zh-Hans = 正在等待另一台 Pixel 2
+es = Esperando al otro Pixel 2
+pt-BR = Aguardando o outro Pixel 2
+fr = En attente de l'autre Pixel 2
+de = Warte auf den anderen Pixel 2
+ja = もう一台の Pixel 2 を待っています
+it = In attesa dell'altro Pixel 2
+
+[link.this_one]
+note = Under link.waiting: this handheld's name as the other one lists it, %s "Pixel 2 7F2A".
+en = This one is %s.
+zh-Hans = 这台是 %s。
+es = Este es %s.
+pt-BR = Este é o %s.
+fr = Celui-ci est %s.
+de = Dieser ist %s.
+ja = この本体は %s です。
+it = Questo è %s.
+
+[link.then_join]
+note = Under link.this_one, over the host's code drawn large: what to do on the other handheld. Link Cable and Join are link.row and link.join as they read in this language; the code is the one on this screen.
+en = On the other one: Link Cable, Join, then this code.
+zh-Hans = 在另一台上：联机线、加入，然后输入这个代码。
+es = En el otro: Cable Link, Unirse y luego este código.
+pt-BR = No outro: Cabo Link, Entrar e depois este código.
+fr = Sur l'autre : Câble Link, Rejoindre, puis ce code.
+de = Auf dem anderen: Link-Kabel, Beitreten, dann dieser Code.
+ja = もう一台で：通信ケーブル、参加、そしてこのコード。
+it = Sull'altro: Cavo Link, Unisciti, poi questo codice.
+
+[link.starting]
+note = The large line while the host's own network comes up, a few seconds. No full stop.
+en = Starting the network
+zh-Hans = 正在启动网络
+es = Iniciando la red
+pt-BR = Iniciando a rede
+fr = Démarrage du réseau
+de = Netzwerk wird gestartet
+ja = ネットワークを起動しています
+it = Avvio della rete
+
+[link.looking]
+note = The large line of the Join page while no host is found yet. No full stop.
+en = Looking for a Pixel 2 that hosts
+zh-Hans = 正在寻找主持的 Pixel 2
+es = Buscando un Pixel 2 anfitrión
+pt-BR = Procurando um Pixel 2 hospedando
+fr = Recherche d'un Pixel 2 qui héberge
+de = Suche einen hostenden Pixel 2
+ja = ホストしている Pixel 2 を探しています
+it = Ricerca di un Pixel 2 che ospita
+
+[link.then_host]
+note = Under link.looking: what to do on the other handheld first. Link Cable and Host are link.row and link.host as they read in this language.
+en = On the other one: Link Cable, then Host.
+zh-Hans = 在另一台上：联机线，然后主持。
+es = En el otro: Cable Link y luego Anfitrión.
+pt-BR = No outro: Cabo Link e depois Hospedar.
+fr = Sur l'autre : Câble Link, puis Héberger.
+de = Auf dem anderen: Link-Kabel, dann Hosten.
+ja = もう一台で：通信ケーブル、次にホスト。
+it = Sull'altro: Cavo Link, poi Ospita.
+
+[link.pick]
+note = The large line of the Join page once hosts are found, over the list of them. No full stop.
+en = Choose the Pixel 2 to join
+zh-Hans = 选择要加入的 Pixel 2
+es = Elige el Pixel 2 al que unirte
+pt-BR = Escolha o Pixel 2 para entrar
+fr = Choisissez le Pixel 2 à rejoindre
+de = Wähle den Pixel 2 zum Beitreten
+ja = 参加する Pixel 2 を選んでください
+it = Scegli il Pixel 2 a cui unirti
+
+[link.joining]
+note = The large line while this handheld joins the host's network and says hello, %s its name "Pixel 2 7F2A". No full stop.
+en = Joining %s
+zh-Hans = 正在加入 %s
+es = Uniéndose a %s
+pt-BR = Entrando em %s
+fr = Connexion à %s
+de = Verbinde mit %s
+ja = %s に参加しています
+it = Connessione a %s
+
+[link.linked_with]
+note = The large line of the page while linked, and the notice's line over the game as the link is made, %s the other handheld's name "Pixel 2 7F2A". No full stop.
+en = Linked with %s
+zh-Hans = 已与 %s 联机
+es = Enlazado con %s
+pt-BR = Conectado ao %s
+fr = Relié à %s
+de = Verbunden mit %s
+ja = %s と通信中
+it = Collegato a %s
+
+[link.pause_line]
+note = Under link.linked_with: the two games run in step, so while one handheld's menu is open the other's game stands still at its next link transfer (for ten seconds at most, then that transfer is given up).
+en = While a menu is open on one, the other one waits.
+zh-Hans = 一台打开菜单时，另一台会等待。
+es = Mientras uno tiene el menú abierto, el otro espera.
+pt-BR = Enquanto um está com o menu aberto, o outro espera.
+fr = Pendant qu'un menu est ouvert sur l'un, l'autre attend.
+de = Ist auf einem das Menü offen, wartet der andere.
+ja = 片方でメニューを開いている間、もう片方は待機します。
+it = Mentre su uno è aperto il menu, l'altro aspetta.
+
+[link.value_waiting]
+note = A value, begun with a capital: the Link Cable row's while this handheld hosts and the other has not joined.
+en = Waiting
+zh-Hans = 等待中
+es = Esperando
+pt-BR = Aguardando
+fr = En attente
+de = Wartet
+ja = 待機中
+it = In attesa
+
+[link.value_linked]
+note = A value, begun with a capital: the Link Cable row's while the two are linked.
+en = Linked
+zh-Hans = 已联机
+es = Enlazado
+pt-BR = Conectado
+fr = Relié
+de = Verbunden
+ja = 通信中
+it = Collegato
+
+[link.value_lost]
+note = A value, begun with a capital: the Link Cable row's after the link was lost or the other one left; A opens the page to start again.
+en = Lost
+zh-Hans = 已断开
+es = Perdido
+pt-BR = Perdido
+fr = Perdu
+de = Getrennt
+ja = 切断
+it = Perso
+
+[link.lost]
+note = The notice's line over the game when the other handheld stopped answering for some seconds (out of range, off): the game goes on alone. Short, no full stop.
+en = Link lost
+zh-Hans = 联机已断开
+es = Enlace perdido
+pt-BR = Conexão perdida
+fr = Liaison perdue
+de = Verbindung verloren
+ja = 通信が切れました
+it = Collegamento perso
+
+[link.left]
+note = The notice's line over the game, under link.row, when the other handheld ended the link (its game ended, or it chose Stop), %s its name "Pixel 2 7F2A". A notice's line: short, no full stop.
+en = %s left
+zh-Hans = %s 已离开
+es = %s se fue
+pt-BR = %s saiu
+fr = %s est parti
+de = %s ist gegangen
+ja = %s が抜けました
+it = %s è uscito
+
+[link.lost_line]
+note = Under the Host and Join tiles after the link was lost or the other one left: either starts it again.
+en = The link was lost. Host or Join again.
+zh-Hans = 联机已断开。请重新主持或加入。
+es = Se perdió el enlace. Vuelve a ser anfitrión o a unirte.
+pt-BR = A conexão caiu. Hospede ou entre de novo.
+fr = La liaison a été perdue. Hébergez ou rejoignez à nouveau.
+de = Die Verbindung ist weg. Hoste oder tritt erneut bei.
+ja = 通信が切れました。もう一度ホストか参加をしてください。
+it = Il collegamento si è perso. Ospita o unisciti di nuovo.
+
+[link.fail_network]
+note = Under the tiles when the Wi-Fi adapter would not make its network or scan: errors say what happened and what to do.
+en = The Wi-Fi adapter did not start. Try again.
+zh-Hans = Wi-Fi 适配器未能启动。请重试。
+es = El adaptador Wi-Fi no se inició. Inténtalo de nuevo.
+pt-BR = O adaptador Wi-Fi não iniciou. Tente de novo.
+fr = L'adaptateur Wi-Fi n'a pas démarré. Réessayez.
+de = Der WLAN-Adapter ist nicht gestartet. Versuche es erneut.
+ja = Wi-Fi アダプターが起動しませんでした。もう一度お試しください。
+it = L'adattatore Wi-Fi non si è avviato. Riprova.
+
+[link.fail_join]
+note = Under the tiles when this handheld could not join the host's network: most likely the code was typed wrong.
+en = Could not join that Pixel 2. Check the code and try again.
+zh-Hans = 无法加入那台 Pixel 2。请检查代码后重试。
+es = No se pudo unir a ese Pixel 2. Revisa el código e inténtalo de nuevo.
+pt-BR = Não foi possível entrar nesse Pixel 2. Confira o código e tente de novo.
+fr = Impossible de rejoindre ce Pixel 2. Vérifiez le code et réessayez.
+de = Beitritt zu diesem Pixel 2 fehlgeschlagen. Prüfe den Code und versuche es erneut.
+ja = その Pixel 2 に参加できませんでした。コードを確認して、もう一度お試しください。
+it = Impossibile unirsi a quel Pixel 2. Controlla il codice e riprova.
+
+[link.fail_answer]
+note = Under the tiles when this handheld joined the host's network and the host did not answer (its Link Cable page closed, or its game is not on Gambatte). Two lines at most under the tiles.
+en = That Pixel 2 did not answer. Keep its page open and try again.
+zh-Hans = 那台 Pixel 2 没有回应。请让它的页面保持打开，然后重试。
+es = Ese Pixel 2 no respondió. Deja su página abierta e inténtalo de nuevo.
+pt-BR = Esse Pixel 2 não respondeu. Deixe a página dele aberta e tente de novo.
+fr = Ce Pixel 2 n'a pas répondu. Laissez sa page ouverte et réessayez.
+de = Dieser Pixel 2 antwortet nicht. Lass seine Seite offen und versuche es erneut.
+ja = その Pixel 2 が応答しません。画面を開いたまま、もう一度お試しください。
+it = Quel Pixel 2 non ha risposto. Lascia aperta la sua pagina e riprova.
+
+[link.fail_busy]
+note = Under the tiles when the host is already linked with a third handheld.
+en = That Pixel 2 is linked with another one.
+zh-Hans = 那台 Pixel 2 已与另一台联机。
+es = Ese Pixel 2 ya está enlazado con otro.
+pt-BR = Esse Pixel 2 já está conectado a outro.
+fr = Ce Pixel 2 est déjà relié à un autre.
+de = Dieser Pixel 2 ist schon mit einem anderen verbunden.
+ja = その Pixel 2 はほかの本体と通信中です。
+it = Quel Pixel 2 è già collegato a un altro.
+
+[link.fail_game]
+note = Under the tiles when the game would not take the link's settings (the emulator refused them).
+en = This game could not start the link. Try again.
+zh-Hans = 这个游戏无法开始联机。请重试。
+es = Este juego no pudo iniciar el enlace. Inténtalo de nuevo.
+pt-BR = Este jogo não conseguiu iniciar a conexão. Tente de novo.
+fr = Ce jeu n'a pas pu démarrer la liaison. Réessayez.
+de = Dieses Spiel konnte die Verbindung nicht starten. Versuche es erneut.
+ja = このゲームでは通信を開始できませんでした。もう一度お試しください。
+it = Questo gioco non ha potuto avviare il collegamento. Riprova.
+
+[link.stopping]
+note = The large line while the link stops and the Wi-Fi this handheld had comes back, a second or two. No full stop.
+en = Bringing the Wi-Fi back
+zh-Hans = 正在恢复 Wi-Fi
+es = Recuperando el Wi-Fi
+pt-BR = Restaurando o Wi-Fi
+fr = Rétablissement du Wi-Fi
+de = WLAN wird wiederhergestellt
+ja = Wi-Fi を元に戻しています
+it = Ripristino del Wi-Fi
+
+[link.code_ask]
+note = The keyboard's title on the joining handheld after a host is chosen: type the code the host's page shows, %s the host's name "Pixel 2 7F2A". A title: no full stop.
+en = Code shown on %s
+zh-Hans = %s 上显示的代码
+es = Código que muestra %s
+pt-BR = Código mostrado no %s
+fr = Code affiché sur %s
+de = Code auf %s
+ja = %s に表示されたコード
+it = Codice mostrato su %s
+
+[link.fail_code]
+note = Under the tiles when what was typed for the code is not four digits.
+en = A code is four digits, as the other Pixel 2 shows it.
+zh-Hans = 代码是 4 位数字，与另一台 Pixel 2 上显示的一致。
+es = Un código tiene cuatro dígitos, como lo muestra el otro Pixel 2.
+pt-BR = O código tem quatro dígitos, como o outro Pixel 2 mostra.
+fr = Un code compte quatre chiffres, comme l'affiche l'autre Pixel 2.
+de = Ein Code hat vier Ziffern, wie der andere Pixel 2 ihn zeigt.
+ja = コードは 4 桁の数字で、もう一台の Pixel 2 に表示されています。
+it = Un codice ha quattro cifre, come lo mostra l'altro Pixel 2.
+
+[link.cable_line]
+note = Under the Host and Join tiles when another device is on the USB-C cable: the link goes over the cable, with no code, and the one that chooses Join powers the other.
+en = On the USB-C cable: no code. Join gives the other one power.
+zh-Hans = 通过 USB-C 线连接：无需代码。加入的一方为另一台供电。
+es = Por el cable USB-C: sin código. Unirse le da energía al otro.
+pt-BR = Pelo cabo USB-C: sem código. Quem entra alimenta o outro.
+fr = Par le câble USB-C : pas de code. Rejoindre alimente l'autre.
+de = Über das USB-C-Kabel: kein Code. Beitreten versorgt den anderen mit Strom.
+ja = USB-C ケーブルで接続：コード不要。参加する側がもう一台に給電します。
+it = Con il cavo USB-C: nessun codice. Chi si unisce alimenta l'altro.
+
+[link.then_join_cable]
+note = Under link.this_one while this handheld hosts on the USB-C cable (no code): what to do on the other. Link Cable and Join are link.row and link.join as they read in this language.
+en = On the other one: Link Cable, then Join.
+zh-Hans = 在另一台上：联机线，然后加入。
+es = En el otro: Cable Link y luego Unirse.
+pt-BR = No outro: Cabo Link e depois Entrar.
+fr = Sur l'autre : Câble Link, puis Rejoindre.
+de = Auf dem anderen: Link-Kabel, dann Beitreten.
+ja = もう一台で：通信ケーブル、次に参加。
+it = Sull'altro: Cavo Link, poi Unisciti.
+
+[link.joining_cable]
+note = The large line while this handheld joins the other over the USB-C cable. No full stop.
+en = Joining over the cable
+zh-Hans = 正在通过线缆加入
+es = Uniéndose por el cable
+pt-BR = Entrando pelo cabo
+fr = Connexion par le câble
+de = Verbinde über das Kabel
+ja = ケーブルで参加しています
+it = Connessione tramite cavo
+
+[link.power_line]
+note = Under link.joining_cable: the handheld that joins on the cable powers the other one for as long as they are linked (its battery goes down faster).
+en = This one gives the other power while they are linked.
+zh-Hans = 联机时，这台为另一台供电。
+es = Este le da energía al otro mientras estén enlazados.
+pt-BR = Este alimenta o outro enquanto estiverem conectados.
+fr = Celui-ci alimente l'autre tant qu'ils sont reliés.
+de = Dieser versorgt den anderen mit Strom, solange sie verbunden sind.
+ja = 通信中は、この本体がもう一台に給電します。
+it = Questo alimenta l'altro finché sono collegati.
+
+[link.fail_cable]
+note = Under the tiles when the link over the USB-C cable did not come: the other one was not on Host, or both chose Join, or it is no Pixel 2. Two lines at most.
+en = No link on the cable. Choose Host on the other Pixel 2, then Join here.
+zh-Hans = 线缆上没有连接。请先在另一台 Pixel 2 上选择主持，再在这里加入。
+es = No hay enlace por el cable. Elige Anfitrión en el otro Pixel 2 y luego Unirse aquí.
+pt-BR = Sem conexão pelo cabo. Escolha Hospedar no outro Pixel 2 e depois Entrar aqui.
+fr = Aucune liaison par le câble. Choisissez Héberger sur l'autre Pixel 2, puis Rejoindre ici.
+de = Keine Verbindung per Kabel. Erst Hosten auf dem anderen Pixel 2, dann hier Beitreten.
+ja = ケーブルで通信できません。もう一台の Pixel 2 でホストを選び、こちらで参加してください。
+it = Nessun collegamento sul cavo. Scegli Ospita sull'altro Pixel 2, poi Unisciti qui.
+
+[link.gambatte_heading]
+note = The heading of the question the Link Cable row asks on a Game Boy or Game Boy Color game running on mGBA (Tarik's decision, 2026-11-27): the link runs on Gambatte, so the game starts again on it. A heading in Title Case, the action, never a question. Gambatte is a core's name, never translated.
+en = Restart on Gambatte
+zh-Hans = 在 Gambatte 上重新启动
+es = Reiniciar en Gambatte
+pt-BR = Reiniciar no Gambatte
+fr = Redémarrer sur Gambatte
+de = Auf Gambatte neu starten
+ja = Gambatte で再起動
+it = Riavvia su Gambatte
+
+[link.gambatte_ask]
+note = The first sentence of that question, under link.gambatte_heading; link.gambatte_lost follows it (panel.join). The yes is link.gambatte_yes, the cursor on Cancel. Gambatte is a core's name.
+en = Restart this game on Gambatte for the Link Cable?
+zh-Hans = 要为联机线在 Gambatte 上重新启动这个游戏吗？
+es = ¿Reiniciar este juego en Gambatte para el Cable Link?
+pt-BR = Reiniciar este jogo no Gambatte para o Cabo Link?
+fr = Redémarrer ce jeu sur Gambatte pour le Câble Link ?
+de = Dieses Spiel für das Link-Kabel auf Gambatte neu starten?
+ja = 通信ケーブルのため、このゲームを Gambatte で再起動しますか？
+it = Riavviare questo gioco su Gambatte per il Cavo Link?
+
+[link.gambatte_lost]
+note = Under link.gambatte_ask: what the restart keeps and loses. The battery save (the game's own save) carries over; play since the game's last own save is lost, as save states are each core's; this game alone keeps Gambatte (its shelf and the shelf's other games do not), and the Core row (sysmenu.core) on its details page (X on the game) changes it back. Wrapped to the panel.
+en = Your in-game save carries over, but play since that save is lost. The game stays on Gambatte. Change it under Core in its details.
+zh-Hans = 游戏内存档会保留，但之后的进度会丢失。这个游戏会保持使用 Gambatte，可在其详情的核心中更改。
+es = Tu partida guardada se conserva, pero se pierde lo jugado desde entonces. El juego sigue en Gambatte. Cámbialo en Núcleo, en sus detalles.
+pt-BR = Seu save do jogo continua, mas o que jogou depois dele se perde. O jogo fica no Gambatte. Mude em Núcleo, nos detalhes dele.
+fr = Votre sauvegarde du jeu est conservée, mais la partie depuis est perdue. Le jeu reste sur Gambatte. Changez-le dans Cœur, dans ses détails.
+de = Dein Spielstand im Spiel bleibt, aber alles danach geht verloren. Das Spiel bleibt bei Gambatte. Ändern unter Core in seinen Details.
+ja = ゲーム内のセーブは引き継がれますが、それ以降の進行は失われます。このゲームは Gambatte のままです。詳細のコアで変更できます。
+it = Il salvataggio nel gioco resta, ma quanto giocato dopo si perde. Il gioco resta su Gambatte. Cambialo in Core, nei suoi dettagli.
+
+[link.gambatte_yes]
+note = The yes of that question: the game stops and starts again on Gambatte, then the Link Cable page opens. One or two words, an answer's word, in Title Case.
+en = Restart
+zh-Hans = 重新启动
+es = Reiniciar
+pt-BR = Reiniciar
+fr = Redémarrer
+de = Neu starten
+ja = 再起動
+it = Riavvia

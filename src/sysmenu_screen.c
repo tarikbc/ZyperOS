@@ -42,6 +42,7 @@
 #include "panel.h"
 #include "ds/hover.h"
 #include "hover_sweep.h"
+#include "lights_screen.h"   /* Language's page and what its cursor shows */
 #include "nightkeep.h"
 #include "panelgamma.h"
 #include "powerhold.h"
@@ -72,6 +73,7 @@
 #include <sys/stat.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 
 /* Developer (SSH) is offered on a development image (dropbear at boot) and
@@ -151,7 +153,7 @@ static const char *look_accent_name(void);   /* with the Theme page */
 static int nm_mode(void);
 static const char *nm_mode_name(int m);
 static void nm_keep(void);
-static void nm_warmth_focus(void *app, int k);
+static const ds_hover NM_WARMTH_HOVER, NM_MODE_HOVER;
 static eq_out eq_out_now(void);
 
 /* ---------- option rows' choices (menu.h's menu_choice, DESIGN.md 9) ------ */
@@ -519,6 +521,21 @@ static void smm_look_preview(void *app_, int k, int x, int y, int w, int h)
 	ds_preview_screen_end(a->r, &screen);
 }
 
+/* Tape Style's list (src/mp4look.h): the kept styles in their order, each
+ * its name and what it is, its picture the Cassette look playing in it */
+static mp4t_id g_tape_at[MP4T_COUNT];
+static int g_tape_n;
+
+static void smm_tape_preview(void *app_, int k, int x, int y, int w, int h)
+{
+	app *a = app_;
+	const SDL_Rect screen = { x, y, w, h };
+	const SDL_Rect in = ds_preview_screen_begin(a->r, &screen);
+
+	npl_preview_tape(a, k >= 0 && k < g_tape_n ? g_tape_at[k] : MP4T_DEFAULT, in.x, in.y, in.w, in.h);
+	ds_preview_screen_end(a->r, &screen);
+}
+
 /* MP4's Repeat, videos' own mode (src/sys_menu.h): its values in the row's
  * order, Off first, which is how videos played before it */
 static const muq_mode REPEAT_MODE[3] = { MUQ_IN_ORDER, MUQ_REPEAT_ONE, MUQ_REPEAT_ALL };
@@ -554,7 +571,7 @@ static void pm_rumble_focus(void *app_, int k)
  * the thirteenth, and Card Picture's list said Border's Off and Blur
  * (1.1.0's test run). A new list takes a new name here. */
 enum {
-	PS_SHOW, PS_MSORT, PS_MVIEW, PS_LOOK, PS_REPEAT,   /* MP4's shelf */
+	PS_SHOW, PS_MSORT, PS_MVIEW, PS_LOOK, PS_TAPE, PS_REPEAT,   /* MP4's shelf */
 	PS_PICTURE,                     /* Recents' Card Picture */
 	PS_CORE, PS_DSLANG, PS_SGB, PS_PACE, PS_SORT, PS_CSORT, PS_SSORT, PS_DISPLAY, PS_BORDER, PS_BORDER_COLOR,
 	PS_SHADER, PS_STRENGTH, PS_VIEW,
@@ -566,6 +583,216 @@ static int sort_set_of(app *a, int sys)
 {
 	return sys == shelf_coll_at(a) ? SORT_SET_COLL : sys == shelf_shots_at(a) ? SORT_SET_SHOTS : SORT_SET_SHELF;
 }
+
+/* Battery Icon's list: the corner's battery as the choice under the
+ * cursor (src/ds/hover.h), in memory; saved only as A takes it */
+static void batt_show(void *app_, int k)
+{
+	(void)app_;
+	if (k >= 0 && k < BATT_MODES) g_batt_mode = k;
+	redraw_now();
+}
+
+static void batt_undo(void *app_, int kept)
+{
+	batt_show(app_, kept);
+}
+
+static const ds_hover PM_BATT_HOVER = { .show = batt_show, .undo = batt_undo };
+
+/* Home Screen's list: the shelf behind it in the layout under the cursor,
+ * in memory; saved only as A takes it */
+static void home_show(void *app_, int k)
+{
+	app *a = app_;
+
+	if (k < 0 || k >= HOME_LAYOUTS) return;
+	a->home_layout = (home_layout)k;
+	home_reset(&a->home, a->sys_cursor, a->sys.count, plat_now_ms());
+	redraw_now();
+}
+
+static void home_undo(void *app_, int kept)
+{
+	home_show(app_, kept);
+}
+
+static const ds_hover PM_HOME_HOVER = { .show = home_show, .undo = home_undo };
+
+/* Appearance's list: the theme Light, Dark or Auto gives now on the whole
+ * screen, Auto's by Night Mode's hours at this minute, in memory
+ * (theme_show: no setting and no theme file); the setting's back on undo.
+ * The screen is drawn again only where the theme changes: Auto by day is
+ * Light. */
+static void appear_show(void *app_, int k)
+{
+	int was = theme_index();
+
+	if (k < 0 || k >= APPEARANCES) return;
+	theme_show(theme_saved_at(appearance_id((appearance)k), time(NULL)));
+	if (theme_index() != was) theme_changed(app_);
+}
+
+static void appear_undo(void *app_, int kept)
+{
+	int was = theme_index();
+
+	(void)kept;
+	theme_show(-1);
+	if (theme_index() != was) theme_changed(app_);
+}
+
+static const ds_hover PM_APPEAR_HOVER = { .show = appear_show, .undo = appear_undo };
+
+/* Shelf `sys` in order `sort`, saved with `keep` or only shown (Sort By's
+ * list's cursor). The cursor follows the GAME, not its index. Re-sorting
+ * under a cursor left where it sat means closing the menu onto a different
+ * game than the one that was selected when it opened - the shelf would
+ * appear to have jumped on its own. Which game you were looking at is the
+ * thing that survives a reorder; where it happened to sit in the old order
+ * is not. On MP4's shelf the same goes for the album, whose folder is its
+ * `file`. */
+static void shelf_sort_to(app *a, int sys, int sort, bool keep)
+{
+	a->view[sys].sort = sort;
+	if (keep) sort_save(a);
+	sort_shelf_keep(a, sys);
+}
+
+/* A system's Sort By and View lists, and MP4's Show, Sort By and View: the
+ * shelf behind the list in the order, the view or the kind under the
+ * cursor, on the same game, in memory; saved only as A takes it. Sort By
+ * waits for the cursor to rest a moment: a big shelf's order is a sort and
+ * every card's art fetched again. A system's Sort By's choice k is its
+ * set's k-th order (src/sort.h); MP4's, the k-th of ML_ORDERS. */
+static void sort_show(void *app_, int k)
+{
+	app *a = app_;
+	const int sys = a->sys_cursor;
+
+	if (is_mp4(&a->sys.systems[sys])) {
+		if (k >= 0 && k < ML_ORDERS) shelf_sort_to(a, sys, k, false);
+	} else {
+		const int set = sort_set_of(a, sys);
+
+		if (k >= 0 && k < sort_choices(set)) shelf_sort_to(a, sys, sort_choice(set, k), false);
+	}
+	redraw_now();
+}
+
+static void sort_undo(void *app_, int kept)
+{
+	sort_show(app_, kept);
+}
+
+/* View's choice k is VIEW_COVERS.. in START's order (view_turn); MP4's
+ * list has the first three */
+static void view_show(void *app_, int k)
+{
+	app *a = app_;
+
+	if (k >= 0 && k < VIEW_COUNT) view_set(a, a->sys_cursor, k, false);
+	redraw_now();
+}
+
+static void view_undo(void *app_, int kept)
+{
+	view_show(app_, kept);
+}
+
+/* Show's choices are the kinds the card has, then All (menu_choices):
+ * choice k is the k-th of them. The album the shelf was on, back on undo. */
+static int g_show_cursor = -1;
+
+static void show_kind_show(void *app_, int k)
+{
+	app *a = app_;
+	sysview *v = &a->view[a->sys_cursor];
+	int i, n = 0;
+
+	if (g_show_cursor < 0) g_show_cursor = v->cursor;
+	for (i = 0; i <= ML_ALL; i++) {
+		if (!ml_count_kind(&g_mp4, (ml_kind)i)) continue;
+		if (n++ == k) {
+			mp4_show_only(v, (ml_kind)i);
+			break;
+		}
+	}
+	redraw_now();
+}
+
+static void show_kind_undo(void *app_, int kept)
+{
+	app *a = app_;
+	sysview *v = &a->view[a->sys_cursor];
+
+	show_kind_show(app_, kept);
+	if (g_show_cursor >= 0 && g_show_cursor < v->list.count) {
+		v->cursor = g_show_cursor;
+		cf_reset(&v->cf, v->cursor);
+	}
+	g_show_cursor = -1;
+}
+
+/* UI Sounds' and Audio Channels' lists: the cursor's click in the voice,
+ * or through the channels, under it (own_sound: the list's moves are quiet
+ * and the show plays them); in memory, saved only as A takes it */
+static int ui_voice_at(int k)
+{
+	int s = 0, i;
+
+	for (i = 0; i < k; i++) s = uisound_setting_step(s, 1);
+	return s;
+}
+
+static void voice_show(void *app_, int k)
+{
+	uisound_set(ui_voice_at(k));
+	moved_sound(app_, IN_DOWN);
+}
+
+static void voice_undo(void *app_, int kept)
+{
+	(void)app_;
+	uisound_set(ui_voice_at(kept));
+}
+
+static void channels_show(void *app_, int k)
+{
+	if (k >= 0 && k < AOUT_CHANNELS_COUNT) g_channels = (aout_channels)k;
+	aout_apply(false);
+	moved_sound(app_, IN_DOWN);
+}
+
+static void channels_undo(void *app_, int kept)
+{
+	(void)app_;
+	if (kept >= 0 && kept < AOUT_CHANNELS_COUNT) g_channels = (aout_channels)kept;
+	aout_apply(false);
+}
+
+static const ds_hover PM_VOICE_HOVER = { .show = voice_show, .undo = voice_undo, .own_sound = true };
+static const ds_hover PM_CHANNELS_HOVER = { .show = channels_show, .undo = channels_undo, .own_sound = true };
+
+static const ds_hover SM_SORT_HOVER = { .show = sort_show, .undo = sort_undo, .rest_ms = 150 };
+static const ds_hover SM_VIEW_HOVER = { .show = view_show, .undo = view_undo };
+static const ds_hover SMM_SHOW_HOVER = { .show = show_kind_show, .undo = show_kind_undo };
+
+/* Rumble's list: felt as the cursor reaches each level (pm_rumble_focus,
+ * told the cursor each pass) */
+static const ds_hover PM_RUMBLE_HOVER = { .at = pm_rumble_focus };
+
+/* The pictures beside the shelf's lists, as hovers */
+static const ds_hover SM_PIC_HOVER = { .draw = sm_pic_preview };
+static const ds_hover SM_SGB_HOVER = { .draw = sm_sgb_preview };
+static const ds_hover SM_PACE_HOVER = { .draw = sm_pace_preview };
+static const ds_hover SM_DMODE_HOVER = { .draw = sm_dmode_preview };
+static const ds_hover SM_BORDER_HOVER = { .draw = sm_border_preview };
+static const ds_hover SM_COLOR_HOVER = { .draw = sm_color_preview };
+static const ds_hover SM_SHADER_HOVER = { .draw = sm_shader_preview };
+static const ds_hover SM_STRENGTH_HOVER = { .draw = sm_strength_preview };
+static const ds_hover SMM_LOOK_HOVER = { .draw = smm_look_preview };
+static const ds_hover SMM_TAPE_HOVER = { .draw = smm_tape_preview };
 
 static void menu_choices(app *a, int sys, bool games)
 {
@@ -590,7 +817,7 @@ static void menu_choices(app *a, int sys, bool games)
 		notes[1] = T(S_SYSMENU_CARD_PICTURE_SCREEN_NOTE);
 		g_pic_choice = ch_make(&P[PS_PICTURE], 2, g_recents_screen ? 1 : 0, false);
 		g_pic_choice.notes = notes;
-		g_pic_choice.preview = sm_pic_preview;
+		g_pic_choice.hover = &SM_PIC_HOVER;
 		g_pic_choice.list = true;
 	}
 	if (games) {
@@ -609,14 +836,17 @@ static void menu_choices(app *a, int sys, bool games)
 				P[PS_SHOW].lab[n++] = T(show_text[i]);
 			}
 			g_smm_choice[SMM_SHOW] = ch_make(&P[PS_SHOW], n, cur, false);
+			g_smm_choice[SMM_SHOW].hover = &SMM_SHOW_HOVER;
 			for (i = 0; i < ML_ORDERS; i++) P[PS_MSORT].lab[i] = ml_order_label_kind((ml_order)i, mp4_kind_shown());
 			g_smm_choice[SMM_SORT] = ch_make(&P[PS_MSORT], ML_ORDERS, v->sort, false);
+			g_smm_choice[SMM_SORT].hover = &SM_SORT_HOVER;
 			/* View: Covers, Grid, List, in START's order (view_turn); an
 			 * album has no snap for a Video view */
 			P[PS_MVIEW].lab[0] = T(S_SYSMENU_VIEW_COVERS);
 			P[PS_MVIEW].lab[1] = T(S_SYSMENU_VIEW_GRID);
 			P[PS_MVIEW].lab[2] = T(S_SYSMENU_VIEW_LIST);
 			g_smm_choice[SMM_VIEW] = ch_make(&P[PS_MVIEW], 3, v->listed ? 2 : v->grid ? 1 : 0, false);
+			g_smm_choice[SMM_VIEW].hover = &SM_VIEW_HOVER;
 			{
 				static const char *notes[MP4L_COUNT];
 
@@ -626,8 +856,24 @@ static void menu_choices(app *a, int sys, bool games)
 				}
 				g_smm_choice[SMM_LOOK] = ch_make(&P[PS_LOOK], MP4L_COUNT, np_look(), false);
 				g_smm_choice[SMM_LOOK].notes = notes;
-				g_smm_choice[SMM_LOOK].preview = smm_look_preview;
+				g_smm_choice[SMM_LOOK].hover = &SMM_LOOK_HOVER;
 				g_smm_choice[SMM_LOOK].list = true;
+			}
+			{
+				static const char *notes[MP4T_COUNT];
+				int t;
+
+				for (t = 0, g_tape_n = 0, cur = 0; t < MP4T_COUNT; t++) {
+					if (!mp4t_kept((mp4t_id)t)) continue;
+					if ((mp4t_id)t == np_tape()) cur = g_tape_n;
+					g_tape_at[g_tape_n] = (mp4t_id)t;
+					P[PS_TAPE].lab[g_tape_n] = tape_style_name((mp4t_id)t);
+					notes[g_tape_n++] = tape_style_note((mp4t_id)t);
+				}
+				g_smm_choice[SMM_TAPE] = ch_make(&P[PS_TAPE], g_tape_n, cur, false);
+				g_smm_choice[SMM_TAPE].notes = notes;
+				g_smm_choice[SMM_TAPE].hover = &SMM_TAPE_HOVER;
+				g_smm_choice[SMM_TAPE].list = true;
 			}
 			for (i = 0; i < 3; i++) P[PS_REPEAT].lab[i] = T(REPEAT_TEXT[i]);
 			g_smm_choice[SMM_REPEAT] = ch_make(&P[PS_REPEAT], 3, repeat_at(), false);
@@ -657,7 +903,7 @@ static void menu_choices(app *a, int sys, bool games)
 			}
 			g_sm_choice[SM_SGB] = ch_make(&P[PS_SGB], SGBM_CHOICES, sgbm_load(sc), false);
 			g_sm_choice[SM_SGB].notes = notes;
-			g_sm_choice[SM_SGB].preview = sm_sgb_preview;
+			g_sm_choice[SM_SGB].hover = &SM_SGB_HOVER;
 			g_sm_choice[SM_SGB].list = true;
 		}
 		for (i = 0; i < PACING_CHOICES; i++) P[PS_PACE].lab[i] = T(pacing_label_id((pacing_choice)i));
@@ -670,7 +916,7 @@ static void menu_choices(app *a, int sys, bool games)
 			notes[PACING_EXACT] = T(S_SYSMENU_PACE_EXACT_NOTE);
 			g_sm_choice[SM_PACE] = ch_make(&P[PS_PACE], PACING_CHOICES, pacing_load(sc), false);
 			g_sm_choice[SM_PACE].notes = notes;
-			g_sm_choice[SM_PACE].preview = sm_pace_preview;
+			g_sm_choice[SM_PACE].hover = &SM_PACE_HOVER;
 			g_sm_choice[SM_PACE].list = true;
 		}
 		{
@@ -684,6 +930,7 @@ static void menu_choices(app *a, int sys, bool games)
 
 			for (i = 0; i < sort_choices(set); i++) sp->lab[i] = sort_label(sort_choice(set, i));
 			g_sm_choice[SM_SORT] = ch_make(sp, sort_choices(set), sort_choice_of(set, v->sort), false);
+			g_sm_choice[SM_SORT].hover = &SM_SORT_HOVER;
 		}
 		{
 			static const char *notes[CH_MAX];
@@ -694,7 +941,7 @@ static void menu_choices(app *a, int sys, bool games)
 			}
 			g_sm_choice[SM_DISPLAY] = ch_make(&P[PS_DISPLAY], DMODE_COUNT, v->dmode, false);
 			g_sm_choice[SM_DISPLAY].notes = notes;
-			g_sm_choice[SM_DISPLAY].preview = sm_dmode_preview;
+			g_sm_choice[SM_DISPLAY].hover = &SM_DMODE_HOVER;
 		}
 		if (border_row_value(a, sys)) {
 			/* Border's offered kinds, each with its picture and note:
@@ -711,7 +958,7 @@ static void menu_choices(app *a, int sys, bool games)
 			}
 			g_sm_choice[SM_BORDER] = ch_make(&P[PS_BORDER], n, cur, false);
 			g_sm_choice[SM_BORDER].notes = notes;
-			g_sm_choice[SM_BORDER].preview = sm_border_preview;
+			g_sm_choice[SM_BORDER].hover = &SM_BORDER_HOVER;
 			g_sm_choice[SM_BORDER].list = true;
 		}
 		{
@@ -723,7 +970,7 @@ static void menu_choices(app *a, int sys, bool games)
 					P[PS_BORDER_COLOR].lab[i] = border_color_label(m->color_name[i]);
 				g_sm_choice[SM_BORDER_COLOR] = ch_make(&P[PS_BORDER_COLOR], m->ncolors, border_color_load(a, sys),
 				                                       false);
-				g_sm_choice[SM_BORDER_COLOR].preview = sm_color_preview;
+				g_sm_choice[SM_BORDER_COLOR].hover = &SM_COLOR_HOVER;
 			}
 		}
 		{
@@ -736,12 +983,12 @@ static void menu_choices(app *a, int sys, bool games)
 			g_sm_choice[SM_SHADER] = ch_make(&P[PS_SHADER], n, cur, false);
 			shader_demo_notes(snotes, n, g_sm_demo_tag);
 			g_sm_choice[SM_SHADER].notes = snotes;
-			g_sm_choice[SM_SHADER].preview = sm_shader_preview;
+			g_sm_choice[SM_SHADER].hover = &SM_SHADER_HOVER;
 			n = ch_strengths(&P[PS_STRENGTH], strength_clamp(v->strength), &cur);
 			g_sm_choice[SM_STRENGTH] = ch_make(&P[PS_STRENGTH], n, cur, false);
 			shader_demo_strength_notes(tnotes, n);
 			g_sm_choice[SM_STRENGTH].notes = tnotes;
-			g_sm_choice[SM_STRENGTH].preview = sm_strength_preview;
+			g_sm_choice[SM_STRENGTH].hover = &SM_STRENGTH_HOVER;
 		}
 		/* View: in the order Right steps it (view_turn) */
 		P[PS_VIEW].lab[0] = T(S_SYSMENU_VIEW_COVERS);
@@ -749,6 +996,7 @@ static void menu_choices(app *a, int sys, bool games)
 		P[PS_VIEW].lab[2] = T(S_SYSMENU_VIEW_LIST);
 		P[PS_VIEW].lab[3] = T(S_SYSMENU_VIEW_VIDEO);
 		g_sm_choice[SM_VIEW] = ch_make(&P[PS_VIEW], VIEW_COUNT, view_index(v), false);
+		g_sm_choice[SM_VIEW].hover = &SM_VIEW_HOVER;
 		return;
 	}
 	/* MENU */
@@ -764,11 +1012,13 @@ static void menu_choices(app *a, int sys, bool games)
 		anotes[APPEAR_AUTO] = T(S_THEME_AUTO_NOTE);
 		g_pm_choice[PM_APPEARANCE] = ch_make(&P[0], APPEARANCES, (int)theme_appearance(), false);
 		g_pm_choice[PM_APPEARANCE].notes = anotes;
+		g_pm_choice[PM_APPEARANCE].hover = &PM_APPEAR_HOVER;
 	}
 	P[1].lab[BATT_BARS] = T(S_PANEL_BATTERY_BARS);
 	P[1].lab[BATT_PCT] = T(S_PANEL_BATTERY_PERCENTAGE);
 	P[1].lab[BATT_TIME] = T(S_PANEL_BATTERY_TIME);
 	g_pm_choice[PM_BATTERY] = ch_make(&P[1], BATT_MODES, g_batt_mode, false);
+	g_pm_choice[PM_BATTERY].hover = &PM_BATT_HOVER;
 	for (i = 0, cur = 0; i < CHARGE_LIMITS_COUNT; i++) {
 		if (CHARGE_LIMITS[i] == g_charge_limit) cur = i;
 		if (CHARGE_LIMITS[i] > 0) snprintf(P[2].buf[i], sizeof P[2].buf[i], "%d%%", CHARGE_LIMITS[i]);
@@ -807,6 +1057,7 @@ static void menu_choices(app *a, int sys, bool games)
 			P[5].lab[i] = P[5].buf[i];
 		}
 		g_pm_choice[PM_CHANNELS] = ch_make(&P[5], AOUT_CHANNELS_COUNT, (int)g_channels, false);
+		g_pm_choice[PM_CHANNELS].hover = &PM_CHANNELS_HOVER;
 	}
 	{
 		/* The voices round from the first, as uisound_setting_step goes */
@@ -819,6 +1070,7 @@ static void menu_choices(app *a, int sys, bool games)
 			if (s == s0) break;
 		}
 		g_pm_choice[PM_SOUNDS] = ch_make(&P[6], n, cur, false);
+		g_pm_choice[PM_SOUNDS].hover = &PM_VOICE_HOVER;
 	}
 	for (i = 0, cur = 0; i < AUTO_OFF_COUNT; i++) {
 		if (AUTO_OFF[i] == a->auto_off) cur = i;
@@ -841,9 +1093,24 @@ static void menu_choices(app *a, int sys, bool games)
 		}
 		g_pm_choice[PM_SAVER] = ch_make(&P[8], n, cur, false);
 	}
+	{
+		/* Game Names' two, Short first as it ships, each with what it
+		 * does under the list (DESIGN.md 11.71): two, so A would turn it
+		 * over, but its list opens all the same for the notes */
+		static const char *nnotes[2];
+
+		P[10].lab[0] = T(S_SYSMENU_NAMES_SHORT);
+		P[10].lab[1] = T(S_SYSMENU_NAMES_FILE);
+		nnotes[0] = T(S_SYSMENU_NAMES_SHORT_NOTE);
+		nnotes[1] = T(S_SYSMENU_NAMES_FILE_NOTE);
+		g_pm_choice[PM_NAMES] = ch_make(&P[10], 2, lib_names_file() ? 1 : 0, false);
+		g_pm_choice[PM_NAMES].notes = nnotes;
+		g_pm_choice[PM_NAMES].list = true;
+	}
 	/* Home Screen: in the order Right steps it */
 	for (i = 0; i < HOME_LAYOUTS; i++) P[9].lab[i] = home_name((home_layout)i);
 	g_pm_choice[PM_HOME] = ch_make(&P[9], HOME_LAYOUTS, (int)a->home_layout, false);
+	g_pm_choice[PM_HOME].hover = &PM_HOME_HOVER;
 	{
 		/* Off to Full, each with what it does; felt as the cursor reaches
 		 * it (pm_rumble_focus) */
@@ -857,7 +1124,7 @@ static void menu_choices(app *a, int sys, bool games)
 		}
 		g_pm_choice[PM_RUMBLE] = ch_make(&P[13], RUMBLE_LEVELS, (int)rumble_menu(), false);
 		g_pm_choice[PM_RUMBLE].notes = rnotes;
-		g_pm_choice[PM_RUMBLE].focus = pm_rumble_focus;
+		g_pm_choice[PM_RUMBLE].hover = &PM_RUMBLE_HOVER;
 	}
 	g_pm_choice[PM_LANGUAGE] = (menu_choice){ .n = LANG_COUNT, .cur = (unsigned char)i18n_lang(), .own = true };
 }
@@ -951,10 +1218,13 @@ int menu_build(app *a, screen_id screen, int sys,
 		u.mp4_both  = u.mp4 && mp4_kinds() > 1;
 		u.mp4_playing = u.mp4 && lock_allowed();
 		u.mp4_look  = u.mp4 ? look_label(np_look()) : NULL;
+		u.mp4_tape  = u.mp4 ? tape_style_name(np_tape()) : NULL;
+		u.mp4_tape_live = u.mp4 && np_look() == MP4L_CASSETTE;
 		u.mp4_repeat = u.mp4 ? T(REPEAT_TEXT[repeat_at()]) : NULL;
 		u.eq         = eq_preset_name(eq_preset_get(eq_out_now()));
 		u.sort       = u.mp4 ? ml_order_label_kind((ml_order)a->view[sys].sort, mp4_kind_shown())
 		                      : sort_label(a->view[sys].sort);
+		u.fav_first  = a->view[sys].fav_first;
 	} else {
 		aout_state ao = aout_now();
 
@@ -990,6 +1260,7 @@ int menu_build(app *a, screen_id screen, int sys,
 		u.screen_colors = screen_colors_value();
 		u.home = home_name(a->home_layout);
 		u.order = g_order_release ? T(S_PANEL_ORDER_RELEASE) : T(S_PANEL_ORDER_AZ);
+		u.names = T(lib_names_file() ? S_SYSMENU_NAMES_FILE : S_SYSMENU_NAMES_SHORT);
 		{
 			static char hs[24];
 
@@ -1169,23 +1440,50 @@ static void nm_keep(void)
 	night_keep(nm_cfg());
 }
 
-/* Night Warmth's list: the warmth under the cursor on the display alone,
- * loaded once a move (a list's build runs every pass), and the load a
- * key's repeat held back made once its gap is over; the list closed, what
- * is kept back on it */
-static int g_nm_shown;
-
-static void nm_warmth_focus(void *app_, int k)
+/* Night Warmth's list (src/ds/hover.h): the warmth under the cursor on the
+ * display alone, loaded once a move, and the load a key's repeat held back
+ * made once its gap is over; the kept one back on the cursor's return and
+ * when the list closes */
+static void nm_warmth_show(void *app_, int k)
 {
-	const int w = k < 0 ? 0 : NM_WARMTH_MIN + k;
-
 	(void)app_;
-	if (w != g_nm_shown) {
-		g_nm_shown = w;
-		plat_night_preview(w);
-	}
+	plat_night_preview(NM_WARMTH_MIN + k);
+}
+
+static void nm_warmth_undo(void *app_, int kept)
+{
+	(void)app_; (void)kept;
+	plat_night_preview(0);
+}
+
+static void screen_colors_tick(void *app_)
+{
+	(void)app_;
 	plat_screen_colors_tick(false);
 }
+
+static const ds_hover NM_WARMTH_HOVER = { .show = nm_warmth_show, .undo = nm_warmth_undo,
+                                          .tick = screen_colors_tick };
+
+/* Night Mode's list: the warmth its choice under the cursor gives now on
+ * the whole screen - none for Off, Night Warmth's for On, By Hours as the
+ * hour is - in memory, as Night Warmth's list shows its own */
+static void nm_mode_show(void *app_, int k)
+{
+	night_cfg c = *nm_cfg();
+	panelgamma_night s;
+	int w;
+
+	(void)app_;
+	if (k < 0 || k >= NM_MODES) return;
+	c.mode = (night_mode)k;
+	night_schedule(&c, time(NULL), &s);
+	w = panelgamma_night_at(&s, (long long)time(NULL));
+	plat_night_preview(w > 0 ? w : -1);
+}
+
+static const ds_hover NM_MODE_HOVER = { .show = nm_mode_show, .undo = nm_warmth_undo,
+                                        .tick = screen_colors_tick };
 
 /* Night Mode's words for a mode: Off, On or By Hours */
 static const char *nm_mode_name(int m)
@@ -1263,9 +1561,10 @@ int night_page_build(void *ctx, menu_row *rows, int max, const char **heading)
 	rows[NP_WARMTH] = (menu_row){ T(S_SYSMENU_NIGHT_WARMTH), v->warmth, m != NIGHT_OFF };
 	rows[NP_FROM]   = (menu_row){ T(S_LOOK_NIGHT_FROM), v->from, timed };
 	rows[NP_UNTIL]  = (menu_row){ T(S_LOOK_NIGHT_UNTIL), v->until, timed };
-	g_np_choice[NP_MODE] = (menu_choice){ .n = NM_MODES, .cur = (unsigned char)m, .labels = mode };
+	g_np_choice[NP_MODE] = (menu_choice){ .n = NM_MODES, .cur = (unsigned char)m, .labels = mode,
+	                                      .hover = &NM_MODE_HOVER };
 	g_np_choice[NP_WARMTH] = (menu_choice){ .n = NM_WARMTH_MAX, .cur = (unsigned char)(c->warmth - NM_WARMTH_MIN),
-	                                        .labels = warm_lab, .focus = nm_warmth_focus };
+	                                        .labels = warm_lab, .hover = &NM_WARMTH_HOVER };
 	g_np_choice[NP_FROM] = (menu_choice){ .n = (unsigned char)hours, .cur = (unsigned char)(c->from / NM_STEP),
 	                                      .labels = hour_lab };
 	g_np_choice[NP_UNTIL] = (menu_choice){ .n = (unsigned char)hours, .cur = (unsigned char)(c->until / NM_STEP),
@@ -1420,27 +1719,39 @@ static void sc_preview_end(void)
 	plat_screen_colors(&c, false);
 }
 
-/* The Look list's picture: the color chart in a screen (src/ds/colorref.h),
- * and on the whole screen the look under the cursor, once a move (the list
- * draws this every frame), so the chart shows it as the panel makes it */
-static void sc_look_preview(void *app_, int k, int x, int y, int w, int h)
+/* The Look list (src/ds/hover.h): on the whole screen the look under the
+ * cursor, loaded once a move, and beside the list the color chart in a
+ * screen (src/ds/colorref.h), so the chart shows it as the panel makes it */
+static void sc_look_show(void *app_, int k)
+{
+	screen_colors c = k >= 0 && k < SC_LOOKS_N ? SC_LOOKS[k].c : sc_load();
+
+	(void)app_;
+	g_sc_preview_k = k;
+	g_sc_previewing = true;
+	plat_screen_colors(&c, false);
+}
+
+static void sc_look_undo(void *app_, int kept)
+{
+	(void)app_; (void)kept;
+	sc_preview_end();
+}
+
+static void sc_look_draw(void *app_, int k, int x, int y, int w, int h)
 {
 	app *a = app_;
 	const SDL_Rect screen = { x, y, w, h };
 	SDL_Rect in;
 
-	if (k != g_sc_preview_k) {
-		screen_colors c = k >= 0 && k < SC_LOOKS_N ? SC_LOOKS[k].c : sc_load();
-
-		g_sc_preview_k = k;
-		g_sc_previewing = true;
-		plat_screen_colors(&c, false);
-	}
-	plat_screen_colors_tick(false);
+	(void)k;
 	in = ds_preview_screen_begin(a->r, &screen);
 	ds_color_ref_draw(a->r, &(SDL_Rect){ in.x + DS_GRID, in.y + DS_GRID, in.w - 2 * DS_GRID, in.h - 2 * DS_GRID });
 	ds_preview_screen_end(a->r, &screen);
 }
+
+static const ds_hover SC_LOOK_HOVER = { .show = sc_look_show, .undo = sc_look_undo,
+                                        .draw = sc_look_draw, .tick = screen_colors_tick };
 
 /* The Look's list as the page opens it and the shots draw it: every look,
  * Custom last while it is the one on, with what each does */
@@ -1457,7 +1768,7 @@ void sc_look_choice(menu_choice *out)
 	labels[SC_CUSTOM] = T(S_SCREEN_CUSTOM);
 	notes[SC_CUSTOM] = T(S_SCREEN_CUSTOM_NOTE);
 	*out = (menu_choice){ .n = (unsigned char)(SC_LOOKS_N + (cur == SC_CUSTOM)), .cur = (unsigned char)cur,
-	                      .labels = labels, .notes = notes, .preview = sc_look_preview };
+	                      .labels = labels, .notes = notes, .hover = &SC_LOOK_HOVER };
 }
 
 /* The rows by place: Saturation only where the kernel has its knob */
@@ -1516,8 +1827,8 @@ static menu_result sc_look_list(app *a)
 
 	sc_look_choice(&ch);
 	g_sc_preview_k = ch.cur;   /* what the display shows already */
-	k = menu_pick_preview(a, &g_sc_style, g_sc_ctx, T(S_SCREEN_LOOK), ch.labels, ch.notes, ch.preview,
-	                      ch.n, ch.cur, ch.cur);
+	k = menu_pick_hover(a, &g_sc_style, g_sc_ctx, T(S_SCREEN_LOOK), ch.labels, ch.notes, ch.hover,
+	                    ch.n, ch.cur, ch.cur);
 	if (k >= 0 && k < SC_LOOKS_N) {
 		sc_keep(&SC_LOOKS[k].c);
 	} else {
@@ -1694,6 +2005,9 @@ int eq_page_build(void *ctx, menu_row *rows, int max, const char **heading)
 	return n;
 }
 
+/* The presets' picture, each heard as the cursor reaches it, as a hover */
+static const ds_hover EQ_CURVE_HOVER = { .draw = eq_curve_preview };
+
 /* The presets' list as the page opens it and the shots draw it */
 void eq_preset_choice(menu_choice *out)
 {
@@ -1705,7 +2019,7 @@ void eq_preset_choice(menu_choice *out)
 		notes[k] = eq_preset_note((eq_preset)k);
 	}
 	*out = (menu_choice){ .n = EQ_PRESETS, .cur = (unsigned char)eq_preset_get(eq_out_now()),
-	                      .labels = labels, .notes = notes, .preview = eq_curve_preview };
+	                      .labels = labels, .notes = notes, .hover = &EQ_CURVE_HOVER };
 }
 
 /* A on the preset row: the presets, each heard as the cursor reaches it
@@ -1718,8 +2032,8 @@ static menu_result eq_preset_list(app *a)
 
 	eq_preset_choice(&ch);
 	g_eq_pv_k = -1;
-	k = menu_pick_preview(a, &g_eq_style, NULL, eq_out_name(o), ch.labels, ch.notes, ch.preview,
-	                      ch.n, ch.cur, ch.cur);
+	k = menu_pick_hover(a, &g_eq_style, NULL, eq_out_name(o), ch.labels, ch.notes, ch.hover,
+	                    ch.n, ch.cur, ch.cur);
 	g_eq_pv_k = -1;
 	eq_route_preview(o, NULL);
 	if (k >= 0 && k < EQ_PRESETS) eq_preset_set(o, (eq_preset)k);
@@ -2069,8 +2383,8 @@ static void focus_show(void *app_, int k) { look_show(app_, LK_HIGHLIGHT, k); }
 static const ds_hover LK_ACCENT_HOVER = { .show = accent_show, .undo = look_undo };
 static const ds_hover LK_LIGHT_HOVER = { .show = light_show, .undo = look_undo };
 static const ds_hover LK_DARK_HOVER = { .show = dark_show, .undo = look_undo };
-static const ds_hover LK_FOLDER_HOVER = { .show = folder_show, .undo = look_undo };
-static const ds_hover LK_FOCUS_HOVER = { .show = focus_show, .undo = look_undo };
+static const ds_hover LK_FOLDER_HOVER = { .show = folder_show, .undo = look_undo, .draw = look_folder_preview };
+static const ds_hover LK_FOCUS_HOVER = { .show = focus_show, .undo = look_undo, .draw = look_focus_preview };
 
 /* Highlight's choices, their words and what each does (DESIGN.md 3.5) */
 static const int FOCUS_NAME[LOOK_FOCUSES] = {
@@ -2110,11 +2424,9 @@ int look_build(void *ctx, menu_row *rows, int max, const char **heading)
 	g_lk_choice[LK_DARK] = (menu_choice){ .n = DS_TONES, .cur = (unsigned char)l->tone[DS_DARK],
 	                                      .labels = tone[DS_DARK], .hover = &LK_DARK_HOVER };
 	g_lk_choice[LK_FOLDERS] = (menu_choice){ .n = LOOK_FOLDERS, .cur = (unsigned char)l->folder,
-	                                         .labels = fold, .preview = look_folder_preview,
-	                                         .hover = &LK_FOLDER_HOVER };
+	                                         .labels = fold, .hover = &LK_FOLDER_HOVER };
 	g_lk_choice[LK_HIGHLIGHT] = (menu_choice){ .n = LOOK_FOCUSES, .cur = (unsigned char)l->focus,
-	                                           .labels = foc, .notes = focn, .preview = look_focus_preview,
-	                                           .hover = &LK_FOCUS_HOVER };
+	                                           .labels = foc, .notes = focn, .hover = &LK_FOCUS_HOVER };
 	*heading = T(S_SYSMENU_THEME);
 	rows[LK_ACCENT]  = (menu_row){ T(S_LOOK_ACCENT), T(ACCENT_NAME[l->accent]), true };
 	rows[LK_LIGHT]   = (menu_row){ T(S_LOOK_BG_LIGHT), T(TONE_NAME[DS_LIGHT][l->tone[DS_LIGHT]]), true };
@@ -2231,6 +2543,14 @@ menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 				 * list, the picture the look under the cursor
 				 * (menu_choose) */
 				if (d) np_look_set((mp4l_id)((np_look() + d + MP4L_COUNT) % MP4L_COUNT));
+				return MENU_STAY;
+			} else if (id == SMM_TAPE) {
+				/* Round the kept styles either way, kept at once; A opens
+				 * their list, the picture the tape under the cursor
+				 * (menu_choose). Only while the look is Cassette: the row
+				 * is dim otherwise and says no. */
+				if (np_look() != MP4L_CASSETTE) return MENU_STAY;
+				if (d) np_tape_set(mp4t_step(np_tape(), d));
 				return MENU_STAY;
 			} else if (id == SMM_SHOW) {
 				/* All, then the kinds the card has, round in either
@@ -2400,38 +2720,17 @@ menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		 * the album, whose folder is its `file`. */
 		if (d && sel == SM_SORT) {
 			sysview *v = &a->view[a->sys_cursor];
-			char keep[LIB_PATH];
-			int i, keep_owner = -1;
 
-			keep[0] = '\0';
-			if (v->cursor >= 0 && v->cursor < v->list.count) {
-				snprintf(keep, sizeof keep, "%s",
-				         v->list.items[v->cursor].file);
-				/* On Favorites a file name is not enough: the same one can
-				 * be on the shelf twice, from two systems. */
-				if (v->owner) keep_owner = v->owner[v->cursor];
-			}
-
-			v->sort = is_mp4(&a->sys.systems[a->sys_cursor])
-			        ? (v->sort + d + ML_ORDERS) % ML_ORDERS
-			        : sort_step_in(sort_set_of(a, a->sys_cursor), v->sort, d);
-			sort_shelf(a, a->sys_cursor);
-			sort_save(a);
-
-			/* The textures are indexed by position, so they moved with
-			 * nothing. Dropping them lets the next frame fetch each card's
-			 * art for where it now sits. */
-			free_view_textures(v);
-
-			v->cursor = 0;
-			for (i = 0; i < v->list.count; i++)
-				if (!strcmp(v->list.items[i].file, keep) &&
-				    (!v->owner || v->owner[i] == keep_owner)) {
-					v->cursor = i;
-					break;
-				}
-			cf_reset(&v->cf, v->cursor);
-	games_reset(&v->row, v->cursor, v->list.count, plat_now_ms());
+			shelf_sort_to(a, a->sys_cursor, is_mp4(&a->sys.systems[a->sys_cursor])
+			                                ? (v->sort + d + ML_ORDERS) % ML_ORDERS
+			                                : sort_step_in(sort_set_of(a, a->sys_cursor), v->sort, d), true);
+			return MENU_STAY;
+		}
+		/* Favorites First, under it: Off or On, turned over on Left,
+		 * Right and A as Look's two-way rows are, the shelf under the menu
+		 * sorted again on the same game (DESIGN.md 11.70) */
+		if ((d || key == IN_ACCEPT) && sel == SM_FAVFIRST) {
+			fav_first_turn(a, a->sys_cursor);
 			return MENU_STAY;
 		}
 		if (key != IN_ACCEPT) return MENU_STAY;
@@ -2535,6 +2834,19 @@ menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		g_order_release = !g_order_release;
 		db_set_str(db_dev(), "systems.order", g_order_release ? "release" : "az");
 		rescan_all(a);
+		redraw_now();
+		return MENU_CHANGED;
+	}
+	/* Game Names: Short or File Name, kept, and every shelf named again at
+	 * once, each cursor on its game (refresh_game_titles), the name orders
+	 * sorted by the new names; Screenshots' too, which names each shot by
+	 * its game (DESIGN.md 11.71). Once per press, never per frame. */
+	if (sel == PM_NAMES && d) {
+		lib_names_set(!lib_names_file());
+		db_set_str(db_dev(), GAME_NAMES_KEY, lib_names_file() ? "file" : "short");
+		refresh_game_titles(a);
+		refresh_shots_shelf(a);
+		fprintf(stderr, "names: %s, every shelf named again\n", lib_names_file() ? "File Name" : "Short");
 		redraw_now();
 		return MENU_CHANGED;
 	}
@@ -2808,7 +3120,21 @@ void zyperos_menu(app *a)
 	zyperos_menu_for(a, a->screen);
 }
 
-/* Theme's lists through what their cursors show (src/hover_sweep.h) */
+/* The pages as check-hover-sweep reads them (src/hover_sweep.h) */
+static int sweep_menu(app *a, void *ctx, menu_row *rows, int max, const menu_choice **choices)
+{
+	static menu_bufs b;
+	const char *h;
+	int was = g_tabs.at, n;
+
+	(void)max;
+	g_tabs.at = ctx ? g_tabs.at : PT_TABS;   /* MENU: every one of its rows */
+	n = menu_build(a, ctx ? SCREEN_GAMES : SCREEN_SYSTEMS, a->sys_cursor, rows, &b, &h);
+	g_tabs.at = was;
+	*choices = b.choice;
+	return n;
+}
+
 static int sweep_theme(app *a, void *ctx, menu_row *rows, int max, const menu_choice **choices)
 {
 	const char *h;
@@ -2818,9 +3144,37 @@ static int sweep_theme(app *a, void *ctx, menu_row *rows, int max, const menu_ch
 	return look_build(NULL, rows, max, &h);
 }
 
+static int sweep_screen(app *a, void *ctx, menu_row *rows, int max, const menu_choice **choices)
+{
+	const char *h;
+
+	(void)a; (void)ctx;
+	*choices = g_sc_choice;
+	return sc_build(NULL, rows, max, &h);
+}
+
+static int sweep_night(app *a, void *ctx, menu_row *rows, int max, const menu_choice **choices)
+{
+	night_view nv = { .a = a };
+	const char *h;
+
+	(void)ctx;
+	*choices = g_np_choice;
+	return night_page_build(&nv, rows, max, &h);
+}
+
 void sysmenu_hover_sweep(app *a)
 {
+	static int games = 1;
+	menu_choice ch;
+
+	hover_sweep_page(a, "menu", sweep_menu, NULL);
+	hover_sweep_page(a, "system", sweep_menu, &games);
+	hover_sweep_list(a, "menu", T(S_MENU_LANGUAGE), &LANGUAGE_HOVER, (int)i18n_lang(), LANG_COUNT, sweep_menu, NULL);
 	hover_sweep_page(a, "theme", sweep_theme, NULL);
+	if (plat_night_here()) hover_sweep_page(a, "night", sweep_night, NULL);
+	sc_look_choice(&ch);
+	hover_sweep_list(a, "screen", T(S_SCREEN_LOOK), ch.hover, ch.cur, ch.n, sweep_screen, NULL);
 }
 
 void sysmenu_rows_report(app *a)

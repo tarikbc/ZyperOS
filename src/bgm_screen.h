@@ -36,4 +36,7 @@ void bgm_screen(app *a);
 /* --rows-report: Menu Music's rows (menu_rows_print) */
 void bgm_rows_report(app *a);
 
+/* For check-hover-sweep (src/hover_sweep.h): Menu Music's Volume and Track */
+void bgm_hover_sweep(app *a);
+
 #endif

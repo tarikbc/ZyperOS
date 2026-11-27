@@ -1038,7 +1038,7 @@ static void system_menu(void)
 		m.wifi = WIFI_CONNECTED;     /* the case above left the radio down */
 		mn = sys_menu_build(&m, mrows, &mb, &mhead);
 		printf("MP4's shelf menu:\n");
-		ck(mn == 10, "ten rows with only music, Quit last");
+		ck(mn == 11, "eleven rows with only music, Quit last");
 		ck(!strcmp(mrows[0].label, "Albums") && !strcmp(val(&mrows[0]), "7"),
 		   "how many albums");
 		ck(!strcmp(mrows[1].label, "Sort By") && mrows[1].live &&
@@ -1052,14 +1052,18 @@ static void system_menu(void)
 		ck(!strcmp(mrows[4].label, "Player Look") && mrows[4].live &&
 		   !strcmp(val(&mrows[4]), "Cover"),
 		   "Player Look, Cover when nothing says otherwise (DESIGN.md 11.64)");
-		ck(!strcmp(mrows[5].label, "Equalizer") && mrows[5].live && !strcmp(val(&mrows[5]), "Off"),
+		ck(!strcmp(mrows[5].label, "Tape Style") && !mrows[5].live && !strcmp(val(&mrows[5]), "Pinstripe") &&
+		   menu_sound_at(mb.sound, mn, 5) == MENU_SND_RING,
+		   "Tape Style under Player Look, Pinstripe when nothing says otherwise, dead while the look is not"
+		   " Cassette (the Tape Styles lab)");
+		ck(!strcmp(mrows[6].label, "Equalizer") && mrows[6].live && !strcmp(val(&mrows[6]), "Off"),
 		   "Equalizer, MENU's own row, Off until it is set");
-		ck(!strcmp(mrows[6].label, "Lock Screen") && !mrows[6].live &&
-		   !strcmp(val(&mrows[6]), "While playing"),
+		ck(!strcmp(mrows[7].label, "Lock Screen") && !mrows[7].live &&
+		   !strcmp(val(&mrows[7]), "While playing"),
 		   "Lock Screen, dead and saying why with nothing playing");
-		ck(!strcmp(mrows[7].label, "Album Art") && mrows[7].live,
+		ck(!strcmp(mrows[8].label, "Album Art") && mrows[8].live,
 		   "covers to fetch, on a network");
-		ck(!strcmp(mrows[8].label, "Rescan Folder") && mrows[8].live,
+		ck(!strcmp(mrows[9].label, "Rescan Folder") && mrows[9].live,
 		   "and a rescan that works");
 		m.grid = true;
 		sys_menu_build(&m, mrows, &mb, &mhead);
@@ -1073,22 +1077,29 @@ static void system_menu(void)
 		sys_menu_build(&m, mrows, &mb, &mhead);
 		ck(!strcmp(val(&mrows[4]), "Spectrum"), "Player Look says the look that is on");
 		m.mp4_look = NULL;
+		m.mp4_tape = "Metal";
+		m.mp4_tape_live = true;
+		sys_menu_build(&m, mrows, &mb, &mhead);
+		ck(!strcmp(val(&mrows[5]), "Metal") && mrows[5].live,
+		   "Tape Style says the style that is on, live on the Cassette look");
+		m.mp4_tape = NULL;
+		m.mp4_tape_live = false;
 		m.eq = "Bass";
 		sys_menu_build(&m, mrows, &mb, &mhead);
-		ck(!strcmp(val(&mrows[5]), "Bass"), "the Equalizer says the preset in use");
+		ck(!strcmp(val(&mrows[6]), "Bass"), "the Equalizer says the preset in use");
 		m.eq = NULL;
 		m.mp4_playing = true;
 		sys_menu_build(&m, mrows, &mb, &mhead);
-		ck(mrows[6].live && !val(&mrows[6])[0], "Lock Screen live while music plays");
+		ck(mrows[7].live && !val(&mrows[7])[0], "Lock Screen live while music plays");
 		m.mp4_playing = false;
 		m.sort = "Album";
 		m.wifi = WIFI_OFF;
 		sys_menu_build(&m, mrows, &mb, &mhead);
 		ck(!strcmp(val(&mrows[1]), "Album"), "the order it is in");
-		ck(!mrows[7].live && !strcmp(val(&mrows[7]), "Needs Wi-Fi"),
+		ck(!mrows[8].live && !strcmp(val(&mrows[8]), "Needs Wi-Fi"),
 		   "Album Art says why it cannot, off the network");
-		ck(mrows[1].live && mrows[2].live && mrows[3].live && mrows[4].live && mrows[5].live &&
-		   mrows[8].live,
+		ck(mrows[1].live && mrows[2].live && mrows[3].live && mrows[4].live && mrows[6].live &&
+		   mrows[9].live,
 		   "and neither Sort By, View, Shuffle All, Player Look, Equalizer nor Rescan Folder needs one");
 		for (k = 0; k < mn; k++) {
 			ck(strcmp(lbl(&mrows[k]), "Core") != 0, "no Core: it has none");
@@ -1101,15 +1112,15 @@ static void system_menu(void)
 		m.wifi = WIFI_CONNECTED;
 		m.mp4_both = true;
 		mn = sys_menu_build(&m, mrows, &mb, &mhead);
-		ck(mn == SM_MP4_ROWS - 1, "eleven rows with more than one kind on music (no Repeat)");
+		ck(mn == SM_MP4_ROWS - 1, "twelve rows with more than one kind on music (no Repeat)");
 		ck(!strcmp(mrows[1].label, "Show") && mrows[1].live &&
 		   !strcmp(val(&mrows[1]), "Music"), "Show, on music");
 		ck(!strcmp(mrows[2].label, "Sort By") && !strcmp(mrows[3].label, "View") &&
 		   !strcmp(mrows[4].label, "Shuffle All") &&
-		   mrows[4].live && !strcmp(mrows[5].label, "Player Look") &&
-		   !strcmp(mrows[6].label, "Equalizer") && !strcmp(mrows[7].label, "Lock Screen") &&
-		   !strcmp(mrows[8].label, "Album Art"),
-		   "Sort By, View, Shuffle All, Player Look, Equalizer, Lock Screen, then Album Art");
+		   mrows[4].live && !strcmp(mrows[5].label, "Player Look") && !strcmp(mrows[6].label, "Tape Style") &&
+		   !strcmp(mrows[7].label, "Equalizer") && !strcmp(mrows[8].label, "Lock Screen") &&
+		   !strcmp(mrows[9].label, "Album Art"),
+		   "Sort By, View, Shuffle All, Player Look, Tape Style, Equalizer, Lock Screen, then Album Art");
 		m.mp4_books = true;
 		m.game_count = 2;
 		mn = sys_menu_build(&m, mrows, &mb, &mhead);
@@ -1122,8 +1133,8 @@ static void system_menu(void)
 		for (k = 0; k < mn; k++)
 			ck(strcmp(lbl(&mrows[k]), "Album Art") != 0 &&
 			   strcmp(lbl(&mrows[k]), "Shuffle All") != 0 &&
-			   strcmp(lbl(&mrows[k]), "Player Look") != 0,
-			   "no Album Art on books (MusicBrainz knows records), no Shuffle All, no Player Look");
+			   strcmp(lbl(&mrows[k]), "Player Look") != 0 && strcmp(lbl(&mrows[k]), "Tape Style") != 0,
+			   "no Album Art on books (MusicBrainz knows records), no Shuffle All, no Player Look or Tape Style");
 		/* Videos: their own count and orders, and like books no Album Art
 		 * and no Shuffle All. */
 		m.mp4_books = false;
@@ -1143,8 +1154,8 @@ static void system_menu(void)
 		for (k = 0; k < mn; k++)
 			ck(strcmp(lbl(&mrows[k]), "Album Art") != 0 &&
 			   strcmp(lbl(&mrows[k]), "Shuffle All") != 0 &&
-			   strcmp(lbl(&mrows[k]), "Player Look") != 0,
-			   "no Album Art, Shuffle All or Player Look on videos");
+			   strcmp(lbl(&mrows[k]), "Player Look") != 0 && strcmp(lbl(&mrows[k]), "Tape Style") != 0,
+			   "no Album Art, Shuffle All, Player Look or Tape Style on videos");
 		/* All, where Show starts: the count is the Total, the orders the
 		 * videos', and Shuffle All and Album Art when there are songs */
 		m.mp4_videos = false;
@@ -1156,16 +1167,18 @@ static void system_menu(void)
 		   !strcmp(val(&mrows[0]), "7") && !strcmp(val(&mrows[1]), "All") &&
 		   !strcmp(val(&mrows[2]), "Folder") && !strcmp(mrows[3].label, "View") &&
 		   !strcmp(mrows[4].label, "Shuffle All") &&
-		   !strcmp(mrows[5].label, "Player Look") && !strcmp(mrows[6].label, "Repeat") &&
-		   !strcmp(mrows[7].label, "Equalizer") && !strcmp(mrows[9].label, "Album Art"),
-		   "on All: the Total, Show All, by folder, View, Shuffle All, Player Look, Repeat, Equalizer and Album Art");
+		   !strcmp(mrows[5].label, "Player Look") && !strcmp(mrows[6].label, "Tape Style") &&
+		   !strcmp(mrows[7].label, "Repeat") && !strcmp(mrows[8].label, "Equalizer") &&
+		   !strcmp(mrows[10].label, "Album Art"),
+		   "on All: the Total, Show All, by folder, View, Shuffle All, Player Look, Tape Style, Repeat, Equalizer"
+		   " and Album Art");
 		m.mp4_songs = false;
 		mn = sys_menu_build(&m, mrows, &mb, &mhead);
 		for (k = 0; k < mn; k++)
 			ck(strcmp(lbl(&mrows[k]), "Album Art") != 0 &&
 			   strcmp(lbl(&mrows[k]), "Shuffle All") != 0 &&
-			   strcmp(lbl(&mrows[k]), "Player Look") != 0,
-			   "All with no songs: no Album Art, Shuffle All or Player Look");
+			   strcmp(lbl(&mrows[k]), "Player Look") != 0 && strcmp(lbl(&mrows[k]), "Tape Style") != 0,
+			   "All with no songs: no Album Art, Shuffle All, Player Look or Tape Style");
 		m.mp4_all = false;
 		m.mp4_books = true;
 		{
@@ -1423,11 +1436,45 @@ static void cursor_reaches(void)
 	k = reachable(rows, n, got, MENU_MAX_ROWS);
 
 	printf("system menu, what the cursor can reach:\n");
-	ck(k == 8, "eight rows, not the facts (Strength among them, as a zeroed sys_ui shows it)");
+	ck(k == 9, "nine rows, not the facts (Strength among them, as a zeroed sys_ui shows it)");
 	ck(holds(got, k, sm_at(&u, SM_RANDOM)), "Random Game, with games on the shelf");
-	/* 1.0.5: the shelf's covers or a list, under Sort By */
+	/* DESIGN.md 11.70: Favorites First, right under Sort By, Off as it
+	 * ships, On when the shelf has it */
+	ck(holds(got, k, sm_at(&u, SM_FAVFIRST)), "Favorites First");
+	ck(sm_at(&u, SM_FAVFIRST) == sm_at(&u, SM_SORT) + 1 &&
+	   !strcmp(rows[sm_at(&u, SM_FAVFIRST)].label, "Favorites First"), "Favorites First right under Sort By");
+	ck(!strcmp(val(&rows[sm_at(&u, SM_FAVFIRST)]), "Off"), "Favorites First is Off, as it ships");
+	u.fav_first = true;
+	n = sys_menu_build(&u, rows, &b, &heading);
+	ck(!strcmp(val(&rows[sm_at(&u, SM_FAVFIRST)]), "On"), "or On");
+	u.fav_first = false;
+	n = sys_menu_build(&u, rows, &b, &heading);
+	/* Not on the shelves with rows of their own: Favorites (all of it
+	 * favorites), Recents, Collections and Screenshots */
+	{
+		sys_ui o = u;
+		menu_row orow[MENU_MAX_ROWS];
+		menu_bufs ob;
+		const char *oh;
+		int on, oi, j, has = 0;
+
+		for (j = 0; j < 5; j++) {
+			o = u;
+			o.fav = j == 0 || j == 1;
+			o.recents = j == 1;
+			o.coll = j == 2 || j == 3;
+			o.coll_inside = j == 3;
+			o.shots = j == 4;
+			on = sys_menu_build(&o, orow, &ob, &oh);
+			for (oi = 0; oi < on; oi++)
+				if (orow[oi].label && !strcmp(orow[oi].label, "Favorites First")) has++;
+		}
+		ck(!has, "no Favorites First on Favorites, Recents, Collections or Screenshots");
+	}
+	/* 1.0.5: the shelf's covers or a list, under Sort By (and Favorites
+	 * First, since 11.70) */
 	ck(holds(got, k, sm_at(&u, SM_VIEW)), "View");
-	ck(sm_at(&u, SM_VIEW) == sm_at(&u, SM_SORT) + 1, "right under Sort By");
+	ck(sm_at(&u, SM_VIEW) == sm_at(&u, SM_FAVFIRST) + 1, "right under Sort By and Favorites First");
 	ck(!strcmp(val(&rows[sm_at(&u, SM_VIEW)]), "Covers"), "the covers, as it always was");
 	u.listed = true;
 	n = sys_menu_build(&u, rows, &b, &heading);
@@ -1786,20 +1833,20 @@ static void menu_tabs(void)
 	}
 	ck(ok && at == n_all, "the tabs, one after another, are every row the device has");
 	m = sys_menu_tab_rows(&u, PT_DISPLAY, tab);
-	ck(m == 11 && tab[0] == PM_APPEARANCE && tab[1] == PM_THEME &&
-	   tab[2] == PM_HOME && tab[3] == PM_ORDER && tab[4] == PM_HOMESYS && tab[5] == PM_BATTERY &&
-	   tab[6] == PM_SAVER && tab[7] == PM_SHADER && tab[8] == PM_STRENGTH && tab[9] == PM_SCREEN &&
-	   tab[10] == PM_NIGHT,
-	   "Display: Appearance, Theme, Home Screen, System Order, Home Systems, Battery Icon, "
+	ck(m == 12 && tab[0] == PM_APPEARANCE && tab[1] == PM_THEME &&
+	   tab[2] == PM_HOME && tab[3] == PM_ORDER && tab[4] == PM_HOMESYS && tab[5] == PM_NAMES &&
+	   tab[6] == PM_BATTERY && tab[7] == PM_SAVER && tab[8] == PM_SHADER && tab[9] == PM_STRENGTH &&
+	   tab[10] == PM_SCREEN && tab[11] == PM_NIGHT,
+	   "Display: Appearance, Theme, Home Screen, System Order, Home Systems, Game Names, Battery Icon, "
 	   "Screensaver, Shader, Strength, Screen Colors, Night Mode (its page has the rest)");
 	u.no_strength = true;
 	m = sys_menu_tab_rows(&u, PT_DISPLAY, tab);
-	ck(m == 10 && tab[7] == PM_SHADER && tab[8] == PM_SCREEN,
+	ck(m == 11 && tab[8] == PM_SHADER && tab[9] == PM_SCREEN,
 	   "and no Strength while no system draws an old screen");
 	u.no_strength = false;
 	u.no_screen_colors = u.no_night = true;
 	m = sys_menu_tab_rows(&u, PT_DISPLAY, tab);
-	ck(m == 9 && tab[8] == PM_STRENGTH,
+	ck(m == 10 && tab[9] == PM_STRENGTH,
 	   "and no Screen Colors or Night Mode where the display has no table (the Brick)");
 	u.no_screen_colors = u.no_night = false;
 	m = sys_menu_tab_rows(&u, PT_GAMES, tab);
@@ -1818,16 +1865,24 @@ static void menu_tabs(void)
 	u.tab = PT_DISPLAY;
 	u.theme = "Lime";
 	n = (sys_menu_build)(&u, rows, &b, &heading);
-	ck(n == 11 && !strcmp(rows[1].label, "Theme") && !strcmp(val(&rows[1]), "Lime") &&
-	   !strcmp(rows[9].label, "Screen Colors") && !strcmp(val(&rows[9]), "Standard") &&
-	   !strcmp(rows[10].label, "Night Mode") && !strcmp(val(&rows[10]), "Off"),
+	ck(n == 12 && !strcmp(rows[1].label, "Theme") && !strcmp(val(&rows[1]), "Lime") &&
+	   !strcmp(rows[10].label, "Screen Colors") && !strcmp(val(&rows[10]), "Standard") &&
+	   !strcmp(rows[11].label, "Night Mode") && !strcmp(val(&rows[11]), "Off"),
 	   "Theme says its accent, Screen Colors its look and Night Mode its mode "
 	   "(Standard and Off when none is said)");
 	u.night = "By Hours";
 	n = (sys_menu_build)(&u, rows, &b, &heading);
-	ck(n == 11 && !strcmp(val(&rows[10]), "By Hours"), "and says what it is given");
-	ck(b.sound[9] == 0 && b.sound[10] == 0,
+	ck(n == 12 && !strcmp(val(&rows[11]), "By Hours"), "and says what it is given");
+	ck(b.sound[10] == 0 && b.sound[11] == 0,
 	   "Screen Colors and Night Mode open their pages, as Theme does: no row of steps");
+	/* Game Names (DESIGN.md 11.71), under Home Systems: Short when nothing
+	 * is said, as it ships, and stepped round like System Order */
+	ck(!strcmp(rows[5].label, "Game Names") && !strcmp(val(&rows[5]), "Short") && rows[5].live &&
+	   b.sound[5] == MENU_SND_RING, "Game Names reads Short when nothing is said, and steps round");
+	u.names = "File Name";
+	n = (sys_menu_build)(&u, rows, &b, &heading);
+	ck(!strcmp(val(&rows[5]), "File Name"), "and File Name when it is given");
+	u.names = NULL;
 	ck(!strcmp(sys_menu_tab_name(PT_CONNECTIONS), "Connections") &&
 	   !strcmp(sys_menu_tab_name(PT_ABOUT), "About"), "the tabs' names");
 }
@@ -3748,6 +3803,8 @@ static void row_sounds(void)
 	u.game_count = 3; u.dmode = "Native";
 	n = sys_menu_build(&u, rows, &b, &heading);
 	ck(menu_sound_at(b.sound, n, sm_at(&u, SM_CORE)) == MENU_SND_RING, "a system's Core steps round, on A too");
+	ck(menu_sound_at(b.sound, n, sm_at(&u, SM_FAVFIRST)) == MENU_SND_RING,
+	   "Favorites First turns over on A too, as Look's two-way rows");
 	ck(menu_sound_at(b.sound, n, sm_at(&u, SM_SORT)) == (MENU_SND_RING | MENU_SND_NO_A),
 	   "Sort By steps round and does nothing with A");
 	ck(menu_sound_at(b.sound, n, sm_at(&u, SM_DISPLAY)) == (MENU_SND_RING | MENU_SND_NO_A),

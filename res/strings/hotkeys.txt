@@ -27,6 +27,28 @@ de = Schnell laden
 ja = クイックロード
 it = Caricamento rapido
 
+[hotkeys.ffwd]
+note = A row of the Hotkeys list: SELECT and a button turn fast forward on (to hotkeys.ff_speed's speed) and, pressed again, back to the normal speed, one press each way. None until the player sets it. A row's name, beside its keys or hotkeys.none; also a row of the Controls pages. Title Case where English writes one.
+en = Fast Forward
+zh-Hans = 快进
+es = Avance rápido
+pt-BR = Avanço rápido
+fr = Avance rapide
+de = Vorspulen
+ja = 早送り
+it = Avanti veloce
+
+[hotkeys.ff_speed]
+note = A row of the Hotkeys list, under hotkeys.ffwd: the speed Fast Forward turns on, round on Left and Right, its value 1.5x, 2x, 3x or popup.speed_max. As controls.faster's speeds. Title Case where English writes one.
+en = Fast Forward Speed
+zh-Hans = 快进速度
+es = Velocidad de avance
+pt-BR = Velocidade do avanço
+fr = Vitesse d'avance
+de = Vorspultempo
+ja = 早送りの速度
+it = Velocità avanti
+
 [hotkeys.shot]
 note = A row of the Hotkeys list: SELECT and a button save a picture of the game (a screenshot) to the card, in Screenshots/. None until the player sets it. A row's name, beside its keys or hotkeys.none.
 en = Screenshot
@@ -82,16 +104,16 @@ de = Keine
 ja = なし
 it = Nessuno
 
-[hotkeys.home_note]
-note = A quiet line under the Hotkeys list's Home row (MENU+START, drawn as the buttons): held a second it goes home from anywhere, and no player can change it. One line at the menu's size in the widest panel, about 750 units: keep it as short as English's.
-en = Held 1 s. It never changes.
-zh-Hans = 按住 1 秒。不可更改。
-es = Mantén 1 s. No cambia.
-pt-BR = Segure 1 s. Não muda.
-fr = Maintenir 1 s. Ne change pas.
-de = 1 s halten. Ändert sich nie.
-ja = 1秒長押し。変更できません。
-it = Tieni 1 s. Non cambia.
+[hotkeys.game_note]
+note = The Hotkeys list's footer, under a rule below the rows, while the cursor is on one of the game's hotkeys (Quick Save to Quit): they work in a game, SELECT held with the button. Pairs with hotkeys.menu_note, the footer of MENU's chords. SELECT is the button's printed name, drawn as its key. One line at the menu's size in the widest panel, about 750 units.
+en = In a game, with SELECT held.
+zh-Hans = 游戏中，按住 SELECT 使用。
+es = En juego, con SELECT pulsado.
+pt-BR = No jogo, com SELECT pressionado.
+fr = En jeu, SELECT maintenu.
+de = Im Spiel, mit gehaltenem SELECT.
+ja = ゲーム中、SELECT を押したまま。
+it = In gioco, con SELECT premuto.
 
 [hotkeys.reset_all]
 note = The last row of the Hotkeys list: puts back the hotkeys of the scope shown, after a question. As gamemenu.reset_buttons.
@@ -312,3 +334,59 @@ fr = Affichage
 de = Anzeige
 ja = 画面
 it = Schermo
+
+[hotkeys.menu_note]
+note = The footer of MENU > System > Hotkeys, under a rule below the rows, while the cursor is on Screenshot or Lock Screen, MENU's chords: MENU held with a button works on every screen of the launcher and in a game too. One line at the menu's size in the widest panel, about 750 units.
+en = On every screen, in a game too.
+zh-Hans = 所有画面均可，游戏中也可。
+es = En toda pantalla, y en juego.
+pt-BR = Em toda tela, no jogo também.
+fr = Sur tout écran, en jeu aussi.
+de = Überall, auch im Spiel.
+ja = どの画面でも。ゲーム中も。
+it = Ovunque, anche in gioco.
+
+[hotkeys.hold_note]
+note = The footer of MENU > System > Hotkeys while the cursor is on Hold to Unlock: what the row's seconds are, how long SELECT and START are held together to open the lock (Lock Screen's and MP4's). SELECT and START are the buttons' printed names, drawn as their keys. One line at the menu's size in the widest panel, about 750 units.
+en = How long to hold SELECT+START.
+zh-Hans = 按住 SELECT+START 的时长。
+es = Cuánto mantener SELECT+START.
+pt-BR = Quanto segurar SELECT+START.
+fr = Durée d'appui sur SELECT+START.
+de = Wie lange SELECT+START halten.
+ja = SELECT+START を押す長さ。
+it = Quanto tenere SELECT+START.
+
+[hotkeys.unlock_secs]
+note = Hold to Unlock's value: %s is a number of seconds as the page writes it, with the language's decimal mark ("0.5", "0,5", "2"). tight: 15 bytes at most
+en = %s s
+zh-Hans = %s 秒
+es = %s s
+pt-BR = %s s
+fr = %s s
+de = %s s
+ja = %s 秒
+it = %s s
+
+[hotkeys.unlock_hold]
+note = A row of MENU > System > Hotkeys: how long SELECT and START are held to unlock the lock (Lock Screen, and MP4's); its value is a number of seconds ("2 s"). A row's name, in Title Case where English writes one.
+en = Hold to Unlock
+zh-Hans = 长按解锁
+es = Mantener para desbloquear
+pt-BR = Segurar para desbloquear
+fr = Maintien pour déverrouiller
+de = Halten zum Entsperren
+ja = ロック解除の長押し
+it = Tieni per sbloccare
+
+[hotkeys.menu_capture_hint]
+note = The capture screen's first line under the keys for Screenshot or Lock Screen, MENU's chords: hold MENU, then press one more button. %s is the MENU key as it is printed: MENU, or FN on the R36S. Keep it as it is, in Latin letters. One line, about 760 units, as hotkeys.capture_hint.
+en = Hold %s, then press a button.
+zh-Hans = 按住 %s，再按一个键。
+es = Mantén %s y pulsa un botón.
+pt-BR = Segure %s e aperte um botão.
+fr = Maintenez %s, puis un bouton.
+de = %s halten, dann eine Taste.
+ja = %s を押したまま、ボタンを押す。
+it = Tieni %s e premi un tasto.
+

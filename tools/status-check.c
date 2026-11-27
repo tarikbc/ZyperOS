@@ -252,6 +252,20 @@ static void marks(int theme)
 	CK(is(at(x0, 1.5, 12.5), th->text_soft), "and the battery 12 after Wi-Fi");
 	CK(is(at(x0, 42.5, 12.5), th->text_soft), "its tip at the row's right end");
 	CK(clear(at(0, 22.5, 12.5)), "nothing in a gap");
+
+	/* the mute switch down: the crossed speaker between the fan and the
+	 * battery, 26 wide, in text-soft, and the battery 12 after it */
+	m = (status_marks){ .wifi = STATUS_WIFI_NONE, .batt = 82, .muted = true };
+	draw(&m, theme, theme ? "dark-muted" : "light-muted");
+	CK(status_marks_width(&m) == 26 + 12 + 44, "muted and the battery are 82 wide");
+	CK(is(at(0, 4.5, 12.5), th->text_soft), "the speaker's body in text-soft");
+	CK(is(at(0, 12.5, 12.5), th->text_soft), "and its cone");
+	CK(is(at(0, 20.5, 11.5), th->text_soft), "the cross where the waves would be");
+	CK(clear(at(0, 20.5, 4.5)), "nothing over the cross");
+	CK(clear(at(0, 32.5, 12.5)), "nothing in the gap");
+	CK(is(at(26 + 12, 1.5, 12.5), th->text_soft), "the battery 12 after it");
+	m.muted = false;
+	CK(status_marks_width(&m) == 44, "not muted: no mark and no room");
 }
 
 static void layout(void)

@@ -51,8 +51,10 @@ class Run:
             env=dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_RENDER_DRIVER="software",
                      SDL_AUDIODRIVER="dummy", **env),
             stdout=subprocess.DEVNULL, stderr=open(self.err, "w"))
-        for _ in range(100):
-            if os.path.exists(self.sock): break
+        # The waits are the wall clock's, and only waits: each ends as soon
+        # as what it waits for is there
+        end = time.time() + 30
+        while not os.path.exists(self.sock) and time.time() < end:
             time.sleep(0.05)
         self.s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.s.connect(self.sock)
@@ -78,7 +80,7 @@ class Run:
 
     def close(self):
         self.send("QUIT")
-        try: self.p.wait(5)
+        try: self.p.wait(30)
         except subprocess.TimeoutExpired: self.p.kill()
 
 def inits(path):
@@ -90,13 +92,13 @@ def inits(path):
 for name, want in (("PrBoom", ["loads=1", "loads=1"]), ("diatom-stub", ["loads=1", "loads=2"])):
     log = f"{TMP}/{name}.loads"
     r = Run(name, STUBCORE_NAME=name, STUBCORE_INIT_LOG=log)
-    r.pump(0.5, "READY")
+    r.pump(30, "READY")
     for _ in range(2):
         r.send(f"RUN\tcore={STUB}")
-        r.pump(10, "RUNNING")
+        r.pump(30, "RUNNING")
         r.pump(0.3)
         r.send("STOP")
-        r.pump(10, "EXIT")
+        r.pump(30, "EXIT")
     r.close()
     if name == "PrBoom":
         check("a core named PrBoom is opened afresh for each game", inits(log) == want, inits(log))
@@ -136,21 +138,34 @@ def two_games(name, core, premap=False):
     With `premap`, as the launcher starts it: the cores folder mapped at boot."""
     log = f"{TMP}/{name}.loads"
     r = Run(name, cores=os.path.dirname(core) if premap else None, STUBCORE_INIT_LOG=log)
-    r.pump(0.5, "READY")
+    r.pump(30, "READY")
     if premap:
+        # The thread maps the folder while this waits, until it says it has
+        # (main.c), not 1.5 s as until 2026-11-24, which a busy machine's
+        # thread could take
         r.send("PREMAP")
-        r.pump(1.5)         # the thread maps the folder while this waits
+        end = time.time() + 30
+        while "diatom: premapped" not in open(r.err, errors="replace").read() and time.time() < end:
+            r.pump(0.05)
+        n = len(os.listdir(os.path.dirname(core)))
+        check(f"PREMAP maps the cores folder's {n} cores before {name}'s games",
+              f"diatom: premapped {n} core(s)" in open(r.err, errors="replace").read(),
+              open(r.err, errors="replace").read()[-300:])
     for _ in range(2):
         r.send(f"RUN\tcore={core}")
-        r.pump(10, "RUNNING")
+        r.pump(30, "RUNNING")
         r.pump(0.3)
         r.send("STOP")
-        r.pump(10, "EXIT")
+        r.pump(30, "EXIT")
     r.close()
     base = re.escape(os.path.basename(core))
     err = open(r.err, errors="replace").read().splitlines()
     n_open = sum(bool(re.match(rf"diatom: dlopen +{base} +[0-9.]+ ms$", l)) for l in err)
     n_init = sum(bool(re.match(rf"diatom: retro_init +{base} +[0-9.]+ ms$", l)) for l in err)
+    # and each game's load timed, every time: how long a core that unpacks
+    # its own zip took to (DSperate's .dsperate, src/dscache.h)
+    n_load = sum(bool(re.match(rf"diatom: retro_load_game +{base} +[0-9.]+ ms$", l)) for l in err)
+    check(f"{name}: both games' loads are timed in the log", n_load == 2, n_load)
     return inits(log), n_open, n_init
 
 SIZE = os.path.getsize(STUB)
@@ -184,20 +199,20 @@ check("with no index on the card, a core stays open between games, as before",
 # The core's own quit
 state = f"{TMP}/quit.state"
 r = Run("quit", STUBCORE_SHUTDOWN_AT="90")
-r.pump(0.5, "READY")
+r.pump(30, "READY")
 r.send(f"RUN\tcore={STUB}\texit_state={state}")
-r.pump(10, "RUNNING")
-r.pump(15, "EXIT")
+r.pump(30, "RUNNING")
+r.pump(30, "EXIT")
 ended = [l for l in r.got if l.startswith("EXIT")]
 check("a core that shuts itself down ends its game, with no STOP sent",
       ended == ["EXIT\treason=user"], r.got[-6:])
 check("and its state on exit is written, as a quit's is", os.path.exists(state), os.listdir(TMP))
 r.send(f"RUN\tcore={STUB}")
-r.pump(10, "RUNNING")
+r.pump(30, "RUNNING")
 check("and the next game runs in the same Diatom", "RUNNING" in r.got[r.got.index(ended[0]) if ended else 0:], r.got[-4:])
 r.pump(0.5)
 r.send("STOP")
-r.pump(10, "EXIT")
+r.pump(30, "EXIT")
 r.close()
 
 if fails:

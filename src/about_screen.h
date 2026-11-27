@@ -26,9 +26,11 @@
 
 typedef struct {
 	char ver[48], addr[80], batt[32], up[48];
+	char restart[96];        /* the Last Restart row's value: "K1W · 0.6 s" */
 	char kernel[64];         /* "the Pixel 2 kernel": the handheld's own */
-	menu_row system[5], details[ABOUT_DETAIL_ROWS];
-	int nsystem;             /* 4, or 5 with the Developer Mode row (devmode.h) */
+	menu_row system[6], details[ABOUT_DETAIL_ROWS];
+	int nsystem;             /* 4; one more with Last Restart (lastboot.h), one more
+	                          * with the Developer Mode row (devmode.h), always last */
 	devmode_hold hold;       /* L2 + R2, five seconds: Developer Mode's unlock */
 	char story_lines[SYN_WRAP_LINES][CHV_WRAP_COLS];
 	menu_row story[SYN_ROWS], thanks[ABOUT_THANKS_ROWS];

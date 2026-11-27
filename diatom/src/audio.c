@@ -344,13 +344,10 @@ static void push(const int16_t *f, size_t n)
 			/* Until the rest fits, in steps of at most 5 ms: the device
 			 * takes sound a period at a time, so the room comes in jumps */
 			double us = pace_room_us(diatom_port_audio_queued(), n - took, g_capacity, g_dst_rate);
-			struct timespec ts;
 
 			if (us < 1000) us = 1000;
 			if (us > 5000) us = 5000;
-			ts.tv_sec = 0;
-			ts.tv_nsec = (long)(us * 1000);
-			nanosleep(&ts, NULL);
+			diatom_port_sleep_us(us);
 			waited += us;
 			took += diatom_port_audio_write(f + took * 2, n - took);
 		}

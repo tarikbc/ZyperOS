@@ -122,6 +122,15 @@ void plat_screen_finish(void);
  * is (src/shelf_draw.c), would put it on twice, so none is, while this is
  * true. False where it goes on as the frame goes to the panel (the Pixel 2). */
 bool plat_screen_shader_in_frame(void);
+/* What ZyperOS drew is still there at the next frame: it draws on a texture
+ * of its own that outlives a present (the Pixel 2's screen_tex, the host's
+ * desk screen), so a frame can draw over the last one's picture, as a focus
+ * frame does (src/shelf_draw.c). False where it draws on the window itself
+ * (the Brick): after a swap the window's back buffer is whichever of fb0's
+ * pages comes round next, holding a frame two or three presents old, and a
+ * frame drawn over it showed those old frames again, a menu closed a moment
+ * ago among them, flickering on the still home (a Brick tester, 2026-11-21). */
+bool plat_screen_kept(void);
 /* A video picture UNDER the screen, for the next plat_present only: MP4's
  * player, called at the start of a frame in place of clearing it. The frame
  * is `bg` everywhere, then the `src` part of `tex` (which may be NULL; `src`
@@ -145,6 +154,16 @@ bool plat_save_screen_hidden(const char *path);
  * to draw at the screen's size. NULL when there is none, it is not the
  * panel's size, or the device has no such pictures. */
 SDL_Texture *plat_load_screen(const char *path);
+
+/* MENU held with one more button (src/menukeys.h): `take` says whether a
+ * button pressed while MENU is held is a chord of the launcher's, as it goes
+ * down, and `run` carries it out once the poll is over, from inside
+ * plat_input_poll on whatever screen is up. NULLs for none. */
+void plat_set_menu_keys(bool (*take)(in_button b), void (*run)(in_state *st, in_button b));
+/* The next frame presented, as it was drawn and before the volume bar over
+ * it, given to `done` as an ARGB8888 surface at the drawing's size (the
+ * caller's to free), on this thread; NULL to forget one asked for */
+void plat_grab_next(void (*done)(SDL_Surface *frame));
 
 bool plat_input_init(void);
 /* The motor once, at `scale` (0 to 1, rumble_run_pct's share over 100) for
@@ -269,9 +288,9 @@ bool plat_resident_start_error(plat_start_error *out);
 void plat_resident_on_unlock(void (*fn)(int id));
 
 /* Called from inside plat_resident_wait when Diatom reports its speed step,
- * in halves (2 is 1x, 3 is 1.5x, up to 6, 3x): on every SELECT+R2 and
- * SELECT+L2, and again when a game resumes fast. A callback for the unlock's
- * reason. NULL to stop. */
+ * in halves (2 is 1x, 3 is 1.5x, up to 6, 3x, and 0 for Max): on every
+ * SELECT+R2, SELECT+L2 and Fast Forward, and again when a game resumes fast.
+ * A callback for the unlock's reason. NULL to stop. */
 void plat_resident_on_speed(void (*fn)(int half));
 
 /* Called from inside plat_resident_wait when R2 turned a PSP game's d-pad
@@ -524,9 +543,10 @@ bool plat_screen_saturation_here(void);
  * portkeys, which turn it on and off at the hour themselves over a game or
  * a port.
  *
- * plat_night_preview: Night Warmth's list, `warmth` (1..10) on the whole
- * screen now and kept nowhere, as the Look list previews; 0 puts the kept
- * Night Mode back. Loads after the gap as plat_screen_colors' preview does,
+ * plat_night_preview: Night Warmth's and Night Mode's lists, `warmth`
+ * (1..10) on the whole screen now and kept nowhere, as the Look list
+ * previews; -1 no warmth at all (Night Mode's Off with On kept); 0 puts the
+ * kept Night Mode back. Loads after the gap as plat_screen_colors' preview does,
  * so the list calls plat_screen_colors_tick every frame, as the Look list's
  * picture does.
  *
@@ -575,10 +595,11 @@ bool plat_usb_audio_present(void);
  * browser opens (addr may be NULL); false on a device that moves files over
  * Wi-Fi. */
 bool plat_cable_link(char *addr, size_t n);
-/* A fresh connection over that cable, as if it were plugged in again: the
- * transfer screen asks for one as it opens, since a computer can drop the
- * link while the device goes on believing it is up. Nothing on a device with
- * no cable link. */
+/* A fresh connection over that cable, as if it were plugged in again, when
+ * the link needs one: the transfer screen asks as it opens, since a computer
+ * can drop the link while the device goes on believing it is up. A link in
+ * use is left as it is (cablefresh.h), and the launcher never waits on the
+ * controller for it (hwput.h). Nothing on a device with no cable link. */
 void plat_cable_reconnect(void);
 /* USB's charge-only rule: what is on the port, and the link (usbpeer.h) */
 #include "usbpeer.h"

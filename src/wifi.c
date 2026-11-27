@@ -552,6 +552,97 @@ bool wifi_forget(const char *ssid)
 	return hit;
 }
 
+/* ---- a network for a while (the Link Cable) -------------------------------- */
+
+static char g_temp_id[16];
+static bool g_temp_was_off, g_temp_leased;
+
+/* A new lease now, for the network the radio is on: the one udhcpc holds
+ * is the last network's, and a renew would ask that network's server. Its
+ * release and then its renew start it over (busybox udhcpc: SIGUSR2,
+ * SIGUSR1); with none running, one. */
+static void dhcp_again(void)
+{
+	pid_t pid = dhcp_running();
+
+	if (!pid) { dhcp_start(); return; }
+	kill(pid, SIGUSR2);
+	kill(pid, SIGUSR1);
+}
+
+bool wifi_join_temp(const char *ssid, const char *psk)
+{
+	char out[256], quoted[WIFI_SSID_MAX + 4], qpsk[80];
+	char *nl, *v;
+
+	if (!ssid || !*ssid || g_temp_id[0]) return false;
+	g_temp_was_off = !wpa_running();
+	if (!wifi_up()) return false;
+	if (wpa(out, sizeof out, "add_network", NULL, NULL, NULL) != 0) return false;
+	/* the id is the last line, and there may be a status line above it */
+	nl = strrchr(out, '\n');
+	while (nl && (nl == out || nl[1] == '\0')) { *nl = '\0'; nl = strrchr(out, '\n'); }
+	v = nl ? nl + 1 : out;
+	if (*v < '0' || *v > '9') return false;
+	snprintf(g_temp_id, sizeof g_temp_id, "%.15s", v);
+	snprintf(quoted, sizeof quoted, "\"%s\"", ssid);
+	if (!wpa_ok("set_network", g_temp_id, "ssid", quoted)) goto fail;
+	if (psk && *psk) {
+		snprintf(qpsk, sizeof qpsk, "\"%s\"", psk);
+		if (!wpa_ok("set_network", g_temp_id, "psk", qpsk)) goto fail;
+	} else if (!wpa_ok("set_network", g_temp_id, "key_mgmt", "NONE")) {
+		goto fail;
+	}
+	/* select_network disables every other network in the running
+	 * supplicant (not in its file, which is never saved here):
+	 * wifi_join_temp_end enables them again */
+	if (!wpa_ok("select_network", g_temp_id, NULL, NULL)) goto fail;
+	g_temp_leased = false;
+	return true;
+
+fail:
+	wpa(out, sizeof out, "remove_network", g_temp_id, NULL, NULL);
+	wpa(out, sizeof out, "enable_network", "all", NULL, NULL);
+	g_temp_id[0] = '\0';
+	return false;
+}
+
+int wifi_join_temp_poll(char *ip, int n)
+{
+	char addr[32] = "";
+
+	if (!g_temp_id[0]) return -1;
+	if (wifi_status(NULL, 0, addr, sizeof addr) != WIFI_CONNECTED) return 0;
+	/* Joined: a lease from its server, asked for once; the address the
+	 * last network gave is not one on this network */
+	if (!g_temp_leased) {
+		g_temp_leased = true;
+		dhcp_again();
+		return 0;
+	}
+	if (!addr[0] || !strncmp(addr, "169.254.", 8)) return 0;
+	if (ip && n > 0) snprintf(ip, (size_t)n, "%s", addr);
+	return 1;
+}
+
+void wifi_join_temp_end(void)
+{
+	char out[256];
+
+	if (!g_temp_id[0]) return;
+	wpa(out, sizeof out, "remove_network", g_temp_id, NULL, NULL);
+	wpa(out, sizeof out, "enable_network", "all", NULL, NULL);
+	g_temp_id[0] = '\0';
+	if (g_temp_was_off) {
+		wifi_down();
+		return;
+	}
+	/* Back to a saved network, as the supplicant picks one, and a lease
+	 * from it once it is on */
+	wpa(out, sizeof out, "reassociate", NULL, NULL, NULL);
+	dhcp_again();
+}
+
 #else  /* host build: no radio, and the shelf still has to run */
 
 bool wifi_up(void) { return false; }
@@ -572,6 +663,9 @@ wifi_state wifi_status(char *ssid, int ssid_cap, char *ip, int ip_cap)
 	return WIFI_OFF;
 }
 bool wifi_forget(const char *ssid) { (void)ssid; return false; }
+bool wifi_join_temp(const char *ssid, const char *psk) { (void)ssid; (void)psk; return false; }
+int  wifi_join_temp_poll(char *ip, int n) { (void)ip; (void)n; return -1; }
+void wifi_join_temp_end(void) { }
 bool wifi_signal_poll(char *out, int cap)
 {
 	if (out && cap > 0) out[0] = '\0';

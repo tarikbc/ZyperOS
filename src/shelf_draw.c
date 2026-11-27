@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include "ds/hover.h"
+#include "link_screen.h"
 #include "shelf_draw.h"
+#include "lastboot.h"
 #include "cheats_screen.h"
 #include "homesys.h"
 
@@ -313,12 +315,15 @@ bool tick_theme(app *a)
 	/* NES Player 2's, in the screens over a paused game (its page, the
 	 * in-game menu): on with the game, nothing on the shelf */
 	p2_tick(plat_now_ms());
+	/* The Link Cable's, the same way: its beat goes on while the game is
+	 * paused, so a menu open is never a lost link */
+	link_tick(plat_now_ms());
 	if (!g_ctl_shelf_pass) ctl_poll(a, CTL_AT_SCREEN);
 	tick_update_trial();
-	/* A list's cursor showing an accent or a theme that is not kept
-	 * (src/ds/hover.h): what keeps the boot screen's words, the night's
-	 * hours and Auto's zone waits for it to be undone, so none of them
-	 * writes the shown one down */
+	/* A list's cursor showing a language, a zone, an accent or a theme that
+	 * is not kept (src/ds/hover.h): what keeps the boot screen's words, the
+	 * night's hours and Auto's zone waits for it to be undone, so none of
+	 * them writes the shown one down */
 	if (ds_hover_showing()) return false;
 	tick_boot_theme();
 	tick_update_daily(false);
@@ -602,7 +607,7 @@ static void game_page_facts(app *a, bool settled)
 static snapshelf g_snap_shelf;
 float     g_shot_snap_k = -1;      /* --snap K, for a shot */
 float     g_shot_snap_wait = -1;   /* --snap-wait F, for a shot */
-float     g_shot_band = -1;        /* --band F, the Video view's band, for a shot */
+float     g_shot_band = -1;        /* --band F, the Video view's band or the List view's details, for a shot */
 static char      g_snap_asked[1024];
 static bool      g_snap_held;             /* g_snap_asked is only its first picture */
 static int       g_snap_vol;              /* and the sound it was asked with */
@@ -948,8 +953,8 @@ static bool game_has_snap(void *ctx, int i)
 	s = snap_names_for(folder);
 	name = v->list.items[i].name;
 	if (!s->on) return false;
-	return (s->n && bsearch(&name, s->stems, (size_t)s->n, sizeof *s->stems, snap_name_cmp)) ||
-	       es_has_video(folder, v->list.items[i].file, name);
+	/* The screensaver's question too (saver_pool_build) */
+	return game_media_listed(folder, v->list.items[i].file, name, ES_VIDEO, s->stems, s->n);
 }
 
 /* The heading of a shelf: its system, and on a folder of its games the
@@ -1203,6 +1208,14 @@ static const char *shelf_origin(app *a, int owner, const game_entry *g)
 	return owner != a->sys_cursor ? a->sys.systems[owner].name : NULL;
 }
 
+/* A direction held on the shelf: a snap asked at once waits for its let-go,
+ * so a scroll opens no file (DESIGN.md 11.57) */
+static bool dir_held(const app *a)
+{
+	return a->in.down[IN_LEFT] || a->in.down[IN_RIGHT] || a->in.down[IN_UP] ||
+	       a->in.down[IN_DOWN] || a->in.down[IN_L1] || a->in.down[IN_R1];
+}
+
 static void draw_games(app *a)
 {
 	sysview *v = &a->view[a->sys_cursor];
@@ -1219,8 +1232,7 @@ static void draw_games(app *a)
 		 * direction is held, so a scroll opens no file */
 		const game_entry *g = v->list.count ? &v->list.items[v->cursor] : NULL;
 		int owner = g ? shelf_owner(a, a->sys_cursor, v->cursor) : a->sys_cursor;
-		bool held = a->in.down[IN_LEFT] || a->in.down[IN_RIGHT] || a->in.down[IN_UP] ||
-		            a->in.down[IN_DOWN] || a->in.down[IN_L1] || a->in.down[IN_R1];
+		bool held = dir_held(a);
 		games_info si = { 0 };
 		vv_info vi;
 		unsigned wait;
@@ -1245,9 +1257,12 @@ static void draw_games(app *a)
 		/* A page or a menu over the view keeps its band up, as a press
 		 * does: the snap holds under it (snapshelf's `covered`) and would
 		 * otherwise rest the band down behind the page */
-		if (!g_home_live) vv_touch(&v->vm, now);
+		if (!g_home_live) snaprest_touch(&v->vm, now);
 		vi = (vv_info){
 			.heading = head, .title = g ? g->title : NULL,
+			/* The heart as the cover row's: not on Favorites, nor a shot */
+			.favorite = g && !g->folder && !shots && strcmp(s->tag, HOMESYS_FAV) && !is_mp4(s) &&
+			            fav_is(a->sys.systems[owner].tag, g->file),
 			.count = v->list.count, .cursor = v->cursor,
 			.accent = g ? a->sys.systems[owner].accent : s->accent,
 			.played = g_game_page.valid ? g_game_page.played : "",
@@ -1267,7 +1282,6 @@ static void draw_games(app *a)
 			.playing = si.snap && si.snap_k >= 1,
 			.band = g_shot_band,
 			.foot = shots ? sfoot : NULL, .nfoot = snf,
-			.clear = shots,
 		};
 		/* Somebody watching a snap holds the screensaver; a still shot
 		 * does not */
@@ -1280,9 +1294,11 @@ static void draw_games(app *a)
 	}
 	if (v->listed || v->grid) {
 		/* MENU > View > List (DESIGN.md 11.39): the focused game's video
-		 * snap plays in its cover's place on the panel, as on the cover row
-		 * (2026-11-13: "the list mode should also play the video preview"),
-		 * when the list has stopped on it */
+		 * snap plays in its cover's place (2026-11-13: "the list mode should
+		 * also play the video preview"), asked the frame the focus comes, as
+		 * the Video view's is, not while a direction is held (my pick in the
+		 * List View lab, 2026-11-23); on the grid when it has stopped on it,
+		 * after hold-snap */
 		const game_entry *g = v->list.count ? &v->list.items[v->cursor] : NULL;
 		int owner = g ? shelf_owner(a, a->sys_cursor, v->cursor) : a->sys_cursor;
 		bool settled = v->grid ? !gg_moving(&v->gm, now) : !gl_moving(&v->lm, now);
@@ -1295,7 +1311,9 @@ static void draw_games(app *a)
 		const char *saw = NULL;
 
 		game_page_facts(a, settled);
-		shelf_snap(a, v, g && !g->folder && !shots ? g : NULL, owner, settled, &si);
+		g_snap_shelf.at_once = !v->grid;
+		shelf_snap(a, v, g && !g->folder && !shots ? g : NULL, owner, v->grid ? settled : !dir_held(a), &si);
+		g_snap_shelf.at_once = false;
 		if (shots) shots_hints(a, v, false, sfoot, &snf, &saw);
 		if (v->grid) {
 			/* MENU > View > Grid (DESIGN.md 11.47): the shape kept for
@@ -1364,10 +1382,14 @@ static void draw_games(app *a)
 			.inside = v->dir[0] != '\0',
 			.earned = g_game_page.earned, .total = g_game_page.total,
 			.snap = si.snap, .snap_w = si.snap_w, .snap_h = si.snap_h,
-			.snap_src = si.snap_src, .snap_k = si.snap_k, .snap_wait = si.snap_wait,
+			.snap_src = si.snap_src, .snap_k = si.snap_k,
 			.has_snap = g && !shots && game_has_snap(a, v->cursor),
+			.details = g_shot_band,
 			.a_word = saw, .foot = shots ? sfoot : NULL, .nfoot = snf,
 		};
+		/* A page or a menu over the list keeps its details up, as a press
+		 * does: the snap holds under it (snapshelf's `covered`) */
+		if (!g_home_live) snaprest_touch(&v->lm.details, now);
 		wait = gl_draw(&v->lm, a->r, &li, game_get_tex, a, now, title_phase(a));
 		if (wait != UINT32_MAX) redraw_at(plat_now_ms() + wait);
 		evict_far(v, TEX_KEEP_NEAR);
@@ -2001,16 +2023,20 @@ void heatpop_draw(app *a, unsigned now)
 		int i, l1 = ui_font_line(UI_F_LABEL), l2 = ui_font_line(UI_F_META);
 
 		/* News (System Update's) has no thermometer, and its lines are
-		 * balanced onto two each in the room right of him, the bubble
-		 * growing upward from where the heat's stands */
-		char a1[2][LB_LINE], a2[2][LB_LINE];
+		 * balanced in the room right of him, the first onto two, the
+		 * second onto three (the last start's restart says a code and
+		 * where to send the logs), the bubble growing upward from where
+		 * the heat's stands */
+		char a1[2][LB_LINE], a2[3][LB_LINE];
 		int n1 = 1, n2 = 1, k, room = ZYPEROS_SCREEN_W - 24 - HEATPOP_BUBBLE_X - 2 * HEATPOP_PAD_X;
 
 		mh = heatpop_mark_h();
 		mw = g_heatpop.line1[0] ? -HEATPOP_GAP : (mh + 1) / 2;
 		if (g_heatpop.line1[0]) {
 			n1 = ui_balance_lines(f1, HEATPOP_LINE1, room, 2, a1);
-			n2 = ui_balance_lines(f2, HEATPOP_LINE2, room, 2, a2);
+			n2 = ui_balance_lines(f2, HEATPOP_LINE2, room, 3, a2);
+			ui_fit_cut(HEATPOP_LINE1, a1, n1);
+			ui_fit_cut(HEATPOP_LINE2, a2, n2);
 			for (k = 0, w1 = 0; k < n1; k++) if (ui_text_width(f1, a1[k]) > w1) w1 = ui_text_width(f1, a1[k]);
 			for (k = 0, w2 = 0; k < n2; k++) if (ui_text_width(f2, a2[k]) > w2) w2 = ui_text_width(f2, a2[k]);
 		} else {
@@ -2045,6 +2071,19 @@ void heatpop_draw(app *a, unsigned now)
 	}
 	g_heatpop.drawn = now;
 	redraw_now();
+}
+
+/* The bubble's two lines for the last start's restart (src/lastboot.h,
+ * DESIGN.md 11.70): his "I had to restart!", then what stopped, its code and
+ * where to send the logs */
+void lastboot_bubble(const lastboot *lb)
+{
+	char code[48];
+
+	lastboot_code(lb, code, sizeof code);
+	snprintf(g_heatpop.line1, sizeof g_heatpop.line1, "%s", T(S_LASTBOOT_ZYPER));
+	snprintf(g_heatpop.line2, sizeof g_heatpop.line2,
+	         T(lastboot_froze(lb) ? S_LASTBOOT_FROZE : S_LASTBOOT_START), code);
 }
 
 /* Once a pass of the main loop, beside song_watch: the chip read, and Zyper
@@ -2109,8 +2148,10 @@ void song_keys(app *a)
  * up, and a whole frame is some 40 draws the GL driver takes 4.4 ms of CPU to
  * run on the Pixel 2: 6% of a core for a machine that waits (2026-11-07).
  * Not while anything that is not redrawn here is on screen: the song or heat
- * pop-up, the volume bar. A whole frame still comes at least once a second
- * (HEARTBEAT_MS counts whole frames only). */
+ * pop-up, the volume bar. Nor where the screen does not keep the last
+ * frame's picture (plat_screen_kept: the Brick draws on its window). A whole
+ * frame still comes at least once a second (HEARTBEAT_MS counts whole frames
+ * only). */
 bool focus_ok(const app *a)
 {
 	return a->screen == SCREEN_SYSTEMS && a->sys.count > 0 && !no_games(a) &&

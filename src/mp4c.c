@@ -45,6 +45,9 @@ static int     g_cov_head, g_cov_n;
 /* Who folders are by, answered and not yet taken, the same way. */
 #define ARTIST_RING 8
 static struct { char dir[LIB_PATH * 2], name[256]; } g_art[ARTIST_RING];
+#define LENGTH_RING 4
+static struct { char dir[LIB_PATH * 2]; double s; } g_len[LENGTH_RING];
+static int g_len_head, g_len_n;
 static int     g_art_head, g_art_n;
 
 static int     g_show = -1;         /* VIDEO show= last sent, -1 none yet */
@@ -434,6 +437,18 @@ static void event(const char *line)
 		field(line, "dir", g_art[k].dir, sizeof g_art[k].dir);
 		field(line, "name", g_art[k].name, sizeof g_art[k].name);
 		g_art_n++;
+	} else if (!strncmp(line, "LENGTH", 6)) {
+		int k = (g_len_head + g_len_n) % LENGTH_RING;
+
+		if (g_len_n == LENGTH_RING) {          /* the oldest makes room */
+			g_len_head = (g_len_head + 1) % LENGTH_RING;
+			g_len_n--;
+			k = (g_len_head + g_len_n) % LENGTH_RING;
+		}
+		field(line, "dir", g_len[k].dir, sizeof g_len[k].dir);
+		field(line, "s", v, sizeof v);
+		g_len[k].s = atof(v);
+		g_len_n++;
 	} else if (!strncmp(line, "ERROR", 5)) {
 		field(line, "why", v, sizeof v);
 		fprintf(stderr, "mp4: %s\n", v);
@@ -826,6 +841,9 @@ void mp4c_eq(const int8_t db[5], bool live)
 	if (!strcmp(said, g_eq_sent)) return;
 	snprintf(g_eq_sent, sizeof g_eq_sent, "%s", said);
 	sendf("EQ\tbands=%s\tlive=%d", bands, live ? 1 : 0);
+	/* Which output's curve MP4 now plays, in the log: a "the bass does
+	 * nothing" report says whether the bands ever reached it */
+	fprintf(stderr, "mp4: eq -> %s, on %s\n", said, g_sink_said);
 }
 
 void mp4c_gain(int db)
@@ -910,6 +928,13 @@ void mp4c_seek_by(double delta)
 void mp4c_stop(void)
 {
 	sendf("STOP");
+	/* Stopped here at once rather than when the daemon says so: what reads
+	 * MP4 as heard (the top bar's mark and track, the menu music held quiet,
+	 * SELECT opening Now Playing) lets go on the next frame, and a STOP with
+	 * no daemon to hear it still stops. Nothing waits to be played either. */
+	g_pending = 0;
+	g_asked = g_start_held = g_held_sent = false;
+	if (g_now.state == MU_PLAYING || g_now.state == MU_PAUSED) g_now.state = MU_STOPPED;
 }
 
 bool mp4c_cover_ask(const char *track, const char *base)
@@ -951,6 +976,29 @@ bool mp4c_artist_take(char *dir, size_t dn, char *name, size_t nn)
 	snprintf(name, nn, "%s", g_art[g_art_head].name);
 	g_art_head = (g_art_head + 1) % ARTIST_RING;
 	g_art_n--;
+	return true;
+}
+
+bool mp4c_length_ask(const char *dir)
+{
+	if (strpbrk(dir, "\t\n")) return false;
+	if (!connected()) return false;
+	sendf("LENGTH\tdir=%s/%s", g_root, dir);
+	return g_fd >= 0;
+}
+
+bool mp4c_length_take(char *dir, size_t dn, double *s)
+{
+	size_t root = strlen(g_root);
+	const char *d;
+
+	if (g_len_n == 0) return false;
+	d = g_len[g_len_head].dir;
+	if (!strncmp(d, g_root, root) && d[root] == '/') d += root + 1;
+	snprintf(dir, dn, "%s", d);
+	*s = g_len[g_len_head].s;
+	g_len_head = (g_len_head + 1) % LENGTH_RING;
+	g_len_n--;
 	return true;
 }
 

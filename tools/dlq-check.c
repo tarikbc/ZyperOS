@@ -6,7 +6,9 @@
  * This binary is its own curl, as tools/radl-check.c is: src/net.c read in
  * here whole, this binary first on its list of curls. Run as curl - -K and a
  * config - it answers a GET by its URL's path: /wait/MS/WORD waits MS and
- * answers WORD, /code/N answers N with no body.
+ * answers WORD, /hold/NAME/WORD waits until the check makes the file NAME in
+ * NET_TMP and answers WORD, /code/N answers N with no body, /down answers
+ * nothing (curl's 000 and its exit 6, a host not found).
  *
  * Two slots carry a slow request and a quick one at once, and each finishes
  * as its own; dropping one leaves the other. Two lanes of three slow
@@ -69,7 +71,7 @@ static bool cfg_value(const char *line, const char *key, char *out, size_t n)
 static int standin(const char *cfg)
 {
 	FILE *f = fopen(cfg, "r");
-	char line[4096], url[2048] = "", out[2048] = "", word[256] = "";
+	char line[4096], url[2048] = "", out[2048] = "", word[256] = "", name[64];
 	const char *path;
 	int ms = 0, code = 200;
 
@@ -85,8 +87,21 @@ static int standin(const char *cfg)
 		struct timespec t = { ms / 1000, (long)(ms % 1000) * 1000000L };
 
 		nanosleep(&t, NULL);
+	} else if (path && sscanf(path, "/hold/%63[^/]/%255s", name, word) == 2) {
+		/* Held until the check lets go: in flight for certain, however
+		 * slow the computer, rather than for a time the check hopes is
+		 * long enough. 60 s at most, so a check that never lets go ends. */
+		char go[512];
+		struct timespec t = { 0, 2000000L };
+		int i;
+
+		snprintf(go, sizeof go, NET_TMP "/%s", name);
+		for (i = 0; i < 30000 && access(go, F_OK) != 0; i++) nanosleep(&t, NULL);
 	} else if (path && sscanf(path, "/code/%d", &code) == 1) {
 		word[0] = '\0';
+	} else if (path && !strcmp(path, "/down")) {
+		printf("000");
+		return 6;
 	} else {
 		code = 404;
 	}
@@ -126,6 +141,11 @@ static bool file_is(const char *path, const char *want)
 	fclose(f);
 	return !strcmp(got, want);
 }
+
+/* How long a wait below waits for what it waits for, in ms. Each returns as soon as that holds,
+ * so this is only how long a broken queue keeps the check: two or three seconds were too few
+ * once make check ran four at a time on a loaded Mac (2026-11-24). */
+#define WAIT_MS 30000
 
 /* Poll the slot in use until its request ends, at most `ms` */
 static int poll_until(int ms)
@@ -214,6 +234,16 @@ static void on_step(dlq_lane l)
 	if (now != (l == DLQ_ART ? NET_SLOT_ART : NET_SLOT_RA) || g_mine[l]->dones) g_hook_wrong++;
 }
 
+/* Let a /hold/NAME request go on */
+static void let_go(const char *name)
+{
+	char go[512];
+	FILE *f;
+
+	snprintf(go, sizeof go, NET_TMP "/%s", name);
+	if ((f = fopen(go, "w"))) fclose(f);
+}
+
 static void fresh(fake *f, const char *name, int want, int wait_ms)
 {
 	memset(f, 0, sizeof *f);
@@ -248,11 +278,14 @@ int main(int argc, char **argv)
 		int ra;
 
 		CHECK(was == NET_SLOT_MAIN, "the screens' slot is the one in use to start");
-		CHECK(net_get_async("https://standin.invalid/wait/3000/slow", NET_TMP "/slow", 10), "a slow request starts on the art slot");
+		/* The slow one held until the quick one has ended and been seen
+		 * to: "still in flight" is then so on any computer. It was a 3 s
+		 * request raced against a 50 ms one (2026-11-24). */
+		CHECK(net_get_async("https://standin.invalid/hold/go-slow/slow", NET_TMP "/slow", 10), "a slow request starts on the art slot");
 		net_slot_use(NET_SLOT_RA);
 		CHECK(net_get_async("https://standin.invalid/wait/50/quick", NET_TMP "/quick", 10),
 		      "a quick one starts on the achievements slot while it runs");
-		ra = poll_until(4000);
+		ra = poll_until(WAIT_MS);
 		CHECK(ra == 1 && file_is(NET_TMP "/quick", "quick"), "the quick one ends with its own answer");
 		/* By what happened, not by the clock: the slow one has not ended */
 		net_slot_use(NET_SLOT_ART);
@@ -260,19 +293,28 @@ int main(int argc, char **argv)
 		net_slot_use(NET_SLOT_MAIN);
 		CHECK(!net_async_held(), "the screens' slot is free all along");
 		net_slot_use(NET_SLOT_ART);
-		CHECK(poll_until(8000) == 1 && file_is(NET_TMP "/slow", "slow"), "the slow one ends with its own answer");
+		let_go("go-slow");
+		CHECK(poll_until(WAIT_MS) == 1 && file_is(NET_TMP "/slow", "slow"), "the slow one ends with its own answer");
 
 		/* Dropping one slot's request leaves the other's */
-		CHECK(net_get_async("https://standin.invalid/wait/800/dropped", NET_TMP "/dropped", 10), "a request to drop starts");
+		/* Held, never let go: it is dropped while in flight, however slow */
+		CHECK(net_get_async("https://standin.invalid/hold/never/dropped", NET_TMP "/dropped", 10), "a request to drop starts");
 		net_slot_use(NET_SLOT_RA);
 		CHECK(net_get_async("https://standin.invalid/wait/100/kept", NET_TMP "/kept", 10), "and one to keep, on the other slot");
 		net_slot_use(NET_SLOT_ART);
 		net_async_abort();
 		CHECK(!net_async_held() && access(NET_TMP "/dropped", F_OK) != 0, "the dropped one is gone, no file left");
 		net_slot_use(NET_SLOT_RA);
-		CHECK(poll_until(2000) == 1 && file_is(NET_TMP "/kept", "kept"), "the other ends with its answer");
-		CHECK(net_get_async("https://standin.invalid/code/429", NET_TMP "/busy", 10) && poll_until(2000) == -1 &&
+		CHECK(poll_until(WAIT_MS) == 1 && file_is(NET_TMP "/kept", "kept"), "the other ends with its answer");
+		CHECK(net_get_async("https://standin.invalid/code/429", NET_TMP "/busy", 10) && poll_until(WAIT_MS) == -1 &&
 		      net_async_http() == 429, "a refusal is read on its own slot (429)");
+		/* A refusal and no answer are told apart (Box Art's "index refused
+		 * by the server" and "index fetch failed"): both are -1, the
+		 * status says which */
+		CHECK(net_get_async("https://standin.invalid/code/404", NET_TMP "/gone", 10) && poll_until(WAIT_MS) == -1 &&
+		      net_async_http() == 404 && access(NET_TMP "/gone", F_OK) != 0, "a 404 is a refusal, 404, no file");
+		CHECK(net_get_async("https://standin.invalid/down", NET_TMP "/down", 10) && poll_until(WAIT_MS) == -1 &&
+		      net_async_http() == 0 && net_async_exit() == 6, "no answer is status 0, curl's own exit");
 		net_slot_use(was);
 	}
 
@@ -291,7 +333,7 @@ int main(int argc, char **argv)
 		CHECK(dlq_busy() && dlq_running(DLQ_ART) && dlq_running(DLQ_RA), "both run");
 		dlq_tick();
 		CHECK(g_fa.started && g_fb.started, "both started a request before either ended one");
-		took = run_out(15000);
+		took = run_out(WAIT_MS);
 		CHECK(g_fa.done_n == 3 && g_fb.done_n == 3, "each did its three (a %d, b %d)", g_fa.done_n, g_fb.done_n);
 		CHECK(g_overlap >= 2, "side by side: %d of their 6 requests ended while the other lane had one in flight", g_overlap);
 		fprintf(stderr, "dlq-check: two lanes of three 300 ms requests took %ld ms\n", took);
@@ -310,7 +352,7 @@ int main(int argc, char **argv)
 		CHECK(g_fa.done_n == 0 && !g_fa.started, "while a game runs it waits: nothing asked");
 		CHECK(dlq_wait(80) == 80, "and the input wait is not cut for it");
 		dlq_game(false);
-		run_out(3000);
+		run_out(WAIT_MS);
 		CHECK(g_fa.done_n == 2 && g_fa.dones == 1 && g_fa.how == DLQ_ENDED, "after the game it goes on to its end");
 	}
 
@@ -349,7 +391,7 @@ int main(int argc, char **argv)
 		LANE_A.card = "/";
 		CHECK(dlq_start(DLQ_ART, &LANE_A, begin_a), "a lane on a card starts");
 		CHECK(dlq_wait(80) <= 16, "the input wait is cut to 16 ms while it runs");
-		run_out(2000);
+		run_out(WAIT_MS);
 		CHECK(g_fa.dones == 1 && g_fa.how == DLQ_FULL && dlq_last(DLQ_ART) == DLQ_FULL && dlq_ends(DLQ_ART) == ends + 1,
 		      "below the card's floor it is stopped, as full");
 		LANE_A.card = NULL;
@@ -377,7 +419,7 @@ int main(int argc, char **argv)
 		dlq_on_step(on_step);
 		CHECK(dlq_start(DLQ_ART, &LANE_A, begin_a) && dlq_runs() == runs + 1, "a lane started with none running is a run");
 		CHECK(dlq_start(DLQ_RA, &LANE_B, begin_b) && dlq_runs() == runs + 1, "one started beside it is the same run");
-		run_out(3000);
+		run_out(WAIT_MS);
 		CHECK(g_fa.dones == 1 && g_fb.dones == 1, "both end");
 		CHECK(g_hooked[DLQ_ART] == g_fa.steps && g_hooked[DLQ_RA] == g_fb.steps && g_fa.steps > 0,
 		      "the hook after every step of each lane (a %d of %d, b %d of %d)", g_hooked[DLQ_ART], g_fa.steps,
@@ -389,7 +431,7 @@ int main(int argc, char **argv)
 
 			fresh(&g_fa, "m", 1, 10);
 			CHECK(dlq_start(DLQ_ART, &LANE_A, begin_a) && dlq_runs() == runs + 2, "the next lane on its own, another run");
-			run_out(2000);
+			run_out(WAIT_MS);
 			CHECK(g_fa.dones == 1 && g_hooked[DLQ_ART] == was, "with no hook, nothing is called");
 		}
 	}

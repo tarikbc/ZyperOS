@@ -342,6 +342,22 @@ static void phones_mark(canvas *cv, const ds_theme *th)
 	paint(cv, &right, th->text_soft);
 }
 
+/* The mute switch down in its 26: the volume bar's speaker, a body and a
+ * cone opening right, and a cross where its waves would be, a 3-unit stroke
+ * as the headphones', all in **text-soft** */
+static void muted_mark(canvas *cv, const ds_theme *th)
+{
+	shape body = box(1.5f, 8, 7.5f, 16, 1.5f);
+	shape cone = { .kind = SH_POLY, .n = 4, .p = { 6, 8.5f, 13.5f, 2.5f, 13.5f, 21.5f, 6, 15.5f } };
+	shape a = { .kind = SH_LINES, .n = 2, .p = { 17.5f, 8, 24.5f, 16 }, .w = 1.5f };
+	shape b = { .kind = SH_LINES, .n = 2, .p = { 17.5f, 16, 24.5f, 8 }, .w = 1.5f };
+
+	paint(cv, &body, th->text_soft);
+	paint(cv, &cone, th->text_soft);
+	paint(cv, &a, th->text_soft);
+	paint(cv, &b, th->text_soft);
+}
+
 /* The calculating mark, three dots in the number's place (Time Left, before
  * it has a time): each 6 across, 10.5 apart, on the row's middle, filling in
  * turn, `step` of them in **text-soft** and the rest in **track**, as the
@@ -384,6 +400,7 @@ static void usb_mark(canvas *cv, const ds_theme *th)
 #define W_USB    24
 #define W_BT     16
 #define W_PHONES 24
+#define W_MUTED  26
 #define W_WIFI 36
 #define W_BATT STATUS_BATT_W
 
@@ -403,6 +420,7 @@ int status_marks_width(const status_marks *m)
 	if (m->bt) { w += W_BT; n++; }
 	if (m->phones) { w += W_PHONES; n++; }
 	if (wifi_of(m) != STATUS_WIFI_NONE) { w += W_WIFI; n++; }
+	if (m->muted) { w += W_MUTED; n++; }
 	if (m->batt >= 0) { w += W_BATT; n++; }
 	if (m->batt >= 0 && m->pct_w > 0) w += m->pct_w + STATUS_PCT_GAP;
 	return n ? w + (n - 1) * STATUS_GAP : 0;
@@ -428,7 +446,7 @@ void status_marks_render(uint32_t *px, int w, int h, int stride, float scale,
 	th = theme_at(theme);
 
 	/* Left to right: a plug waiting, File Transfer, the rune, headphones,
-	 * the fan, the battery, at the row's right end */
+	 * the fan, the mute switch down, the battery, at the row's right end */
 	if (m->usb) {
 		cv.mw = W_USB;
 		usb_mark(&cv, th);
@@ -458,6 +476,11 @@ void status_marks_render(uint32_t *px, int w, int h, int stride, float scale,
 		cv.mw = W_WIFI;
 		wifi_mark(&cv, wifi, th);
 		cv.ox += W_WIFI + STATUS_GAP;
+	}
+	if (m->muted) {
+		cv.mw = W_MUTED;
+		muted_mark(&cv, th);
+		cv.ox += W_MUTED + STATUS_GAP;
 	}
 	if (m->batt >= 0) {
 		if (m->calc && m->pct_w > 0) {

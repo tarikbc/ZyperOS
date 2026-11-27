@@ -55,11 +55,16 @@ static void gi_gather(app *a, int owner, const game_entry *g, game_info *gi)
 	gi->can_rename = !is_mp4(s) && gr_renames(s->core, g->file, g->dir);
 	gi->can_favorite = !is_mp4(s);
 	gi->favorite = gi->can_favorite && fav_is(s->tag, g->file);
-	/* The core it starts on, where the shelf has more than one */
+	/* The core it starts on, where the shelf has more than one: its own
+	 * (core_game_get), or the shelf's, said as the shelf's */
 	if (cfg_core_count(s) > 1) {
-		char lb[64];
+		char lb[64], own[CFG_STR];
 
-		snprintf(gi->core, sizeof gi->core, "%s", core_label(s->core, lb, sizeof lb));
+		if (core_game_get(s, g->file, own, sizeof own))
+			snprintf(gi->core, sizeof gi->core, "%s", core_label(own, lb, sizeof lb));
+		else
+			snprintf(gi->core, sizeof gi->core, T(S_GAMEMENU_CORE_SHELF), core_label(s->core, lb, sizeof lb));
+		gi->core_live = core_offered_count(s) > 1;
 	}
 	/* Its file, brackets and all (DESIGN.md 11.69), and a set's discs.
 	 * Only a file that is on the card: Install PortMaster's entry and
@@ -72,6 +77,9 @@ static void gi_gather(app *a, int owner, const game_entry *g, game_info *gi)
 
 		lib_file_shown(g->file, g->dir, hooked, gi->file, sizeof gi->file);
 		if (discs > 1) snprintf(gi->discs, sizeof gi->discs, "%d", discs);
+		/* A game whose file keeps its name has Rename for the name shown
+		 * (src/gamern.h), when there is a file on the card */
+		if (!is_mp4(s) && gr_shown_only(s->core, g->file, g->dir)) gi->can_rename = true;
 	}
 	/* Collections take every game a favorite can be (src/collect.h) */
 	gi->can_collect = gi->can_favorite && s->folder[0];
@@ -224,6 +232,17 @@ static menu_result info_key(app *a, void *ctx, in_button key, int sel)
 		fav_save();
 		c->gi.favorite = fav_is(tag, c->g->file);
 		c->fav_changed = true;
+		return MENU_STAY;
+	}
+	/* The Core row: Left, Right or A steps the game's own core, the
+	 * shelf's first (core_game_step), kept at once; its next start runs
+	 * on it */
+	if ((key == IN_LEFT || key == IN_RIGHT || key == IN_ACCEPT) && sel < n && rows[sel].live &&
+	    !strcmp(rows[sel].label, T(S_SYSMENU_CORE))) {
+		char now[CFG_STR];
+
+		core_game_step(&a->sys.systems[c->owner], c->g->file, key == IN_LEFT ? -1 : 1, now, sizeof now);
+		gi_gather(a, c->owner, c->g, &c->gi);
 		return MENU_STAY;
 	}
 	if (key != IN_ACCEPT || sel >= n || !rows[sel].live) return MENU_STAY;

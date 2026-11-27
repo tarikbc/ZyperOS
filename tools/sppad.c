@@ -16,6 +16,11 @@
  * killed. Linux only.
  *
  *   sppad [-v]      -v: each frame's buttons and raw sticks to stderr
+ *
+ * Without -v the log still has the sticks' readings: each half's centre and
+ * the furthest raw reading seen each way, when they have moved on, at most
+ * every STICK_LOG_MS, so a tester's logs say how the sticks read (the kit's
+ * notes promise it) and the log stops growing once the ends are found.
  */
 #include "sppad.h"
 
@@ -40,6 +45,7 @@ int main(void)
 #include <unistd.h>
 
 #define QUIET_MS 2000   /* a half with no frame this long is said to be silent */
+#define STICK_LOG_MS 5000   /* the most often a half's stick readings are logged */
 
 static const struct {
 	const char *port;
@@ -171,6 +177,8 @@ int main(int argc, char **argv)
 	int           port[SP_HALVES], last_x[SP_HALVES] = { 0, 0 }, last_y[SP_HALVES] = { 0, 0 };
 	unsigned long last_frame[SP_HALVES];
 	bool          silent[SP_HALVES] = { false, false };
+	sp_axis       logged_x[SP_HALVES], logged_y[SP_HALVES];
+	unsigned long logged_at[SP_HALVES] = { 0, 0 };
 	bool          verbose = argc > 1 && !strcmp(argv[1], "-v");
 	struct sigaction sa;
 	int pad, h;
@@ -185,6 +193,8 @@ int main(int argc, char **argv)
 		sp_reader_init(&reader[h]);
 		sp_axis_init(&ax[h]);
 		sp_axis_init(&ay[h]);
+		logged_x[h] = ax[h];
+		logged_y[h] = ay[h];
 		last_frame[h] = now_ms();
 	}
 	/* The halves start as they are powered; a moment for them */
@@ -251,6 +261,19 @@ int main(int argc, char **argv)
 			}
 		}
 		t = now_ms();
+		for (h = 0; h < SP_HALVES; h++) {
+			const sp_axis *x = &ax[h], *y = &ay[h];
+
+			if (!x->learned || t - logged_at[h] < STICK_LOG_MS) continue;
+			if (x->lo == logged_x[h].lo && x->hi == logged_x[h].hi && x->centre == logged_x[h].centre &&
+			    y->lo == logged_y[h].lo && y->hi == logged_y[h].hi && y->centre == logged_y[h].centre)
+				continue;
+			fprintf(stderr, "sppad: the %s stick, raw: x %d to %d round %d, y %d to %d round %d\n",
+			        halves[h].name, x->lo, x->hi, x->centre, y->lo, y->hi, y->centre);
+			logged_x[h] = *x;
+			logged_y[h] = *y;
+			logged_at[h] = t;
+		}
 		for (h = 0; h < SP_HALVES; h++)
 			if (port[h] >= 0 && !silent[h] && sp_silent(last_frame[h], t, QUIET_MS)) {
 				silent[h] = true;

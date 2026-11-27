@@ -6,6 +6,7 @@
 #include <SDL.h>
 #include <SDL_image.h>
 #include "texload.h"
+#include "cartlabel.h"
 
 #include "screencard.h"
 #include "cardgen.h"   /* cardgen_kept: a card is shown in its own theme only */
@@ -158,13 +159,8 @@ static void unqueue(int at)
  * pointed at: the list they came from can be rebuilt while this runs. */
 static SDL_Surface *decode(const char *path)
 {
-	SDL_Surface *raw, *conv;
-
-	if (!path || !*path) return NULL;
-	if (!(raw = IMG_Load(path))) return NULL;
-	conv = SDL_ConvertSurfaceFormat(raw, SDL_PIXELFORMAT_ARGB8888, 0);
-	SDL_FreeSurface(raw);
-	return conv;
+	/* A PICO-8 cart as its label (src/cartlabel.h) */
+	return cart_label_load(path);
 }
 
 static bool (*g_late)(const char *key, char *path, size_t n);
@@ -447,10 +443,17 @@ bool texload_take(texload_got *g)
  * thread, so one pace. */
 static putpace g_pace = { TEXLOAD_SHARE_MS, 0.0f, 0.0f, 0 };
 
-static float ms_since(Uint64 t0)
+static double (*g_test_ms)(void);
+
+void texload_test_clock(double (*now_ms)(void))
 {
-	return (float)((double)(SDL_GetPerformanceCounter() - t0) * 1000.0 /
-	               (double)SDL_GetPerformanceFrequency());
+	g_test_ms = now_ms;
+}
+
+static double clock_ms(void)
+{
+	if (g_test_ms) return g_test_ms();
+	return (double)SDL_GetPerformanceCounter() * 1000.0 / (double)SDL_GetPerformanceFrequency();
 }
 
 /* One taken picture to `put`, or to the bin when it is a card, or art drawn
@@ -479,7 +482,7 @@ int texload_deliver(int theme_on, void (*put)(void *ctx, texload_got *g),
 	for (;;) {
 		texload_got g;
 		long px;
-		Uint64 t0;
+		double t0;
 
 		SDL_LockMutex(g_lock);
 		if (g_rs_n == 0) {
@@ -499,9 +502,9 @@ int texload_deliver(int theme_on, void (*put)(void *ctx, texload_got *g),
 		/* A card thrown away for its theme is not one put on screen: it
 		 * takes no frame's turn and teaches nothing, a free saying nothing
 		 * of what an upload costs, and costs a few microseconds. */
-		t0 = SDL_GetPerformanceCounter();
+		t0 = clock_ms();
 		if (hand(&g, theme_on, put, ctx)) {
-			putpace_took(&g_pace, px, ms_since(t0));
+			putpace_took(&g_pace, px, (float)(clock_ms() - t0));
 			n++;
 		}
 	}

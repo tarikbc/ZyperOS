@@ -140,6 +140,124 @@ void logpack_mask_line(char *line, size_t cap, const char *const *secrets, int n
 	}
 }
 
+/* ---- the system log ------------------------------------------------------- */
+
+/* The tag of a logread line, "Nov 21 22:10:01 host daemon.err bluetoothd[812]:
+ * ...": the word that ends at the first ": " (its "[pid]" left out), one of
+ * the three this pack is for */
+static bool syslog_wanted(const char *line)
+{
+	static const char *const tags[] = { "bluetoothd", "bluealsa", "btplayer" };
+	const char *colon = strstr(line, ": "), *w, *end;
+	size_t i;
+
+	if (!colon) return false;
+	end = colon;
+	if (end > line && end[-1] == ']') {
+		while (end > line && *end != '[') end--;
+		if (*end != '[') return false;
+	}
+	for (w = end; w > line && w[-1] != ' '; w--) {}
+	for (i = 0; i < sizeof tags / sizeof tags[0]; i++)
+		if ((size_t)(end - w) == strlen(tags[i]) && !strncmp(w, tags[i], strlen(tags[i])))
+			return true;
+	return false;
+}
+
+/* line[at, at+len) cut as logpack_mask_word cuts a name */
+static size_t mask_span(char *line, size_t cap, size_t at, size_t len)
+{
+	char word[256], masked[256];
+
+	if (!len) return 0;
+	snprintf(word, sizeof word, "%.*s", (int)(len < sizeof word ? len : sizeof word - 1), line + at);
+	logpack_mask_word(word, masked, sizeof masked);
+	splice(line, cap, line + at, len, masked);
+	return strlen(masked);
+}
+
+static void mask_syslog_line(char *line, size_t cap)
+{
+	char *p;
+	size_t i;
+
+	/* IPv4 addresses: four runs of digits joined by dots */
+	for (p = line; *p; p++) {
+		char *q = p;
+		int parts = 0;
+
+		if (!isdigit((unsigned char)*p) || (p > line && (isalnum((unsigned char)p[-1]) || p[-1] == '.')))
+			continue;
+		while (parts < 4) {
+			char *d = q;
+
+			while (isdigit((unsigned char)*q) && q - d < 3) q++;
+			if (q == d) break;
+			parts++;
+			if (parts < 4 && *q == '.' && isdigit((unsigned char)q[1])) q++;
+			else break;
+		}
+		if (parts == 4 && !isalnum((unsigned char)*q)) {
+			splice(line, cap, p, (size_t)(q - p), "x.x.x.x");
+			p += 6;
+		}
+	}
+	/* Quoted words, '...' and "..." */
+	for (i = 0; line[i]; i++) {
+		char qc = line[i];
+		char *close;
+
+		/* A quote opens only where a word starts: the one in "Couldn't"
+		 * is an apostrophe */
+		if (qc != '\'' && qc != '"') continue;
+		if (i > 0 && isalnum((unsigned char)line[i - 1])) continue;
+		if (!(close = strchr(line + i + 1, qc))) continue;
+		i += 1 + mask_span(line, cap, i + 1, (size_t)(close - line - i - 1));
+	}
+	/* What follows a Name or an Alias, to the end of the line */
+	{
+		static const char *const keys[] = { "Name: ", "Name=", "name: ", "Alias: ", "Alias=", "alias: " };
+		size_t k;
+
+		for (k = 0; k < sizeof keys / sizeof keys[0]; k++)
+			for (p = strstr(line, keys[k]); p; p = strstr(p + 1, keys[k])) {
+				size_t at = (size_t)(p - line) + strlen(keys[k]);
+
+				mask_span(line, cap, at, strcspn(line + at, "\r\n"));
+			}
+	}
+}
+
+int logpack_syslog(const char *raw, char *out, size_t cap,
+                   const char *const *secrets, int n)
+{
+	size_t used = 0;
+	int kept = 0;
+
+	if (!out || !cap) return 0;
+	out[0] = '\0';
+	while (raw && *raw) {
+		const char *nl = strchr(raw, '\n');
+		size_t len = nl ? (size_t)(nl - raw) : strlen(raw);
+		char line[1024];
+		size_t l;
+
+		snprintf(line, sizeof line, "%.*s", (int)(len < sizeof line ? len : sizeof line - 1), raw);
+		raw += len + (nl ? 1 : 0);
+		if (!syslog_wanted(line)) continue;
+		logpack_mask_line(line, sizeof line, secrets, n);
+		mask_syslog_line(line, sizeof line);
+		l = strlen(line);
+		if (used + l + 2 > cap) break;
+		memcpy(out + used, line, l);
+		used += l;
+		out[used++] = '\n';
+		out[used] = '\0';
+		kept++;
+	}
+	return kept;
+}
+
 /* ---- the pack ------------------------------------------------------------- */
 
 /* `from` copied to `to`, every line masked. With `tail` above 0, only the
@@ -189,7 +307,9 @@ static bool run(char *const argv[])
  * port's plugs (usblog.h), the Wi-Fi supplicant's joins and drops (wifi.log
  * and wifi.log.1, /etc/init.d/wpa_supplicant on the Pixel 2), and the card
  * checks after a power-off that left the card dirty (card-check.txt,
- * plastron's /etc/init.d/datapart: what fsck.exfat found and did) */
+ * plastron's /etc/init.d/datapart: what fsck.exfat found and did). The
+ * system log is not one of them: logpack_build takes it as text, never from
+ * the card */
 static bool packed(const char *name)
 {
 	return !strncmp(name, "zyperos.log", 10) || !strcmp(name, "usb.log") ||
@@ -202,7 +322,9 @@ static bool packed(const char *name)
 	        !strcmp(name + strlen(name) - 4, ".txt"));
 }
 
-bool logpack_build(const char *logs_dir, const char *about,
+const char *logpack_system_logs[LOGPACK_SYSTEM_LOGS] = { "/tmp/sppad.log", NULL };
+
+bool logpack_build(const char *logs_dir, const char *about, const char *syslog,
                    const char *const *secrets, int n,
                    const char *folder, const char *out, char *err, size_t en)
 {
@@ -227,6 +349,29 @@ bool logpack_build(const char *logs_dir, const char *about,
 			                strncmp(e->d_name, "wifi.log", 8) ? 0 : LOGPACK_WIFI_TAIL)) logs++;
 		}
 		closedir(d);
+	}
+	/* The system log, its Bluetooth lines alone and masked, into the pack
+	 * only (src/logpack.h) */
+	if (syslog && *syslog) {
+		static char kept[1 << 16];
+
+		if (logpack_syslog(syslog, kept, sizeof kept, secrets, n) > 0) {
+			snprintf(path, sizeof path, "%s/system.log", dir);
+			if ((f = fopen(path, "w"))) {
+				fputs(kept, f);
+				fclose(f);
+			}
+		}
+	}
+	{
+		int i;
+
+		for (i = 0; i < LOGPACK_SYSTEM_LOGS && logpack_system_logs[i]; i++) {
+			const char *name = strrchr(logpack_system_logs[i], '/');
+
+			snprintf(path, sizeof path, "%s/%s", dir, name ? name + 1 : logpack_system_logs[i]);
+			if (copy_masked(logpack_system_logs[i], path, secrets, n, LOGPACK_WIFI_TAIL)) logs++;
+		}
 	}
 	snprintf(path, sizeof path, "%s/about.txt", dir);
 	if ((f = fopen(path, "w"))) {

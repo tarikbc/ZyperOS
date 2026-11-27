@@ -347,6 +347,31 @@ int main(void)
 		CHECK(m == SSHLINK_OFF, "the radio gone, SSH over Wi-Fi went on: %d", (int)m);
 	}
 
+	printf("  the Link Cable's network (src/link.h: link_holds_radio):\n");
+	{
+		/* Its code is four digits: no SSH over Wi-Fi while the link holds
+		 * the radio, one running ended, and back after; the cable's own,
+		 * on the cable's address, as without a radio */
+		sshlink_plan p = { SSHLINK_NET, false };
+		sshlink_facts link = { .radio = true, .over_wifi = true, .link = true };
+		sshlink_facts link_cable = { .cable = true, .radio = true, .over_wifi = true, .link = true };
+		sshlink_facts wifi = { .radio = true, .over_wifi = true };
+		sshlink_mode m;
+
+		m = sshlink_step(&p, &link, SSHLINK_NET);
+		CHECK(m == SSHLINK_OFF, "SSH over Wi-Fi went on over the Link Cable's network: %d", (int)m);
+		p.mode = SSHLINK_OFF;
+		m = sshlink_step(&p, &link, SSHLINK_OFF);
+		CHECK(m == SSHLINK_OFF, "SSH over Wi-Fi started on the Link Cable's network: %d", (int)m);
+		m = sshlink_step(&p, &link_cable, SSHLINK_OFF);
+		CHECK(m == SSHLINK_CABLE, "the cable's SSH, with the link holding the radio: %d", (int)m);
+		p.mode = SSHLINK_OFF;
+		p.spent = false;
+		m = sshlink_step(&p, &wifi, SSHLINK_OFF);
+		CHECK(m == SSHLINK_NET, "SSH over Wi-Fi not back after the link: %d", (int)m);
+		CHECK(sshlink_want_port(&link, true) == SSHLINK_OFF, "a port's SSH over the Link Cable's network");
+	}
+
 	printf("  what dropbear is started with (sshlink_argv):\n");
 	{
 		const char *argv[SSHLINK_ARGV];

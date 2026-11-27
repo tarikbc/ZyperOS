@@ -40,6 +40,23 @@ unsigned device_game_wait(unsigned ms);
 
 /* Shared by the portable half, for the device file. */
 void plat_set_btn(in_state *st, in_button b, bool down);   /* a button's edge */
+/* A button's edge on a device whose MENU is a button of its own (the Brick,
+ * a keyboard, desk mode): MENU said as it is let go, and a button pressed
+ * while it is held MENU's chord when the launcher takes it (src/menukeys.h),
+ * as the Pixel 2's FUNCTION does. Everything else as plat_set_btn. */
+void plat_key(in_state *st, in_button b, bool down);
+/* For a device that keeps MENU itself (the Pixel 2's FUNCTION): `b` went
+ * down or up, MENU held or not; true when MENU's chord took it, and nothing
+ * else may see it, its let-go too */
+bool plat_menu_with(in_state *st, in_button b, bool down, bool menu_held);
+/* What MENU's chords keep between polls, forgotten: a flush, whose let-gos
+ * are never read */
+void plat_menu_forget(void);
+/* At each poll's end, every device: a chord taken is carried out */
+void plat_menu_after(in_state *st);
+/* At each present's start, every device, before the bar over it: the frame
+ * read back for a screenshot when one is asked (plat_grab_next) */
+void plat_grab_frame(SDL_Renderer *r);
 bool plat_terminating(void);                    /* SIGTERM arrived */
 void plat_set_power_pressed(bool on);           /* the last game ended on power */
 /* One line to a running game, on the connection already open; connects for

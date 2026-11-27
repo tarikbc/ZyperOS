@@ -37,12 +37,23 @@ static void nap_ms(int ms)
 	nanosleep(&t, NULL);
 }
 
-/* The first line of path, once the detached program has written it */
+static long mono_ms(void)
+{
+	struct timespec t;
+
+	clock_gettime(CLOCK_MONOTONIC, &t);
+	return (long)t.tv_sec * 1000 + t.tv_nsec / 1000000;
+}
+
+/* The first line of path, once the detached program has written it: 30 s at most, on the
+ * monotonic clock. It returns as soon as the line is there, so that is only how long a program
+ * that never writes keeps the check: 200 x 10 ms were too few for a shell to start once make
+ * check ran four at a time on a loaded Mac (2026-11-24). */
 static int read_when_there(const char *path, char *out, size_t cap)
 {
-	int i;
+	const long until = mono_ms() + 30000;
 
-	for (i = 0; i < 200; i++) {
+	while (mono_ms() < until) {
 		FILE *f = fopen(path, "r");
 
 		if (f) {

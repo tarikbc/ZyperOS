@@ -1,0 +1,14 @@
+# The volume and brightness bar (src/osdbar.c, src/platform.c's
+# plat_draw_osd): its one word. Short, since it stands where the volume's
+# steps stand, beside the crossed speaker.
+
+[levels.muted]
+note = The volume bar while the side mute switch is on: every output is silent, so the bar writes this instead of moving its steps. A state, begun with a capital. Short: it stands in the bar beside a crossed speaker
+en = Muted
+zh-Hans = 已静音
+es = Silenciado
+pt-BR = Mudo
+fr = Son coupé
+de = Stumm
+ja = ミュート中
+it = Muto

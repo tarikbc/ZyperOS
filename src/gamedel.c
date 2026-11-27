@@ -15,6 +15,7 @@
 #include <unistd.h>
 
 #include "db.h"
+#include "dscache.h"
 #include "favorites.h"
 #include "library.h"
 #include "sheet.h"
@@ -391,7 +392,7 @@ bool gd_plan_make(const gd_card *card, const gd_game *g,
 	static const char *const MEDIA[] = { "png", "mp4", "png.part", "mp4.part", "mp4.snap",
 	                                     "mp4.snap.part", "png.sgdb", "png.tmp", "png.pick",
 	                                     "png.swap" };
-	char romdir[GD_PATH], stem[LIB_NAME], sbase[LIB_PATH];
+	char romdir[GD_PATH], stem[LIB_NAME], sbase[LIB_PATH], ds_image[GD_PATH] = "";
 	const char *slash, *core = g->core ? g->core : "";
 	bool hooked = lib_shelf_hooked(g->exts), arcade_set;
 	size_t i;
@@ -479,11 +480,35 @@ bool gd_plan_make(const gd_card *card, const gd_game *g,
 			struct stat st;
 			char dir[GD_PATH];
 
-			snprintf(dir, sizeof dir, "%s/%.*s%s%s", romdir, (int)g->dir, g->file,
-			         g->dir ? "/" : "", stem);
-			if (lstat(dir, &st) == 0 && S_ISDIR(st.st_mode) &&
+			if (snprintf(dir, sizeof dir, "%s/%.*s%s%s", romdir, (int)g->dir, g->file,
+			             g->dir ? "/" : "", stem) < (int)sizeof dir &&
+			    lstat(dir, &st) == 0 && S_ISDIR(st.st_mode) &&
 			    !shares_name(others, nothers, g->folder, stem))
 				plan_add(p, GD_TREE, "%s", dir);
+		}
+		/* A zipped DS game: the copy DSperate unpacked it to, its tag and
+		 * what an unpacking stopped halfway left, in .dsperate beside the
+		 * zip (src/dscache.h). Named after the zip alone, which no other
+		 * game in the folder can be named, but held against a zip of its
+		 * stem there all the same */
+		if (!strcmp(g->tag, "NDS") && dsc_image(romdir, g->file, ds_image, sizeof ds_image)) {
+			bool theirs_too = false;
+
+			for (int k = 0; k < nothers && !theirs_too; k++) {
+				char other[GD_PATH];
+
+				theirs_too = !strcmp(others[k].folder, g->folder) &&
+				             dsc_image(romdir, others[k].file, other, sizeof other) &&
+				             !strcasecmp(other, ds_image);
+			}
+			if (theirs_too) {
+				p->kept++;
+				ds_image[0] = '\0';
+			} else {
+				plan_add(p, GD_FILE, "%s", ds_image);
+				plan_add(p, GD_FILE, "%s.tag", ds_image);
+				plan_add(p, GD_FILE, "%s.part", ds_image);
+			}
 		}
 	}
 	if (p->why != GD_OK) return false;
@@ -578,6 +603,11 @@ bool gd_plan_make(const gd_card *card, const gd_game *g,
 	plan_add(p, GD_EMPTY_DIR, "%s/.media", romdir);
 	plan_add(p, GD_EMPTY_DIR, "%s/.cheevos", romdir);
 	plan_add(p, GD_EMPTY_DIR, "%s/%s", card->states, g->folder);
+	if (ds_image[0]) {
+		char dsdir[GD_PATH];
+
+		if (dsc_dir(romdir, g->file, dsdir, sizeof dsdir)) plan_add(p, GD_EMPTY_DIR, "%s", dsdir);
+	}
 	if (p->why != GD_OK) return false;
 
 	plan_hold(p, card, romdir);

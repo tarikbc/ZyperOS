@@ -5,7 +5,8 @@
 /* Rename, from a game's details page (DESIGN.md 11.41): the game's file, or
  * its folder for a game that is one, and everything the launcher, Diatom and
  * the cores find by its name - its saves, its states and Auto, its cover,
- * its video snap and Before's cover, its cached achievement set, the
+ * its video snap and Before's cover, its cached achievement set, a zipped
+ * DS game's unpacked copy and its tag (src/dscache.h), the
  * EmulationStation pictures and video named after it and its gamelist.xml
  * entry (src/esmedia.h) - and its rows in the card's library database:
  * details, favorite, play sessions, Pak and where its cover came from.
@@ -23,8 +24,10 @@
  *
  * What keeps its name: an arcade set, whose name is the game for FinalBurn
  * Neo, MAME and Flycast; a BIOS set; a port, whose script and folders
- * PortMaster knows by name (GR_KEEPS_NAME). The details page offers no
- * Rename for those.
+ * PortMaster knows by name (GR_KEEPS_NAME). Rename on those changes only
+ * the name ZyperOS shows (gr_shown_set): the player's name in the library
+ * (db_user_title), which every screen shows before a downloaded title and
+ * the file's name (lib_display_title), and no file is touched.
  *
  * No SDL: tools/gamern-check.c links this with src/gamedel.c,
  * src/esmedia.c, src/library.c, src/db.c, src/favorites.c, src/stats.c and
@@ -47,6 +50,16 @@ bool gr_name_ok(const char *typed, char *out, size_t n);
  * `dir` is game_entry.dir: the folders of games in front of its own part. */
 bool gr_renames(const char *core, const char *file, unsigned dir);
 
+/* Whether Rename on this game names only what ZyperOS shows: a game on the
+ * card (a file, its own part whole) that gr_renames refuses */
+bool gr_shown_only(const char *core, const char *file, unsigned dir);
+
+/* A shown name as typed: white space collapsed and its ends dropped
+ * (title_text), into `out`. Any character a title can have, : and / too;
+ * empty is the name back. A name longer than `out` keeps its whole
+ * characters that fit, as a title does. False for broken UTF-8. */
+bool gr_shown_ok(const char *typed, char *out, size_t n);
+
 typedef enum {
 	GR_OK,
 	GR_BAD_NAME,     /* gr_name_ok said no */
@@ -54,8 +67,20 @@ typedef enum {
 	GR_TAKEN,        /* another game, or a file one of the paths would take */
 	GR_KEEPS_NAME,   /* an arcade set, a BIOS set, a port */
 	GR_GONE,         /* the game's own file is not on the card */
-	GR_TOO_MANY      /* more paths than a plan holds; a path too long */
+	GR_TOO_MANY,     /* more paths than a plan holds; a path too long */
+	GR_NOT_SAVED     /* gr_shown_set: the library would not take it */
 } gr_why;
+
+/* The name shown for game `file` of Roms/`folder`, whose file keeps its
+ * name `name` (gr_shown_only), set to `typed` in the library (db_lib()).
+ * Empty, or the name it shows with no name of the player's (the stored
+ * title, else lib_title of `name`), clears the player's name: that one is
+ * shown again. GR_OK when it changed; GR_SAME when it is the name it has;
+ * GR_BAD_NAME (gr_shown_ok); GR_NOT_SAVED. */
+gr_why gr_shown_set(const char *folder, const char *file, const char *name, const char *typed);
+/* The name it shows with no name of the player's, which an empty field
+ * gives back: the stored title, else lib_title of `name` */
+void gr_shown_plain(const char *folder, const char *file, const char *name, char *out, size_t n);
 
 #define GR_MAX 96
 #define GR_ES  24
@@ -74,6 +99,9 @@ typedef struct {
 	char          es_rel[GR_ES][ES_PATH], es_to[GR_ES][ES_PATH];
 	int           nes;
 	char          roms[GD_PATH], folder[LIB_NAME], file[LIB_PATH], name[LIB_NAME];
+	/* A zipped DS game's unpacked copy's tag, which names its zip: its
+	 * move's index, 0 for none (src/dscache.h) */
+	int           ds_tag;
 } gr_plan;
 
 /* The plan for naming game `g` `typed`. False, with `why`, when it is

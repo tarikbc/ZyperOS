@@ -68,3 +68,29 @@ int tags_folder_artist(const char *dir, char *out, size_t n)
 	else if (artist[0] && !ar_split) snprintf(out, n, "%s", artist);
 	return read;
 }
+
+double tags_folder_length(const char *dir)
+{
+	DIR *d = opendir(dir);
+	struct dirent *e;
+	char path[2048];
+	double total = 0;
+	int read = 0;
+
+	if (!d) return 0;
+	while ((e = readdir(d)) && read < TAGS_MAX_FILES) {
+		AVFormatContext *f = NULL;
+
+		if (e->d_name[0] == '.') continue;
+		if (snprintf(path, sizeof path, "%s/%s", dir, e->d_name) >= (int)sizeof path)
+			continue;
+		if (avformat_open_input(&f, path, NULL, NULL) < 0) continue;
+		if (audio_stream(f) < 0) { avformat_close_input(&f); continue; }
+		read++;
+		if (f->duration == AV_NOPTS_VALUE) avformat_find_stream_info(f, NULL);
+		if (f->duration != AV_NOPTS_VALUE && f->duration > 0) total += f->duration / (double)AV_TIME_BASE;
+		avformat_close_input(&f);
+	}
+	closedir(d);
+	return total;
+}

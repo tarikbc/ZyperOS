@@ -42,6 +42,9 @@ typedef struct {
 	 * in it at every depth; 0 for a game. The scan makes none: a shelf
 	 * shows them, built from the games' `dir`s. */
 	int folder;
+	/* The length of `title` before what lib_titles_apart put after it to
+	 * tell it from a game of the same title, 0 when it put nothing */
+	unsigned short apart;
 } game_entry;
 
 /* How many of the left-out names a scan keeps for the log. */
@@ -118,9 +121,30 @@ void lib_free(game_list *l);
 void lib_title(const char *name, char *out, size_t n);
 
 /* Resolve a display title by the unchanged folder/file key. Does not reorder
- * entries or change the launch path, stem, stats, or disc-folder grouping. */
+ * entries or change the launch path, stem, stats, or disc-folder grouping.
+ * The first there is: the player's own name (db_user_title, Rename on a game
+ * whose file keeps its name), under Game Names' File Name (lib_names_set) the
+ * file's whole name, `name` as the scan keeps it; the stored title (MENU >
+ * Downloads' Names and Details, else what es_import took from a
+ * gamelist.xml); the file's name tidied (lib_title). */
 void lib_display_title(db *d, const char *folder, const char *file,
                        const char *name, char *out, size_t n);
+
+/* MENU > Display > Game Names (DESIGN.md 11.71, 2026-11-23, asked for on
+ * the Discord): Short, as it ships, each game by its downloaded title or its
+ * file's name less the brackets (lib_title); or File Name (`file` true),
+ * each game by its file's whole name, every bracket in it, less the
+ * extension ("Final Fantasy VII (USA) (Disc 1)", "Legend of Zelda, The -
+ * Link's Awakening (USA, Europe) (Rev 2)"); a game in a folder of its own
+ * by its folder's, `name` as the scan keeps it. File Name is over a
+ * downloaded title: the brackets are what the player asked to see, and a
+ * download has none. A player's own name for a game whose file keeps its
+ * name (Rename on an arcade set, #463) is over both: it is what the player
+ * typed, as a renamed file's name is, so its lookup goes before this one.
+ * Read by every title made after it is set: the shelf re-titles its games
+ * (refresh_game_titles). */
+void lib_names_set(bool file);
+bool lib_names_file(void);
 
 /* A game's file as its details page shows it (DESIGN.md 11.69), with the
  * brackets lib_title leaves out: its launch path `file` less the folders its
@@ -139,7 +163,44 @@ void lib_file_shown(const char *file, unsigned dir, bool hooked, char *out, size
  * Reads the .m3u or the set's folder, and nothing for a loose game. */
 int lib_discs(const char *roms_root, const char *folder, const char *file,
               unsigned dir, bool hooked);
+/* The entry's title worked out again (lib_display_title), true when it
+ * changed. lib_titles_apart's mark after it is kept while the title under
+ * it stays the same: lib_titles_apart works out the marks again. */
 bool lib_refresh_title(db *d, const char *folder, game_entry *entry);
+
+/* GAMES OF ONE TITLE TOLD APART (2026-11-23, drmoze on the Discord: "2
+ * copies of each game appear in the menu"). Two dumps of one game, "Bonk's
+ * Adventure (USA)" and "PC Genjin (Japan)", get one name from a download
+ * (ScreenScraper's for the game, the US one), or one name from their files
+ * (lib_title cuts the brackets), and stood on the shelf as the same game
+ * twice. Tarik's pick: each keeps its name, and where two games of `l`
+ * show the same title (in any case), each gets what tells it from the
+ * other, from its file:
+ *
+ *   - its region, when each has one and no two the same: "Bonk's
+ *     Adventure (USA)", "Bonk's Adventure (Japan)";
+ *   - else its region with the brackets the others do not all have
+ *     (revision, disc, version, a hack's): "Zelda (USA)", "Zelda (USA)
+ *     (Rev 1)", when those differ;
+ *   - else its file, "Bonk's Adventure · Bonk's Adventure (USA).zip"
+ *     (Bonk's Adventure (USA).pce beside it).
+ *     Its extension alone where its title is its file's name already
+ *     ("Bonk (USA) · zip").
+ *
+ * The brackets as the file has them, in title_text's rules. A game with
+ * nothing else to tell it by keeps its bare title. Again on a list it has
+ * marked, it takes off its marks first (game_entry.apart), so it can run
+ * after any title changes. Folders on a shelf (game_entry.folder) are not
+ * games and are left alone. Pure: no I/O. */
+void lib_titles_apart(game_list *l);
+
+/* The titles of `all` (and their marks) onto the same games' copies in
+ * `list`, a shelf's folder (src/shelfdir.h): matched by file, folders left
+ * alone. True when any changed. */
+bool lib_titles_copy(game_list *list, const game_list *all);
+
+/* A digest of `l`'s titles in order, to see whether a refresh changed any */
+uint64_t lib_titles_digest(const game_list *l);
 
 /* Shared by scans and every sort. Equal display names retain deterministic
  * file order; separate dumps never become one entry. UTF-8 stays bytewise,

@@ -8,6 +8,7 @@
 #include "panel.h"
 #include "platform.h"
 #include "shelfbuild.h"
+#include "launch_screen.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -118,6 +119,13 @@ static bool ctl_resolve(app *a, const ctl_cmd *c, bool rescan, ctl_target *t,
 	t->sys = si;
 	t->game = gi;
 	snprintf(t->core, sizeof t->core, "%s", s->core);
+	/* A game of its own core starts on it, as A on it does (launch) */
+	if (!c->core[0]) {
+		char own[CFG_STR];
+
+		if (core_game_get(s, sys_games(&a->view[si])->items[gi].file, own, sizeof own))
+			snprintf(t->core, sizeof t->core, "%s", own);
+	}
 	if (c->core[0]) {
 		char alt[CFG_STR];
 		int k, n = cfg_core_count(s);
@@ -202,7 +210,10 @@ static void ctl_open_now(app *a, const ctl_target *t, bool fresh)
 	g_pick.shelf = t->sys;
 	g_pick.game = t->game;
 	g_pick.hold_ms = 0;
+	/* The core is the target's: named, the game's own or the shelf's */
+	g_launch_core_named = true;
 	pick_launch(a);
+	g_launch_core_named = false;
 	g_ctl_fresh = false;
 	snprintf(s->core, sizeof s->core, "%s", was);
 }
@@ -305,6 +316,15 @@ bool ctl_poll(app *a, int at)
 	ctl_answer(cfd, "error\tcode=busy\tmsg=another screen is open over the shelf "
 	                "(a menu, MP4, a message): B back to the shelf first");
 	return false;
+}
+
+void ctl_open_after(const char *path, const char *core)
+{
+	memset(&g_ctl_next, 0, sizeof g_ctl_next);
+	g_ctl_next.verb = CTL_OPEN;
+	snprintf(g_ctl_next.path, sizeof g_ctl_next.path, "%s", path);
+	snprintf(g_ctl_next.core, sizeof g_ctl_next.core, "%s", core ? core : "");
+	g_ctl_next_on = true;
 }
 
 /* The shelf's turn: an open waiting for the game it quit, else a command */

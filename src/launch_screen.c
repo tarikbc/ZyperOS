@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include "launch_screen.h"
+#include "link_screen.h"
 
 #include "aout_route.h"
 #include "app.h"
@@ -11,8 +12,10 @@
 #include "ctl_channel.h"
 #include "dl_screen.h"
 #include "dlq.h"
+#include "dscache.h"
 #include "dsv.h"
 #include "ingame_screen.h"
+#include "menukeys_screen.h"
 #include "cheats_screen.h"
 #include "hudmenu_screen.h"
 #include "mp4c.h"
@@ -49,6 +52,7 @@
 #include "update_screen.h"
 #include "zyperdraw.h"
 #include "levels.h"
+#include "wdog.h"
 
 #include <SDL.h>
 #include <SDL_image.h>
@@ -542,7 +546,12 @@ static bool splore_join(app *a)
 	unsigned until;
 
 	wait_panel(a, T(S_MENU_WIFI), T(S_WIFI_TURNING_ON));
-	if (!wifi_up()) return false;
+	wdog_hold("Wi-Fi");                 /* its waits have no end of their own */
+	if (!wifi_up()) {
+		wdog_release();
+		return false;
+	}
+	wdog_release();
 	wifi_pref_save(true);
 	until = plat_now_ms() + 15000;
 	while (plat_now_ms() < until && a->running) {
@@ -887,7 +896,38 @@ void pm_after_run(app *a)
 	pm_install_screen(a, s, true, why, true);
 }
 
+static void launch_on(app *a);
+
+/* A game of its own core (core_game_get) starts on it: the shelf's core
+ * stands aside for the launch, as px2-open's core= does (ctl_open_now), and
+ * is back after. Not over a core px2-open named (g_launch_core_named). */
+bool g_launch_core_named;
+
 void launch(app *a)
+{
+	sysview *v = &a->view[a->sys_cursor];
+	system_cfg *s;
+	char was[CFG_STR], own[CFG_STR];
+	bool swap;
+
+	if (v->list.count <= 0 || v->cursor < 0 || v->cursor >= v->list.count) {
+		launch_on(a);
+		return;
+	}
+	s = &a->sys.systems[shelf_owner(a, a->sys_cursor, v->cursor)];
+	swap = !g_launch_core_named && core_game_get(s, v->list.items[v->cursor].file, own, sizeof own) &&
+	       strcmp(own, s->core);
+	if (swap) {
+		snprintf(was, sizeof was, "%s", s->core);
+		snprintf(s->core, sizeof s->core, "%s", own);
+		fprintf(stderr, "core: %s starts on its own %s (the shelf's %s)\n",
+		        v->list.items[v->cursor].file, own, was);
+	}
+	launch_on(a);
+	if (swap) snprintf(s->core, sizeof s->core, "%s", was);
+}
+
+static void launch_on(app *a)
 {
 	/* The game has the screen, and the CPU: no snap under it */
 	snap_off();
@@ -911,7 +951,7 @@ void launch(app *a)
 	 * the previous 20 was already 18 full, and a silent bound check would
 	 * have dropped every option rather than failing loudly. */
 	char *argv[35 + 2 * 32];
-	bool resident = false, want_menu;
+	bool resident = false, want_menu, link_open = false;
 	/* Diatom said its core would not load (src/startfail.h): the shelf says
 	 * so, and a second Diatom that would fail the same way is not started */
 	bool core_said = false;
@@ -940,6 +980,7 @@ void launch(app *a)
 	 * launch path the same way favorites are, and reading the cursor again
 	 * further down would be reading it at a different moment. */
 	const char *romfile = v->list.items[v->cursor].file;
+	fprintf(stderr, "launch: %s/%s on %s\n", s->folder, romfile, s->core);
 
 	/* Splore's entry on the PICO-8 shelf, whichever core plays its carts */
 	if (!strcmp(s->tag, P8_TAG) && splore_file(romfile)) {
@@ -1058,6 +1099,10 @@ void launch(app *a)
 					snprintf(keys + strlen(keys), sizeof keys - strlen(keys), "%shotkeys=%s",
 					         keys[0] ? "\t" : "", run);
 			}
+			/* Fast Forward's speed, where it is not 2x, Diatom's own */
+			if (hk.ff != def.ff && strlen(keys) + 16 <= sizeof keys)
+				snprintf(keys + strlen(keys), sizeof keys - strlen(keys), "%sffspeed=%s",
+				         keys[0] ? "\t" : "", hk_ff_word(hk.ff));
 			{
 				/* The game's part of the name as src/shotname.h has it,
 				 * which the Screenshots shelf reads back */
@@ -1067,6 +1112,18 @@ void launch(app *a)
 					snprintf(keys + strlen(keys), sizeof keys - strlen(keys), "%sshots=%s",
 					         keys[0] ? "\t" : "", shots);
 			}
+		}
+		/* MENU's chords (src/menukeys.h), which work in a game too: Diatom
+		 * takes the screenshot's button under MENU as SELECT's hotkey does,
+		 * and pauses for the lock (PAUSED for=lock, game_lock). With every
+		 * game, so a key changed in MENU > System > Hotkeys holds at once */
+		{
+			char mk[48];
+
+			mk_run(mk_now(), mk, sizeof mk);
+			if (strlen(keys) + strlen(mk) + 12 <= sizeof keys)
+				snprintf(keys + strlen(keys), sizeof keys - strlen(keys), "%smenukeys=%s",
+				         keys[0] ? "\t" : "", mk);
 		}
 		/* The cheats that are on for this game, handed over as it loads
 		 * (src/cheats_screen.h): cheats= on RUN, none for most games */
@@ -1376,7 +1433,10 @@ void launch(app *a)
 			 * already up, so nothing is handed control of a game the player
 			 * may not have meant to resume. Ordered on the same socket, so it
 			 * lands before the first frame the player could act on. */
-			if (want_menu) plat_resident_line("PAUSE");
+			/* Started again on Gambatte for the Link Cable (its question
+			 * on mGBA): paused at once for its page */
+			link_open = link_page_next_take(romfile) && !want_menu && link_on_core(s->core);
+			if (want_menu || link_open) plat_resident_line("PAUSE");
 			g_menu_unasked = want_menu;
 			/* "2 cheats on" over the first frames, so none is forgotten */
 			if (!want_menu) cheats_game_started();
@@ -1402,10 +1462,14 @@ void launch(app *a)
 					levels_game_paused(true);
 					/* A hotkey's pause (src/hotkeys.h): Quit stops the
 					 * game as MENU then X does, Reset Game asks first;
+					 * MENU's lock chord locks over it (src/menukeys.h);
 					 * MENU's opens the menu */
 					if (!strcmp(why, "quit")) gm_quit();
 					else if (!strcmp(why, "reset")) game_reset_ask(a);
+					else if (!strcmp(why, "lock")) game_lock(a);
+					else if (link_open) game_link_open(a);
 					else game_menu(a);
+					link_open = false;
 					levels_game_paused(false);
 					g_ctl_game.paused = false;
 					continue;
@@ -1429,6 +1493,9 @@ void launch(app *a)
 			if (p2_link_on() == P2_HOTSPOT)
 				wait_panel(a, T(S_PLAYER2_ROW), T(S_XFER_CLOSING_HOTSPOT));
 			p2_stop();
+			/* And the Link Cable: bye to the other handheld, and this
+			 * one's Wi-Fi back as it was */
+			link_game_end(a);
 
 			/* The Auto card's picture, written ONLY here - at the same moment
 			 * Diatom wrote the state it belongs to, so the two cannot drift.
@@ -1653,6 +1720,20 @@ void launch(app *a)
 	present_ground(a);
 	/* The language its auto state was just written in, if it was */
 	ds_resume_record(st, ds_lang, &ds_before, ds_had);
+	/* The zipped DS games DSperate unpacked beside this one, kept under its
+	 * own frontend's cap, this game's copy kept (src/dscache.h) */
+	if (!strcmp(s->tag, "NDS") && !strcmp(s->core, "dsperate")) {
+		char romdir[CFG_STR * 2], dir[1024], keep[1200];
+		int went = 0;
+		unsigned long long freed;
+
+		if (snprintf(romdir, sizeof romdir, "%s/%s", P_ROMS, s->folder) < (int)sizeof romdir &&
+		    dsc_dir(romdir, romfile, dir, sizeof dir) &&
+		    dsc_image(romdir, romfile, keep, sizeof keep) &&
+		    (freed = dsc_trim(dir, DSC_CAP, keep, &went)) > 0)
+			fprintf(stderr, "dscache: %s: %d unpacked game%s removed, %llu MB given back\n",
+			        dir, went, went == 1 ? "" : "s", freed >> 20);
+	}
 
 	/* The game has just written a fresh autosave preview. Throw the card's
 	 * texture away so it picks that up - but only if the preview is what the

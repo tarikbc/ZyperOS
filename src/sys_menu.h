@@ -114,6 +114,11 @@
  * shows, each system with games, Favorites, Recents and Collections (src/homesys.h). Its
  * value "All", or how many of them are on; A opens the page of switches
  * (sys_menu_homesys_rows). 1.0.6, asked for on the Discord. */
+/* PM_NAMES is Game Names, under Home Systems: how every shelf names its
+ * games, Short as it ships (a downloaded title, or the file's name less its
+ * brackets) or File Name (the file's whole name, every bracket in it), with
+ * a note under each in its list (src/library.h, lib_names_set; DESIGN.md
+ * 11.71). 2026-11-23, asked for on the Discord. */
 /* PM_THEME is Theme, under Appearance: the accent, a background tone for
  * each theme, the corners and Zyper (src/look.h, DESIGN.md 3.5). My picks
  * 2026-11-12. Appearance is Light, Dark or Auto (1.0.6: Auto went, its
@@ -135,7 +140,7 @@ typedef enum {
 	/* Games */
 	PM_SEARCH, PM_STATS, PM_RANDOM, PM_SCRAPER,
 	/* Display */
-	PM_APPEARANCE, PM_THEME, PM_HOME, PM_ORDER, PM_HOMESYS, PM_BATTERY, PM_SAVER,
+	PM_APPEARANCE, PM_THEME, PM_HOME, PM_ORDER, PM_HOMESYS, PM_NAMES, PM_BATTERY, PM_SAVER,
 	PM_SHADER,
 	PM_STRENGTH,
 	PM_SCREEN,
@@ -168,12 +173,15 @@ typedef enum { PT_GAMES, PT_DISPLAY, PT_SOUND, PT_CONNECTIONS, PT_SYSTEM,
  * so these are hooks waiting to be wired, not wishes. */
 /* View, under Sort By (1.0.5, DESIGN.md 11.39): the shelf's covers in a
  * row, or its games as a list, this shelf's own choice as Sort By is. */
+/* Favorites First, between them (DESIGN.md 11.70): Off, as it ships, or On,
+ * the shelf's favorites ahead of its other games in its Sort By; a console's
+ * shelf only, so none of the shelves below with rows of their own has it. */
 /* The width an option list's note wraps to under the list, in pixels of
  * the menu's font (menu_pick_note) */
 #define SM_NOTE_W 760
 
 typedef enum {
-	SM_GAMES, SM_RANDOM, SM_CORE, SM_DSLANG, SM_SGB, SM_PACE, SM_SORT, SM_VIEW,
+	SM_GAMES, SM_RANDOM, SM_CORE, SM_DSLANG, SM_SGB, SM_PACE, SM_SORT, SM_FAVFIRST, SM_VIEW,
 	SM_DISPLAY, SM_BORDER, SM_BORDER_COLOR, SM_SHADER, SM_STRENGTH, /* SM_BUTTONS, */ SM_BOXART,
 	SM_RESCAN, SM_ROWS
 } sm_row;
@@ -263,12 +271,16 @@ int sys_menu_coll_rows(bool inside, sm_coll_row *out);
  * Equalizer, over Lock Screen on every kind: the same row and page as
  * MENU's, there while music or a video plays (2026-11-19).
  *
+ * Tape Style, under Player Look wherever it is: the Cassette look's tape
+ * (src/mp4look.h, Pinstripe by default), live only while the look is Cassette
+ * (my pick in the Tape Styles lab, 2026-11-23).
+ *
  * View, under Sort By on every kind: the shelf's Covers, Grid or List, as a
  * system's View row, START's turn of it on the shelf (DESIGN.md 11.67); no
  * Video, which plays a game's snap. */
 typedef enum { SMM_COUNT, SMM_SHOW, SMM_SORT, SMM_SHUFFLE, SMM_LOOK, SMM_EQ, SMM_LOCK, SMM_ART,
-               SMM_RESCAN, SMM_QUIT, SMM_REPEAT, SMM_VIEW } sm_mp4_row;
-#define SM_MP4_ROWS 12
+               SMM_RESCAN, SMM_QUIT, SMM_REPEAT, SMM_VIEW, SMM_TAPE } sm_mp4_row;
+#define SM_MP4_ROWS 13
 
 /* MP4's rows in order, for the kind its shelf shows - 0 music, 1 books,
  * 2 videos, mp4lib.h's ml_kind, and 3 all of them with music among them
@@ -283,9 +295,10 @@ int sys_menu_mp4_rows(int kind, bool both, bool no_wifi, sm_mp4_row *out);
  * and the two USB rows (USB Device, USB Accessories) 29 in all; 1.0.5's
  * Auto Hours, Theme, Screensaver and Shader made 34, every tab's rows
  * together (a tab shows its own, but the build for every tab, PT_TABS, holds
- * them all); room for a few more. The menu runner holds MENU_RUN_ROWS
- * (main.c), which must stay at least this. */
-#define MENU_MAX_ROWS 40
+ * them all); room for a few more. Game Names (2026-11-23) made 41, and 44 is
+ * room again. The menu runner holds MENU_RUN_ROWS (main.c), which must stay
+ * at least this. */
+#define MENU_MAX_ROWS 44
 
 /* The array every caller declares must hold every row a build can produce, and
  * on 2026-09-16 it stopped: PM_ROWS went to 13 against a cap of 12 when the
@@ -352,6 +365,8 @@ typedef struct {
 	bool mp4_both;          /* and the card has more than one kind */
 	bool mp4_playing;       /* and music is playing, so it can lock */
 	const char *mp4_look;   /* Player Look's value: the look that is on */
+	const char *mp4_tape;   /* Tape Style's value: the style that is on */
+	bool mp4_tape_live;     /* and the look is Cassette, so it does something */
 	const char *mp4_repeat; /* videos' Repeat, as its row says it */
 
 	/* What the device HAS, rather than what state it is in. A radio that is
@@ -452,6 +467,8 @@ typedef struct {
 	const char *order;
 	/* Home Systems' value: "All", or "12 of 15"; NULL reads All */
 	const char *homesys;
+	/* Game Names: Short (NULL reads it) or File Name */
+	const char *names;
 	const char *battery;    /* the corner's battery: Bars (default), Percentage or Time Left */
 	int         auto_off;    /* seconds, 0 for off */
 	bool        power_hold;  /* Power Button is Hold; false, Press */
@@ -529,6 +546,9 @@ typedef struct {
 	 * the same reason dmode is one: this file must not know the table, or a
 	 * check that links it would have to link the table too. */
 	const char *sort;
+	/* Favorites First, under Sort By on a console's shelf (DESIGN.md
+	 * 11.70): its favorites ahead of its other games */
+	bool        fav_first;
 	/* The shelf shows a list rather than its covers (View, SM_VIEW) */
 	bool        listed;
 	bool        grid;       /* the shelf is a grid of covers (MENU > View) */

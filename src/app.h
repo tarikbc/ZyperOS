@@ -56,6 +56,14 @@ typedef struct {
 	 * before this existed and what an untouched one still is. On MP4's
 	 * shelf an ml_order instead, whose zero is by artist. */
 	int sort;
+	/* MENU > Favorites First (DESIGN.md 11.70), a console shelf's own as
+	 * Sort By is: its favorites ahead of its other games, each part in
+	 * `sort`. False, as it ships, is the shelf as it always was. Where the
+	 * favorites are once sorted: `nfav` of them from `fav_from` (after the
+	 * folders, and Splore on PICO-8's), 0 when off or none, which the
+	 * letter jump reads so the two parts are never one run of an initial. */
+	bool fav_first;
+	int fav_from, nfav;
 	coverflow cf;
 	games_row row;
 	/* NULL on a real shelf, where every game belongs to the system whose
@@ -95,7 +103,7 @@ typedef struct {
 	 * game's snap on the whole screen, its covers in a band at the foot;
 	 * never with either of those, and its band's motion */
 	bool video;
-	vv_motion vm;
+	snaprest vm;
 	/* The grid's place and motion, what it knows of each cover beyond its
 	 * texture (src/gamegrid.h), and the shape kept for this shelf in the
 	 * device's database (grid_shape_load), read when the grid opens it, and
@@ -364,6 +372,8 @@ void book_keep(bool now);
 /* MP4's resume row gone (src/mp4resume.h): a port about to take the sound,
  * after which nothing should open by itself */
 void resume_clear(void);
+/* MP4's Quit on something paused: it stops, a book's or a video's place kept */
+void mp4_quit(void);
 void mp4_poll(void);
 /* MP4's queue handed over a program of its own that keeps it playing
  * (src/mp4hand.h): written, and taken on (true when a queue came) */
@@ -425,6 +435,12 @@ void recents_picture_turn(app *a);
 bool view_listed(const char *tag);
 bool view_grid(const char *tag);
 void sort_shelf(app *a, int sys);
+/* sort_shelf with the cursor kept on its game, the shelf drawn again */
+void sort_shelf_keep(app *a, int sys);
+/* MENU > Favorites First (DESIGN.md 11.70): whether shelf `sys` has it (a
+ * console's), and it turned over there, kept and applied */
+bool fav_first_offered(app *a, int sys);
+void fav_first_turn(app *a, int sys);
 void sort_all(app *a);
 /* Every texture of the renderer the launcher holds, let go */
 void free_all_textures(app *a);
@@ -450,6 +466,13 @@ void p8_take_now(void);
  * chosen */
 int  core_offered_count(const system_cfg *s);
 bool core_offered_at(const system_cfg *s, int i, char *out, int cap);
+/* A game's own core over its shelf's (core.<TAG>.<file>, src/main.c): its
+ * name into `out`, false for none (the shelf's choice) or one the shelf no
+ * longer offers or the card lacks; its set ("" or NULL clears it); and its
+ * Core row's step, Shelf's Choice then each offered core, round */
+bool core_game_get(const system_cfg *s, const char *file, char *out, int cap);
+void core_game_set(const system_cfg *s, const char *file, const char *core);
+void core_game_step(const system_cfg *s, const char *file, int d, char *out, int cap);
 bool is_mp4(const system_cfg *s);
 void gm_quit(void);
 /* A pop-up over the running game, as the quick slot's (main.c's popup_now):

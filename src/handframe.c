@@ -109,9 +109,44 @@ static hf_rgb paint_of(const hf_model *m, const hf_part *p, int color)
 	return p->color;
 }
 
+/* Whether r is inside the light's ring: a part of the light */
+static bool in_light(const hf_model *m, const hf_rrect *r)
+{
+	const float e = 0.01f;
+
+	return m->light.x1 > m->light.x0 && r->x0 >= m->light.x0 - e && r->x1 <= m->light.x1 + e &&
+	       r->y0 >= m->light.y0 - e && r->y1 <= m->light.y1 + e;
+}
+
+int hf_light_dx(const hf_model *m, int w, int gx, int gy, int gw, int gh)
+{
+	const float px = (float)gw / m->lcd_w;
+	const int room = (int)lroundf(HF_LIGHT_ROOM_MM * px);
+	int x0, y0, x1, y1, dx;
+
+	/* A light in the lens, beside the screen: the Game Boy's and the
+	 * Color's. The Advance's is on the body past the lens's right end. */
+	if (m->light.x1 <= m->light.x0 || m->light.x0 < m->lens.x0 || m->light.x1 > m->lens.x1 ||
+	    m->light.y0 < m->lens.y0 || m->light.y1 > m->lens.y1)
+		return 0;
+	hf_px_rect(m, &m->light, gx, gy, gw, gh, &x0, &y0, &x1, &y1);
+	if (x0 >= room && x1 <= w - room) return 0;
+	if (x1 <= gx) {
+		dx = room - x0;
+		return x1 + dx + room <= gx ? dx : 0;
+	}
+	if (x0 >= gx + gw) {
+		dx = w - room - x1;
+		return x0 + dx - room >= gx + gw ? dx : 0;
+	}
+	return 0;
+}
+
 void hf_render(const hf_model *m, int color, int w, int h, int gx, int gy, int gw, int gh, uint8_t *bgra)
 {
 	const float px = (float)gw / m->lcd_w, py = (float)gh / m->lcd_h;
+	/* The light where the panel shows it whole (hf_light_dx) */
+	const int ldx = hf_light_dx(m, w, gx, gy, gw, gh);
 	int i, x, y;
 
 	if (color < 0 || color >= m->ncolors) color = 0;
@@ -129,6 +164,10 @@ void hf_render(const hf_model *m, int color, int w, int h, int gx, int gy, int g
 		sdf_shape sh;
 
 		hf_px_rect(m, &p->shape, gx, gy, gw, gh, &x0, &y0, &x1, &y1);
+		if (ldx && in_light(m, &p->shape)) {
+			x0 += ldx;
+			x1 += ldx;
+		}
 		if (x1 <= x0 || y1 <= y0) continue;
 		sh.cx = (float)(x0 + x1) / 2.0f;
 		sh.cy = (float)(y0 + y1) / 2.0f;

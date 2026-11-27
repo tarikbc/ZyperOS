@@ -176,6 +176,53 @@ static void the_files(void)
 	      !link_udc_configured(""), "a state other than configured read as configured");
 }
 
+/* A fresh link as File Transfer opens (link_wants_fresh): never over a link
+ * the computer answers on, always over one that is not whole, never right
+ * after a bind; and the Brick, whose state says nothing */
+static void fresh(void)
+{
+	/* The Pixel 2: its state tells */
+	CHECK(!link_wants_fresh(false, true, true, true, true),
+	      "a link in use, the computer answering, was made fresh (the 2026-11-21 hang)");
+	CHECK(link_fresh_ask(false, true, true, true), "a whole link: the computer not asked");
+	CHECK(link_wants_fresh(false, true, true, true, false),
+	      "the computer dropped the handheld, still \"configured\" (2026-10-08): no fresh link");
+	CHECK(link_wants_fresh(false, true, false, false, false) &&
+	      !link_fresh_ask(false, true, false, false),
+	      "not configured: no fresh link, or the computer asked first");
+	CHECK(link_wants_fresh(false, true, true, false, false) && !link_fresh_ask(false, true, true, false),
+	      "configured with no carrier: no fresh link, or the computer asked first");
+	CHECK(!link_wants_fresh(true, true, false, false, false) && !link_fresh_ask(true, true, true, true),
+	      "bound a moment ago: made fresh, or asked");
+	/* The Brick: "configured" through unplugs, so only the carrier and the answer */
+	CHECK(link_fresh_ask(false, false, false, true), "the Brick, carrier on: not asked");
+	CHECK(!link_wants_fresh(false, false, false, true, true), "the Brick, answering: made fresh");
+	CHECK(link_wants_fresh(false, false, true, false, false), "the Brick, no carrier: not made fresh");
+
+	/* The ARP request and its answer, byte for byte (RFC 826) */
+	{
+		static const unsigned char mac[6] = { 0x02, 0x50, 0x58, 0x32, 0x00, 0x01 };
+		unsigned char req[LINK_ARP_LEN], ans[LINK_ARP_LEN + 18];
+		unsigned sip, tip, other;
+
+		memcpy(&sip, (unsigned char[]){ 10, 42, 0, 1 }, 4);
+		memcpy(&tip, (unsigned char[]){ 10, 42, 0, 2 }, 4);
+		memcpy(&other, (unsigned char[]){ 10, 42, 0, 3 }, 4);
+		link_arp_request(req, mac, sip, tip);
+		CHECK(!memcmp(req, (unsigned char[]){ 0, 1, 8, 0, 6, 4, 0, 1 }, 8), "the request's header");
+		CHECK(!memcmp(req + 8, mac, 6) && !memcmp(req + 14, &sip, 4), "the request's sender");
+		CHECK(!memcmp(req + 24, &tip, 4), "the request's target");
+		CHECK(!link_arp_answer(req, sizeof req, tip), "a request taken for an answer");
+		memset(ans, 0, sizeof ans);
+		memcpy(ans, req, LINK_ARP_LEN);
+		ans[7] = 2;
+		memcpy(ans + 14, &tip, 4);            /* the computer says it is 10.42.0.2 */
+		CHECK(link_arp_answer(ans, sizeof ans, tip), "the computer's answer, with padding, not taken");
+		CHECK(!link_arp_answer(ans, sizeof ans, other), "an answer from another address taken");
+		CHECK(!link_arp_answer(ans, LINK_ARP_LEN - 1, tip), "a short answer taken");
+	}
+}
+
 int main(void)
 {
 	mac_straight_through(1000);
@@ -195,6 +242,7 @@ int main(void)
 	wifi();
 	computer_waits();
 	the_files();
+	fresh();
 	if (fails) {
 		fprintf(stderr, "linksteps-check: %d failed\n", fails);
 		return 1;

@@ -37,4 +37,9 @@ void ctl_stop(void);
 /* The shelf's turn: an open waiting for the game it quit, else a command */
 bool ctl_shelf_turn(app *a);
 
+/* The running game, opened again once it is over, on `core` (one the shelf
+ * offers) this once: the shelf's turn opens it as an open after a quit.
+ * The caller stops the game. The Link Cable's restart on Gambatte. */
+void ctl_open_after(const char *path, const char *core);
+
 #endif

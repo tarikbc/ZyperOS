@@ -6,6 +6,7 @@
 #include "app.h"
 #include "bgm.h"
 #include "gamedel_screen.h"
+#include "home.h"
 #include "i18n.h"
 #include "menumotion.h"
 #include "panel.h"
@@ -22,6 +23,7 @@
 #include "zyperdraw.h"
 #include "zypermark.h"
 #include "levels.h"
+#include "wdog.h"
 
 #include <SDL_image.h>
 #include <stdio.h>
@@ -42,7 +44,7 @@
  * (docs/design/mock/storage-lab.html), 2026-11-07. */
 
 enum {
-	SR_ART, SR_STATES, SR_SYSTEM, SR_VIDEOS, SR_MUSIC, SR_BOOKS, SR_BIOS, SR_ZYPEROS,
+	SR_ART, SR_STATES, SR_DSCOPIES, SR_SYSTEM, SR_VIDEOS, SR_MUSIC, SR_BOOKS, SR_BIOS, SR_ZYPEROS,
 	SR_OTHER, SR_SNAPS, SR_GAME, SR_ORPHAN, SR_REST, SR_MEDIA, SR_BGM
 };
 
@@ -253,6 +255,7 @@ static unsigned long long store_row_bytes(store_view *v, int kind, int index)
 	switch (kind) {
 	case SR_ART:     return c->unused_art;
 	case SR_STATES:  return c->old_states;
+	case SR_DSCOPIES: return c->ds_copies;
 	case SR_SYSTEM:  return store_sys_bytes(&c->sys[index]);
 	case SR_VIDEOS:  return c->videos;
 	case SR_MUSIC:   return c->music + c->bgm;
@@ -459,6 +462,7 @@ static void store_row_look(store_view *v, sp_row *r)
 	switch (r->kind) {
 	case SR_ART:     r->name = T(S_STORAGE_UNUSED_ART); r->icon = SP_ICON_SPARK; break;
 	case SR_STATES:  r->name = T(S_STORAGE_OLD_STATES); r->icon = SP_ICON_SPARK; break;
+	case SR_DSCOPIES: r->name = T(S_STORAGE_DS_COPIES); r->icon = SP_ICON_SPARK; break;
 	case SR_SYSTEM: {
 		const system_cfg *s = store_cfg(v, c->sys[r->index].folder);
 
@@ -492,6 +496,9 @@ static void store_caption(store_view *v, sp_row *r)
 	case SR_STATES:
 		snprintf(r->caption, sizeof r->caption, TN(S_STORAGE_OLD_CAPTION, c->old_state_games),
 		         c->old_state_games);
+		break;
+	case SR_DSCOPIES:
+		snprintf(r->caption, sizeof r->caption, "%s", T(S_STORAGE_DS_CAPTION));
 		break;
 	case SR_SYSTEM: {
 		const st_sys *s = &c->sys[r->index];
@@ -651,13 +658,23 @@ static void store_rows(store_view *v)
 		store_rest(v, whole, owned);
 	} else if (v->page < 0) {
 		int nr = 0;
-		st_item recs[2];
+		st_item recs[3];
 
 		if (!c->measured) { v->pg.sel = 0; return; }
 		/* The recommendations stay first, whatever the order */
 		if (c->unused_art >= ST_REC_MIN) recs[nr++] = (st_item){ SR_ART, 0, c->unused_art, true, NULL, 0 };
 		if (c->old_states >= ST_REC_MIN) recs[nr++] = (st_item){ SR_STATES, 0, c->old_states, true, NULL, 0 };
-		if (nr == 2 && recs[1].bytes > recs[0].bytes) { st_item t = recs[0]; recs[0] = recs[1]; recs[1] = t; }
+		/* The DS copies DSperate unpacked (src/dscache.h): a cache, given
+		 * back at once and made again as each game starts */
+		if (c->ds_copies >= ST_REC_MIN) recs[nr++] = (st_item){ SR_DSCOPIES, 0, c->ds_copies, true, NULL, 0 };
+		/* The largest first, the order above between equals */
+		for (i = 1; i < nr; i++)
+			for (int j2 = i; j2 > 0 && recs[j2].bytes > recs[j2 - 1].bytes; j2--) {
+				st_item t = recs[j2];
+
+				recs[j2] = recs[j2 - 1];
+				recs[j2 - 1] = t;
+			}
 		for (i = 0; i < nr; i++) {
 			sp_row *r = store_add(v);
 
@@ -968,7 +985,9 @@ static void store_act(store_view *v)
 		if (!confirm_ask(a, CQ_STORE_UNUSED_ART, q)) break;
 		st_stop();
 		wait_panel(a, T(S_STORAGE_UNUSED_ART), T(S_GAMEMENU_DELETING));
+		wdog_hold("Storage");            /* a whole folder deleted (wdog.h) */
 		b = st_delete_unused_art(&v->paths, &v->sys, v->games, v->ngames, &files);
+		wdog_release();
 		fprintf(stderr, "storage: unused art: %d files, %llu bytes\n", files, b);
 		store_said(a, T(S_STORAGE_UNUSED_ART), b, S_GAMEMENU_DELETED);
 		store_after(v);
@@ -984,9 +1003,27 @@ static void store_act(store_view *v)
 		if (!confirm_ask(a, CQ_STORE_OLD_STATES, q)) break;
 		st_stop();
 		wait_panel(a, T(S_STORAGE_OLD_STATES), T(S_GAMEMENU_DELETING));
+		wdog_hold("Storage");            /* a whole folder deleted (wdog.h) */
 		b = st_delete_old_states(&v->paths, &v->sys, v->games, v->ngames, (long)time(NULL), &games);
+		wdog_release();
 		fprintf(stderr, "storage: old states: %d games, %llu bytes\n", games, b);
 		store_said(a, T(S_STORAGE_OLD_STATES), b, S_GAMEMENU_DELETED);
+		store_after(v);
+		break;
+	}
+	case SR_DSCOPIES: {
+		unsigned long long b;
+		int files;
+
+		uisound_play(DS_SOUND_ACCEPT);
+		store_bytes(v->c.ds_copies, sz, sizeof sz);
+		cq_text(CQ_STORE_DS_COPIES, q, sizeof q, sz);
+		if (!confirm_ask(a, CQ_STORE_DS_COPIES, q)) break;
+		st_stop();
+		wait_panel(a, T(S_STORAGE_DS_COPIES), T(S_GAMEMENU_DELETING));
+		b = st_delete_ds_copies(&v->paths, &v->sys, &files);
+		fprintf(stderr, "storage: unpacked DS games: %d copies, %llu bytes\n", files, b);
+		store_said(a, T(S_STORAGE_DS_COPIES), b, S_GAMEMENU_DELETED);
 		store_after(v);
 		break;
 	}
@@ -1002,7 +1039,9 @@ static void store_act(store_view *v)
 		if (!confirm_ask(a, CQ_STORE_SYS_SNAPS, q)) break;
 		st_stop();
 		snap_off();
+		wdog_hold("Storage");            /* a whole folder deleted (wdog.h) */
 		b = snaps_delete(P_ROMS, folder);
+		wdog_release();
 		store_said(a, T(S_STORAGE_DELETE_SNAPS), b, S_SNAPS_GIVEN_BACK);
 		store_after(v);
 		break;
@@ -1040,7 +1079,9 @@ static void store_act(store_view *v)
 		 * rule), and its shelf is read again after */
 		snprintf(abs, sizeof abs, "%s/%s/%s", P_CARD, st_media_root((st_media_kind)kind), rel);
 		mp4_before_delete(abs);
+		wdog_hold("Storage");            /* a whole folder deleted (wdog.h) */
 		b = st_delete_media(&v->paths, (st_media_kind)kind, rel);
+		wdog_release();
 		fprintf(stderr, "storage: media %s: %llu bytes\n", rel, b);
 		if (b) {
 			rescan_all(a);
@@ -1064,7 +1105,9 @@ static void store_act(store_view *v)
 		if (!confirm_ask(a, CQ_STORE_ORPHAN_PORT, q)) break;
 		st_stop();
 		wait_panel(a, T(S_GAMEMENU_DELETE), T(S_GAMEMENU_DELETING));
+		wdog_hold("Storage");            /* a whole folder deleted (wdog.h) */
 		b = st_delete_port_folder(&v->paths, &v->sys, v->games, v->ngames, folder);
+		wdog_release();
 		fprintf(stderr, "storage: port folder %s: %llu bytes\n", folder, b);
 		if (b) store_said(a, T(S_GAMEMENU_DELETE), b, S_GAMEMENU_DELETED);
 		else result_message(a, T(S_GAMEMENU_DELETE), T(S_GAMEMENU_DELETE_FAILED));
@@ -1115,6 +1158,35 @@ static void store_close(store_view *v)
 	v->rows = NULL;
 	v->games = NULL;
 	v->med = NULL;
+}
+
+/* One repeat of Up or Down held (home_held_step): in A to Z a letter, from
+ * the row the cursor is on (the first row of the next initial, or of its own
+ * and then the one before); in Size and Last Played, in no letter order,
+ * five rows. Further the longer it is held, and never round an end. A row
+ * the order keeps in its place, the recommendations and Delete Video Snaps
+ * at the top and Other Files at the foot, is a letter of its own
+ * (2026-11-22: "should skip by letter when pressing and holding up/down
+ * buttons"; 2026-11-26: "also implement faster scroll when holding down and
+ * sorted by size. maybe skip 5") */
+static int store_held(const store_view *v, int dir, unsigned held_ms)
+{
+	unsigned char *keys;
+	int i, to;
+
+	if (v->sort != ST_SORT_AZ) return home_held_step(NULL, v->nrows, v->pg.sel, dir, held_ms);
+	keys = malloc((size_t)v->nrows);
+	if (!keys) return v->pg.sel;
+	for (i = 0; i < v->nrows; i++) {
+		const sp_row *r = &v->rows[i];
+
+		keys[i] = r->kind == SR_ART || r->kind == SR_STATES || r->kind == SR_SNAPS ? 1
+		        : r->kind == SR_REST ? 2
+		        : home_group_key("", "", r->name ? r->name : "");
+	}
+	to = home_held_step(keys, v->nrows, v->pg.sel, dir, held_ms);
+	free(keys);
+	return to;
 }
 
 /* The page as a base, as MP4's shelf is: the screen's, and --storage
@@ -1183,7 +1255,17 @@ void storage_screen(app *a)
 			in_button b = in_repeat(&a->in, IN_UP) ? IN_UP : in_repeat(&a->in, IN_DOWN) ? IN_DOWN : IN_NONE;
 
 			if (b != IN_NONE) {
-				v->pg.sel = list_step_heard(a, b, v->nrows, v->pg.sel);
+				/* A press a row; held, a letter in A to Z and five rows
+				 * in the others, further the longer it is held */
+				if (!a->in.pressed[b]) {
+					int to = store_held(v, b == IN_DOWN ? 1 : -1,
+					                    SDL_GetTicks() - a->in.down_since[b]);
+
+					step_sound(a, b, v->pg.sel, to);
+					v->pg.sel = to;
+				} else {
+					v->pg.sel = list_step_heard(a, b, v->nrows, v->pg.sel);
+				}
 			}
 			if (a->in.pressed[IN_ACCEPT]) store_act(v);
 			/* X: the list's next order, the cursor kept on its row; a value
@@ -1287,6 +1369,8 @@ static void store_fixture(store_view *v, bool measured)
 	c->sys[0].unused_snaps = 37;
 	c->sys[3].old_states = 940000000ull;
 	c->sys[3].old_state_games = 41;
+	/* The Nintendo DS's unpacked zips, near the 2 GB they are kept to */
+	c->sys[3].ds_copies = 1840000000ull;
 	st_totals(c);
 	c->measured = measured;
 	if (!measured) {
@@ -1357,9 +1441,10 @@ void storage_shot(app *a)
 			if (v.page < 0 && v.rows[i].kind == SR_SYSTEM) { v.pg.sel = i; break; }
 		if (v.page >= 0) v.pg.sel = v.nrows > 2 ? 2 : 0;
 		if (v.media >= 0) v.pg.sel = 0;
-		if (!strcmp(name, "art") || !strcmp(name, "states"))
+		if (!strcmp(name, "art") || !strcmp(name, "states") || !strcmp(name, "ds"))
 			for (i = 0; i < v.nrows; i++)
-				if (v.rows[i].kind == (!strcmp(name, "art") ? SR_ART : SR_STATES)) v.pg.sel = i;
+				if (v.rows[i].kind == (!strcmp(name, "art") ? SR_ART : !strcmp(name, "ds") ? SR_DSCOPIES : SR_STATES))
+					v.pg.sel = i;
 		if (!strcmp(name, "done")) v.pg.sel = 0;
 		/* The list as it is, for tools/storage-pages-check.py: every row,
 		 * not the five the window shows */
@@ -1382,14 +1467,15 @@ void storage_shot(app *a)
 		}
 	}
 	store_draw(a, &v);
-	if (!strcmp(name, "art") || !strcmp(name, "states")) {
-		bool art = !strcmp(name, "art");
+	if (!strcmp(name, "art") || !strcmp(name, "states") || !strcmp(name, "ds")) {
+		bool art = !strcmp(name, "art"), ds = !strcmp(name, "ds");
 
-		store_bytes(art ? v.c.unused_art : v.c.old_states, sz, sizeof sz);
+		store_bytes(art ? v.c.unused_art : ds ? v.c.ds_copies : v.c.old_states, sz, sizeof sz);
 		if (art) cq_text(CQ_STORE_UNUSED_ART, q, sizeof q, sz);
+		else if (ds) cq_text(CQ_STORE_DS_COPIES, q, sizeof q, sz);
 		else cq_text(CQ_STORE_OLD_STATES, q, sizeof q, v.c.old_state_games, sz);
 		ui_scrim(a->r, 0);
-		confirm_preview(a, art ? CQ_STORE_UNUSED_ART : CQ_STORE_OLD_STATES, q);
+		confirm_preview(a, art ? CQ_STORE_UNUSED_ART : ds ? CQ_STORE_DS_COPIES : CQ_STORE_OLD_STATES, q);
 	} else if ((!strcmp(name, "delete") || !strcmp(name, "delete-open")) &&
 	           v.nrows > 0 && v.rows[v.pg.sel].kind == SR_GAME) {
 		int sh = store_shelf(a, "PlayStation");

@@ -93,6 +93,16 @@ typedef enum {
 	UI_F_COUNT
 } ui_font_role;
 
+/* MP4's tape labels' handwriting (Caveat SemiBold, res/fonts/hand.ttf) at
+ * `pt`, NULL without its file. A line in it draws the characters Caveat
+ * lacks run by run in Lexend (Regular, or SemiBold with `bold`), at the size
+ * whose x-height meets Caveat's, or in Noto where Chinese or Japanese, on
+ * Caveat's baseline: never boxes. Opened once a size, kept until ui_quit. */
+TTF_Font *ui_hand_face(int pt, bool bold);
+/* A line's runs in a hand face, for a check: 0 Caveat, 1 Lexend, 2 Noto
+ * Sans SC, 3 Noto Sans JP, up to `max`; how many runs */
+int ui_hand_runs(TTF_Font *f, const char *s, int *faces, int max);
+
 /* The font for a role. One size: the Text Size setting is gone, and src/ui.c
  * says why. In the language that is on: Lexend, or in 简体中文 the cut of
  * Noto Sans SC (DESIGN.md 4). */
@@ -255,6 +265,10 @@ void ui_fit_value(const char *s);
 /* A menu row's value `s`, `w` wide, in `room` of a row `row_w` wide: said
  * on a host when it fits by less than 2% of the row (see ui.c) */
 void ui_fit_tight(const char *s, int w, int room, int row_w);
+/* Words of ZyperOS's own `s` balanced into `lines` (Zyper's bubble): said
+ * as a cut on a host when a line ends cut ("..."), as a table string's is,
+ * though `s` was formatted from one */
+void ui_fit_cut(const char *s, char lines[][LB_LINE], int n);
 /* A key's glyph or a mark drawn (ui_button, ds_more), for the host's check:
  * a string whose ink comes within FIT_MARGIN of one is said (src/ui.c, "the
  * keys and the marks"), as the keys of a foot met a caption over them on

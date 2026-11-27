@@ -4,7 +4,8 @@
  *
  *     Roms/<System>/.cheevos/badges/<name>.png
  *
- * from media.retroachievements.org/Badge/<name>.png. Only the earned look is
+ * from media.retroachievements.org/Badge/<name>.png, then each set's in one
+ * file, Roms/<System>/.cheevos/badges/<set>.pack (src/rapack.h). Only the earned look is
  * fetched; the locked one is drawn from it here (greyed), never fetched.
  *
  * Fetched on the shelf, never in a game: after a game with a set ends, and
@@ -31,8 +32,15 @@
 
 /* Where badge `name` of the set at `set_path` is kept. False for no name. */
 bool rb_path(const char *set_path, const char *name, char *out, size_t n);
-/* It is on the card */
+/* It is on the card: its own file, or the set's pack (src/rapack.h), where
+ * a set's badges are kept once fetched */
 bool rb_have(const char *set_path, const char *name);
+/* A file of it to read, for a notice (src/notice.c reads a path): its own,
+ * or out of the set's pack into RB_TMP. False when the card has none. */
+#ifndef RB_TMP
+#define RB_TMP "/tmp/zyperos-badges"
+#endif
+bool rb_file(const char *set_path, const char *name, char *out, size_t n);
 
 /* Badge `name` of the set at `set_path` as a texture, earned or `locked` -
  * the locked one greyed and faded here, never fetched - or NULL when the card

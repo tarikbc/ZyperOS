@@ -13,6 +13,7 @@
 
 #include "menu.h"
 #include "library.h"
+#include "link.h"
 #include "p2.h"
 #include "rahash.h"
 
@@ -158,6 +159,9 @@ typedef struct {
 	 * Game Boys', the N64's, the Dreamcast's): a fact, so a person asking
 	 * for help can say which ran; "" for a shelf of one core */
 	char  core[64];
+	/* ...and steppable (core_game_step): its shelf offers more than one
+	 * core here, so the game can have one of its own (2026-11-27) */
+	bool  core_live;
 	/* The game's file on the card (lib_file_shown), with the brackets its
 	 * title leaves out, "(USA) (Rev 1)", "(Disc 2)", by which one copy is
 	 * told from another (DESIGN.md 11.69); "" for an entry that is no file
@@ -226,12 +230,21 @@ typedef enum {
 	 * display has a table: its value the look, and A opens MENU >
 	 * Display's own page over the paused game (1.1.0) */
 	GM_SCREEN_COLORS,
+	/* Link Cable (src/link.h, DESIGN.md 11.72), a Game Boy or Game Boy
+	 * Color game's on Gambatte, on the Game tab after Player 2's place:
+	 * Off, Waiting, Linked or Lost, and A opens its page; quiet, Needs
+	 * Wi-Fi, with no adapter in */
+	GM_LINK,
 	GM_MAX_ROWS
 } gm_row;
 
 /* The Player 2 row's value for its state: off (a start that failed too),
  * waiting for a friend, or one connected */
 const char *gm_player2_value(p2_state st);
+
+/* The Link Cable row's value for its state (src/link.h): Waiting while this
+ * handheld hosts, Linked, Lost after the other one went; Off otherwise */
+const char *gm_link_value(link_state st);
 
 /* The layouts Diatom's SETSCREENS takes, in the Screens row's order, and how
  * the row says them. */
@@ -248,7 +261,7 @@ int gm_layout_index(const char *name);                   /* 0 for one it does no
 /* What the in-game menu needs to know, gathered by the caller. */
 typedef struct {
 	/* the display mode's label; what each mode does is said in its list,
-	 * beside a picture of it (menu_pick_preview), not under the row */
+	 * beside a picture of it (menu_pick_hover), not under the row */
 	const char *dmode;
 	const char *shader;   /* the shader's label; NULL reads Off */
 	/* Its strength, "50%", when it is an old screen; NULL: no Strength row */
@@ -309,6 +322,12 @@ typedef struct {
 	 * value (gm_player2_value) */
 	bool        player2;
 	const char *player2_value;
+	/* The Link Cable is offered on this game's core (link_offered), its
+	 * row's value (gm_link_value), and whether it is quiet: no Wi-Fi
+	 * adapter in, the value then Needs Wi-Fi */
+	bool        link;
+	const char *link_value;
+	bool        link_quiet;
 	/* The discs of a game on more than one (Diatom's DISC answer): how many
 	 * (under 2: no Disc row), the one in the tray, 0 based, and the core's
 	 * name for it, NULL or empty for none. disc_fits says whether a label

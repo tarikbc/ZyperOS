@@ -12,6 +12,7 @@
 
 #include "clamp.h"
 #include "controls.h"
+#include "ds/hover.h"
 #include "design.h"
 #include "game_menu.h"
 #include "home.h"
@@ -350,10 +351,36 @@ static void lights_to(unsigned target, unsigned now)
 	g_cs.snap = false;
 }
 
-/* The keys the live screen's rows are about, false when they say nothing
- * now (another tab, or the tab before its rows were built) */
-static bool lights_of(const menu_side *at, unsigned *target)
+/* The tab's buttons as the launcher reads them, in its order (RM_*) */
+static const in_button RM_IN[RM_BUTTONS] = {
+	IN_ACCEPT, IN_BACK, IN_X, IN_Y, IN_L1, IN_R1, IN_L2, IN_R2, IN_START, IN_SELECT
+};
+
+/* The handheld's buttons held now, as keys of the drawing, each one that went
+ * down this frame pressed on it: a button pressed on the tab lights itself,
+ * so the drawing answers the hand (the Smart Pro kit's notes, 2026-11-24) */
+static unsigned held_keys(const in_state *in)
 {
+	unsigned held = 0;
+	int i;
+
+	for (i = 0; i < RM_BUTTONS; i++) {
+		const td_key k = ct_key_of(i);
+
+		if (k >= TD_KEYS) continue;
+		if (in->pressed[RM_IN[i]]) press(k);
+		if (in->down[RM_IN[i]]) held |= 1u << k;
+	}
+	return held;
+}
+
+/* The keys the live screen's rows are about, false when they say nothing
+ * now (another tab, or the tab before its rows were built): the buttons
+ * held, while one is, and else the row under the cursor's */
+static bool lights_of(const menu_side *at, const in_state *in, unsigned *target)
+{
+	unsigned held;
+
 	switch (g_cs.mode) {
 	case CS_PICK:
 		*target = ct_lit(&g_cs.m, (ct_row)(CT_BUTTON + g_cs.pick_button));
@@ -372,6 +399,10 @@ static bool lights_of(const menu_side *at, unsigned *target)
 	default:
 		if (at->tab_at >= 0 && at->tab_at != GT_CONTROLS) return false;
 		if (!g_cs.fresh) return false;
+		if ((held = held_keys(in)) != 0) {
+			*target = held;
+			return true;
+		}
 		if (at->sel < 0 || at->sel >= g_cs.n) {
 			*target = 0;
 			return true;
@@ -461,7 +492,7 @@ void ctlscr_side(app *a, const menu_side *at)
 	td_pose p;
 
 	/* The live screen sets the lights, once a frame */
-	if (at->live && at->stage != MENU_SIDE_OVER && lights_of(at, &target))
+	if (at->live && at->stage != MENU_SIDE_OVER && lights_of(at, &a->in, &target))
 		lights_to(target, at->now);
 	/* ...and a panel with the handheld at rest ends a page's hold */
 	if (at->live && at->stage == MENU_SIDE_REST) g_cs.steady = false;
@@ -699,7 +730,53 @@ typedef struct {
 	/* the cursor in the list (menu_style.sel_out), and its foot's lines */
 	int                sel;
 	char               line[2][192];
+	ds_hover_run       run;     /* a button's choices: what the cursor shows */
 } cs_ctx;
+
+/* A button's choices: the handheld beside the list lights the button and
+ * the one whose job it would swap with (ct_lit: what differs from the table
+ * as it was), as the choice under the cursor would make it (src/ds/
+ * hover.h); in memory, put and sent to the game only as A takes one. The
+ * list's tick stays on the job kept. */
+static rm_table g_pick_kept;
+
+/* The model with the table kept: what the list, its foot and Y read,
+ * whatever the cursor shows */
+static ct_model pick_kept_model(void)
+{
+	ct_model km = g_cs.m;
+
+	km.cur = g_pick_kept;
+	return km;
+}
+
+/* The hover's ctx is the list's (cs_ctx) */
+static void pick_show(void *ctx, int k)
+{
+	cs_ctx *c = ctx;
+
+	if (k < 0 || k >= c->nch) return;
+	g_cs.m.cur = g_pick_kept;
+	ct_pick(&g_cs.m, c->button, c->ch[k]);
+}
+
+static void pick_undo(void *ctx, int kept)
+{
+	(void)ctx; (void)kept;
+	g_cs.m.cur = g_pick_kept;
+}
+
+static const ds_hover PICK_HOVER = { .show = pick_show, .undo = pick_undo };
+
+/* The choices and their rows, the tick on the job kept whatever the cursor
+ * shows */
+static int pick_rows_kept(cs_ctx *c, menu_row *rows, int *sel)
+{
+	ct_model km = pick_kept_model();
+
+	c->nch = ct_choices(&km, c->button, c->ch, 32);
+	return ct_pick_rows(&km, c->button, c->ch, c->nch, rows, &c->b, sel);
+}
 
 static void cs_backdrop(app *a, void *ctx, float k)
 {
@@ -750,11 +827,12 @@ static void back_to_tab(void)
  * 2026-11-19) - kept still under the choices (pin_foot) */
 static int pick_foot(cs_ctx *c, menu_row *rows, int n, int max, int sel)
 {
-	const rm_choice ch = sel >= 0 && sel < c->nch ? c->ch[sel] : g_cs.m.cur.b[c->button];
-	const bool both = ct_can_share(&g_cs.m, c->button, ch);
+	const ct_model km = pick_kept_model();
+	const rm_choice ch = sel >= 0 && sel < c->nch ? c->ch[sel] : km.cur.b[c->button];
+	const bool both = ct_can_share(&km, c->button, ch);
 
 	if (n + 4 > max) return n;
-	ct_pick_lines(&g_cs.m, c->button, ch, c->line[0], sizeof c->line[0], c->line[1], sizeof c->line[1]);
+	ct_pick_lines(&km, c->button, ch, c->line[0], sizeof c->line[0], c->line[1], sizeof c->line[1]);
 	rows[n++] = MENU_RULE;
 	rows[n++] = MENU_NOTE(c->line[0]);
 	rows[n++] = MENU_NOTE(c->line[1]);
@@ -770,8 +848,7 @@ static int pick_build(void *ctx, menu_row *rows, int max, const char **heading)
 	int sel, n;
 
 	refresh(c->g);
-	c->nch = ct_choices(&g_cs.m, c->button, c->ch, 32);
-	n = ct_pick_rows(&g_cs.m, c->button, c->ch, c->nch, rows, &c->b, &sel);
+	n = pick_rows_kept(c, rows, &sel);
 	if (n > max) n = max;
 	*heading = c->b.head;
 	return pick_foot(c, rows, n, max, c->sel >= 0 ? c->sel : sel);
@@ -788,10 +865,16 @@ static menu_result pick_key(app *a, void *ctx, in_button key, int sel)
 	(void)a;
 	if ((key != IN_ACCEPT && key != IN_Y) || sel < 0 || sel >= c->nch) return MENU_STAY;
 	if (key == IN_Y) {
-		if (!ct_can_share(&g_cs.m, c->button, c->ch[sel])) {
+		const ct_model km = pick_kept_model();
+
+		if (!ct_can_share(&km, c->button, c->ch[sel])) {
 			uisound_play(DS_SOUND_DENY);
 			return MENU_STAY;
 		}
+	}
+	/* The kept table back first: the one swap is made from it */
+	ds_hover_end(&c->run);
+	if (key == IN_Y) {
 		uisound_play(DS_SOUND_ACCEPT);
 		ct_share(&g_cs.m, c->button, c->ch[sel]);
 	} else {
@@ -800,6 +883,14 @@ static menu_result pick_key(app *a, void *ctx, in_button key, int sel)
 	t = g_cs.m.cur;
 	put(c->g, &t);
 	return MENU_DONE;
+}
+
+static void pick_at(app *a, void *ctx, int sel)
+{
+	cs_ctx *c = ctx;
+
+	(void)a;
+	ds_hover_at(&c->run, sel, plat_now_ms());
 }
 
 /* The Rumble row's list: the four levels, a tick on the scope's and
@@ -866,12 +957,16 @@ static void pick(app *a, const ctlscr_game *g, int button)
 	c.sel = -1;
 	st.sel_out = &c.sel;
 	st.pin_foot = true;
-	c.nch = ct_choices(&g_cs.m, button, c.ch, 32);
-	ct_pick_rows(&g_cs.m, button, c.ch, c.nch, rows, &c.b, &st.start_sel);
+	g_pick_kept = g_cs.m.cur;
+	pick_rows_kept(&c, rows, &st.start_sel);
 	g_cs.mode = CS_PICK;
 	g_cs.pick_button = button;
 	g_cs.steady = true;
+	ds_hover_begin(&c.run, &PICK_HOVER, &c, st.start_sel, st.start_sel, plat_now_ms());
+	st.at = pick_at;
 	menu_run(a, &st, pick_build, pick_key, &c);
+	/* B, MENU or POWER: the kept table back */
+	ds_hover_end(&c.run);
 	back_to_tab();
 }
 
@@ -1041,11 +1136,15 @@ void ctlscr_shot_pick(app *a, const ctlscr_game *g, int id)
 	}
 	if (bt < 0) bt = RM_A;
 	track(id);
-	c.nch = ct_choices(&g_cs.m, bt, c.ch, 32);
-	n = ct_pick_rows(&g_cs.m, bt, c.ch, c.nch, rows, &c.b, &sel);
 	c.button = bt;
-	/* --gm-pick-at K: the cursor on choice K, as a press would leave it */
-	if (shot_pick_at >= 0 && shot_pick_at < c.nch) sel = shot_pick_at;
+	g_pick_kept = g_cs.m.cur;
+	n = pick_rows_kept(&c, rows, &sel);
+	/* --gm-pick-at K: the cursor on choice K, as a press would leave it,
+	 * the handheld showing it */
+	if (shot_pick_at >= 0 && shot_pick_at < c.nch && shot_pick_at != sel) {
+		pick_show(&c, shot_pick_at);
+		sel = shot_pick_at;
+	}
 	n = pick_foot(&c, rows, n, 40, sel);
 	st.pin_foot = true;
 	g_cs.mode = CS_PICK;
@@ -1054,6 +1153,7 @@ void ctlscr_shot_pick(app *a, const ctlscr_game *g, int id)
 	 * own; a shot of the tab has drawn its paused game already) */
 	st.backdrop(a, &c, 1.0f);
 	menu_draw_styled(a, &st, c.b.head, rows, n, sel);
+	pick_undo(a, 0);
 	g_cs.mode = CS_TAB;
 }
 

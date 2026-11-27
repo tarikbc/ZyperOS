@@ -20,6 +20,7 @@
 #include "texload.h"
 #include "theme.h"
 #include "ui.h"
+#include "wdog.h"
 
 #include <dirent.h>
 #include <stdio.h>
@@ -840,8 +841,14 @@ typedef struct {
 	unsigned short glen;        /* the game's part, the name's first glen bytes */
 	bool openbor;               /* in OpenBOR's folder, not Screenshots/ */
 	long when;
-	int owner, at;              /* its system, and its game in sys_games or -1 */
+	int owner, at;              /* its system (SHOT_LAUNCHER: the launcher's own,
+	                             * MENU+L1's), and its game in sys_games or -1 */
 } shot_found;
+
+/* A shot of the launcher's own screens (src/menukeys.h, MENU+L1), in
+ * Screenshots/ZyperOS: no system's. On the shelf its owner is the
+ * Screenshots group itself, ZyperOS's lime, and its name ZyperOS. */
+#define SHOT_LAUNCHER (-2)
 
 /* Whether the card had a shot at the last scan, on the shelf or not: Home
  * Systems' row for it (src/homesys_screen.c) */
@@ -973,6 +980,11 @@ static int shots_read(const app *a, shot_found **out, bool any)
 				if (hit->at < 0) hit->at = k;
 		}
 	}
+	/* The launcher's own screens, MENU+L1's (src/menukeys.h) */
+	if (!(any && n)) {
+		snprintf(dir, sizeof dir, "%s/%s/%s", P_CARD, SHOT_DIR, SHOT_LAUNCHER_DIR);
+		shots_read_dir(dir, false, SHOT_LAUNCHER, &f, &n, &cap, any);
+	}
 	*out = f;
 	return n;
 }
@@ -1007,9 +1019,18 @@ static void build_shots_shelf(app *a)
 	owner = calloc((size_t)n, sizeof *owner);
 	if (!items || !owner) { free(items); free(owner); free(f); return; }
 	for (i = 0; i < n; i++) {
-		const system_cfg *sc = &a->sys.systems[f[i].owner];
+		const system_cfg *sc = f[i].owner >= 0 ? &a->sys.systems[f[i].owner] : NULL;
 		game_entry *e = &items[i];
 
+		if (!sc) {
+			/* The launcher's own screen: ZyperOS's, by that name */
+			snprintf(e->name, sizeof e->name, "%s", SHOT_LAUNCHER_DIR);
+			snprintf(e->title, sizeof e->title, "%s", SHOT_LAUNCHER_DIR);
+			snprintf(e->file, sizeof e->file, "%s/%s/%s", SHOT_DIR, SHOT_LAUNCHER_DIR, f[i].file);
+			e->added = f[i].when;
+			owner[i] = f[i].owner;
+			continue;
+		}
 		if (f[i].at >= 0) {
 			const game_entry *g = &sys_games(&a->view[f[i].owner])->items[f[i].at];
 
@@ -1032,8 +1053,10 @@ static void build_shots_shelf(app *a)
 	at = fav > rec ? fav : rec;
 	at = (at > col ? at : col) + 1;
 	shelf_insert(a, at);
+	/* The launcher's own shots are the group's: its name and its lime */
 	for (i = 0; i < n; i++)
-		if (owner[i] >= at) owner[i]++;
+		if (owner[i] == SHOT_LAUNCHER) owner[i] = at;
+		else if (owner[i] >= at) owner[i]++;
 	if (!group_fill(a, at, T(S_LIBRARY_SCREENSHOTS), HOMESYS_SHOT, "SCREENSHOTS.png", items, owner, n))
 		return;
 	a->view[at].sort = sort_index("added");
@@ -1178,6 +1201,11 @@ void refresh_favorites_shelf(app *a)
 		a->sys_cursor = 0;
 		a->screen = SCREEN_SYSTEMS;
 	}
+	/* And every console shelf with Favorites First on (DESIGN.md 11.70): a
+	 * game marked goes up among its favorites, one taken away back among
+	 * the others, at its place in the shelf's order, the cursor with it */
+	for (i = 0; i < a->sys.count; i++)
+		if (a->view[i].fav_first && fav_first_offered(a, i)) sort_shelf_keep(a, i);
 	home_reset(&a->home, a->sys_cursor, a->sys.count, plat_now_ms());
 }
 
@@ -2214,6 +2242,17 @@ void system_order_load(void)
 	g_order_release = !strcmp(v, "release");
 }
 
+/* MENU > Display > Game Names (DESIGN.md 11.71): "file" for File Name,
+ * anything else Short, as it ships. Before the scan, which titles the games
+ * by it (src/library.h, lib_names_set). */
+void game_names_load(void)
+{
+	char v[16];
+
+	db_get_str(db_dev(), GAME_NAMES_KEY, v, sizeof v, "short");
+	lib_names_set(!strcmp(v, "file"));
+}
+
 void system_order_apply(systems_cfg *s)
 {
 	if (!g_order_release) cfg_sort_systems(s);
@@ -2351,9 +2390,11 @@ void rescan_all(app *a)
 {
 	/* The card read again: EmulationStation's indexes with it, and the
 	 * menu music's folders on the player's own thread */
+	wdog_hold("the shelves read again");     /* a whole card's read (wdog.h) */
 	es_forget();
 	rebuild(a, NULL, false);
 	bgm_rescan();
+	wdog_release();
 }
 
 /* The saved library as the shelves are now, after a change the launcher
@@ -2463,6 +2504,8 @@ void shelf_drop_game(app *a, const char *tag, const char *file)
 		memmove(&all->items[k], &all->items[k + 1],
 		        (size_t)(all->count - k - 1) * sizeof *all->items);
 		all->count--;
+		/* The one it was told apart from goes back to its name */
+		lib_titles_apart(all);
 		shelf_show_dir(v, v->dir);
 		sort_shelf(a, si);
 		v->cursor = at < v->list.count ? at : v->list.count > 0 ? v->list.count - 1 : 0;
@@ -2484,6 +2527,12 @@ void shelf_drop_game(app *a, const char *tag, const char *file)
 		if (v->th)  memmove(&v->th[k],  &v->th[k + 1],  rest * sizeof *v->th);
 		if (v->cb)  memmove(&v->cb[k],  &v->cb[k + 1],  rest * sizeof *v->cb);
 		v->list.count--;
+		/* The one it was told apart from goes back to its name, in its
+		 * place (its picture is the place's) */
+		lib_titles_apart(&v->list);
+		/* Favorites First's two parts (DESIGN.md 11.70) close up with it */
+		if (v->nfav && k >= v->fav_from && k < v->fav_from + v->nfav) v->nfav--;
+		else if (v->nfav && k < v->fav_from) v->fav_from--;
 		/* Its cursor: on the game, it is now on the next one; past the
 		 * end, on the one before */
 		if (v->cursor > k) v->cursor--;
@@ -2567,7 +2616,12 @@ bool shelf_rename_game(app *a, const char *tag, const char *file, const char *ne
 		snprintf(e->file, sizeof e->file, "%s", new_file);
 		snprintf(e->name, sizeof e->name, "%s", new_name);
 		lib_display_title(db_lib(), folder, e->file, e->name, e->title, sizeof e->title);
+		e->apart = 0;
 	}
+	/* A game of the same title as the new name, or the one it was told
+	 * apart from, told apart again (lib_titles_apart) */
+	lib_titles_apart(sys_games(v));
+	if (v->all) lib_titles_copy(&v->list, v->all);
 	/* Every index from here on can name another game */
 	free_all_textures(a);
 	SDL_AtomicIncRef(&g_lib_gen);       /* a check that read the card before is moot */

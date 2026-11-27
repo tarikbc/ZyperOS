@@ -109,6 +109,83 @@ static void segments(int theme, float scale, int kind, int level, int max)
 	ck(edge_empty, what);
 }
 
+/* The mute switch down (osdbar_look's muted): the volume's bar has no step
+ * and no boost, whatever the level, the speaker crossed in text-soft with no
+ * wave, and the pill only as wide as the mark and the host's word with the
+ * bar's own end padding, centered, as tall and as high: 84 with no word (a
+ * host with no font, Diatom), 84 + word + 30 with one. Brightness ignores it. */
+static float body_edge(const uint32_t *px, int w, float scale, int dir)
+{
+	/* the pill body's outermost column with more than half its alpha on
+	 * the middle row, from the left (dir 1) or the right (-1), in units */
+	int x = dir > 0 ? 0 : w - 1, y = (int)(MID_Y * scale);
+
+	for (; x >= 0 && x < w; x += dir)
+		if ((px[y * w + x] >> 24) > 128) return (x + 0.5f) / scale;
+	return -1;
+}
+
+static void muted(int theme, float scale)
+{
+	static uint32_t px[OSDBAR_W * OSDBAR_H], plain[OSDBAR_W * OSDBAR_H];
+	const ds_theme *th = &DS_THEME[theme];
+	const float cx = OSDBAR_W / 2.0f, unit = 1.5f / scale;
+	char what[160], name[64];
+	osdbar_look l;
+	int w, h, k;
+
+	osdbar_size(scale, &w, &h);
+	for (k = 0; k < 2; k++) {
+		const float ww = k ? 120.0f : 0.0f, want = k ? 84 + 120 + 30 : 84;
+		float left, right, x0;
+
+		osdbar_look_plain(&l, OSDBAR_VOLUME, 13, 20);
+		l.ncells = 3;
+		l.fill[0] = l.fill[1] = 1;
+		l.grow = 1;
+		l.muted = true;
+		l.word_w = ww;
+		osdbar_render_look(px, w, h, w, scale, theme, &l, 1.0f, false);
+		snprintf(name, sizeof name, "%s-volume-muted-%s-at-%.3f", tag(theme),
+		         k ? "word" : "mark", scale);
+		dump(name, px, w, h);
+		left = body_edge(px, w, scale, 1);
+		right = body_edge(px, w, scale, -1);
+		x0 = cx - want / 2;
+		snprintf(what, sizeof what, "%s: the pill %.0f wide, hugging what it holds (%.1f to %.1f)",
+		         name, want, left, right);
+		ck(osdbar_pill_w(&l) == want && fabsf(left - x0) <= unit && fabsf(right - (cx + want / 2)) <= unit, what);
+		snprintf(what, sizeof what, "%s: centered", name);
+		ck(fabsf((left + right) / 2 - cx) <= unit, what);
+		snprintf(what, sizeof what, "%s: the word starts after the mark's room", name);
+		ck(fabsf(osdbar_word_x(&l) - (x0 + 84)) < 0.01f, what);
+		snprintf(what, sizeof what, "%s: as tall as the bar", name);
+		ck((at(px, w, scale, cx, 12 + 2) >> 24) > 128 && (at(px, w, scale, cx, 12 + 62) >> 24) > 128 &&
+		   (at(px, w, scale, cx, 12 - 2) >> 24) < 40, what);
+		snprintf(what, sizeof what, "%s: the cross in text-soft", name);
+		ck(is_rgb(at(px, w, scale, x0 + DS_LEVEL_MARK + 10, MID_Y), th->text_soft), what);
+		snprintf(what, sizeof what, "%s: the speaker's body in text-soft", name);
+		ck(is_rgb(at(px, w, scale, x0 + DS_LEVEL_MARK - 15.5f, MID_Y), th->text_soft), what);
+		snprintf(what, sizeof what, "%s: no step, no word painted, past the mark", name);
+		ck(!is_rgb(at(px, w, scale, x0 + 84 + 4, MID_Y), th->accent_ink) &&
+		   !is_rgb(at(px, w, scale, x0 + 84 + 4, MID_Y), th->track), what);
+	}
+	snprintf(what, sizeof what, "%s: the word's room is the steps'", tag(theme));
+	ck(OSDBAR_WORD_X0 == (int)SEG_X0 && OSDBAR_WORD_X1 == (int)SEG_X1 && OSDBAR_WORD_CY == (int)MID_Y, what);
+	l.word_w = 5000;
+	ck(osdbar_pill_w(&l) == 452, "a word wider than the steps' room is held to it: the bar's 452");
+	osdbar_look_plain(&l, OSDBAR_VOLUME, 13, 20);
+	ck(osdbar_pill_w(&l) == 452, "not muted: 452");
+	/* brightness has no mute: the same bar as without it */
+	osdbar_look_plain(&l, OSDBAR_BRIGHT, 6, 11);
+	osdbar_render_look(plain, w, h, w, scale, theme, &l, 1.0f, false);
+	l.muted = true;
+	l.word_w = 100;
+	osdbar_render_look(px, w, h, w, scale, theme, &l, 1.0f, false);
+	snprintf(what, sizeof what, "%s: brightness the same muted or not", tag(theme));
+	ck(!memcmp(px, plain, (size_t)w * h * sizeof px[0]) && osdbar_pill_w(&l) == 452, what);
+}
+
 /* Near enough to a color to be it: antialiasing and the shadow showing
  * through the body's 7% move a channel by a few steps, not six. */
 static int near_rgb(uint32_t p, ds_rgb c)
@@ -259,6 +336,8 @@ int main(int argc, char **argv)
 		segments(t, 0.625f, OSDBAR_BRIGHT, 11, 11);
 		pill(t, 1.0f);
 		pill(t, 0.625f);
+		muted(t, 1.0f);
+		muted(t, 0.625f);
 	}
 	repaints();
 

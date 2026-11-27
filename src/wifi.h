@@ -81,4 +81,26 @@ bool wifi_signal_poll(char *out, int cap);
 /* Drop a saved network and forget its credential. */
 bool wifi_forget(const char *ssid);
 
+/* A network joined for a while and never saved: the Game Boy's Link Cable
+ * joins the other handheld's own network for a game's time (src/link.h).
+ *
+ *   wifi_join_temp(ssid, psk)   the supplicant up if it was not, the network
+ *                               added and selected, nothing written to
+ *                               wpa_supplicant.conf; false if it could not
+ *                               even ask. Some forks of wpa_cli, no wait.
+ *   wifi_join_temp_poll(ip, n)  1 once it is joined and has an address in
+ *                               `ip` (a new lease asked for as it joins),
+ *                               0 not yet, -1 when no join is asked. A fork
+ *                               of wpa_cli: a caller keeps its own clock.
+ *   wifi_join_temp_end()        the network removed, every saved one enabled
+ *                               again and joined as the supplicant picks, a
+ *                               new lease for it, and the supplicant down if
+ *                               it was down before. Some forks; the lease
+ *                               comes after.
+ *
+ * No-ops returning failure on the host build. */
+bool wifi_join_temp(const char *ssid, const char *psk);
+int  wifi_join_temp_poll(char *ip, int n);
+void wifi_join_temp_end(void);
+
 #endif

@@ -20,6 +20,7 @@
 #include "zyperdraw.h"
 #include "zyperrig.h"
 #include "levels.h"
+#include "wdog.h"
 #ifdef ZYPEROS_DESK
 #include "device/desk.h"
 #endif
@@ -170,19 +171,8 @@ static menu_result menu_choose(app *a, zr_rig *z, const menu_style *st, menu_key
 
 	uisound_play(DS_SOUND_ACCEPT);
 	if (c->n > 2 || c->list) {
-		to = c->preview && c->hover
-		     ? menu_pick_preview_hover(a, st, ctx, heading, c->labels, c->notes, c->preview, c->hover,
-		                               c->n, c->none ? -1 : c->cur, c->cur)
-		     : c->preview
-		     ? menu_pick_preview(a, st, ctx, heading, c->labels, c->notes, c->preview, c->n,
-		                         c->none ? -1 : c->cur, c->cur)
-		     : c->focus
-		     ? menu_pick_focus(a, st, ctx, heading, c->labels, c->notes, c->focus, c->n,
-		                       c->none ? -1 : c->cur, c->cur)
-		     : c->hover
-		     ? menu_pick_hover(a, st, ctx, heading, c->labels, c->notes, c->hover, c->n,
-		                       c->none ? -1 : c->cur, c->cur)
-		     : menu_pick(a, st, ctx, heading, c->labels, c->notes, c->n, c->none ? -1 : c->cur, c->cur);
+		to = menu_pick_hover(a, st, ctx, heading, c->labels, c->notes, c->hover, c->n,
+		                     c->none ? -1 : c->cur, c->cur);
 		if (to == MENU_PICK_POWER) return MENU_DONE;   /* as POWER on the menu itself */
 		if (to < 0 || !a->running || want_quit || g_message_stopped || g_menu_closing) return MENU_STAY;
 	} else {
@@ -354,12 +344,14 @@ static menu_exit menu_run_body(app *a, const menu_style *st,
 		 * as a plain list, round on a press */
 		if (in_repeat(&a->in, IN_UP)) {
 			sel = st->visits_all ? list_step_heard(a, IN_UP, n, sel)
-			                     : menu_step_heard(a, rows, n, sel, -1, IN_UP);
+			    : st->quiet_moves ? menu_step_quiet(a, rows, n, sel, -1, IN_UP)
+			                      : menu_step_heard(a, rows, n, sel, -1, IN_UP);
 			if (z) zr_press(z, plat_now_ms());
 		}
 		if (in_repeat(&a->in, IN_DOWN)) {
 			sel = st->visits_all ? list_step_heard(a, IN_DOWN, n, sel)
-			                     : menu_step_heard(a, rows, n, sel, +1, IN_DOWN);
+			    : st->quiet_moves ? menu_step_quiet(a, rows, n, sel, +1, IN_DOWN)
+			                      : menu_step_heard(a, rows, n, sel, +1, IN_DOWN);
 			if (z) zr_press(z, plat_now_ms());
 		}
 
@@ -806,13 +798,18 @@ static menu_result wifi_key(app *a, void *ctx, in_button key, int sel)
 	 * of a handheld is often the power button. */
 	if (sel == 0) {
 		if (w->on) {
+			/* Wi-Fi's own waits have no end of their own (wdog.h) */
+			wdog_hold("Wi-Fi");
 			wifi_down();
+			wdog_release();
 			wifi_pref_save(false);
 			w->on = false;
 			w->n = 0;
 		} else {
 			wait_panel(a, T(S_MENU_WIFI), T(S_WIFI_TURNING_ON));
+			wdog_hold("Wi-Fi");
 			w->on = wifi_up();
+			wdog_release();
 			wifi_pref_save(w->on);
 			if (!w->on) {
 				if (!result_message(a, T(S_MENU_WIFI), T(S_WIFI_DID_NOT_COME_UP)))
@@ -837,7 +834,9 @@ static menu_result wifi_key(app *a, void *ctx, in_button key, int sel)
 		}
 
 		wait_panel(a, T(S_MENU_WIFI), T(S_WIFI_CONNECTING));
+		wdog_hold("Wi-Fi");
 		ok = wifi_connect(w->nets[k].ssid, psk[0] ? psk : NULL);
+		wdog_release();
 		/* Wiped as soon as it has been handed over. It still exists in the
 		 * supplicant's config, which is the point, but there is no reason for
 		 * a copy to sit in the launcher's stack afterwards. */

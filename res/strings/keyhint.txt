@@ -26,6 +26,17 @@ de = Wählen
 ja = 選択
 it = Scegli
 
+[keyhint.close_tiles]
+note = Beside B under a question in tiles (the Link Cable page's Host and Join), with keyhint.move and keyhint.choose: it closes the page. A hint's capitals, as Move and Choose (Title Case in English); keyhint.close is a panel foot's lowercase word.
+en = Close
+zh-Hans = 关闭
+es = Cerrar
+pt-BR = Fechar
+fr = Fermer
+de = Schließen
+ja = 閉じる
+it = Chiudi
+
 [keyhint.charge_only]
 note = Beside B under Computer Connected: B leaves the cable charging only.
 en = Charge Only

@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include "nowplaying_screen.h"
+#include "menukeys_screen.h"
 
 #include "aout_route.h"
 #include "app.h"
@@ -7,6 +8,7 @@
 #include "i18n.h"
 #include "keyhints.h"
 #include "keyhints_draw.h"
+#include "keyrepeat.h"   /* repeat_stage: a second, three */
 #include "mp4frame.h"    /* MPF_TOO_BIG, MPF_NO_PICTURE */
 #include "mp4video.h"
 #include "nowplaying_looks.h"
@@ -17,6 +19,7 @@
 #include "ds/layout.h"   /* DS_FOOT_Y */
 #include "ds/mark.h"     /* ds_bar_in */
 #include "uisound.h"
+#include "usbdrive_screen.h"
 #include "zyperdraw.h"
 #include "levels.h"
 
@@ -35,10 +38,10 @@
  * so music is as it was. */
 double seek_step(const in_state *in, in_button b)
 {
+	static const double step[] = { 10, 60, 300 };
 	Uint32 held = SDL_GetTicks() - in->down_since[b];
 
-	if (in->pressed[b] || held < 1000) return 10;
-	return held < 3000 ? 60 : 300;
+	return in->pressed[b] ? step[0] : step[repeat_stage(held)];
 }
 
 void mmss(char *out, size_t n, double sec)
@@ -281,7 +284,9 @@ void mp4_ask_lock(void) { g_lock_asked = true; }
  * and its X (2026-11-18). MP4 closes as SELECT closes it - MP4_CLOSE up
  * through every screen of it to mp4_shelf_screen, which puts back what it
  * was opened over: the home, a menu, a paused game's menu. What plays keeps
- * playing, as it does after SELECT; A pauses it first for silence. */
+ * playing, as it does after SELECT; A pauses it first for silence. What is
+ * paused is let go (mp4_quit): on 1.1.1-test.3 a song paused and quit stayed
+ * in the top bar on the home with MP4 closed (mine, 2026-11-27). */
 static bool g_quit_asked;                /* MENU's Quit, for mp4_menu */
 
 void mp4_ask_quit(void) { g_quit_asked = true; }
@@ -525,6 +530,8 @@ void mp4_locked(app *a)
 	/* Under the lock nothing moves: a look's bars rest, and with no frame
 	 * of bars the daemon stops measuring (mp4c_bands_keep) */
 	npl_still(true);
+	/* Held as long as MENU > System > Hotkeys' Hold to Unlock says */
+	l.hold_ms = mk_now()->hold_ms;
 	mp4lock_engage(&l, plat_now_ms(), a->in.down[MP4_UNLOCK_A] && a->in.down[MP4_UNLOCK_B]);
 	plat_input_flush();
 	memset(&a->in, 0, sizeof a->in);
@@ -644,6 +651,7 @@ mp4_exit mp4_menu(app *a)
 	if (want_quit || !a->running || g_message_stopped) return MP4_CLOSE;
 	if (g_quit_asked) {
 		g_quit_asked = false;
+		if (mp4c_now()->state == MU_PAUSED) mp4_quit();
 		return MP4_CLOSE;
 	}
 	/* Shuffle All closed it to play: Now Playing, on whatever screen of
@@ -1054,6 +1062,14 @@ unsigned np_draw_video(app *a, const mu_now *mn, float k, float grow)
 	return wait;
 }
 
+/* The tape's own click with the voice's sound, on the Cassette look alone
+ * (my pick in the Tape Styles lab: a click on A and on a track change, no
+ * hiss): heard as UI Sounds are, so Off is silent */
+static void tape_click(ds_sound s, bool video)
+{
+	if (!video && np_look_for() == MP4L_CASSETTE) uisound_play(s);
+}
+
 /* MP4_CLOSE for SELECT and the power button, which leave MP4 altogether;
  * MP4_BACK for B, which is the album's tracks underneath; MP4_REBUILT when
  * MENU's Rescan Folder replaced the library. MENU otherwise comes back here. */
@@ -1095,6 +1111,15 @@ static mp4_exit mp4_now_screen_run(app *a)
 		mp4c_video_show(video);
 		mp4_input(a);
 		if (a->in.quit_requested) { a->running = false; how = MP4_CLOSE; break; }
+		/* A plug on the USB port asks here too, as at the shelf: a DAC
+		 * plugged in to listen gets its question (usb_questions) */
+		if (usb_questions(a)) {
+			plat_input_flush();
+			memset(&a->in, 0, sizeof a->in);
+			mp4_input_reset();
+			redraw_now();
+			continue;
+		}
 		if (a->in.pressed[IN_POWER] || idle_due(a)) { mp4_power(a); how = MP4_CLOSE; break; }
 		if (a->in.pressed[IN_BACK] || mp4_select()) uisound_play(DS_SOUND_BACK);
 		if (a->in.pressed[IN_BACK]) break;
@@ -1110,7 +1135,7 @@ static mp4_exit mp4_now_screen_run(app *a)
 		/* A, and only A. X did the same thing here and pausing in the list,
 		 * which made one button mean two things a screen apart; X is the lock
 		 * now, on every MP4 screen. Eric's call, 2026-09-19; X, 2026-11-05. */
-		if (a->in.pressed[IN_ACCEPT])       { uisound_play(DS_SOUND_ACCEPT); mp4c_toggle(); }
+		if (a->in.pressed[IN_ACCEPT])       { uisound_play(DS_SOUND_ACCEPT); tape_click(DS_SOUND_TAPE_KEY, video); mp4c_toggle(); }
 		/* The mode, on music; on a book, which plays in order whatever the
 		 * mode says, its speed; on a video, Repeat: Off, One, All and round,
 		 * as MP4's MENU > Repeat turns it, kept, its mark beside the time as
@@ -1134,8 +1159,18 @@ static mp4_exit mp4_now_screen_run(app *a)
 				memset(&drawn, 0, sizeof drawn);
 			}
 		}
-		if (in_repeat(&a->in, IN_L1))       { moved_sound(a, IN_L1); mp4c_prev(); }
-		if (in_repeat(&a->in, IN_R1))       { moved_sound(a, IN_R1); mp4c_next(); }
+		/* Up and Down step the tape's style on Cassette, round the kept
+		 * ones, kept at once, its name said a moment (my pick in the Tape
+		 * Styles lab, 2026-11-23); nothing on another look, a book or a
+		 * video */
+		if ((a->in.pressed[IN_UP] || a->in.pressed[IN_DOWN]) && !video && np_look_for() == MP4L_CASSETTE) {
+			uisound_play(DS_SOUND_MOVE);
+			np_tape_set(mp4t_step(np_tape(), a->in.pressed[IN_DOWN] ? 1 : -1));
+			npl_tape_said();
+			memset(&drawn, 0, sizeof drawn);
+		}
+		if (in_repeat(&a->in, IN_L1))       { moved_sound(a, IN_L1); tape_click(DS_SOUND_TAPE_WIND, video); mp4c_prev(); }
+		if (in_repeat(&a->in, IN_R1))       { moved_sound(a, IN_R1); tape_click(DS_SOUND_TAPE_WIND, video); mp4c_next(); }
 		if (in_repeat(&a->in, IN_LEFT))     { moved_sound(a, IN_LEFT); mp4c_seek_by(-seek_step(&a->in, IN_LEFT)); }
 		if (in_repeat(&a->in, IN_RIGHT))    { moved_sound(a, IN_RIGHT); mp4c_seek_by(+seek_step(&a->in, IN_RIGHT)); }
 		if (mp4_keys(a)) {

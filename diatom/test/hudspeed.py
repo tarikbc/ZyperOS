@@ -14,44 +14,55 @@ draws every frame it runs, and not for one that draws less often than that:
     read 0.5x, the Dreamcast at 30 fps on the Brick (1.0.6). The frames it
     emulated are the sound it made: two frames of sound a call.
   - a core too slow for its game reads below 1x, and fast forward at its step
+  - a core under frameskip=late that leaves out two frames in three is at
+    full speed, at 20 fps: the frames it ran undrawn hand over the last
+    picture again (DSperate's), and are not put on the panel
 
 The stub is told how it draws (STUBCORE_DUPE, STUBCORE_SPAN) and how long a
-call takes (STUBCORE_FRAME_US, slept and spun); the desktop port writes down
+call takes (STUBCORE_FRAME_US); the desktop port writes down
 the numbers the overlay would draw, each with the time its window ended
 (DIATOM_HUD_LOG). And the now file px2-perf reads (src/now.h) is held to the
 same speed, since it says the same thing.
 
-How fast a runner runs the stub is not known here: a shared CI runner doing
-other checks ran a 25 ms core at 9.7 calls a second, and the Mac does when it
-is made to run in the background (`taskpolicy -b python3 test/hudspeed.py`).
-So no speed is judged against the speed it should have. What is judged is
-what a run says of itself, true however slow the machine is:
+Every run is on Diatom's test clock (port/desktop.c, DIATOM_TEST_CLOCK):
+time moves only by the stub's calls (STUBCORE_FRAME_US, spent on it) and
+the loop's sleeps, and the overlay's windows, the now file's t_us and the
+step's report are all of it. So each run's speed and FPS are what the core
+and the pacing give, the same on an idle Mac, a loaded one or CI, and
+judged exactly, to 1%, every run. On the wall clock a shared CI runner ran
+a 25 ms core at 9.7 calls a second, so no speed could be judged against
+what it should be, a fast forward step only in a run that kept up, and the
+rest had slack for whatever the machine did (2026-11-24). Here:
 
+  - Speed and FPS each what the core allows: 1x and 60 for a core that
+    draws every frame, 1x and 30 for one that repeats every second picture
+    or whose call is two frames long, 20 for three; a core of 25 ms a frame
+    0.67x and 40. The count of calls, which Speed was, makes a call two
+    frames long 0.5x, and a FPS that counted calls makes the repeating
+    core's 60
   - frames to a picture: the frames the overlay says were emulated, over the
     pictures it says were made, in the windows of one stretch of the run, are
-    the core's: 1 for a core that draws every frame, 2 for one that repeats
-    every second picture or whose call is two frames long, 3 for three. The
-    count of calls, which Speed was, makes the first 1 for a call two frames
-    long, and a FPS that counted calls makes the repeating core's 1
-  - never over what the core allows: a core of 25 ms a frame cannot be over
-    0.67x, however fast the machine
+    the core's: 1, 2 or 3
   - the overlay and the now file, over the same stretch (the windows that
-    ended between two writings of it), say the same speed within the
-    sampling's slack, since both are made of the same counters
-  - at a fast forward step, the step's own report (diatom: speed ..., "lost")
-    accounts for what the clock says it reached: the step less the time the
-    schedule gave up, to within a turn. A machine that loses time, as a busy
-    runner does, reads under the step with no turn short of it, so how near
-    the step a run reads is judged only where little was lost (kept_up), and
-    the loss is checked on a game made to lose time (stall): stopped for
-    about 90 ms about every 150 ms
+    ended between two writings of it), say the same speed, since both are
+    made of the same counters
+  - at a fast forward step, 2x and 3x, the step and what the step's own
+    report says it reached, no turn short and no time lost (kept_up)
+  - a game that loses time: each of the loop's sleeps running up to 90 ms
+    over (the test clock's SLEEP), past the one turn of debt the schedule
+    keeps, as a runner whose sleep wakes late does. It reads under the step
+    with no turn short of it (GitHub's macOS runner, 2.0x read 1.5x with
+    none short, 2026-11-19), and the step's report says what it lost and
+    accounts for what it reached: the step less the time the schedule gave
+    up, to within a turn. It was a game stopped by SIGSTOP on the wall
+    clock until 2026-11-24, whose loss a busy machine made more of
 
 Needs build/desktop (diatom and stubcore.so) and SKIPS without it, as
 check-fastforward does. SDL's dummy drivers: no window, no sound.
 
     python3 test/hudspeed.py
 """
-import os, random, re, shutil, signal, socket, subprocess, sys, tempfile, threading, time
+import os, re, shutil, socket, subprocess, sys, tempfile, time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BIN = f"{ROOT}/build/desktop/diatom"
@@ -95,28 +106,13 @@ class Run:
                 f"step report {self.clock}x of the clock, {self.turns}x of the turns, {self.short} turns short, "
                 f"{self.lost}s lost of {self.held}s held")
 
-def stall(pid, period, gap, stop):
-    """Takes the game's CPU away in bursts, as a runner busy with other work
-    does: stopped for about `gap` seconds about every `period` seconds, at
-    random (a fixed sequence), until `stop` is set. The process is this
-    test's own child."""
-    rnd = random.Random(7)
-    try:
-        while not stop.wait(rnd.uniform(0.5, 1.5) * period):
-            os.kill(pid, signal.SIGSTOP)
-            time.sleep(rnd.uniform(0.5, 1.5) * gap)
-            os.kill(pid, signal.SIGCONT)
-    except ProcessLookupError:      # the game is gone
-        pass
-    try: os.kill(pid, signal.SIGCONT)   # never leave it stopped
-    except ProcessLookupError: pass
-
-def run(tag, stub_env, presses=0, seconds=5.0, stalled=None):
+def run(tag, stub_env, presses=0, seconds=5.0, clock="0", words=""):
     """One game with On-Screen Stats on: `presses` times SELECT+R2 from poll 30,
     then a second of the step to settle, the now file read, `seconds` more at
-    the step, the now file read again, STOP. The overlay's windows that ended
-    between the two readings are what is counted. None if the game would not
-    run."""
+    the step, the now file read again, STOP. The seconds are Diatom's own,
+    the now file's t_us: on the test clock, DIATOM_TEST_CLOCK=`clock`, unless
+    it is None. The overlay's windows that ended between the two readings
+    are what is counted. None if the game would not run."""
     steps = ["30:select"]
     poll = 33
     for _ in range(presses):
@@ -128,17 +124,22 @@ def run(tag, stub_env, presses=0, seconds=5.0, stalled=None):
     env = dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_RENDER_DRIVER="software",
                SDL_AUDIODRIVER="dummy", DIATOM_INPUT_SCRIPT=";".join(steps),
                DIATOM_HUD_LOG="1", DIATOM_NOW=now, STUBCORE_PRECISE="1", **stub_env)
+    env.pop("DIATOM_TEST_CLOCK", None)
+    if clock is not None: env["DIATOM_TEST_CLOCK"] = clock
     with open(out, "w") as f:
         p = subprocess.Popen([BIN, "--socket", sock, "--save", TMP, "--system", TMP],
                              env=env, stdout=f, stderr=subprocess.STDOUT)
-    for _ in range(100):
-        if os.path.exists(sock): break
+    # The waits are the wall clock's, and only waits: each ends as soon as
+    # what it waits for is there, so a busy machine makes them longer, never
+    # the run different
+    end = time.time() + 30
+    while not os.path.exists(sock) and time.time() < end:
         time.sleep(0.05)
     s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     s.connect(sock)
-    s.settimeout(0.1)
+    s.settimeout(0.02)
     buf, speeds, running = b"", [], False
-    s.sendall(f"RUN\tcore={STUB}\n".encode())
+    s.sendall(f"RUN\tcore={STUB}{words}\n".encode())
 
     def pump(until, stop_when=None):
         nonlocal buf, running
@@ -159,24 +160,24 @@ def run(tag, stub_env, presses=0, seconds=5.0, stalled=None):
                 if l.startswith("SPEED\tx="): speeds.append(l.split("=", 1)[1])
                 if l == "PAUSED": s.sendall(b"RESUME\n")
 
-    pump(time.time() + 10, lambda: running)
-    end = time.time() + 30
-    while len(speeds) < presses and time.time() < end:
-        pump(time.time() + 0.2)
-    pump(time.time() + 1.0)
-    a = kv(now)
-    stop, taker = threading.Event(), None
-    if stalled:     # (period, gap) in seconds, from the settled step to the second reading
-        taker = threading.Thread(target=stall, args=(p.pid, stalled[0], stalled[1], stop), daemon=True)
-        taker.start()
-    pump(time.time() + seconds)
-    b = kv(now)
-    stop.set()
-    if taker: taker.join(5)
+    def t_now():
+        try: return int(kv(now).get("t_us", 0))
+        except ValueError: return 0
+
+    def after(t_us):
+        """The now file once Diatom's clock is past t_us"""
+        pump(time.time() + 120, lambda: t_now() > t_us)
+        return kv(now)
+
+    pump(time.time() + 30, lambda: running)
+    pump(time.time() + 30, lambda: len(speeds) >= presses)
+    a = after(t_now() + 1000000)
+    try: b = after(int(a["t_us"]) + int(seconds * 1e6))
+    except (KeyError, ValueError): b = {}
     s.sendall(b"STOP\n")
-    pump(time.time() + 1.5)
+    pump(time.time() + 30, lambda: "frames in" in open(out, errors="replace").read())
     s.sendall(b"QUIT\n")
-    try: p.wait(5)
+    try: p.wait(30)
     except subprocess.TimeoutExpired: p.kill()
     text = open(out, errors="replace").read()
     r = Run()
@@ -218,23 +219,29 @@ def say(name, r):
 
 def per_picture(r, k):
     """The frames emulated for each picture made, in the stretch, are k: a
-    call two frames long is two frames to a picture whatever the machine's
-    speed, and counting its calls makes it one; a FPS that counted calls
-    makes a core that repeats every second picture one. One picture's frames
-    of slack, for a window's edge, and a little for the sums."""
-    return r is not None and r.pics >= 4 and abs(r.frames - k * r.pics) <= k + 0.03 * r.frames
+    call two frames long is two frames to a picture, and counting its calls
+    makes it one; a FPS that counted calls makes a core that repeats every
+    second picture one. To 1%: the test clock's rates are exact, and a
+    stretch holds a hundred pictures and more."""
+    return r is not None and r.pics >= 50 and abs(r.frames - k * r.pics) <= 0.01 * r.frames
 
-def same_now(r):
-    """The overlay's speed in the stretch and the now file's, the same to the
-    slack of a window's edge at each end of it: a window that ended just
-    after a writing is left out, and one that began before the first is in"""
+def same_now(r, slack=0.01):
+    """The overlay's speed in the stretch and the now file's, the same: to
+    1% where the speed is steady, as the test clock's is, so a window's
+    edge at either end of the stretch moves neither"""
     return (r is not None and r.now_speed is not None
-            and abs(r.speed - r.now_speed) <= 0.05 + 0.30 * r.now_speed)
+            and abs(r.speed - r.now_speed) <= slack * r.now_speed)
 
-def upto(r, speed, fps):
-    """Never over what the core allows, however fast the machine, and a
-    speed at all"""
-    return r is not None and 0.0 < r.speed <= speed and r.fps <= fps
+def at(r, speed, fps):
+    """Speed and FPS what the core allows, to 1%"""
+    return (r is not None and abs(r.speed - speed) <= 0.01 * speed
+            and abs(r.fps - fps) <= 0.01 * fps)
+
+def allows(span, cost_us=0):
+    """The Speed a core of `span` frames a call, each call `cost_us`, runs
+    at: its own rate, or what its cost allows, whichever is less"""
+    calls = CORE_FPS / span if cost_us <= 0 else min(CORE_FPS / span, 1e6 / cost_us)
+    return calls * span / CORE_FPS
 
 def kept_up(r):
     """A run that held its step as a machine that keeps up does: no turn short
@@ -251,18 +258,20 @@ def kept_up(r):
 
 def accounted(r, want):
     """What the step's own report says it reached, of the clock, is the step
-    less the time it says it lost: the schedule is the wall clock's, advanced
+    less the time it says it lost: the schedule is Diatom's clock, advanced
     a turn's frames at a time, so what is not lost is run, to within the one
-    turn of debt it keeps and the report's rounding. True of any run, a
-    machine that stalls or not, and not of a loop that drops time and does not
-    say"""
+    turn of debt it keeps (33 ms at 2x, half a percent of the run) and the
+    report's rounding (0.05 s of the seconds held, and 0.005x). True of any
+    run, a machine that stalls or not, and not of a loop that drops time and
+    does not say: the stalled game's 1.88x against 2x with nothing said lost
+    is 6% off, which this allowed until 2026-11-24"""
     return (r is not None and r.clock is not None and r.held and r.lost is not None
-            and abs(r.clock - want * (r.held - r.lost) / r.held) <= 0.06 * want)
+            and abs(r.clock - want * (r.held - r.lost) / r.held) <= 0.02 * want)
 
 def reaches(r, want):
-    """What a run that kept up shows: near the step, and what the step's own
-    report says it reached"""
-    return r.speed >= want * 0.88 and abs(r.speed - r.clock) <= 0.2
+    """What a run that kept up shows: the step, to 1%, and what the step's
+    own report says it reached"""
+    return abs(r.speed - want) <= 0.01 * want and abs(r.speed - r.clock) <= 0.01 * want + 0.005
 
 # That judgment, on runs made up from what the runner's log said, and from
 # what a machine that keeps up writes: the runner's 2.0x, with no turn short
@@ -288,80 +297,93 @@ check("a run's own report accounts for what it reached: the step less what it lo
 # The control: a core that draws every frame it runs
 r = run("plain", {})
 say("plain", r)
-check("a core that draws every frame is one frame to a picture, and not over 60 fps and 1x",
-      per_picture(r, 1) and upto(r, 1.06, 62), r)
+check("a core that draws every frame is one frame to a picture, at 1x and 60 fps",
+      per_picture(r, 1) and at(r, 1.0, CORE_FPS), r)
 
 # 60 frames a second, a new picture every second one: 30 fps
 r = run("dupe", {"STUBCORE_DUPE": "2"})
 say("dupe", r)
-check("a core that repeats every second picture is two frames to a picture, not over 30 fps and 1x",
-      per_picture(r, 2) and upto(r, 1.06, 31.5), r)
+check("a core that repeats every second picture is two frames to a picture, at 1x and 30 fps",
+      per_picture(r, 2) and at(r, 1.0, CORE_FPS / 2), r)
 check("and the now file says the same speed", same_now(r), r)
 
 # A call two frames long, a picture and two frames of sound, taking two
-# frames' time: 30 fps at full speed, called 30 times a second
-r = run("span", {"STUBCORE_SPAN": "2", "STUBCORE_FRAME_US": str(int(2 * PERIOD_US) + 100)})
+# frames' time and a tenth of a millisecond: 30 fps at full speed, called 30
+# times a second, but for that tenth
+cost = int(2 * PERIOD_US) + 100
+r = run("span", {"STUBCORE_SPAN": "2", "STUBCORE_FRAME_US": str(cost)})
 say("span", r)
-check("a core whose call is two frames long is two frames to a picture, not 0.5x of them",
-      per_picture(r, 2) and upto(r, 1.06, 31.5), r)
+check("a core whose call is two frames long is two frames to a picture, at 1x and 30 fps, not 0.5x",
+      per_picture(r, 2) and at(r, allows(2, cost), allows(2, cost) * CORE_FPS / 2), r)
 check("and the now file says the same speed", same_now(r), r)
 
 # The same, three frames long: a 20 fps game
-r = run("span3", {"STUBCORE_SPAN": "3", "STUBCORE_FRAME_US": str(int(3 * PERIOD_US) + 100)})
+cost = int(3 * PERIOD_US) + 100
+r = run("span3", {"STUBCORE_SPAN": "3", "STUBCORE_FRAME_US": str(cost)})
 say("span3", r)
-check("a core whose call is three frames long is three frames to a picture, not 0.33x of them",
-      per_picture(r, 3) and upto(r, 1.06, 21), r)
+check("a core whose call is three frames long is three frames to a picture, at 1x and 20 fps, not 0.33x",
+      per_picture(r, 3) and at(r, allows(3, cost), allows(3, cost) * CORE_FPS / 3), r)
+
+# frameskip=late, a core as a DS game on the Pixel 2: a drawn frame 38 ms, an
+# undrawn one 6 ms, so the loop leaves out two in three (the debt it keeps is
+# the sound queue's depth, 21 ms here, enough for two) at about full speed.
+# The undrawn frames hand over a picture still (the last one's pixels, as
+# DSperate does), and the panel does not get them: FPS is the pictures put
+# on the panel, 20, where counting the core's calls said 60 (1.1.0). Judged as
+# frames to a picture, three, which a busy machine's speed does not change
+r = run("lateskip", {"STUBCORE_SKIPPABLE": "1", "STUBCORE_FRAME_US": "6000",
+                     "STUBCORE_DRAWN_US": "38000"}, words="\tframeskip=late")
+say("lateskip", r)
+check("frameskip=late leaving out two frames in three is three frames to a picture, not over 21 fps",
+      per_picture(r, 3) and r.speed <= 1.06 and r.fps <= 21, r)
 
 # A core too slow for its game reads under 1x, and so does a 30 fps game that
 # is slow: a call of 3 frames' time that is 2 frames long. 25 ms a frame is
-# 40 a second, 0.67x, at the most
+# 40 a second, 0.67x
 r = run("slow", {"STUBCORE_FRAME_US": "25000"})
 say("slow", r)
-check("a core at 25 ms a frame is one frame to a picture, and not over 0.67x",
-      per_picture(r, 1) and upto(r, 0.72, 41), r)
+check("a core at 25 ms a frame is one frame to a picture, at 0.67x and 40 fps",
+      per_picture(r, 1) and at(r, allows(1, 25000), 40.0), r)
 check("and the now file says the same speed", same_now(r), r)
-r = run("slowspan", {"STUBCORE_SPAN": "2", "STUBCORE_FRAME_US": str(int(3 * PERIOD_US))})
+cost = int(3 * PERIOD_US)
+r = run("slowspan", {"STUBCORE_SPAN": "2", "STUBCORE_FRAME_US": str(cost)})
 say("slowspan", r)
-check("a 30 fps game at two thirds of its speed is two frames to a picture, not over 0.67x and 20 fps",
-      per_picture(r, 2) and upto(r, 0.72, 21), r)
+check("a 30 fps game at two thirds of its speed is two frames to a picture, at 0.67x and 20 fps",
+      per_picture(r, 2) and at(r, allows(2, cost), 1e6 / cost), r)
 check("and the now file says the same speed", same_now(r), r)
 
-# Fast forward: the step, dupes or not. A 1 ms core reaches it on a machine
-# that keeps up, and then the overlay says the step and what the step's own
-# report says it reached; on one that does not (kept_up), it is under the
-# step and still the now file's
+# Fast forward: the step, dupes or not. A 1 ms core reaches it, and the
+# overlay says the step and what the step's own report says it reached
 for presses, want in ((2, 2.0), (3, 3.0)):
     for tag, stub_env, k in (("every frame drawn", {}, 1), ("dupe", {"STUBCORE_DUPE": "2"}, 2)):
         r = run(f"ff{presses}{k}", dict(stub_env, STUBCORE_FRAME_US="1000"), presses)
         say(f"{want}x, {tag}", r)
-        check(f"fast forward at {want}x, {tag}: {k} frame(s) to a picture, not over the step",
-              per_picture(r, k) and upto(r, want * 1.06, 1e9), r)
+        check(f"fast forward at {want}x, {tag}: {k} frame(s) to a picture, at the step and "
+              f"{want * 60 / k:.0f} fps", per_picture(r, k) and at(r, want, want * CORE_FPS / k), r)
         check(f"fast forward at {want}x, {tag}: the now file says the same speed", same_now(r), r)
-        if kept_up(r):
-            check(f"and in a run that kept up, near {want}x and what its report says", reaches(r, want), r)
-        elif r:
-            print(f"  --   not judged against {want}x: this machine could not keep the step "
-                  f"({r.short} turns short; {r.lost}s lost of {r.held}s; "
-                  f"{r.clock}x of the clock against {r.turns}x of the turns)")
-        if r and r.lost is not None:
-            check(f"fast forward at {want}x, {tag}: the step's own report accounts for what it reached, "
-                  f"the step less what it lost", accounted(r, want), r)
+        check(f"fast forward at {want}x, {tag}: it kept up, no turn short and no time lost, "
+              f"and the overlay says what its report says", kept_up(r) and r.lost == 0 and reaches(r, want), r)
+        check(f"fast forward at {want}x, {tag}: the step's own report accounts for what it reached, "
+              f"the step less what it lost", accounted(r, want), r)
 
-# A machine that loses time, made to: the game stopped for about 90 ms about
-# every 150 ms from the settled step on, as a runner busy with other work
-# takes it. It reads under the step, and the step's report says why (what it
-# lost, not a turn short of the step, which is where a stop in the last frame
-# or in the sleep leaves none: GitHub's macOS runner, 2.0x read 1.5x with none
-# short, 2026-11-19); the check does not judge it against the step, and the
-# overlay and the now file say the speed it ran at
-r = run("stalled", {"STUBCORE_FRAME_US": "1000"}, 2, stalled=(0.15, 0.09))
-say("2.0x, stopped for 90 ms every 150 ms", r)
+# A machine that loses time, made to: each of the loop's sleeps runs up to
+# 90 ms over, by the test clock's fixed sequence, more than the turn of debt
+# the schedule keeps at 2x (33 ms). It reads under the step, and the step's
+# report says why (what it lost, not a turn short of the step, which is
+# where a stop in the sleep leaves none: GitHub's macOS runner, 2.0x read
+# 1.5x with none short, 2026-11-19); the check does not judge it against the
+# step, and the overlay and the now file say the speed it ran at. Their
+# stretch is the now file's two writings this script happened to read, and
+# the speed is not steady, so they agree to the width of a window at each
+# end of it, not to 1%
+r = run("stalled", {"STUBCORE_FRAME_US": "1000"}, 2, clock="90000")
+say("2.0x, each sleep up to 90 ms over", r)
 check("a game that loses time says so: a tenth of a second lost at least", r is not None and r.lost is not None and r.lost >= 0.1, r)
-check("and is not judged against the step", not kept_up(r), r)
+check("and with no turn short, it is not judged against the step", r is not None and r.short == 0 and not kept_up(r), r)
 check("and its own report accounts for what it reached, the step less what it lost", accounted(r, 2.0), r)
 check("and the overlay says the speed it ran at, the report's", r is not None and r.clock is not None
-      and abs(r.speed - r.clock) <= 0.25, r)
-check("and the now file says the same speed", same_now(r), r)
+      and abs(r.speed - r.clock) <= 0.05 * r.clock, r)
+check("and the now file says the same speed", same_now(r, 0.05), r)
 
 shutil.rmtree(TMP, ignore_errors=True)
 if fails:

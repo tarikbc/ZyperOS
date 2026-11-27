@@ -69,7 +69,9 @@ void zyperos_menu(app *a);
 const menu_choice *theme_choices(void);
 /* --rows-report: MENU's rows, the shelf's menu's, Theme's and Night Mode's (menu_rows_print) */
 void sysmenu_rows_report(app *a);
-/* For check-hover-sweep (--hover-sweep, src/hover_sweep.h): Theme's lists */
+/* For check-hover-sweep (--hover-sweep, src/hover_sweep.h): MENU's, a
+ * system's, Theme's and Screen Colors' lists through what their cursors
+ * show */
 void sysmenu_hover_sweep(app *a);
 
 #endif

@@ -89,6 +89,14 @@ static char title_path_kept[512];
 /* See ui_face_open. Made by the first ui_init and kept for the life of the
  * process, never destroyed by ui_quit: a worker can be waiting on one then. */
 static SDL_mutex *face_lock;
+/* Every face ui_face_open opened and ui_face_close has not closed, with its
+ * size and whether it is a title cut: so face_for finds Chinese and Japanese
+ * faces of the same size and weight for a face of no role (home.c's page
+ * faces, ui_face_at's), as it does for the role faces. Under face_lock, as
+ * the opening and closing are. */
+typedef struct { TTF_Font *f; int pt; bool title; } face_rec;
+static face_rec *face_recs;
+static int face_nrecs, face_caprecs;
 /* The generated card's faces on the art workers (ui_card_paint's `away`):
  * sets of their own, so a face of the frame thread's is only ever the frame
  * thread's. One set for each of texload's two workers, so they draw two
@@ -352,12 +360,37 @@ bool ui_init(SDL_Renderer *r, const char *font_path)
 	return fonts[UI_F_TITLE] && fonts[UI_F_MENU];
 }
 
+/* Whether the file at path is one of the title cuts (DS_FONT_SEMIBOLD and
+ * its Chinese and Japanese cuts) */
+static bool title_cut(const char *path)
+{
+	const char *slash = strrchr(path, '/'), *name = slash ? slash + 1 : path;
+
+	return !strcmp(name, DS_FONT_SEMIBOLD) || !strcmp(name, DS_FONT_CJK_TITLE) ||
+	       !strcmp(name, DS_FONT_JA_TITLE);
+}
+
 TTF_Font *ui_face_open(const char *path, int pt)
 {
 	TTF_Font *f;
 
 	if (face_lock) SDL_LockMutex(face_lock);
 	f = TTF_OpenFont(path, pt);
+	if (f) {
+		/* A face with no record only goes without the Chinese and
+		 * Japanese faces of its size */
+		if (face_nrecs == face_caprecs) {
+			int cap = face_caprecs ? face_caprecs * 2 : 32;
+			face_rec *more = realloc(face_recs, (size_t)cap * sizeof *more);
+
+			if (more) {
+				face_recs = more;
+				face_caprecs = cap;
+			}
+		}
+		if (face_nrecs < face_caprecs)
+			face_recs[face_nrecs++] = (face_rec){ f, pt, title_cut(path) };
+	}
 	if (face_lock) SDL_UnlockMutex(face_lock);
 	return f;
 }
@@ -366,13 +399,37 @@ void ui_face_close(TTF_Font *f)
 {
 	if (!f) return;
 	if (face_lock) SDL_LockMutex(face_lock);
+	for (int i = 0; i < face_nrecs; i++)
+		if (face_recs[i].f == f) {
+			face_recs[i] = face_recs[--face_nrecs];
+			break;
+		}
 	TTF_CloseFont(f);
 	if (face_lock) SDL_UnlockMutex(face_lock);
 }
 
+/* f's size and cut, as it was opened; false for a face ui_face_open did not
+ * open */
+static bool face_rec_of(TTF_Font *f, int *pt, bool *title)
+{
+	bool found = false;
+
+	if (face_lock) SDL_LockMutex(face_lock);
+	for (int i = 0; i < face_nrecs && !found; i++)
+		if (face_recs[i].f == f) {
+			*pt = face_recs[i].pt;
+			*title = face_recs[i].title;
+			found = true;
+		}
+	if (face_lock) SDL_UnlockMutex(face_lock);
+	return found;
+}
+
 static void digits_free(void);
+static void kin_free(void);
 static void button_fonts_free(void);
 static void bakes_free(void);
+static void hands_free(void);
 
 void ui_quit(void)
 {
@@ -402,6 +459,8 @@ void ui_quit(void)
 	}
 	fonts = font_sets[SET_LATIN];
 	if (f_mark) { ui_face_close(f_mark); f_mark = NULL; }
+	kin_free();
+	hands_free();
 	if (face_lock) SDL_LockMutex(face_lock);
 	TTF_Quit();
 	if (face_lock) SDL_UnlockMutex(face_lock);
@@ -734,34 +793,342 @@ static bool has_kana(const char *s)
 	return false;
 }
 
+/* The Chinese and Japanese faces face_for found for faces of no role, by
+ * set, size and cut: each opened the first time a line wants it, and kept
+ * until ui_quit. The frame thread's, as face_for is. */
+#define KIN_N 24
+static struct { int set, pt; bool title, tried; TTF_Font *f; } kin[KIN_N];
+
+static TTF_Font *kin_face(int set, int pt, bool title)
+{
+	char path[512];
+	int i;
+
+	for (i = 0; i < KIN_N && kin[i].tried; i++)
+		if (kin[i].set == set && kin[i].pt == pt && kin[i].title == title) return kin[i].f;
+	if (i == KIN_N || !font_path_kept[0]) return NULL;
+	kin[i].set = set;
+	kin[i].pt = pt;
+	kin[i].title = title;
+	kin[i].tried = true;
+	set_path(set, title, path, sizeof path);
+	kin[i].f = ui_face_open(path, pt);
+	if (!kin[i].f && title) {
+		set_path(set, false, path, sizeof path);
+		kin[i].f = ui_face_open(path, pt);
+	}
+	return kin[i].f;
+}
+
+static void kin_free(void)
+{
+	for (int i = 0; i < KIN_N; i++) {
+		if (kin[i].f) ui_face_close(kin[i].f);
+		kin[i].f = NULL;
+		kin[i].tried = false;
+	}
+}
+
 /* The face s is drawn in when f is asked for: f, or where s has Chinese or
  * Japanese characters f has not, the first face of f's role that has them
  * all, the set that is on first, then Japanese's where s has kana and
  * Chinese's where it has none. So 简体中文 and 日本語 are themselves in MENU >
  * Language's panel in any language, and a game named in either is drawn
- * rather than boxes. Asked only where a line is measured or rendered afresh:
- * what ui_text has cached was drawn this way already. */
+ * rather than boxes. A face of no role (home.c's page faces: the bar's
+ * song, the cassette's label, the grid's names; ui_face_at's) looks the same
+ * way among the Chinese and Japanese faces of its own size and cut; it used
+ * to draw such a song title in Lexend, all boxes (Discord, 2026-11-23).
+ * Asked only where a line is measured or rendered afresh: what
+ * ui_text has cached was drawn this way already. */
 static TTF_Font *face_for(TTF_Font *f, const char *s)
 {
-	int role = -1, order[3];
+	int role = -1, order[3], pt = 0;
+	bool title = false;
 
 	if (!has_cjk(s) || covers(f, s)) return f;
 	for (int k = 0; k < SETS && role < 0; k++)
 		for (int i = 0; i < UI_F_COUNT; i++)
 			if (f == font_sets[k][i]) { role = i; break; }
-	if (role < 0) return f;
+	if (role < 0 && !face_rec_of(f, &pt, &title)) return f;
 	order[0] = set_on;
 	/* Japanese where it has kana, or where it is Japanese's own name, which
 	 * is kanji alone */
 	order[1] = has_kana(s) || !strcmp(s, lang_name(LANG_JA)) ? SET_JP : SET_SC;
 	order[2] = order[1] == SET_JP ? SET_SC : SET_JP;
 	for (int k = 0; k < 3; k++) {
+		TTF_Font *g;
+
 		if (order[k] == SET_LATIN) continue;
-		set_open(order[k]);
-		if (font_sets[order[k]][role] && covers(font_sets[order[k]][role], s))
-			return font_sets[order[k]][role];
+		if (role >= 0) {
+			set_open(order[k]);
+			g = font_sets[order[k]][role];
+		} else {
+			g = kin_face(order[k], pt, title);
+		}
+		if (g && covers(g, s)) return g;
 	}
 	return f;
+}
+
+/* ---- the handwriting (MP4's tape labels, DESIGN.md 4) ------------------------
+ *
+ * Caveat SemiBold (res/fonts/hand.ttf), opened at a size for the label,
+ * with a fallback for the characters it has not: a line in it is drawn run
+ * by run, each run of characters Caveat lacks in Lexend at the size whose
+ * x-height meets Caveat's, or where it is Chinese or Japanese in Noto (the
+ * set that is on first, then Japanese's where the line has kana, Chinese's
+ * where not), every run on Caveat's baseline. So a song in Cyrillic is
+ * handwritten (Caveat has it), and one in Chinese, Japanese or Greek is
+ * itself and never boxes. Opened outside ui_face_open's records, so the
+ * line is never handed to one face whole (face_for). */
+#define HAND_N 6
+/* Lexend's size for a hand of `pt`: their x-heights, 525 and 400 of an em */
+#define HAND_LEX_K 0.76f
+
+static struct {
+	TTF_Font *f, *lex, *cjk[SETS];
+	int pt;
+	bool bold, cjk_tried[SETS];
+} hands[HAND_N];
+
+TTF_Font *ui_hand_face(int pt, bool bold)
+{
+	char path[512];
+	int i;
+
+	for (i = 0; i < HAND_N && hands[i].f; i++)
+		if (hands[i].pt == pt && hands[i].bold == bold) return hands[i].f;
+	if (i == HAND_N || !font_path_kept[0]) return NULL;
+	{
+		const char *slash = strrchr(font_path_kept, '/');
+		int dir = slash ? (int)(slash - font_path_kept) + 1 : 0;
+
+		snprintf(path, sizeof path, "%.*s%s", dir, font_path_kept, DS_FONT_HAND);
+	}
+	if (face_lock) SDL_LockMutex(face_lock);
+	hands[i].f = TTF_OpenFont(path, pt);
+	if (hands[i].f) {
+		set_path(SET_LATIN, bold, path, sizeof path);
+		hands[i].lex = TTF_OpenFont(path, (int)lroundf((float)pt * HAND_LEX_K));
+	}
+	if (face_lock) SDL_UnlockMutex(face_lock);
+	if (!hands[i].f) {
+		fprintf(stderr, "font: %s: %s; the labels in Lexend\n", DS_FONT_HAND, TTF_GetError());
+		return NULL;
+	}
+	hands[i].pt = pt;
+	hands[i].bold = bold;
+	return hands[i].f;
+}
+
+static int hand_of(TTF_Font *f)
+{
+	for (int i = 0; f && i < HAND_N && hands[i].f; i++)
+		if (hands[i].f == f) return i;
+	return -1;
+}
+
+static void hands_free(void)
+{
+	if (face_lock) SDL_LockMutex(face_lock);
+	for (int i = 0; i < HAND_N; i++) {
+		if (hands[i].f) TTF_CloseFont(hands[i].f);
+		if (hands[i].lex) TTF_CloseFont(hands[i].lex);
+		for (int k = 0; k < SETS; k++)
+			if (hands[i].cjk[k]) TTF_CloseFont(hands[i].cjk[k]);
+	}
+	memset(hands, 0, sizeof hands);
+	if (face_lock) SDL_UnlockMutex(face_lock);
+}
+
+static TTF_Font *hand_cjk(int h, int set)
+{
+	char path[512];
+
+	if (!hands[h].cjk_tried[set]) {
+		hands[h].cjk_tried[set] = true;
+		set_path(set, hands[h].bold, path, sizeof path);
+		if (face_lock) SDL_LockMutex(face_lock);
+		hands[h].cjk[set] = TTF_OpenFont(path, (int)lroundf((float)hands[h].pt * HAND_LEX_K));
+		if (face_lock) SDL_UnlockMutex(face_lock);
+	}
+	return hands[h].cjk[set];
+}
+
+/* One UTF-8 character at s: its code point, *len its bytes */
+static unsigned utf8_at(const char *s, int *len)
+{
+	const unsigned char *u = (const unsigned char *)s;
+
+	if (u[0] < 0x80) { *len = 1; return u[0]; }
+	if ((u[0] & 0xE0) == 0xC0 && (u[1] & 0xC0) == 0x80) { *len = 2; return (u[0] & 0x1Fu) << 6 | (u[1] & 0x3F); }
+	if ((u[0] & 0xF0) == 0xE0 && (u[1] & 0xC0) == 0x80 && (u[2] & 0xC0) == 0x80) {
+		*len = 3;
+		return (u[0] & 0x0Fu) << 12 | (u[1] & 0x3Fu) << 6 | (u[2] & 0x3F);
+	}
+	if ((u[0] & 0xF8) == 0xF0 && (u[1] & 0xC0) == 0x80 && (u[2] & 0xC0) == 0x80 && (u[3] & 0xC0) == 0x80) {
+		*len = 4;
+		return (u[0] & 0x07u) << 18 | (u[1] & 0x3Fu) << 12 | (u[2] & 0x3Fu) << 6 | (u[3] & 0x3F);
+	}
+	*len = 1;
+	return 0xFFFD;
+}
+
+static bool cjk_cp(unsigned c)
+{
+	return (c >= 0x2E80 && c <= 0x9FFF) || (c >= 0xF900 && c <= 0xFAFF) || (c >= 0xFF00 && c <= 0xFFEF);
+}
+
+/* The Chinese or Japanese face a hand's line takes its ideographs and kana
+ * from: the first of the set that is on, then Japanese's where the line has
+ * kana and Chinese's where not, then the other, that has every one of them,
+ * as face_for chooses a whole line's, so a line is not drawn in two; NULL
+ * when none has them all, and then each character's own */
+static TTF_Font *hand_cjk_line(int h, const char *s)
+{
+	int order[3], k;
+
+	if (!has_cjk(s)) return NULL;
+	order[0] = set_on;
+	order[1] = has_kana(s) ? SET_JP : SET_SC;
+	order[2] = order[1] == SET_JP ? SET_SC : SET_JP;
+	for (k = 0; k < 3; k++) {
+		TTF_Font *g;
+
+		if (order[k] == SET_LATIN) continue;
+		g = hand_cjk(h, order[k]);
+		if (g && covers(g, s)) return g;
+	}
+	return NULL;
+}
+
+/* The face character c of line s is drawn in, for hand h; `line` the
+ * line's Chinese or Japanese face (hand_cjk_line) */
+static TTF_Font *hand_face_for(int h, const char *s, unsigned c, TTF_Font *line)
+{
+	TTF_Font *f = hands[h].f;
+	int order[3], k;
+
+	if (TTF_GlyphIsProvided32(f, c)) return f;
+	if (cjk_cp(c) && line) return line;
+	if (!cjk_cp(c) && hands[h].lex && TTF_GlyphIsProvided32(hands[h].lex, c)) return hands[h].lex;
+	order[0] = set_on;
+	order[1] = has_kana(s) ? SET_JP : SET_SC;
+	order[2] = order[1] == SET_JP ? SET_SC : SET_JP;
+	for (k = 0; k < 3; k++) {
+		TTF_Font *g;
+
+		if (order[k] == SET_LATIN) continue;
+		g = hand_cjk(h, order[k]);
+		if (g && TTF_GlyphIsProvided32(g, c)) return g;
+	}
+	return hands[h].lex ? hands[h].lex : f;
+}
+
+/* Line s cut into runs of one face each, a space keeping the face it
+ * follows; `fn` is told of each. Returns the runs. */
+typedef void (*hand_run_fn)(void *ctx, TTF_Font *f, const char *run);
+
+static int hand_runs(int h, const char *s, hand_run_fn fn, void *ctx)
+{
+	char run[512];
+	const char *p = s, *start = s;
+	TTF_Font *cur = NULL, *line = hand_cjk_line(h, s);
+	int n = 0;
+
+	while (*p) {
+		int len;
+		unsigned c = utf8_at(p, &len);
+		TTF_Font *f = (c == ' ' || c == 0xA0 || (c >= 0x2000 && c <= 0x200F)) && cur ? cur
+		              : hand_face_for(h, s, c, line);
+
+		if (cur && f != cur) {
+			snprintf(run, sizeof run, "%.*s", (int)(p - start), start);
+			fn(ctx, cur, run);
+			n++;
+			start = p;
+		}
+		cur = f;
+		p += len;
+	}
+	if (cur && p > start) {
+		snprintf(run, sizeof run, "%.*s", (int)(p - start), start);
+		fn(ctx, cur, run);
+		n++;
+	}
+	return n;
+}
+
+static void hand_w_run(void *ctx, TTF_Font *f, const char *run)
+{
+	int w = 0;
+
+	TTF_SizeUTF8(f, run, &w, NULL);
+	*(int *)ctx += w;
+}
+
+static int hand_width(int h, const char *s)
+{
+	int w = 0;
+
+	hand_runs(h, s, hand_w_run, &w);
+	return w;
+}
+
+typedef struct { SDL_Surface *out; int x, asc; SDL_Color col; } hand_put;
+
+static void hand_put_run(void *ctx, TTF_Font *f, const char *run)
+{
+	hand_put *hp = ctx;
+	SDL_Surface *t = TTF_RenderUTF8_Blended(f, run, hp->col);
+	int w = 0;
+
+	TTF_SizeUTF8(f, run, &w, NULL);
+	if (t) {
+		SDL_SetSurfaceBlendMode(t, SDL_BLENDMODE_BLEND);
+		SDL_BlitSurface(t, NULL, hp->out, &(SDL_Rect){ hp->x, hp->asc - TTF_FontAscent(f), 0, 0 });
+		SDL_FreeSurface(t);
+	}
+	hp->x += w;
+}
+
+/* The line, its runs on the hand's baseline, as tall as the hand's line */
+static SDL_Surface *hand_render(int h, const char *s, SDL_Color col)
+{
+	hand_put hp = { NULL, 0, TTF_FontAscent(hands[h].f), col };
+	int w = hand_width(h, s);
+
+	if (w <= 0) return NULL;
+	hp.out = SDL_CreateRGBSurfaceWithFormat(0, w, TTF_FontHeight(hands[h].f), 32, SDL_PIXELFORMAT_ARGB8888);
+	if (!hp.out) return NULL;
+	/* The ground the line's own color at none, so a soft edge blended onto
+	 * it keeps the color */
+	SDL_FillRect(hp.out, NULL, SDL_MapRGBA(hp.out->format, col.r, col.g, col.b, 0));
+	hand_runs(h, s, hand_put_run, &hp);
+	return hp.out;
+}
+
+/* The runs of a line, for a check: each run's face, 0 the hand, 1 Lexend,
+ * 2 Chinese, 3 Japanese, up to `max`; how many */
+typedef struct { int h, n, max, *faces; } hand_count;
+
+static void hand_count_run(void *ctx, TTF_Font *f, const char *run)
+{
+	hand_count *c = ctx;
+
+	(void)run;
+	if (c->n < c->max)
+		c->faces[c->n] = f == hands[c->h].f ? 0 : f == hands[c->h].lex ? 1 : f == hands[c->h].cjk[SET_SC] ? 2 : 3;
+	c->n++;
+}
+
+int ui_hand_runs(TTF_Font *f, const char *s, int *faces, int max)
+{
+	hand_count c = { hand_of(f), 0, max, faces };
+
+	if (c.h < 0 || !s) return 0;
+	hand_runs(c.h, s, hand_count_run, &c);
+	return c.n;
 }
 
 /* text_width in `f` when `f` is already the face `s` is drawn in (face_for's
@@ -799,7 +1166,10 @@ static int width_in(TTF_Font *f, const char *s)
 
 static int text_width(TTF_Font *f, const char *s)
 {
+	int h;
+
 	if (!f || !s) return 0;
+	if ((h = hand_of(f)) >= 0) return hand_width(h, s);
 	return width_in(face_for(f, s), s);
 }
 
@@ -916,7 +1286,10 @@ static SDL_Surface *render_in(TTF_Font *f, const char *s, SDL_Color col)
 
 SDL_Surface *ui_text_surface(TTF_Font *f, const char *s, SDL_Color col)
 {
+	int h;
+
 	if (!f || !s || !*s) return NULL;
+	if ((h = hand_of(f)) >= 0) return hand_render(h, s, col);
 	return render_in(face_for(f, s), s, col);
 }
 
@@ -969,6 +1342,20 @@ void ui_fit_tight(const char *s, int w, int room, int row_w)
 
 	if (s && w <= room && w > room - spare)
 		i18n_note(i18n_watched(s) ? "tight" : "tight data", s);
+}
+
+/* Zyper's words in his bubble, cut to its lines: always ZyperOS's own (a
+ * table string formatted with a number, a version or a code, so no longer
+ * the table's pointer), so said as a cut, which fails check-i18n-shots,
+ * not as a name's */
+void ui_fit_cut(const char *s, char lines[][LB_LINE], int n)
+{
+	if (!s || strstr(s, "...")) return;
+	for (int k = 0; k < n; k++)
+		if (strstr(lines[k], "...")) {
+			i18n_note("cut", s);
+			return;
+		}
 }
 
 /* ---- the box a string must stay inside ---------------------------------
@@ -1221,6 +1608,7 @@ static void i18n_fit_seen(const char *src, const char *dst)
 #define i18n_fit_seen(src, dst) ((void)0)
 void ui_fit_frame(void) {}
 void ui_fit_tight(const char *s, int w, int room, int row_w) { (void)s; (void)w; (void)room; (void)row_w; }
+void ui_fit_cut(const char *s, char lines[][LB_LINE], int n) { (void)s; (void)lines; (void)n; }
 void ui_fit_drawn(const char *s) { (void)s; }
 void ui_fit_value(const char *s) { (void)s; }
 void ui_fit_mark(const SDL_Rect *q) { (void)q; }
@@ -1540,8 +1928,8 @@ int ui_text_tabular(SDL_Renderer *r, TTF_Font *f, const char *s, int x, int y,
  * and instantly leaves, which looks like a glitch rather than an end. */
 #define MQ_FADE_PX     36          /* how far the edges dissolve */
 #define MQ_FADE_STEP    3
-#define MQ_HOLD_MS   1400          /* stillness before it starts */
-#define MQ_END_MS     900          /* stillness at the far end */
+#define MQ_HOLD_MS   DS_MS_SLIDE_HOLD /* stillness before it starts */
+#define MQ_END_MS    DS_MS_SLIDE_END  /* stillness at the far end */
 #define MQ_SPEED_PXPS  70
 
 /* How far into a ping-pong a given phase has got: still at 0 for a beat, out
@@ -2533,22 +2921,29 @@ unsigned ui_mix(unsigned a, unsigned b, float t)
  * or menu.ttf's Regular. Opened the first time a size and weight are asked
  * for and kept until ui_quit, never closed sooner: the text cache keys on a
  * font's address, and a font closed with another opened in its place could
- * be handed the first one's textures. A screen asks for one or two sizes, so
- * the table does not fill; if it did, the nearest size open in the weight
- * stands in. A size that would not open is not retried every frame - its slot
- * says so with a NULL. */
-#define BUTTON_FONTS 8
+ * be handed the first one's textures. A screen asks for one or two sizes, but
+ * a session asks for every screen's: 18 on the Pixel 2 for the screens the
+ * i18n shots draw, 16 of them SemiBold (2026-11-26). With 8 the table filled
+ * with SemiBold ones, and the capture screen's Regular L1 at 112 (53 pt)
+ * found nothing in its weight to stand in: its glyph was an empty ring, on
+ * the Pixel 2 test of 1.1.1-test.2. So the table is 32, and if it ever fills
+ * the nearest size open stands in, in the weight if one is open and in the
+ * other if not, never nothing. A size that would not open is not retried
+ * every frame - its slot says so with a NULL. */
+#define BUTTON_FONTS 32
 static struct { int pt; bool semibold; TTF_Font *f; } button_fonts[BUTTON_FONTS];
 
 static TTF_Font *button_font(int pt, bool semibold)
 {
 	const char *path = semibold ? title_path_kept : font_path_kept;
-	int i, best = -1;
+	int i, best = -1, other = -1;
 
 	if (pt < 1) pt = 1;
 	/* Lexend's title face whatever the language: a button's letter is a mark */
 	if (semibold && pt == DS_TYPE_TITLE && fonts_latin[UI_F_TITLE]) return fonts_latin[UI_F_TITLE];
 	for (i = 0; i < BUTTON_FONTS; i++) {
+		int *pick;
+
 		if (button_fonts[i].pt == pt && button_fonts[i].semibold == semibold)
 			return button_fonts[i].f;
 		if (!button_fonts[i].pt) {
@@ -2559,10 +2954,12 @@ static TTF_Font *button_font(int pt, bool semibold)
 				fprintf(stderr, "font %s @%d: %s\n", path, pt, TTF_GetError());
 			return button_fonts[i].f;
 		}
-		if (button_fonts[i].f && button_fonts[i].semibold == semibold &&
-		    (best < 0 || abs(button_fonts[i].pt - pt) < abs(button_fonts[best].pt - pt)))
-			best = i;
+		if (!button_fonts[i].f) continue;
+		pick = button_fonts[i].semibold == semibold ? &best : &other;
+		if (*pick < 0 || abs(button_fonts[i].pt - pt) < abs(button_fonts[*pick].pt - pt))
+			*pick = i;
 	}
+	if (best < 0) best = other;
 	return best < 0 ? NULL : button_fonts[best].f;
 }
 

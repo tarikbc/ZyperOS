@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include "esmedia.h"
+#include "cartlabel.h"
 #include "snaps.h"
 #include "titletext.h"
 
@@ -84,6 +85,10 @@ typedef struct es_index {
 	 * "-video" and ".mp4" off: what es_has_video asks without a stat */
 	char    **vstems;
 	int       nv;
+	/* ...and the names its picture folders hold a cover or a logo for, by
+	 * es_media's own names (COVER_NAMES, LOGO_NAMES): es_has_cover's */
+	char    **cstems;
+	int       nc;
 	struct es_index *next;
 } es_index;
 
@@ -399,6 +404,8 @@ static void index_free(es_index *x)
 	free(x->by_stem);
 	for (int i = 0; i < x->nv; i++) free(x->vstems[i]);
 	free(x->vstems);
+	for (int i = 0; i < x->nc; i++) free(x->cstems[i]);
+	free(x->cstems);
 	free(x);
 }
 
@@ -407,40 +414,67 @@ static int str_cmp(const void *a, const void *b)
 	return strcmp(*(char *const *)a, *(char *const *)b);
 }
 
-/* The video folders' names, once, for es_has_video */
-static void video_stems(es_index *x, const char *roms)
+/* The names the media folders hold a file for by `names` (es_media's
+ * tables, so a name here is a file by_names finds), lowercased and sorted,
+ * the suffix off: "images/Bonk-thumb.png" is "bonk" by "-thumb.png" (and
+ * "bonk-thumb" by ".png", which by_names finds for a game of that name).
+ * One read of each folder, once, for es_has_video and es_has_cover. */
+static void table_stems(es_index *x, const char *roms, const es_name *const *tables,
+                        const int *sizes, int ntables, char ***out, int *count)
 {
-	static const int VDIRS[] = { D_VIDEOS, D_MEDIA_VIDEOS, D_DL_VIDEOS };
+	unsigned read = 0;
 	int cap = 0;
 
-	for (size_t k = 0; k < sizeof VDIRS / sizeof VDIRS[0]; k++) {
-		char p[ES_PATH];
-		DIR *d;
-		struct dirent *e;
+	for (int t = 0; t < ntables; t++)
+		for (int k = 0; k < sizes[t]; k++) {
+			int dir = tables[t][k].dir;
+			char p[ES_PATH];
+			DIR *d;
+			struct dirent *e;
 
-		if (!(x->dirs & (1u << VDIRS[k]))) continue;
-		snprintf(p, sizeof p, "%s/%s/%s", roms, x->folder, DIRS[VDIRS[k]]);
-		if (!(d = opendir(p))) continue;
-		while ((e = readdir(d))) {
-			size_t len = strlen(e->d_name);
-			char *stem;
+			if (!(x->dirs & (1u << dir)) || (read & (1u << dir))) continue;
+			read |= 1u << dir;
+			snprintf(p, sizeof p, "%s/%s/%s", roms, x->folder, DIRS[dir]);
+			if (!(d = opendir(p))) continue;
+			while ((e = readdir(d))) {
+				size_t len = strlen(e->d_name);
 
-			if (e->d_name[0] == '.' || len < 5 || strcasecmp(e->d_name + len - 4, ".mp4")) continue;
-			len -= 4;
-			if (len > 6 && !strncasecmp(e->d_name + len - 6, "-video", 6)) len -= 6;
-			if (x->nv == cap) {
-				char **more = realloc(x->vstems, (size_t)(cap = cap ? cap * 2 : 64) * sizeof *more);
+				if (e->d_name[0] == '.') continue;
+				/* every name of every table this folder is in */
+				for (int u = 0; u < ntables; u++)
+					for (int j = 0; j < sizes[u]; j++) {
+						size_t sl = strlen(tables[u][j].suffix);
+						char *stem;
 
-				if (!more) break;
-				x->vstems = more;
+						if (tables[u][j].dir != dir || len <= sl ||
+						    strcasecmp(e->d_name + len - sl, tables[u][j].suffix))
+							continue;
+						if (*count == cap) {
+							char **more = realloc(*out, (size_t)(cap = cap ? cap * 2 : 64) * sizeof *more);
+
+							if (!more) goto done;
+							*out = more;
+						}
+						if (!(stem = strndup(e->d_name, len - sl))) goto done;
+						lower(stem);
+						(*out)[(*count)++] = stem;
+					}
 			}
-			if (!(stem = strndup(e->d_name, len))) break;
-			lower(stem);
-			x->vstems[x->nv++] = stem;
+done:
+			closedir(d);
 		}
-		closedir(d);
-	}
-	if (x->nv) qsort(x->vstems, (size_t)x->nv, sizeof *x->vstems, str_cmp);
+	if (*count) qsort(*out, (size_t)*count, sizeof **out, str_cmp);
+}
+
+static void media_stems(es_index *x, const char *roms)
+{
+	static const es_name *const VIDEO[] = { VIDEO_NAMES };
+	static const int VIDEO_N[] = { NAMES(VIDEO_NAMES) };
+	static const es_name *const COVER[] = { COVER_NAMES, LOGO_NAMES };
+	static const int COVER_N[] = { NAMES(COVER_NAMES), NAMES(LOGO_NAMES) };
+
+	table_stems(x, roms, VIDEO, VIDEO_N, 1, &x->vstems, &x->nv);
+	table_stems(x, roms, COVER, COVER_N, 2, &x->cstems, &x->nc);
 }
 
 static es_index *index_find(const char *folder)
@@ -506,7 +540,7 @@ static es_index *index_make(const char *roms, const char *folder)
 		snprintf(p, sizeof p, "%s/%s/%s", roms, folder, DIRS[d]);
 		if (is_dir(p)) x->dirs |= 1u << d;
 	}
-	video_stems(x, roms);
+	media_stems(x, roms);
 	if (!(buf = list_read(roms, folder, &len))) return x;
 	for (at = buf; next_game(at, buf + len, &gs, &ge, &bb, &be); at = ge) {
 		es_game *g;
@@ -720,6 +754,26 @@ bool es_has_video(const char *folder, const char *file, const char *name)
 	return has;
 }
 
+bool es_has_cover(const char *folder, const char *file, const char *name)
+{
+	char k[LIB_NAME], *key = k;
+	es_index *x;
+	bool has = false;
+	int i;
+
+	if (!folder || !file || !name) return false;
+	snprintf(k, sizeof k, "%s", name);
+	lower(k);
+	pthread_mutex_lock(&g_lock);
+	if ((x = index_find(folder))) {
+		has = x->nc && bsearch(&key, x->cstems, (size_t)x->nc, sizeof *x->cstems, str_cmp);
+		if (!has && (i = entry_of(x, file, name)) >= 0)
+			has = x->g[i].media[M_THUMB] || x->g[i].media[M_IMAGE] || x->g[i].media[M_MARQUEE];
+	}
+	pthread_mutex_unlock(&g_lock);
+	return has;
+}
+
 /* ---- the game's own, then EmulationStation's ------------------------------ */
 
 bool game_media_own(const char *roms, const char *folder, const char *name, es_kind kind,
@@ -737,11 +791,35 @@ bool game_media_own(const char *roms, const char *folder, const char *name, es_k
 	return fits;
 }
 
+bool game_media_cart(const char *roms, const char *folder, const char *file, char *out, size_t n)
+{
+	if (!out || !n) return false;
+	out[0] = '\0';
+	if (!roms || !folder || !cart_label_file(file)) return false;
+	if (snprintf(out, n, "%s/%s/%s", roms, folder, file) < (int)n && is_file(out)) return true;
+	out[0] = '\0';
+	return false;
+}
+
 bool game_media(const char *roms, const char *folder, const char *file, const char *name,
                 es_kind kind, bool wait, char *out, size_t n)
 {
 	if (game_media_own(roms, folder, name, kind, out, n) && is_file(out)) return true;
-	return es_media(roms, folder, file, name, kind, wait, out, n);
+	if (es_media(roms, folder, file, name, kind, wait, out, n)) return true;
+	return kind == ES_COVER && game_media_cart(roms, folder, file, out, n);
+}
+
+static int own_cmp(const void *a, const void *b)
+{
+	return strcmp(*(char *const *)a, *(char *const *)b);
+}
+
+bool game_media_listed(const char *folder, const char *file, const char *name, es_kind kind,
+                       char *const *own, int nown)
+{
+	if (!folder || !file || !name) return false;
+	if (own && nown > 0 && bsearch(&name, own, (size_t)nown, sizeof *own, own_cmp)) return true;
+	return kind == ES_VIDEO ? es_has_video(folder, file, name) : es_has_cover(folder, file, name);
 }
 
 /* ---- the details --------------------------------------------------------- */

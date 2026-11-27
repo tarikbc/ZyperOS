@@ -58,7 +58,9 @@
  * this is not going to stop anything, and Diatom does not hang at its exit
  * on it: the thread is left to the process's end, whose close of the
  * descriptor is the kernel's last word to the motor. */
+#ifndef CLOSE_WAIT_MS            /* test/rumble_fake.h's longer, for a busy machine */
 #define CLOSE_WAIT_MS   500
+#endif
 
 static pthread_mutex_t g_mx = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t  g_cv = PTHREAD_COND_INITIALIZER;     /* to the thread */

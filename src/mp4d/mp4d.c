@@ -34,6 +34,7 @@
  *                                            one is (bands.h)
  *        COVER   path=  base=                write path's picture to base.jpg|png
  *        ARTIST  dir=                        who a folder of tracks is by
+ *        LENGTH  dir=                        how long a folder of tracks plays
  *   out  READY   proto=7                     3 added CHANNELS, 4 VIDEO, 5 EQ, 6 BANDS,
  *                                            7 PLAY paused=1
  *        CHANNELS mode=                      the mix in force, after each CHANNELS
@@ -52,6 +53,8 @@
  *        COVER   base=  file=                  what was written; "" if nothing
  *        ARTIST  dir=  name=                   from the tags; "" if no clear
  *                                              answer (tags.h)
+ *        LENGTH  dir=  s=                      its tracks' lengths summed, 0 if
+ *                                              none could be read (tags.h)
  */
 #include <errno.h>
 #include <fcntl.h>
@@ -513,7 +516,22 @@ static void *player(void *arg)
 		}
 		if (n == 0) {
 			/* The end of the file. What is queued plays out on its own; the
-			 * launcher hears END and decides what comes next. */
+			 * launcher hears END and decides what comes next. But not before
+			 * what is decoded ahead (pcm.h) has gone to the output: the next
+			 * PLAY drops the queue, and would cut the song's last half
+			 * second. A command meanwhile ends the wait. */
+			int waited = 0;
+
+			while (pcm_ahead() > 0 && q_len == 0 && !g_quit && waited < 1000) {
+				struct timespec ts = { 0, 10 * 1000000L };
+				double h = dec_pos(g_dec) - (double)pcm_queued() * S.speed / DEC_RATE;
+
+				S.heard = h > 0 ? h : 0;
+				pthread_mutex_unlock(&S.mu);
+				nanosleep(&ts, NULL);
+				pthread_mutex_lock(&S.mu);
+				waited += 10;
+			}
 			dec_close(g_dec);
 			g_dec = NULL;
 			S.state = ST_STOPPED;
@@ -730,6 +748,15 @@ static void command(int fd, const char *line)
 		tags_folder_artist(dir, name, sizeof name);
 		send_line(fd, "ARTIST\tdir=%s\tname=%s", clean(dir, a, sizeof a),
 		          clean(name, b, sizeof b));
+		return;
+	}
+	if (!strncmp(line, "LENGTH", 6)) {
+		/* As ARTIST: headers only, nothing to do with what is playing */
+		char dir[PATH_MAX_], a[PATH_MAX_ + 8];
+
+		arg(line, "dir", dir, sizeof dir);
+		if (!dir[0]) return;
+		send_line(fd, "LENGTH\tdir=%s\ts=%.1f", clean(dir, a, sizeof a), tags_folder_length(dir));
 		return;
 	}
 	if (!strncmp(line, "PLAY", 4)) {

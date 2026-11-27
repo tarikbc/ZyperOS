@@ -105,6 +105,10 @@ typedef struct device_profile {
 	 * (SET_HW_RENDER): the Dreamcast's, the N64's, the PSP's, Saturn's */
 	bool gpu_frames;
 	bool speaker_mono;       /* one built-in speaker */
+	/* A side switch that mutes every output (the Brick's, gpio243): the top
+	 * bar's muted speaker and the volume bar's Muted follow it. The Smart
+	 * Pro has none, though the pin is exported on its system too */
+	bool mute_switch;
 	/* A rumble motor the launcher and Diatom run (Diatom's caps.rumble):
 	 * MENU > Sound > Rumble and the in-game Controls tab's row are here
 	 * alone, and the step's buzz (plat_rumble_buzz) */
@@ -230,6 +234,9 @@ bool plat_gpu_frames(void);
  * the Brick has two: Audio Channels' Auto is mono there and stereo on
  * everything else (src/audioout.h). */
 bool plat_speaker_mono(void);
+/* Whether the handheld has a mute switch (the profile's mute_switch): the
+ * Brick's side switch. Where it has none the switch is never read. */
+bool plat_has_mute_switch(void);
 /* Whether the handheld has a rumble motor ZyperOS runs (the profile's
  * rumble): the Pixel 2's, on PWM0 through the joypad's force feedback. Not
  * the Brick's yet: its motor (GPIO 227 on the bldo3 rail) waits for the

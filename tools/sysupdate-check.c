@@ -182,7 +182,17 @@ int main(void)
 	CHECK(pg.warn[0] && is(&pg, "A", "Try Again", SUA_DOWNLOAD), "download failed: why, and A Try Again downloads");
 	v = base("state space\nversion 0.2.0\ndownload 14200000\n");
 	su_page_build(&v, &pg);
-	CHECK(pg.warn[0] && !btn(&pg, "A"), "card full: says so, no Download");
+	CHECK(!strcmp(pg.warn, "The card is too full for the update. Make room on it, then try again.") &&
+	      is(&pg, "A", "Check Again", SUA_DOWNLOAD), "card full, no need said (an older program): says so, A Check Again downloads");
+	v = base("state space\nversion 0.2.0\ndownload 14200000\nneed 410000000\n");
+	v.card_free = 230000000;
+	CHECK(v.st.need == 410000000, "card full: the status file's need reads back");
+	su_page_build(&v, &pg);
+	CHECK(!strcmp(pg.warn, "The card needs 410\xc2\xa0MB free for the update and has 230\xc2\xa0MB. Make room on it, then check again.") &&
+	      is(&pg, "A", "Check Again", SUA_DOWNLOAD), "card full: what it needs and what is free, A Check Again downloads");
+	v.wifi = false;
+	su_page_build(&v, &pg);
+	CHECK(pg.warn[0] && !btn(&pg, "A") && pg.line[0], "card full, no network: no Check Again, the line says why");
 
 	/* The status from before the restart that installed it is done */
 	v = base("state ready\nversion 0.2.0\n");

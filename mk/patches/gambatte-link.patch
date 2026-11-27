@@ -1,0 +1,337 @@
+gambatte (libretro/gambatte-libretro 77f2567): its network Game Link as two
+handhelds on Wi-Fi need it (ZyperOS's Link Cable, src/link.h).
+
+- A peer that went away without closing (out of range, its battery out)
+  left the side waiting for its answer blocked in read() until TCP gave up,
+  the game frozen for minutes. Each read and write now waits at most ten
+  seconds (SO_RCVTIMEO, SO_SNDTIMEO), and a timeout is the cable pulled:
+  0xFF to the game, and the connection made again.
+- A write to a peer that had reset the connection raised SIGPIPE, which
+  ends the emulator: send() with MSG_NOSIGNAL (SO_NOSIGPIPE where there is
+  none).
+- The two bytes of a transfer are read and written whole; a second segment
+  was read as garbage.
+- check() read a peer that had closed as "nothing yet" for ever, so that
+  side never connected again: a closed peer now closes the socket.
+- A lost connection is tried again every second on a monotonic clock. It
+  was five seconds of clock(), the process's CPU time: up to half a minute
+  on a handheld.
+- A connect to an address nobody answers waits 500 ms, not the seconds of
+  an ARP timeout on the game's thread.
+- TCP_NODELAY, and SO_REUSEADDR on the server, so a second game hosting
+  right after the first is not refused its port (TIME_WAIT).
+- A byte read in the middle of a transfer took the value's top bits again
+  at every read, so a game that waits on SC read every byte as 0x00 or
+  0xFF (its top bit eight times). The bits now come in in order; found with
+  tools/gblink-loopback.c, two cores linked on a computer.
+- retro_unload_game ends the link. A frontend that keeps the core loaded
+  between games (Diatom) kept the socket open after the game, and the other
+  handheld waited on it.
+
+--- a/libgambatte/src/gambatte-memory.cpp
++++ b/libgambatte/src/gambatte-memory.cpp
+@@ -181,8 +181,11 @@
+ 		if (intreq_.eventTime(intevent_serial) <= cc) {
+ #ifdef HAVE_NETWORK
+ 			bool fire = ((ioamhram_[0x102] & 0x80) == 0x80);
++			/* The bits still to come, the value's lowest serialCnt_
++			 * (ZyperOS, mk/patches/gambatte-link.patch: its top bits
++			 * again, after a read in the middle of the transfer) */
+ 			ioamhram_[0x101] = ((ioamhram_[0x101] << serialCnt_) |
+-					    (serialize_value_ >> (8 - serialCnt_))) & 0xFF;
++					    (((serialize_value_ << (8 - serialCnt_)) & 0xFF) >> (8 - serialCnt_))) & 0xFF;
+ #else
+          ioamhram_[0x101] = (((ioamhram_[0x101] + 1) << serialCnt_) - 1) & 0xFF;
+ #endif
+@@ -199,8 +202,12 @@
+ 			int const targetCnt = serialCntFrom(intreq_.eventTime(intevent_serial) - cc,
+ #ifdef HAVE_NETWORK
+ 			                                    serialize_is_fastcgb_);
++			/* The next bits of the value, after the 8 - serialCnt_ in
++			 * already. It shifted in the value's top bits at every read,
++			 * so a game that waits on SC read every byte as 0x00 or
++			 * 0xFF, its top bit eight times (ZyperOS, gambatte-link.patch) */
+ 			ioamhram_[0x101] = ((ioamhram_[0x101] << (serialCnt_ - targetCnt)) |
+-					    (serialize_value_ >> (8 - (serialCnt_ - targetCnt)))) & 0xFF;
++					    (((serialize_value_ << (8 - serialCnt_)) & 0xFF) >> (8 - (serialCnt_ - targetCnt)))) & 0xFF;
+ #else
+                                              ioamhram_[0x102] & isCgb() * 2);
+          ioamhram_[0x101] = (((ioamhram_[0x101] + 1) << (serialCnt_ - targetCnt)) - 1) & 0xFF;
+--- a/libgambatte/libretro/net_serial.cpp
++++ b/libgambatte/libretro/net_serial.cpp
+@@ -13,7 +13,93 @@
+ #include <sys/socket.h>
+ #include <sys/ioctl.h>
+ #include <netinet/in.h>
++#include <netinet/tcp.h>
+ #include <netdb.h>
++#include <fcntl.h>
++#include <poll.h>
++#include <sys/time.h>
++#endif
++
++#ifndef _WIN32
++/* ZyperOS (mk/patches/gambatte-link.patch): the link as two handhelds on
++ * Wi-Fi need it. A peer that goes away without closing (out of range, its
++ * battery out) left the side waiting for its answer blocked in read() until
++ * TCP gave up, a quarter of an hour, the game frozen; now each read and
++ * write waits at most LINK_IO_TIMEOUT_S, and a timeout is a cable pulled
++ * (0xFF to the game) and a new connection. Ten seconds is long enough for
++ * the other player to open their menu and come back, which pauses this
++ * side's game while it waits, and short enough not to look like a hang. */
++#define LINK_IO_TIMEOUT_S 10
++/* How often a lost connection is tried again, on a monotonic clock: it was
++ * five seconds of clock(), the process's CPU time, so up to half a minute on
++ * a handheld whose emulator uses a fifth of a core. */
++#define LINK_RETRY_MS 1000
++/* A connect to an address nobody answers (no ARP reply) blocked for seconds
++ * on the game's thread; now it waits this long. */
++#define LINK_CONNECT_MS 500
++
++static long long link_now_ms(void)
++{
++	struct timespec ts;
++
++	clock_gettime(CLOCK_MONOTONIC, &ts);
++	return (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
++}
++
++/* No Nagle (two bytes each way per transfer), the timeouts above, and no
++ * SIGPIPE where the system has no MSG_NOSIGNAL */
++static void link_socket_setup(int fd)
++{
++	struct timeval tv;
++	int one = 1;
++
++	tv.tv_sec = LINK_IO_TIMEOUT_S;
++	tv.tv_usec = 0;
++	setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
++	setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
++	setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
++#ifdef SO_NOSIGPIPE
++	setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &one, sizeof(one));
++#endif
++}
++
++#ifndef MSG_NOSIGNAL
++#define MSG_NOSIGNAL 0
++#endif
++
++/* Both bytes, or false: a write to a peer that has gone returns an error
++ * rather than raising SIGPIPE, which would end the emulator */
++static bool link_write2(int fd, const unsigned char *buf)
++{
++	size_t done = 0;
++
++	while (done < 2) {
++		ssize_t n = ::send(fd, (const char *)buf + done, 2 - done, MSG_NOSIGNAL);
++		if (n <= 0) {
++			if (n < 0 && errno == EINTR) continue;
++			return false;
++		}
++		done += (size_t)n;
++	}
++	return true;
++}
++
++/* Both bytes, or false: a closed peer (0), an error or the timeout. The two
++ * bytes can come in two segments, and the second was read as garbage. */
++static bool link_read2(int fd, unsigned char *buf)
++{
++	size_t done = 0;
++
++	while (done < 2) {
++		ssize_t n = ::recv(fd, (char *)buf + done, 2 - done, 0);
++		if (n <= 0) {
++			if (n < 0 && errno == EINTR) continue;
++			return false;
++		}
++		done += (size_t)n;
++	}
++	return true;
++}
+ #endif
+ 
+ NetSerial::NetSerial()
+@@ -24,6 +110,7 @@
+ , server_fd_(-1)
+ , sockfd_(-1)
+ , lastConnectAttempt_(0)
++, lastTryMs_(0)
+ {
+ }
+ 
+@@ -66,6 +153,7 @@
+ 	if (is_stopped_) {
+ 		return false;
+ 	}
++#ifdef _WIN32
+ 	if (sockfd_ < 0 && throttle) {
+ 		clock_t now = clock();
+ 		// Only attempt to establish the connection every 5 seconds
+@@ -74,6 +162,14 @@
+ 		}
+ 	}
+ 	lastConnectAttempt_ = clock();
++#else
++	if (sockfd_ < 0 && throttle) {
++		if (link_now_ms() - lastTryMs_ < LINK_RETRY_MS) {
++			return false;
++		}
++	}
++	lastTryMs_ = link_now_ms();
++#endif
+ 	if (is_server_) {
+ 		if (!startServerSocket()) {
+ 			return false;
+@@ -104,6 +200,14 @@
+ 			return false;
+ 		}
+ 
++#ifndef _WIN32
++		{
++			/* A new game hosting on the port of the last one's connection,
++			 * still in TIME_WAIT, was refused its bind */
++			int one = 1;
++			setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
++		}
++#endif
+ 		if (bind(fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+ 			gambatte_log(RETRO_LOG_ERROR, "Error on binding: %s\n", strerror(errno));
+ 			close(fd);
+@@ -148,6 +252,9 @@
+ 			gambatte_log(RETRO_LOG_ERROR, "Error on accept: %s\n", strerror(errno));
+ 			return false;
+ 		}
++#ifndef _WIN32
++		link_socket_setup(sockfd_);
++#endif
+ 		gambatte_log(RETRO_LOG_INFO, "GameLink network server connected to client!\n");
+ 	}
+ 	return true;
+@@ -175,11 +282,43 @@
+ 		}
+ 
+ 		memmove((char*)&server_addr.sin_addr.s_addr, (char*)server_hostname->h_addr, server_hostname->h_length);
++#ifdef _WIN32
+ 		if (connect(fd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+ 			gambatte_log(RETRO_LOG_ERROR, "Error connecting to server: %s\n", strerror(errno));
+ 			close(fd);
+ 			return false;
+ 		}
++#else
++		{
++			int flags = fcntl(fd, F_GETFL, 0), err = 0;
++			socklen_t len = sizeof(err);
++			struct pollfd p;
++
++			fcntl(fd, F_SETFL, flags | O_NONBLOCK);
++			if (connect(fd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
++				if (errno != EINPROGRESS) {
++					gambatte_log(RETRO_LOG_ERROR, "Error connecting to server: %s\n", strerror(errno));
++					close(fd);
++					return false;
++				}
++				p.fd = fd;
++				p.events = POLLOUT;
++				p.revents = 0;
++				if (poll(&p, 1, LINK_CONNECT_MS) <= 0) {
++					gambatte_log(RETRO_LOG_ERROR, "Error connecting to server: no answer\n");
++					close(fd);
++					return false;
++				}
++				if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &len) < 0 || err) {
++					gambatte_log(RETRO_LOG_ERROR, "Error connecting to server: %s\n", strerror(err ? err : errno));
++					close(fd);
++					return false;
++				}
++			}
++			fcntl(fd, F_SETFL, flags);
++			link_socket_setup(fd);
++		}
++#endif
+ 		sockfd_ = fd;
+ 		gambatte_log(RETRO_LOG_INFO, "GameLink network client connected to server!\n");
+ 	}
+@@ -204,7 +343,7 @@
+ #ifdef _WIN32
+    if (::send(sockfd_, (char*) buffer, 2, 0) <= 0)
+ #else
+-	if (write(sockfd_, buffer, 2) <= 0)
++	if (!link_write2(sockfd_, buffer))
+ #endif
+    {
+ 		gambatte_log(RETRO_LOG_ERROR, "Error writing to socket: %s\n", strerror(errno));
+@@ -216,7 +355,7 @@
+ #ifdef _WIN32
+ 	if (recv(sockfd_, (char*) buffer, 2, 0) <= 0) 
+ #else
+-   if (read(sockfd_, buffer, 2) <= 0) 
++   if (!link_read2(sockfd_, buffer)) 
+ #endif
+    {
+ 		gambatte_log(RETRO_LOG_ERROR, "Error reading from socket: %s\n", strerror(errno));
+@@ -256,13 +395,26 @@
+ 
+ 	// No data available yet
+ 	if (bytes_avail < 2) {
++#ifndef _WIN32
++		/* Nothing to read may be a peer that closed: read as nothing for
++		 * ever, so this side never connected again */
++		if (bytes_avail == 0) {
++			unsigned char peek;
++			ssize_t n = ::recv(sockfd_, (char *)&peek, 1, MSG_PEEK | MSG_DONTWAIT);
++			if (n == 0 || (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR)) {
++				gambatte_log(RETRO_LOG_INFO, "GameLink network peer closed the link\n");
++				close(sockfd_);
++				sockfd_ = -1;
++			}
++		}
++#endif
+ 		return false;
+ 	}
+ 
+ #ifdef _WIN32
+ 	if (recv(sockfd_, (char*) buffer, 2, 0) <= 0) 
+ #else
+-   if (read(sockfd_, buffer, 2) <= 0) 
++   if (!link_read2(sockfd_, buffer)) 
+ #endif
+    {
+ 		gambatte_log(RETRO_LOG_ERROR, "Error reading from socket: %s\n", strerror(errno));
+@@ -281,7 +433,7 @@
+    #ifdef _WIN32
+       if (::send(sockfd_, (char*) buffer, 2, 0) <= 0)
+    #else
+-   	if (write(sockfd_, buffer, 2) <= 0)
++   	if (!link_write2(sockfd_, buffer))
+    #endif
+    {
+ 		gambatte_log(RETRO_LOG_ERROR, "Error writing to socket: %s\n", strerror(errno));
+--- a/libgambatte/libretro/net_serial.h
++++ b/libgambatte/libretro/net_serial.h
+@@ -36,6 +36,7 @@
+ 		int sockfd_;
+ 
+ 		clock_t lastConnectAttempt_;
++		long long lastTryMs_;
+ };
+ 
+ #endif
+--- a/libgambatte/libretro/libretro.cpp
++++ b/libgambatte/libretro/libretro.cpp
+@@ -2860,6 +2860,14 @@
+ void retro_unload_game()
+ {
+    rom_loaded = false;
++#ifdef HAVE_NETWORK
++   /* The link ends with its game: a frontend that keeps the core loaded
++    * between games (ZyperOS's Diatom) kept the socket open, and the other
++    * handheld waited on it (mk/patches/gambatte-link.patch) */
++   gb_net_serial.stop();
++   gb.setSerialIO(NULL);
++   gb_serialMode = SERIAL_NONE;
++#endif
+    /* Clear per-game state so a subsequent retro_load_game with
+     * a different ROM doesn't see leftovers (palette autodetect
+     * keying off internal_game_name, frame-pacing ratio, cached

@@ -86,7 +86,7 @@ static void pack(void)
 	char dir[] = "/tmp/logpack-check.XXXXXX", p[600], out[600], cmd[1400], line[512];
 	char err[128];
 	FILE *f;
-	bool found_net = false, found_mac = false, found_about = false;
+	bool found_net = false, found_mac = false, found_about = false, found_sys = false;
 	int files = 0;
 
 	printf("a whole pack, unpacked again\n");
@@ -116,9 +116,19 @@ static void pack(void)
 	snprintf(p, sizeof p, "%s/logs/other.txt", dir);
 	if ((f = fopen(p, "w"))) { fputs("not a log\n", f); fclose(f); }
 
+	/* A system log outside the folder: the Smart Pro's controllers' reader's */
+	static char sys[600];
+	snprintf(sys, sizeof sys, "%s/sppad.log", dir);
+	if ((f = fopen(sys, "w"))) { fputs("sppad: left stick 1050 to 2900 round 2150\n", f); fclose(f); }
+	logpack_system_logs[0] = sys;
+	logpack_system_logs[1] = NULL;
+
 	snprintf(p, sizeof p, "%s/logs", dir);
 	snprintf(out, sizeof out, "%s/pack.tar.gz", dir);
-	CHECK(logpack_build(p, "ZyperOS 1.0.3\nss: ericr\n", SECRETS, NSECRETS,
+	CHECK(logpack_build(p, "ZyperOS 1.0.3\nss: ericr\n",
+	                    "Nov 21 22:10:01 zyperos daemon.err bluetoothd[812]: a2dp-source profile connect failed for C0:86:B3:A7:48:7F\n"
+	                    "Nov 21 22:10:02 zyperos daemon.info udhcpc: lease of 192.168.1.5 obtained from ReinFi\n",
+	                    SECRETS, NSECRETS,
 	                    "zyperos-logs-test", out, err, sizeof err),
 	      "built: %s", err);
 
@@ -132,14 +142,28 @@ static void pack(void)
 			if (strstr(line, "R...i")) found_net = true;
 			if (strstr(line, "XX:XX:XX:XX:XX:7F")) found_mac = true;
 			if (strstr(line, "ss: e...r")) found_about = true;
+			if (strstr(line, "left stick 1050")) found_sys = true;
 		}
 		pclose(f);
 	}
-	CHECK(files == 7, "three logs (wifi.log among them), the kernel's log, the card checks, a crash report and about.txt, "
+	CHECK(files == 9, "three logs (wifi.log among them), the kernel's log, the system log, the card checks, a crash report, sppad.log and about.txt, "
 	      "not the other files: %d", files);
+	CHECK(found_sys, "the system's log from outside the folder went in");
 	CHECK(found_net && found_mac && found_about,
 	      "each masked, in the logs and in about.txt: %d %d %d",
 	      found_net, found_mac, found_about);
+	snprintf(cmd, sizeof cmd, "cd '%s' && grep -c . zyperos-logs-test/system.log && "
+	         "grep -c -e udhcpc -e 192.168 zyperos-logs-test/system.log", dir);
+	if ((f = popen(cmd, "r"))) {
+		int kept = -1, other = -1;
+
+		if (fgets(line, sizeof line, f)) kept = atoi(line);
+		if (fgets(line, sizeof line, f)) other = atoi(line);
+		pclose(f);
+		CHECK(kept == 1 && other == 0, "system.log: bluetoothd's line alone, not udhcpc's: %d %d", kept, other);
+	}
+	snprintf(p, sizeof p, "%s/logs/system.log", dir);
+	CHECK(access(p, F_OK) != 0, "no system.log left in the logs folder");
 	snprintf(p, sizeof p, "%s/logs/zyperos.log", dir);
 	if ((f = fopen(p, "r"))) {
 		CHECK(fgets(line, sizeof line, f) && strstr(line, "ReinFi"),
@@ -148,6 +172,39 @@ static void pack(void)
 	}
 	snprintf(cmd, sizeof cmd, "rm -rf '%s'", dir);
 	if (system(cmd) != 0) { }
+}
+
+/* The system log: only bluetoothd's, bluealsa's and btplayer's lines, by
+ * their tag, and in those every address, name and quoted word cut */
+static void syslog_lines(void)
+{
+	static const char raw[] =
+		"Nov 21 22:10:01 zyperos daemon.err bluetoothd[812]: profiles/audio/a2dp.c:a2dp_sink_connect() connect failed for /org/bluez/hci0/dev_C0_86_B3_A7_48_7F\n"
+		"Nov 21 22:10:01 zyperos daemon.info bluetoothd[812]: Device 'Johns AirPods' found at 10.0.0.12\n"
+		"Nov 21 22:10:02 zyperos daemon.warn bluealsa[815]: Couldn't register hands-free profile: \"Protocol not supported\"\n"
+		"Nov 21 22:10:02 zyperos daemon.info btplayer[820]: Name: Marys Pad\n"
+		"Nov 21 22:10:03 zyperos daemon.info wpa_supplicant[700]: wlan0: Trying to associate with SSID 'OpenFit'\n"
+		"Nov 21 22:10:04 zyperos daemon.info udhcpc: lease of 192.168.1.5 obtained\n"
+		"Nov 21 22:10:05 zyperos user.notice root: bluetoothd[812]: not a tag of its own\n"
+		"Nov 21 22:10:06 zyperos daemon.info notbluetoothd[9]: a look-alike\n";
+	char out[4096];
+	int kept;
+
+	printf("the system log, its Bluetooth lines alone and masked\n");
+	kept = logpack_syslog(raw, out, sizeof out, SECRETS, NSECRETS);
+	CHECK(kept == 4, "bluetoothd twice, bluealsa and btplayer: %d\n%s", kept, out);
+	CHECK(!strstr(out, "wpa_supplicant") && !strstr(out, "udhcpc") && !strstr(out, "OpenFit") &&
+	      !strstr(out, "192.168") && !strstr(out, "look-alike") && !strstr(out, "not a tag"),
+	      "nothing else goes out:\n%s", out);
+	CHECK(strstr(out, "dev_XX_XX_XX_XX_XX_7F") != NULL, "the address keeps its last byte:\n%s", out);
+	CHECK(!strstr(out, "Johns") && strstr(out, "'J...s'") != NULL, "a quoted name cut:\n%s", out);
+	CHECK(!strstr(out, "10.0.0.12") && strstr(out, "found at x.x.x.x") != NULL, "an IPv4 address hidden:\n%s", out);
+	CHECK(!strstr(out, "Marys") && strstr(out, "Name: M...d") != NULL, "a Name's value cut:\n%s", out);
+	CHECK(!strstr(out, "Protocol not supported") && strstr(out, "profile: \"P...d\"") != NULL,
+	      "a quoted word after an apostrophe still cut:\n%s", out);
+	CHECK(strstr(out, "a2dp_sink_connect() connect failed") != NULL &&
+	      strstr(out, "Couldn't register hands-free profile") != NULL, "the reasons kept:\n%s", out);
+	CHECK(logpack_syslog("", out, sizeof out, SECRETS, NSECRETS) == 0 && !out[0], "none from nothing");
 }
 
 /* A wifi.log far past the cap goes in as its last 256 KB, from a whole line */
@@ -172,9 +229,10 @@ static void tail(void)
 		fputs("LASTLINE\n", f);
 		fclose(f);
 	}
+	logpack_system_logs[0] = NULL;
 	snprintf(p, sizeof p, "%s/logs", dir);
 	snprintf(out, sizeof out, "%s/pack.tar.gz", dir);
-	CHECK(logpack_build(p, "", SECRETS, NSECRETS, "t", out, err, sizeof err), "built: %s", err);
+	CHECK(logpack_build(p, "", NULL, SECRETS, NSECRETS, "t", out, err, sizeof err), "built: %s", err);
 	snprintf(cmd, sizeof cmd, "cd '%s' && tar -xzf pack.tar.gz && wc -c < t/wifi.log && cat t/wifi.log", dir);
 	if ((f = popen(cmd, "r"))) {
 		if (fgets(line, sizeof line, f)) size = atol(line);
@@ -196,6 +254,7 @@ int main(void)
 	printf("logpack: the logs, masked and packed\n");
 	words();
 	lines();
+	syslog_lines();
 	pack();
 	tail();
 	if (failures) {

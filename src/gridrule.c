@@ -59,14 +59,14 @@ gg_geom gg_layout(int left, int top, int w, int h, float shape, int gap, int lea
 	return g;
 }
 
-int gg_page(int cursor, int n, int page, int dir)
+int gg_page(int cursor, int n, int page, int dir, bool fresh)
 {
 	if (n <= 0) return 0;
 	if (cursor < 0) cursor = 0;
 	if (cursor > n - 1) cursor = n - 1;
 	if (page < 1) page = 1;
-	if (dir > 0) return cursor >= n - 1 ? 0 : cursor + page < n ? cursor + page : n - 1;
-	if (dir < 0) return cursor <= 0 ? n - 1 : cursor - page >= 0 ? cursor - page : 0;
+	if (dir > 0) return cursor >= n - 1 ? (fresh ? 0 : cursor) : cursor + page < n ? cursor + page : n - 1;
+	if (dir < 0) return cursor <= 0 ? (fresh ? n - 1 : cursor) : cursor - page >= 0 ? cursor - page : 0;
 	return cursor;
 }
 

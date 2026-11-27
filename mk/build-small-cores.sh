@@ -22,6 +22,10 @@
 #                core of their shelves beside mGBA (1.0.7, config/systems.cfg).
 #                C++, with Debian bullseye's GCC 10: plastron's libstdc++ is
 #                newer than the GLIBCXX it asks for (diatom/CORES.md).
+#                Patched: gambatte-link.patch, its network Game Link for
+#                the Link Cable (src/link.h): a lost peer no longer freezes
+#                the game, the bytes cross whole, and the link ends with
+#                its game.
 #   prboom       Doom (libretro-prboom), the commit ROCKNIX's prboom-lr pins,
 #                with prboom.wad, the engine's own data, compiled into the core
 #                (src/d_main.c at the pin), so no file of it goes in Bios/.
@@ -62,7 +66,7 @@ CORES='
 mednafen_vb|libretro/beetle-vb-libretro|d5ae54c8e23b573a3b34e888b2d48a588027e92c|ccbed557d3f316c9123f81d1ca5357c5f12100bad6aea3326caefca2a1c08189|959ec69963a6c82dc0b5d4764756e89a161703bcaeeff84ed5c215378ad916c6|.|HAVE_OPENGL=0 HAVE_GLES=0 GIT_VERSION=d5ae54c
 vecx|libretro/libretro-vecx|dccff5402a16d1ea7c112095a8e42632bf149506|684808db7e9d3a81647e25e8a7e34df3e0f62ed317df578143055c6536d23a32|cc8dfcab7c79929414f46a2f067729f42d7fbe88ed079c4bf95dfedbedf3b0fa|.|HAS_GPU=0 GIT_VERSION=dccff54 -f Makefile.libretro
 gearcoleco|drhelius/Gearcoleco|063fa52151581b356f466905c74a79f9df8d19d7|00c6e98f504141961aec63bb26c3e8f21533b65f5c91eb489e8565d5856a8baa|4028827a2c9160fbbc5589badc3e4a1acd95dbe60b61a9802a410072b23b5699|platforms/libretro|GIT_VERSION=063fa52
-gambatte|libretro/gambatte-libretro|77f2567d718b8973d02caa2daa8dce4953faf811|45e63bc79390093b78de025172ea289ded139f4ecf1e8072242f34d7dd540338|2d567e08bc43db0ebb298dcd3ad264d5d8a66afbb1548490009e3a0d5e186e07|.|GIT_VERSION=77f2567
+gambatte|libretro/gambatte-libretro|77f2567d718b8973d02caa2daa8dce4953faf811|45e63bc79390093b78de025172ea289ded139f4ecf1e8072242f34d7dd540338|2235b57535a3fcf6ebdc64b8eaaf31f29d2e3e477edb98a1f2465182720b8566|.|GIT_VERSION=77f2567
 prboom|libretro/libretro-prboom|4849268e7342494193f2bbf2d0128a751cf58da7|36a069cf09053388d719e2694a509cb8d2d152137b66adbef8fccba8373f8879|5acac01568c15e18ce4d590838c20bb86acf5f5bf03f28a394a324b87fe09e74|.|GIT_VERSION=4849268
 '
 

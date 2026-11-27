@@ -51,6 +51,13 @@ bool hotspot_start(void);
  * other mode after a stop works. hotspot_poll stays bounded in both modes and
  * is safe to call from a game's tick (on_game_tick). */
 bool hotspot_start_dns(bool own_dns);
+/* A game's hotspot under a name and password of the caller's: the Game
+ * Boy's Link Cable (src/link.h), whose joiner makes the same password from
+ * the name and so needs no code. As hotspot_start_dns(false) in all else:
+ * no DNS here, udhcpd, the supplicant stopped and brought back by
+ * hotspot_stop. False for a name of none or over 32 bytes, or a password
+ * under WPA2's 8 or over the 15 this file keeps. */
+bool hotspot_start_named(const char *ssid, const char *pass);
 
 /* Every frame while the screen is open: moves the start along, answers the
  * DNS questions waiting, and notices hostapd going away. Bounded work. */

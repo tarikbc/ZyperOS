@@ -63,6 +63,13 @@
  * start; sshlink_status says why in the screen's words. */
 bool sshlink_start(const char *addr, const char *pin, const char *keydir);
 
+/* The cable's SSH running already on `addr` with a password (Developer
+ * Mode's, sshlink_start): its password becomes `pin` in place, in the file
+ * its namespace reads, and dropbear goes on with its sessions, rather than
+ * a stop and a start (which ended them and held the screen while it
+ * waited). False, with nothing changed, for anything else: then start. */
+bool sshlink_repin(const char *addr, const char *pin);
+
 /* Start SSH on the cable's `addr` alone, keys only (over a port). False as
  * sshlink_start_net is, with no key. */
 bool sshlink_start_cable_keys(const char *addr, const char *keydir);
@@ -145,6 +152,11 @@ typedef struct {
 	bool cable_spent;   /* the cable's SSH already ran for this plug: a
 	                     * lockout, or a radio that ended it, holds until
 	                     * the cable comes out */
+	bool link;          /* the Game Boy's Link Cable holds the radio for its
+	                     * own network (src/link.h's link_holds_radio): no
+	                     * SSH over Wi-Fi there, as if there were no radio.
+	                     * Its code is four digits, so that network is no
+	                     * place for a login */
 } sshlink_facts;
 
 /* Developer Mode's SSH, for these facts:

@@ -364,6 +364,9 @@ static void keys_from_launcher(void)
 	   !memcmp(key, def, sizeof key), "a bad spec, SELECT, MENU or a button twice: refused, untouched");
 	ck(chord_keys_parse("none", key) && key[CHORD_SAVE] == -1 && key[CHORD_SLOWER] == -1,
 	   "none: no hotkey at all");
+	ck(def[CHORD_FFWD] == -1 && chord_keys_parse("faster:r2,ffwd:y", key) &&
+	   key[CHORD_FFWD] == DIATOM_BTN_Y && key[CHORD_FASTER] == DIATOM_BTN_R2,
+	   "Fast Forward: none from the start, ffwd:y a launcher's key");
 
 	/* SELECT+Y with Y the screenshot's, and R1 no hotkey: SELECT then R1 is
 	 * the game's, R1 and SELECT both */
@@ -503,8 +506,67 @@ static void taps(void)
 	   "slow: R2 tapped twice under SELECT: faster twice");
 }
 
+/* MENU's chords (mchord): MENU held and the screenshot's or the lock's
+ * button, in a game as on the launcher's screens (ZyperOS's 1.1.1-test.3
+ * notes: they should work in games too) */
+static void menu_chords(void)
+{
+	mchord m;
+	int key[MCHORD_ACTS];
+	unsigned a = 0;
+	uint32_t hide;
+
+	ck(mchord_keys_parse("shot:l1,lock:l2", key) && key[MCHORD_SHOT] == DIATOM_BTN_L1 &&
+	   key[MCHORD_LOCK] == DIATOM_BTN_L2, "menukeys: shot:l1,lock:l2");
+	ck(!mchord_keys_parse("shot:start", key) && !mchord_keys_parse("shot:l1,lock:l1", key) &&
+	   !mchord_keys_parse("shot:select", key) && !mchord_keys_parse("x:l1", key),
+	   "menukeys: never START (Home with MENU), SELECT, one button for two, an unknown act");
+	ck(mchord_keys_parse("", key) && key[MCHORD_SHOT] < 0 && key[MCHORD_LOCK] < 0, "menukeys: \"\" none");
+
+	/* none until the launcher says: MENU+L1 is the game's L1 */
+	mchord_reset(&m, 0);
+	mchord_poll(&m, MENU, 0, &a);
+	hide = mchord_poll(&m, MENU | L1, L1, &a);
+	ck(!a && !hide, "no keys: MENU+L1 is the game's");
+
+	mchord_keys_parse("shot:l1,lock:l2", key);
+	mchord_set_keys(&m, key);
+	mchord_restart(&m, 0);
+	a = 0;
+	mchord_poll(&m, MENU, MENU, &a);
+	hide = mchord_poll(&m, MENU | L1, L1, &a);
+	ck(a == 1u << MCHORD_SHOT && hide == L1, "MENU held, then L1: the screenshot, L1 hidden");
+	a = 0;
+	hide = mchord_poll(&m, MENU | L1, 0, &a);
+	ck(!a && hide == L1, "held on: once, and still hidden");
+	hide = mchord_poll(&m, L1, 0, &a);
+	ck(!a && hide == L1, "MENU let go first: L1 stays hidden until it is let go");
+	hide = mchord_poll(&m, 0, 0, &a);
+	ck(!a && !hide, "let go: nothing hidden");
+	hide = mchord_poll(&m, L1, L1, &a);
+	ck(!a && !hide, "L1 alone: the game's");
+	mchord_poll(&m, 0, 0, &a);
+	hide = mchord_poll(&m, MENU | L2, MENU | L2, &a);
+	ck(a == 1u << MCHORD_LOCK && hide == L2, "MENU and L2 down in one poll: the lock");
+	a = 0;
+	mchord_poll(&m, MENU, 0, &a);
+	hide = mchord_poll(&m, MENU, L1, &a);
+	ck(a == 1u << MCHORD_SHOT && !hide, "L1 tapped between two polls under MENU: the screenshot once");
+	a = 0;
+	hide = mchord_poll(&m, MENU | R1 | A, R1 | A, &a);
+	ck(!a && !hide, "any other button under MENU is the game's");
+	mchord_poll(&m, 0, 0, &a);
+	mchord_poll(&m, L1, L1, &a);
+	hide = mchord_poll(&m, MENU | L1, MENU, &a);
+	ck(!a && !hide, "L1 held before MENU is the game's, not a chord");
+	mchord_restart(&m, MENU | L1);
+	hide = mchord_poll(&m, MENU | L1, 0, &a);
+	ck(!a && !hide, "held across a resume: no press");
+}
+
 int main(void)
 {
+	menu_chords();
 	tap();
 	chords();
 	game_select();

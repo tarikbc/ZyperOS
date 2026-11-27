@@ -42,9 +42,11 @@ int gi_rows(menu_row *out, const game_info *gi, bool net)
 		out[n++] = (menu_row){ T(S_GAMEMENU_YEAR),  gi->year,  false };
 	if (gi->scraped && gi->genre[0])
 		out[n++] = (menu_row){ T(S_GAMEMENU_GENRE), gi->genre, false };
-	/* The core, a fact, where the shelf offers more than one (1.0.7) */
+	/* The core, where the shelf offers more than one (1.0.7): the game's
+	 * own, or the shelf's said as the shelf's, stepped here since
+	 * 2026-11-27 (Left, Right or A: the shelf's, then each core) */
 	if (gi->core[0])
-		out[n++] = (menu_row){ T(S_SYSMENU_CORE), gi->core, false };
+		out[n++] = (menu_row){ T(S_SYSMENU_CORE), gi->core, gi->core_live };
 	/* The file, brackets and all, the last fact (DESIGN.md 11.69): the
 	 * shelf's title stops at the first bracket, and the brackets are how
 	 * one copy is told from another - "(USA)" from "(Europe)", "(Rev 1)",
@@ -251,6 +253,7 @@ int gm_tab_rows(const gm_ui *u, gm_tab t, gm_row *ids)
 			if (u->quick) ids[n++] = GM_QUICK;
 			if (u->discs > 1) ids[n++] = GM_DISC;
 			if (u->player2) ids[n++] = GM_PLAYER2;
+			if (u->link) ids[n++] = GM_LINK;
 			if (u->cheats) ids[n++] = GM_CHEATS;
 			ids[n++] = GM_CHEEVOS;
 		}
@@ -300,6 +303,14 @@ const char *gm_player2_value(p2_state st)
 	return T(S_MENU_OFF);
 }
 
+const char *gm_link_value(link_state st)
+{
+	if (st == LINK_HOST_STARTING || st == LINK_HOST_WAITING) return T(S_LINK_VALUE_WAITING);
+	if (st == LINK_LINKED) return T(S_LINK_VALUE_LINKED);
+	if (st == LINK_LOST) return T(S_LINK_VALUE_LOST);
+	return T(S_MENU_OFF);
+}
+
 const char *gm_disc_value(const gm_ui *u, char *out, size_t n, bool (*fits)(const char *))
 {
 	if (u->disc_label && *u->disc_label && (!fits || fits(u->disc_label)))
@@ -339,7 +350,7 @@ int gm_rows(const gm_ui *u, gm_tab t, menu_row *out, gm_bufs *b)
 		S_GAMEMENU_QUIT, S_GAMEMENU_SCREENS, S_GAMEMENU_SWAP, S_GAMEMENU_STYLUS,
 		S_GAMEMENU_PAK, S_PLAYER2_ROW, S_GAMEMENU_DISC, S_GAMEMENU_STRENGTH,
 		S_GAMEMENU_UNDO, S_GAMEMENU_HUD, S_GAMEMENU_BORDER, S_GAMEMENU_BORDER_COLOR, S_CHEATS_ROW,
-		S_SCREEN_TITLE,
+		S_SCREEN_TITLE, S_LINK_ROW,
 	};
 	menu_row full[GM_MAX_ROWS];
 	gm_row ids[GM_MAX_ROWS];
@@ -398,6 +409,9 @@ int gm_rows(const gm_ui *u, gm_tab t, menu_row *out, gm_bufs *b)
 	full[GM_STYLUS].value  = u->stylus ? T(S_MENU_ON_TITLE) : T(S_MENU_OFF_TITLE);
 	full[GM_PAK].value     = u->pak;
 	full[GM_PLAYER2].value = u->player2_value;
+	/* Quiet with no adapter in, and saying why (DESIGN.md 12) */
+	full[GM_LINK].value = u->link_quiet ? T(S_MENU_NEEDS_WIFI) : u->link_value;
+	full[GM_LINK].live = !u->link_quiet;
 	if (u->discs > 1)
 		full[GM_DISC].value = gm_disc_value(u, b->disc, sizeof b->disc, u->disc_fits);
 	/* X quits from anywhere on the page (gm_x_row), and Quit says so */

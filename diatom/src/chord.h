@@ -4,8 +4,8 @@
  * The hotkeys are SELECT held and one more button pressed: SELECT+R1 saves
  * a state to the quick slot, SELECT+L1 loads it, SELECT+R2 runs the game
  * faster and SELECT+L2 slower, until the player gives them other buttons;
- * a screenshot, the next shader and display mode, Reset Game and Quit have
- * none until given one (the launcher's Hotkeys, RUN hotkeys= and
+ * a screenshot, the next shader and display mode, Reset Game, Quit and Fast
+ * Forward have none until given one (the launcher's Hotkeys, RUN hotkeys= and
  * SETHOTKEYS). Below, "a shoulder" is any button an act is on. Most systems have a SELECT of their own (NES,
  * SNES, Game Boy, GBA, PlayStation...), so a press of SELECT belongs either to
  * the game or to the hotkeys, decided by what comes next, and never to both:
@@ -66,6 +66,7 @@ typedef enum {
 	CHORD_DISPLAY,    /* the system's next display mode */
 	CHORD_RESET,      /* reset the game, asked first */
 	CHORD_QUIT,       /* quit, as MENU then X */
+	CHORD_FFWD,       /* fast forward on or off: 1x and the speed it is given */
 	CHORD_ACTS
 } chord_act;
 
@@ -142,5 +143,40 @@ uint32_t chord_view(chord *c, uint32_t held, uint32_t was, uint32_t pressed,
  * button. */
 chord_out chord_turn(chord *c, uint32_t held, uint32_t was, uint64_t now_ms,
                      uint32_t live);
+
+/* MENU held and one more button, in a game as on every screen of ZyperOS's
+ * launcher (its src/menukeys.h): MENU+L1 a screenshot, MENU+L2 the lock,
+ * until the player gives them others (RUN menukeys=). MENU is Diatom's and
+ * opens the launcher's menu as it is let go, so a button pressed under it is
+ * MENU's chord when it is one of these, and MENU then opens nothing; every
+ * other button under MENU is the game's, as it always was. The chord's
+ * button is the host's from its press until it is let go: the core never
+ * sees it, even if MENU is let go first. A tap of it between two polls under
+ * a held MENU counts too, as SELECT's do (chord_view). None until the
+ * launcher says (an old launcher sends no menukeys=, and nothing changes).
+ *
+ * Judged at the core's polls, beside SELECT's rule, so no press of the
+ * chord's button reaches the game first. Pure, as chord_turn. */
+typedef enum { MCHORD_SHOT, MCHORD_LOCK, MCHORD_ACTS } mchord_act;
+
+typedef struct {
+	int      key[MCHORD_ACTS];   /* DIATOM_BTN_*, -1 for none */
+	uint32_t was;                /* the pad at the last poll */
+	uint32_t hidden;             /* buttons a chord took, until let go */
+} mchord;
+
+/* No keys, the pad as it is (a button held is no press) */
+void mchord_reset(mchord *m, uint32_t pad);
+/* A fresh start for the pad, the keys kept: a game's start and its resume */
+void mchord_restart(mchord *m, uint32_t pad);
+/* "shot:l1,lock:l2": a b x y l1 r1 l2 r2 (never START, which is Home with
+ * MENU, nor SELECT or the d-pad); "" for none. False, key untouched, for a
+ * bad pair, an act or a button named twice. */
+bool mchord_keys_parse(const char *spec, int key[MCHORD_ACTS]);
+void mchord_set_keys(mchord *m, const int key[MCHORD_ACTS]);
+/* One poll: `pad` as held, `pressed` what went down during it (taps
+ * included, diatom_port_input_pressed). The acts it made go into `acts`
+ * (1 << mchord_act); the buttons the core must not see are returned. */
+uint32_t mchord_poll(mchord *m, uint32_t pad, uint32_t pressed, unsigned *acts);
 
 #endif

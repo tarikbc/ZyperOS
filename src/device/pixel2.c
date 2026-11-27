@@ -13,6 +13,7 @@
  * device_display_release before a game presents, device_display_take when the
  * launcher has the screen back. */
 #include "atomic.h"
+#include "gadget.h"
 #include "charging.h"
 #include "charging_rule.h"
 #include "audioout.h"
@@ -21,8 +22,10 @@
 #include "device.h"
 #include "displayback.h"
 #include "fileio.h"
+#include "hwput.h"
 #include "nightkeep.h"
 #include "levels.h"
+#include "menuvol.h"
 #include "panelgamma.h"
 #include "phonelink.h"
 #include "platform.h"
@@ -31,6 +34,7 @@
 #include "spawn.h"
 #include "stickpad.h"
 #include "thermal.h"
+#include "wdog.h"
 
 #include <SDL_syswm.h>
 
@@ -115,7 +119,10 @@ int plat_boot_theme(const char *text)
 	if (fd >= 0 && close(fd)) ok = 0;
 	ok = ok && rename(tmp, path) == 0;
 	if (!ok) unlink(tmp);
+	/* The whole card's, after a big transfer as long as it takes (wdog.h) */
+	wdog_hold("the card's sync");
 	sync();
+	wdog_release();
 	umount(BOOT_MOUNT);
 	return ok ? 1 : -1;
 }
@@ -318,6 +325,8 @@ static void draw_picture(const SDL_Rect *dest, bool fx)
  * it (a shot) is read from screen_tex, which has none */
 void plat_screen_finish(void) { }
 bool plat_screen_shader_in_frame(void) { return false; }
+/* ZyperOS draws on screen_tex, which show_screen copies to the panel */
+bool plat_screen_kept(void) { return true; }
 
 /* Black around the picture, then the picture: 1024x768 down to 640x480 and a
  * quarter turn counter-clockwise, which on this panel ("Left Side Up") is the
@@ -384,7 +393,9 @@ void plat_present(void)
 {
 	Uint8 r, g, b, a;
 
+	wdog_feed();                    /* the loop came round (wdog.h) */
 	SDL_GetRenderDrawColor(ren, &r, &g, &b, &a);
+	plat_grab_frame(ren);
 	plat_overlay_present(ren);
 	if (!video_shown) {
 		take_from_splash();
@@ -815,6 +826,7 @@ void plat_input_flush(void)
 	drain(fd_keys);
 	drain(fd_power);
 	l2_down = r2_down = false;
+	plat_menu_forget();
 }
 
 /* No wait here, unlike the Brick: the keys are read straight from the kernel,
@@ -882,20 +894,8 @@ bool plat_rumble_buzz(float scale, int ms)
 }
 
 /* FUNCTION is MENU, and also the modifier that makes the volume keys
- * brightness: this device has no brightness keys, and MENU plus volume is
- * brightness in games too, so the same chord does the same thing on both
- * sides of a launch.
- *
- * A key that is both cannot report MENU when it goes down, because nothing yet
- * says whether a volume key will follow. So MENU is reported when FUNCTION
- * comes UP, unless a volume key came in between. That costs a tap's length
- * before a menu opens, accepted on 2026-10-01; in games MENU has always worked
- * this way. Holding both volume keys with FUNCTION is holding both brightness
- * keys, which is the Brick's pocket lock, so MP4's lock works unchanged. */
-static bool fn_down;            /* FUNCTION is held */
-static bool fn_chorded;         /* and a volume key was used under it */
-static bool menu_release_next;  /* a MENU tap reported last poll ends this one */
-static in_button vol_as[2] = { IN_NONE, IN_NONE };  /* what each volume key went down as */
+ * brightness (src/device/menuvol.h, the Smart Pro's too). */
+static menuvol fn = MENUVOL_INIT;
 
 /* The lights on the side are plastron's gauge's: the launcher only signals it,
  * SIGUSR1 to flash the level and SIGHUP to read MENU > Side Lights again. */
@@ -944,35 +944,11 @@ static void key_event(in_state *st, const struct input_event *ev)
 	if (dbg_input) fprintf(stderr, "[in] code=%d val=%d\n", ev->code, ev->value);
 
 	if (ev->code == CODE_FUNCTION) {
-		if (ev->value) {
-			fn_down = true;
-			fn_chorded = false;
-		} else {
-			fn_down = false;
-			if (!fn_chorded) {
-				plat_set_btn(st, IN_MENU, true);
-				menu_release_next = true;
-			}
-		}
+		menuvol_menu(&fn, st, ev->value != 0, true);
 		return;
 	}
 	if (ev->code == KEY_VOLUMEUP || ev->code == KEY_VOLUMEDOWN) {
-		int k = ev->code == KEY_VOLUMEUP ? 0 : 1;
-
-		if (ev->value) {
-			if (fn_down) {
-				vol_as[k] = k == 0 ? IN_BRIGHTUP : IN_BRIGHTDN;
-				fn_chorded = true;
-			} else {
-				vol_as[k] = k == 0 ? IN_VOLUP : IN_VOLDN;
-			}
-			plat_set_btn(st, vol_as[k], true);
-		} else if (vol_as[k] != IN_NONE) {
-			/* Released as whatever it went down as, so letting go of
-			 * FUNCTION first does not leave a brightness key stuck down. */
-			plat_set_btn(st, vol_as[k], false);
-			vol_as[k] = IN_NONE;
-		}
+		menuvol_volume(&fn, st, ev->code == KEY_VOLUMEUP, ev->value != 0, true);
 		return;
 	}
 	if (ev->code == KEY_POWER) {
@@ -990,6 +966,14 @@ static void key_event(in_state *st, const struct input_event *ev)
 		bool both = l2_down && r2_down, l2 = ev->code == BTN_TL2;
 
 		*(l2 ? &l2_down : &r2_down) = ev->value == 1;
+		/* Under FUNCTION, MENU's chord when the launcher takes it
+		 * (src/menukeys.h): no tap as it is let go, and MENU opens
+		 * nothing */
+		if (plat_menu_with(st, l2 ? IN_L2 : IN_R2, ev->value == 1, fn.down)) {
+			if (ev->value) fn.chorded = true;
+			if (!l2_down && !r2_down) l2r2_chorded = false;
+			return;
+		}
 		if (!both && l2_down && r2_down) {
 			ask_gauge();
 			l2r2_chorded = true;
@@ -1005,6 +989,12 @@ static void key_event(in_state *st, const struct input_event *ev)
 		if (keymap[i].code == ev->code) {
 			const in_button b = keymap[i].b;
 
+			/* Under FUNCTION, MENU's chord when the launcher takes it, as
+			 * a volume key is brightness under it */
+			if (plat_menu_with(st, b, ev->value == 1, fn.down)) {
+				if (ev->value) fn.chorded = true;
+				return;
+			}
 			/* A d-pad key: held while it or the stick holds it */
 			if (b == IN_LEFT || b == IN_RIGHT || b == IN_UP || b == IN_DOWN) {
 				dpad_key[b] = ev->value == 1;
@@ -1044,6 +1034,7 @@ void plat_input_wait(unsigned ms)
 	/* POWER held in Hold mode: woken for the pill's next segment and the
 	 * hold's end, which no event marks; and the work behind every screen
 	 * (the downloads' lanes, plat_on_input_wait) has its step */
+	wdog_feed();
 	ms = plat_input_wait_hook(plat_power_wait(ms));
 	if (!n) { SDL_Delay(ms); return; }
 	/* A signal ends it early too, which is what a stop should do */
@@ -1054,13 +1045,11 @@ void plat_input_poll(in_state *st)
 {
 	SDL_Event e;
 
+	wdog_feed();
 	memset(st->pressed, 0, sizeof st->pressed);
 	st->power_tap = false;
 	if (plat_terminating()) st->quit_requested = true;
-	if (menu_release_next) {
-		plat_set_btn(st, IN_MENU, false);
-		menu_release_next = false;
-	}
+	menuvol_poll(&fn, st);
 	if (l2_tap) { plat_set_btn(st, IN_L2, false); l2_tap = false; }
 	if (r2_tap) { plat_set_btn(st, IN_R2, false); r2_tap = false; }
 	/* Whoever pumps input owns the volume; see the Brick's file. */
@@ -1071,6 +1060,7 @@ void plat_input_poll(in_state *st)
 	poll_fd(fd_keys, st);
 	poll_fd(fd_power, st);
 	plat_power_poll(st);
+	plat_menu_after(st);
 }
 
 /* The turn-off from the power key's queue, while a game or a program owns the
@@ -1301,7 +1291,8 @@ static void screen_colors_share(void)
  * Night Mode's */
 static int night_now(time_t now)
 {
-	return night_preview > 0 ? night_preview : panelgamma_night_at(&night_sched, (long long)now);
+	return night_preview > 0 ? night_preview : night_preview < 0 ? 0
+	     : panelgamma_night_at(&night_sched, (long long)now);
 }
 
 /* Night Mode's nights about `now` in this zone, and the file written again
@@ -1417,7 +1408,7 @@ void plat_night(const struct night_cfg *n)
 
 void plat_night_preview(int warmth)
 {
-	night_preview = warmth < 0 ? 0 : warmth > PANELGAMMA_NIGHT_MAX ? PANELGAMMA_NIGHT_MAX : warmth;
+	night_preview = warmth < 0 ? -1 : warmth > PANELGAMMA_NIGHT_MAX ? PANELGAMMA_NIGHT_MAX : warmth;
 	night_want(false);
 }
 
@@ -1607,6 +1598,8 @@ bool plat_cable_link(char *addr, size_t n)
  * charger detection marks a computer's port SDP or CDP and a wall charger
  * DCP, with or without the gadget bound, and USB-HOST is the ID pin of a host
  * cable. Every extcon's "state" is read, lines like "SDP=1". */
+static void link_setup(void);
+
 usb_peer plat_usb_peer(void)
 {
 	DIR *d;
@@ -1614,6 +1607,11 @@ usb_peer plat_usb_peer(void)
 	bool host = false, data = false, dcp = false;
 	char in[8] = "";
 	int fd;
+
+	/* The link's work, at every look at the port: a job that ended said,
+	 * what was asked started (gadget.h) */
+	link_setup();
+	gadget_pump();
 
 	/* No power coming in is nothing on the port, whatever the extcon still
 	 * says: the RK817's input answers on its own interrupt, at once, where
@@ -1652,6 +1650,8 @@ usb_peer plat_usb_peer(void)
  * writing its name into UDC, and let go by writing nothing. S40usbgadget
  * binds it at boot only in Developer Mode (usblink.h). */
 #define GADGET_UDC "/sys/kernel/config/usb_gadget/px2/UDC"
+/* The computer's address on the link, the one udhcpd gives (udhcpd.conf) */
+#define CABLE_PEER "10.42.0.2"
 
 static bool dhcpd_running(void);
 
@@ -1663,6 +1663,31 @@ static bool dhcpd_running(void);
  * told the computer it was connected (a Mac's en8 "inactive", the steps'
  * "no driver" hint). Only what is missing is done: an address already there
  * is left alone, never flushed. */
+/* Whether cable_netdev_up has work: usb0 down, or up with no address. Two
+ * small reads, for the main thread (the work is the network thread's). */
+static bool netdev_missing(void)
+{
+	char buf[32];
+	unsigned long flags = 0;
+	struct ifreq ifr;
+	int fd;
+	ssize_t got;
+	bool has;
+
+	if ((fd = open("/sys/class/net/usb0/flags", O_RDONLY | O_CLOEXEC)) < 0) return false;
+	got = read(fd, buf, sizeof buf - 1);
+	close(fd);
+	if (got > 0) { buf[got] = '\0'; flags = strtoul(buf, NULL, 16); }
+	if (!(flags & 1)) return true;             /* IFF_UP */
+	if ((fd = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0)) < 0) return false;
+	memset(&ifr, 0, sizeof ifr);
+	snprintf(ifr.ifr_name, sizeof ifr.ifr_name, "usb0");
+	ifr.ifr_addr.sa_family = AF_INET;
+	has = ioctl(fd, SIOCGIFADDR, &ifr) == 0;
+	close(fd);
+	return !has;
+}
+
 static void cable_netdev_up(void)
 {
 	char buf[32];
@@ -1703,42 +1728,88 @@ static void cable_netdev_up(void)
 	}
 }
 
+/* The cable's network, brought up off the main thread: cable_netdev_up's ip
+ * and udhcpd (spawn_capture, up to 3 s each) after a new bind and whenever
+ * plat_cable_sense finds something missing, and udhcpd started again when it
+ * died. A thread that takes each ask once; asks while it works are one more
+ * turn, not one each. */
+enum { NET_UP = 1, NET_DHCPD = 2 };
+static pthread_mutex_t net_mx = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t  net_cv = PTHREAD_COND_INITIALIZER;
+static unsigned        net_asked;
+static bool            net_thread;
+
+static void dhcpd_again(void)
+{
+	if (!dhcpd_running() && access("/etc/udhcpd.conf", R_OK) == 0) {
+		char *argv[] = { "/usr/sbin/udhcpd", "/etc/udhcpd.conf", NULL };
+
+		fprintf(stderr, "usb: udhcpd was not running, started again (%d)\n",
+		        spawn_capture(argv, NULL, 0, 3));
+	}
+}
+
+static void *net_run(void *arg)
+{
+	(void)arg;
+	pthread_mutex_lock(&net_mx);
+	for (;;) {
+		unsigned what;
+
+		while (!net_asked) pthread_cond_wait(&net_cv, &net_mx);
+		what = net_asked;
+		net_asked = 0;
+		pthread_mutex_unlock(&net_mx);
+		if (what & NET_UP) cable_netdev_up();
+		if (what & NET_DHCPD) dhcpd_again();
+		pthread_mutex_lock(&net_mx);
+	}
+	return NULL;
+}
+
+static void net_ask(unsigned what)
+{
+	pthread_mutex_lock(&net_mx);
+	if (!net_thread) {
+		pthread_t t;
+
+		net_thread = pthread_create(&t, NULL, net_run, NULL) == 0;
+		if (net_thread) pthread_detach(t);
+	}
+	net_asked |= what;
+	pthread_cond_signal(&net_cv);
+	pthread_mutex_unlock(&net_mx);
+	if (!net_thread) {                       /* no thread: here, as before */
+		if (what & NET_UP) cable_netdev_up();
+		if (what & NET_DHCPD) dhcpd_again();
+	}
+}
+
+static void after_bind(void) { net_ask(NET_UP); }
+
+/* The gadget's link (gadget.h): asked for and never waited on; its writes
+ * in hwput's child */
+static void link_setup(void)
+{
+	static bool done;
+
+	if (done) return;
+	done = true;
+	gadget_init(&(gadget_cfg){ NULL, "/sys/class/udc", GADGET_UDC, NULL, "usb0", CABLE_PEER, true,
+	                           after_bind, plat_now_ms });
+}
+
 bool plat_usb_link(int op)
 {
-	char cur[64] = "";
-	int fd = open(GADGET_UDC, O_RDONLY | O_CLOEXEC);
+	link_setup();
+	return gadget_link(op);
+}
 
-	if (fd < 0) return false;                  /* no gadget: S40 has not run */
-	if (read(fd, cur, sizeof cur - 1) < 0) cur[0] = '\0';
-	close(fd);
-	if (op == 2) {
-		plat_usb_link(0);
-		return plat_usb_link(1);
-	}
-	if (op < 0 || (op == 1) == (cur[0] != '\0' && cur[0] != '\n'))
-		return cur[0] != '\0' && cur[0] != '\n';
-	if (op == 1) {
-		DIR *d = opendir("/sys/class/udc");
-		struct dirent *e;
-		char udc[256] = "";
-
-		if (!d) return false;
-		while ((e = readdir(d)))
-			if (e->d_name[0] != '.') { snprintf(udc, sizeof udc, "%s", e->d_name); break; }
-		closedir(d);
-		if (!udc[0] || (fd = open(GADGET_UDC, O_WRONLY | O_CLOEXEC)) < 0) return false;
-		if (write(fd, udc, strlen(udc)) < 0) { close(fd); return false; }
-		close(fd);
-		fprintf(stderr, "usb: the link to the computer is on (%s)\n", udc);
-		cable_netdev_up();
-		return true;
-	}
-	if ((fd = open(GADGET_UDC, O_WRONLY | O_CLOEXEC)) < 0) return true;
-	/* An empty line unbinds; a write of nothing at all is ignored */
-	if (write(fd, "\n", 1) < 0) { close(fd); return true; }
-	close(fd);
-	fprintf(stderr, "usb: the link to the computer is off: charging only\n");
-	return false;
+int plat_usb_configured(void)
+{
+	link_setup();
+	gadget_pump();
+	return gadget_configured();
 }
 
 /* File Transfer's steps over the cable (linksteps.h), from the device's own
@@ -1749,7 +1820,6 @@ bool plat_usb_link(int op)
  * the computer's side of the link has a fixed MAC address, so it is the same
  * one every plug), and a datagram to it makes the kernel ask for it by ARP:
  * a computer that took the address answers, whatever its firewall says. */
-#define CABLE_PEER "10.42.0.2"
 
 /* udhcpd, which S40usbgadget starts at boot, is the computer's only way to
  * an address: one that died leaves every computer on the cable without one
@@ -1822,7 +1892,7 @@ bool plat_cable_sense(link_sense *o)
 	 * left down: brought up here too, every 2 s at most */
 	if (o->configured && (!netdev_at || now - netdev_at >= 2000u)) {
 		netdev_at = now ? now : 1;
-		cable_netdev_up();
+		if (netdev_missing()) net_ask(NET_UP);
 	}
 	o->carrier = o->configured &&
 	             read_small("/sys/class/net/usb0/carrier", buf, sizeof buf) && buf[0] == '1';
@@ -1832,12 +1902,7 @@ bool plat_cable_sense(link_sense *o)
 	/* No address yet: udhcpd started again if it is gone, every 5 s at most */
 	if (!o->address && (!dhcpd_at || now - dhcpd_at >= 5000u)) {
 		dhcpd_at = now ? now : 1;
-		if (!dhcpd_running() && access("/etc/udhcpd.conf", R_OK) == 0) {
-			char *argv[] = { "/usr/sbin/udhcpd", "/etc/udhcpd.conf", NULL };
-
-			fprintf(stderr, "usb: udhcpd was not running, started again (%d)\n",
-			        spawn_capture(argv, NULL, 0, 3));
-		}
+		net_ask(NET_DHCPD);
 	}
 	if (!o->address && (!asked_at || now - asked_at >= 1000u)) {
 		int fd = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
@@ -2009,34 +2074,16 @@ bool plat_usb_iphone(void)
 }
 
 /* The USB controller lets go of the cable and takes it again, so the computer
- * sees a new device plugged in. Seen 2026-10-08: the Mac dropped the Pixel as
- * if unplugged while the controller here went on saying "configured" and never
- * offered itself again; a restart was the only way back. A third of a second
- * apart, long enough for the computer to notice it went. */
+ * sees a new device plugged in, when the link needs it (cablefresh.h). Seen
+ * 2026-10-08: the Mac dropped the Pixel as if unplugged while the controller
+ * here went on saying "configured" and never offered itself again; a restart
+ * was the only way back. Made every time File Transfer opened, it hung the
+ * controller once over a link in use (2026-11-21), so only now when the
+ * computer does not answer over it, or it is not whole. */
 void plat_cable_reconnect(void)
 {
-	static const struct timespec gap = { 0, 300 * 1000000L };
-	DIR *d = opendir("/sys/class/udc");
-	struct dirent *e;
-
-	if (!d) return;
-	while ((e = readdir(d))) {
-		char path[300];
-		int fd;
-
-		if (e->d_name[0] == '.') continue;
-		snprintf(path, sizeof path, "/sys/class/udc/%s/soft_connect", e->d_name);
-		if ((fd = open(path, O_WRONLY | O_CLOEXEC)) < 0) continue;
-		if (write(fd, "disconnect", 10) < 0) { /* left as it was */ }
-		close(fd);
-		nanosleep(&gap, NULL);
-		if ((fd = open(path, O_WRONLY | O_CLOEXEC)) < 0) continue;
-		if (write(fd, "connect", 7) < 0) { /* the next screen tries again */ }
-		close(fd);
-		fprintf(stderr, "wire: the cable connection made fresh\n");
-		break;
-	}
-	closedir(d);
+	link_setup();
+	gadget_fresh();
 }
 
 /* No mute switch on this device. */
@@ -2100,7 +2147,7 @@ bool plat_has_wifi(void)      { return access("/sys/class/net/wlan0", F_OK) == 0
 /* Bluetooth, the GPU's shaders, one speaker, brightness on FUNCTION with a
  * volume key (key_event), the side lights and Player 2: its profile's
  * (src/device/pixel2_profile.c). */
-bool plat_menu_held(void) { return fn_down; }
+bool plat_menu_held(void) { return fn.down; }
 bool plat_tap_held(in_button b) { return b == IN_L2 ? l2_down : b == IN_R2 ? r2_down : false; }
 
 /* MENU > Side Lights: one line on the card, in the file plastron's gauge reads

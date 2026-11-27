@@ -36,6 +36,9 @@ void pm_install_screen(app *a, const system_cfg *s, bool repair, const char *fai
                        bool crashed);
 void pm_after_run(app *a);
 void launch(app *a);
+/* The launch's core was named for it (px2-open's open, ctl_open_now): a
+ * game's own core (core_game_get) does not stand in for it */
+extern bool g_launch_core_named;
 
 /* What your PICO-8's programs beside it are handed (src/portmenu.h,
  * src/p8pad.h), for the cart `file` of the PICO-8 shelf `s` (its file in the

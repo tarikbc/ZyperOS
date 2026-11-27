@@ -323,6 +323,61 @@ de = Systemreihenfolge
 ja = システムの並び順
 it = Ordine dei sistemi
 
+[sysmenu.game_names]
+note = A MENU row, on the Display tab: how every shelf names its games, Short (the name without the tags in brackets) or File Name (the file's whole name, with them)
+en = Game Names
+zh-Hans = 游戏名称
+es = Nombres de juegos
+pt-BR = Nomes dos jogos
+fr = Noms des jeux
+de = Spielnamen
+ja = ゲーム名
+it = Nomi dei giochi
+
+[sysmenu.names_short]
+note = Game Names' value, as it ships: each game by its name, the tags in brackets after it left out ("Final Fantasy VII")
+en = Short
+zh-Hans = 简短
+es = Cortos
+pt-BR = Curtos
+fr = Courts
+de = Kurz
+ja = 短く
+it = Brevi
+
+[sysmenu.names_file]
+note = Game Names' value: each game by its file's whole name on the card, with every tag in brackets ("Final Fantasy VII (USA) (Disc 1)"). The same word as the file name in the glossary
+en = File Name
+zh-Hans = 文件名
+es = Nombre de archivo
+pt-BR = Nome do arquivo
+fr = Nom de fichier
+de = Dateiname
+ja = ファイル名
+it = Nome del file
+
+[sysmenu.names_short_note]
+note = What Short does, under Game Names' list (sysmenu.names_short): each game by its name, without the tags in brackets the file has. Two short lines at most: keep the words before the example short, and the example name as it is, in English
+en = Without the tags: Final Fantasy VII
+zh-Hans = 不带标签：Final Fantasy VII
+es = Sin las etiquetas: Final Fantasy VII
+pt-BR = Sem as etiquetas: Final Fantasy VII
+fr = Sans les mentions : Final Fantasy VII
+de = Ohne Zusätze: Final Fantasy VII
+ja = タグなし：Final Fantasy VII
+it = Senza le etichette: Final Fantasy VII
+
+[sysmenu.names_file_note]
+note = What File Name does, under Game Names' list (sysmenu.names_file): each game by its file's whole name, with every tag in brackets (region, revision, disc, version). Two short lines at most: keep the words before the example short, and the example name as it is
+en = With every tag: Final Fantasy VII (USA) (Disc 1)
+zh-Hans = 含所有标签：Final Fantasy VII (USA) (Disc 1)
+es = Con todas las etiquetas: Final Fantasy VII (USA) (Disc 1)
+pt-BR = Com todas as etiquetas: Final Fantasy VII (USA) (Disc 1)
+fr = Avec toutes les mentions : Final Fantasy VII (USA) (Disc 1)
+de = Mit allen Zusätzen: Final Fantasy VII (USA) (Disc 1)
+ja = タグもすべて：Final Fantasy VII (USA) (Disc 1)
+it = Con tutte le etichette: Final Fantasy VII (USA) (Disc 1)
+
 [sysmenu.order_az]
 note = System Order's value: by name
 en = A to Z
@@ -855,6 +910,17 @@ de = Sortieren nach
 ja = 並べ替え
 it = Ordina per
 
+[sysmenu.favorites_first]
+note = A system menu row under Sort By, On or Off: the shelf's favorite games ahead of its other games, each part in the Sort By order
+en = Favorites First
+zh-Hans = 收藏优先
+es = Favoritos primero
+pt-BR = Favoritos primeiro
+fr = Favoris en premier
+de = Favoriten zuerst
+ja = お気に入りを先頭に
+it = Preferiti in cima
+
 
 [sysmenu.rescan]
 note = A system menu row: look at the card's folders again
@@ -1121,6 +1187,171 @@ fr = Le son en 32 barres sur toute la largeur de l'écran, sous la pochette.
 de = Der Klang als 32 Balken über den ganzen Bildschirm, unter dem Cover.
 ja = 音を画面いっぱいの 32 本のバーで表示します。ジャケットはその上に表示します。
 it = Il suono in 32 barre su tutto lo schermo, sotto la copertina.
+
+[sysmenu.mp4_tape]
+note = MP4's menu row on the music shelf, under Player Look: which cassette the Cassette look draws (Pinstripe, Metal, Worn...); live only while the look is Cassette; A opens the list, its picture the tape playing
+en = Tape Style
+zh-Hans = 磁带样式
+es = Estilo de casete
+pt-BR = Estilo da fita
+fr = Style de cassette
+de = Kassettenstil
+ja = カセットのスタイル
+it = Stile cassetta
+
+[sysmenu.tape_pinstripe]
+note = A Tape Style, the default: a black shell, a cream label and five thin red stripes, drawn as pixel art. Begun with a capital
+en = Pinstripe
+zh-Hans = 细条纹
+es = Rayas finas
+pt-BR = Risca de giz
+fr = Fines rayures
+de = Nadelstreifen
+ja = ピンストライプ
+it = Gessato
+
+[sysmenu.tape_pinstripe_note]
+note = Under Tape Style's picture when Pinstripe is under the cursor
+en = A black shell, a cream label and red pinstripes, in pixel art.
+zh-Hans = 黑色外壳、米色标签和红色细条纹，像素画风。
+es = Carcasa negra, etiqueta crema y rayas rojas finas, en pixel art.
+pt-BR = Carcaça preta, etiqueta creme e riscas vermelhas, em pixel art.
+fr = Boîtier noir, étiquette crème et fines rayures rouges, en pixel art.
+de = Schwarzes Gehäuse, cremefarbenes Etikett, rote Nadelstreifen, in Pixelgrafik.
+ja = 黒いシェル、クリーム色のラベル、赤い細いストライプ。ドット絵です。
+it = Guscio nero, etichetta crema e righe rosse sottili, in pixel art.
+
+[sysmenu.tape_band]
+note = A Tape Style: a black shell and cream label with a wide band in the album cover's main color, drawn as pixel art. Begun with a capital
+en = Cover Band
+zh-Hans = 封面色带
+es = Franja de portada
+pt-BR = Faixa da capa
+fr = Bande pochette
+de = Coverstreifen
+ja = ジャケット帯
+it = Fascia copertina
+
+[sysmenu.tape_band_note]
+note = Under Tape Style's picture when Cover Band is under the cursor
+en = A black shell and a band in the cover's color, in pixel art.
+zh-Hans = 黑色外壳和一条封面颜色的色带，像素画风。
+es = Carcasa negra y una franja del color de la portada, en pixel art.
+pt-BR = Carcaça preta e uma faixa na cor da capa, em pixel art.
+fr = Boîtier noir et une bande à la couleur de la pochette, en pixel art.
+de = Schwarzes Gehäuse und ein Streifen in der Farbe des Covers, in Pixelgrafik.
+ja = 黒いシェルにジャケットの色の帯。ドット絵です。
+it = Guscio nero e una fascia del colore della copertina, in pixel art.
+
+[sysmenu.tape_ferric]
+note = A Tape Style: a cream shell with a sage line and a brown band, as an old ferric (normal bias) tape, drawn as pixel art. Begun with a capital
+en = Ferric
+zh-Hans = 铁氧体
+es = Férrico
+pt-BR = Férrico
+fr = Ferrique
+de = Ferro
+ja = フェリック
+it = Ferrico
+
+[sysmenu.tape_ferric_note]
+note = Under Tape Style's picture when Ferric is under the cursor
+en = A cream shell, a sage line and a brown band, in pixel art.
+zh-Hans = 米色外壳、灰绿色线条和棕色色带，像素画风。
+es = Carcasa crema, una línea verde salvia y una franja marrón, en pixel art.
+pt-BR = Carcaça creme, uma linha verde-sálvia e uma faixa marrom, em pixel art.
+fr = Boîtier crème, un filet vert sauge et une bande brune, en pixel art.
+de = Cremefarbenes Gehäuse, salbeigrüne Linie, braunes Band, in Pixelgrafik.
+ja = クリーム色のシェルにセージ色の線と茶色の帯。ドット絵です。
+it = Guscio crema, una linea verde salvia e una fascia marrone, in pixel art.
+
+[sysmenu.tape_metal]
+note = A Tape Style: a black shell and a black label printed in gold, as a metal (type IV) tape, drawn as pixel art. Begun with a capital
+en = Metal
+zh-Hans = 金属
+es = Metal
+pt-BR = Metal
+fr = Métal
+de = Metall
+ja = メタル
+it = Metal
+
+[sysmenu.tape_metal_note]
+note = Under Tape Style's picture when Metal is under the cursor
+en = A black shell and a black label printed in gold, in pixel art.
+zh-Hans = 黑色外壳和烫金印刷的黑色标签，像素画风。
+es = Carcasa negra y una etiqueta negra impresa en oro, en pixel art.
+pt-BR = Carcaça preta e etiqueta preta impressa em dourado, em pixel art.
+fr = Boîtier noir et étiquette noire imprimée en or, en pixel art.
+de = Schwarzes Gehäuse, schwarzes Etikett mit Golddruck, in Pixelgrafik.
+ja = 黒いシェルに金で印刷した黒いラベル。ドット絵です。
+it = Guscio nero ed etichetta nera stampata in oro, in pixel art.
+
+[sysmenu.tape_clear]
+note = A Tape Style: a see-through shell with its reels in full view and a label card along the top, drawn as pixel art. Begun with a capital
+en = Clear
+zh-Hans = 透明
+es = Transparente
+pt-BR = Transparente
+fr = Transparent
+de = Transparent
+ja = クリア
+it = Trasparente
+
+[sysmenu.tape_clear_note]
+note = Under Tape Style's picture when Clear is under the cursor
+en = A see-through shell, its reels in full view, in pixel art.
+zh-Hans = 透明外壳，卷轴一览无余，像素画风。
+es = Carcasa transparente con las bobinas a la vista, en pixel art.
+pt-BR = Carcaça transparente com os carretéis à vista, em pixel art.
+fr = Boîtier transparent, bobines bien visibles, en pixel art.
+de = Durchsichtiges Gehäuse, die Spulen ganz zu sehen, in Pixelgrafik.
+ja = リールがすべて見える透明なシェル。ドット絵です。
+it = Guscio trasparente con le bobine in vista, in pixel art.
+
+[sysmenu.tape_red]
+note = A Tape Style: a red shell, a cream label and three black stripes, drawn as pixel art. Begun with a capital
+en = Red
+zh-Hans = 红色
+es = Rojo
+pt-BR = Vermelho
+fr = Rouge
+de = Rot
+ja = レッド
+it = Rosso
+
+[sysmenu.tape_red_note]
+note = Under Tape Style's picture when Red is under the cursor
+en = A red shell, a cream label and three black stripes, in pixel art.
+zh-Hans = 红色外壳、米色标签和三条黑色条纹，像素画风。
+es = Carcasa roja, etiqueta crema y tres rayas negras, en pixel art.
+pt-BR = Carcaça vermelha, etiqueta creme e três listras pretas, em pixel art.
+fr = Boîtier rouge, étiquette crème et trois bandes noires, en pixel art.
+de = Rotes Gehäuse, cremefarbenes Etikett, drei schwarze Streifen, in Pixelgrafik.
+ja = 赤いシェル、クリーム色のラベル、3本の黒いライン。ドット絵です。
+it = Guscio rosso, etichetta crema e tre righe nere, in pixel art.
+
+[sysmenu.tape_worn]
+note = A Tape Style: a tape played for years, its label yellowed, stained and peeling, drawn as pixel art. Begun with a capital
+en = Worn
+zh-Hans = 旧磁带
+es = Gastado
+pt-BR = Gasta
+fr = Usée
+de = Abgenutzt
+ja = 使い古し
+it = Consumata
+
+[sysmenu.tape_worn_note]
+note = Under Tape Style's picture when Worn is under the cursor
+en = A tape played for years: yellowed, stained and peeling, in pixel art.
+zh-Hans = 一盘听了多年的磁带：泛黄、有污渍、标签翘起，像素画风。
+es = Una cinta de años de uso: amarillenta, manchada y despegada. Pixel art.
+pt-BR = Uma fita ouvida por anos: amarelada, manchada e descolando, em pixel art.
+fr = Une cassette écoutée pendant des années : jaunie, tachée, décollée, en pixel art.
+de = Eine jahrelang gehörte Kassette: vergilbt, fleckig, abgelöst, in Pixelgrafik.
+ja = 何年も聴いたテープ。黄ばみ、しみ、はがれ。ドット絵です。
+it = Una cassetta ascoltata per anni: ingiallita, macchiata e scollata, in pixel art.
 
 [sysmenu.mp4_lock]
 note = MP4's menu row: turn the screen off and keep the music playing

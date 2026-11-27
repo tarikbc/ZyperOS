@@ -7,7 +7,8 @@
  * src/saver.h's policy, with no SDL and no device: the delay's ladder, when
  * it starts and what keeps it from starting (a button, music, a long task, a
  * low battery), when it ends on its own, how each clip fades and when the
- * next is asked for, and which is picked. The launcher's half - the loop's
+ * next is asked for, which is picked, and where a cover (clear of both
+ * slabs) and a snap (the whole screen) go. The launcher's half - the loop's
  * passes, the daemon, the drawing - is src/main.c's saver_*, looked at in the
  * host shots and the VM.
  *
@@ -17,6 +18,7 @@
  * not, and Auto Off fires at its own time whether the screensaver is up or
  * not, because the screensaver does nothing to Auto Off's clock.
  */
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -273,6 +275,118 @@ int main(void)
 			picked = next;
 			saver_recent_add(&r, picked);
 		}
+	}
+
+	/* Where a cover goes (saver_art_place): clear of both slabs by the gap,
+	 * on the screen, in its own shape, in the middle of the width, for a
+	 * tall, a wide and a square cover, the shapes of the snaps, a thin one of
+	 * each way, and a slab of each width */
+	{
+		static const int shapes[][2] = { { 300, 420 }, { 420, 236 }, { 320, 320 }, { 640, 480 },
+		                                 { 640, 360 }, { 256, 384 }, { 1, 900 }, { 900, 1 } };
+		static const float game_w[] = { 200, 432, 928 }, keys_w[] = { 300, 380, 520 };
+
+		for (size_t s = 0; s < sizeof shapes / sizeof shapes[0]; s++)
+			for (size_t g = 0; g < 3; g++)
+				for (size_t k = 0; k < 3; k++) {
+					saver_rect game = { 48, 768 - 48 - 134, game_w[g], 134 };
+					saver_rect keys = { 1024 - 48 - keys_w[k], 48, keys_w[k], 112 };
+					saver_rect gg = { game.x - 12, game.y - 12, game.w + 24, game.h + 24 };
+					saver_rect kk = { keys.x - 12, keys.y - 12, keys.w + 24, keys.h + 24 };
+					saver_rect at = saver_art_place(1024, 768, game, keys, 12, shapes[s][0], shapes[s][1],
+					                                1.34f);
+					float want = (float)shapes[s][0] / shapes[s][1];
+
+					CHECK(at.w > 0 && at.h > 0, "a %dx%d cover has a place", shapes[s][0], shapes[s][1]);
+					CHECK(!saver_rect_meet(at, gg) && !saver_rect_meet(at, kk),
+					      "a %dx%d cover clear of the slabs (%.0f,%.0f %.0fx%.0f)",
+					      shapes[s][0], shapes[s][1], at.x, at.y, at.w, at.h);
+					CHECK(at.x >= -0.01f && at.y >= -0.01f && at.x + at.w <= 1024.01f && at.y + at.h <= 768.01f,
+					      "a %dx%d cover on the screen", shapes[s][0], shapes[s][1]);
+					CHECK(at.w <= 0 || fabsf(at.w / at.h - want) < want * 0.01f + 0.01f,
+					      "a %dx%d cover in its own shape", shapes[s][0], shapes[s][1]);
+					CHECK(fabsf(at.x + at.w / 2 - 512) < 0.5f, "a %dx%d cover in the middle",
+					      shapes[s][0], shapes[s][1]);
+				}
+		/* a cover is not blown up past a third more */
+		{
+			saver_rect game = { 48, 586, 400, 134 }, keys = { 650, 48, 326, 112 };
+			saver_rect c = saver_art_place(1024, 768, game, keys, 12, 64, 64, 1.34f);
+
+			CHECK(c.w <= 64 * 1.34f + 0.01f, "a small cover at most a third larger (%.1f)", c.w);
+		}
+	}
+
+	/* A snap over the whole screen (saver_fit), the slabs over it, as before
+	 * 2026-11-23: the full width or the full height, in its own shape, in the
+	 * middle both ways, on the 4:3 screen and the Smart Pro's wide one */
+	{
+		static const int snaps[][2] = { { 640, 480 }, { 640, 360 }, { 256, 384 }, { 320, 240 } };
+		static const float screens[][2] = { { 1024, 768 }, { 1368, 768 } };
+
+		for (size_t c = 0; c < 2; c++)
+			for (size_t s = 0; s < sizeof snaps / sizeof snaps[0]; s++) {
+				float W = screens[c][0], H = screens[c][1];
+				saver_rect at = saver_fit((saver_rect){ 0, 0, W, H }, snaps[s][0], snaps[s][1], 8.0f);
+				float want = (float)snaps[s][0] / snaps[s][1];
+
+				CHECK(fabsf(at.w - W) < 0.01f || fabsf(at.h - H) < 0.01f,
+				      "a %dx%d snap the whole width or height of %.0fx%.0f (%.1fx%.1f)", snaps[s][0],
+				      snaps[s][1], W, H, at.w, at.h);
+				CHECK(at.w <= W + 0.01f && at.h <= H + 0.01f, "a %dx%d snap on the screen", snaps[s][0],
+				      snaps[s][1]);
+				CHECK(fabsf(at.w / at.h - want) < want * 0.001f, "a %dx%d snap in its own shape",
+				      snaps[s][0], snaps[s][1]);
+				CHECK(fabsf(at.x + at.w / 2 - W / 2) < 0.01f && fabsf(at.y + at.h / 2 - H / 2) < 0.01f,
+				      "a %dx%d snap in the middle", snaps[s][0], snaps[s][1]);
+			}
+		/* not blown up past 8 times, and nothing for a picture with no size */
+		{
+			saver_rect tiny = saver_fit((saver_rect){ 0, 0, 1024, 768 }, 16, 12, 8.0f);
+			saver_rect none = saver_fit((saver_rect){ 0, 0, 1024, 768 }, 0, 480, 8.0f);
+
+			CHECK(fabsf(tiny.w - 128) < 0.01f && fabsf(tiny.x - 448) < 0.01f,
+			      "a 16x12 snap at most 8 times, in the middle (%.1f at %.1f)", tiny.w, tiny.x);
+			CHECK(none.w == 0 && none.h == 0, "a snap with no size has no place");
+		}
+	}
+
+	/* ---- another had the screen (saver_beat) ---- */
+	{
+		/* The passes as saver_pass makes them: lost? at its start, done at
+		 * its end. Its first clip's snap opening in mp4d takes 900 ms (a
+		 * Pixel 2, 2026-11-21: 213 ends in 40 minutes, each "something else
+		 * had the screen (1 s)"); the next passes at 16 ms */
+		saver_beat b;
+		unsigned t = 50000;
+		int lost = 0;
+
+		saver_beat_clear(&b);
+		CHECK(!saver_beat_lost(&b, t), "lost at its first pass");
+		t += 900;                                   /* the first pass opens the snap */
+		saver_beat_done(&b, t);
+		for (i = 0; i < 200; i++) {
+			t += 16;
+			if (saver_beat_lost(&b, t)) lost++;
+			/* every 50 passes another clip: its snap opens slowly too */
+			t += i % 50 == 49 ? 1200 : 2;
+			saver_beat_done(&b, t);
+		}
+		CHECK(lost == 0, "its own slow snap openings ended it %d times", lost);
+		/* A menu over it for 3 s, then its pass again: lost */
+		t += 3000;
+		CHECK(saver_beat_lost(&b, t), "a menu had the screen for 3 s, and it went on");
+		/* Just under the gap after its end: not lost; at it: lost */
+		saver_beat_done(&b, t);
+		CHECK(!saver_beat_lost(&b, t + SAVER_GAP_MS - 1), "lost under the gap");
+		CHECK(saver_beat_lost(&b, t + SAVER_GAP_MS), "not lost at the gap");
+		/* The clock wraps */
+		saver_beat_done(&b, 0xffffff00u);
+		CHECK(!saver_beat_lost(&b, 0xffffff00u + 300), "lost across the clock's wrap");
+		CHECK(saver_beat_lost(&b, 0xffffff00u + 800), "not lost across the wrap after 800 ms");
+		/* Ended, and started again much later: its first pass is no gap */
+		saver_beat_clear(&b);
+		CHECK(!saver_beat_lost(&b, 0xffffff00u + 900000), "lost at a fresh start's first pass");
 	}
 
 	if (failures) {

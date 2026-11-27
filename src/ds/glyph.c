@@ -301,6 +301,25 @@ static void g_build(ui_glyph g, g_shape *s)
 		g_line(s, 0.74f, 0.81f, 0.60f, 0.27f, G_W);
 		return;
 	}
+	if (g == UI_GLYPH_BEACON) {
+		/* A dot with two arcs at each side, as it sends out - the Link
+		 * Cable's Host, from its mock */
+		g_arc(s, 0.50f, 0.56f, 0.28f, 0.76f * pi, 1.24f * pi);
+		g_arc(s, 0.50f, 0.56f, 0.47f, 0.78f * pi, 1.22f * pi);
+		g_arc(s, 0.50f, 0.56f, 0.28f, -0.24f * pi, 0.24f * pi);
+		g_arc(s, 0.50f, 0.56f, 0.47f, -0.22f * pi, 0.22f * pi);
+		g_line(s, 0.50f, 0.56f, 0.50f, 0.56f, 0.16f);
+		return;
+	}
+	if (g == UI_GLYPH_SEARCH) {
+		/* A magnifying glass, its handle to the bottom right - the Link
+		 * Cable's Join. The lens in four quarters, as CLOCK's face */
+		int q;
+
+		for (q = 0; q < 4; q++) g_arc(s, 0.42f, 0.42f, 0.25f, q * 0.5f * pi, (q + 1) * 0.5f * pi);
+		g_line(s, 0.61f, 0.61f, 0.86f, 0.86f, G_W);
+		return;
+	}
 	if (g == UI_GLYPH_WAND) {
 		/* A wand from the bottom left, a star at its tip and two sparkles -
 		 * cheats */

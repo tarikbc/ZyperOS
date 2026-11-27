@@ -323,7 +323,7 @@ ja = クイックロード
 it = Caricamento rapido
 
 [controls.faster]
-note = What SELECT+R2 does in a game: the game runs faster, a step a press (1.5x, 2x, 3x).
+note = What SELECT+R2 does in a game: the game runs faster, a step a press (1.5x, 2x, 3x, Max).
 en = Faster
 zh-Hans = 加速
 es = Más rápido

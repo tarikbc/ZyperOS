@@ -71,6 +71,13 @@ Diatom's.
   Realtek's firmware for the chip, `rtl8188eufw.bin`, which is closed and
   redistributed as Buildroot's package does. **hostapd** (BSD-3-Clause),
   http://w1.fi, runs the access point.
+- **Realtek's rtw88 firmware**, from **linux-firmware** 20251011,
+  https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git:
+  the ten `rtw88/rtw*.bin` that Buildroot's
+  `BR2_PACKAGE_LINUX_FIRMWARE_RTL_RTW88` installs (837,776 bytes), for the
+  kernel's rtw88 driver; the RTL8822BU AC1200 USB adapters load
+  `rtw8822b_fw.bin`. Closed, and redistributable: linux-firmware's `WHENCE`
+  says so of every one of them, under `LICENCE.rtlwifi_firmware.txt`.
 - **Python** 3.14 (PSF-2.0 and others), https://python.org, with
   **libffi** (MIT), **xz**'s liblzma (0BSD and public domain) and
   **SDL2_mixer** (Zlib), https://libsdl.org: what **PortMaster**

@@ -96,8 +96,12 @@ typedef struct diatom_session {
 	bool          pace_smooth;
 	/* RUN hotkeys=: SELECT's keys (chord.h), "" for the shoulders' four */
 	const char   *hotkeys;
+	/* RUN ffspeed=: the speed Fast Forward turns on, "" for 2x */
+	const char   *ffspeed;
 	/* RUN shots=: a screenshot's folder and name, "" for none */
 	const char   *shots;
+	/* RUN menukeys=: MENU's chords (chord.h, mchord), "" for none */
+	const char   *menukeys;
 } diatom_session;
 
 static bool game_msg(const diatom_msg *m);
@@ -980,6 +984,7 @@ static uint64_t g_present_us;
  * pays one add each. */
 static uint64_t g_sound_made;
 static uint64_t g_pictures;
+static bool     g_frame_pic;     /* this core frame handed over a picture (not NULL) */
 
 /* The frame turned by the game's rotation (SET_ROTATION, see env.c), written
  * packed into g_frame. Libretro's quarter turns are counter-clockwise: a
@@ -1031,7 +1036,8 @@ void diatom_on_video(const void *data, unsigned w, unsigned h, size_t pitch)
 	size_t need;
 
 	if (!data) return;          /* dupe: keep the previous frame */
-	g_pictures++;
+	/* Counted in the frame loop, as the panel gets it (g_pictures) */
+	g_frame_pic = true;
 	/* Drawn by the GPU into the port's framebuffer (hw.c): no pixels to copy,
 	 * only the size. Not turned: no GPU core here asks for a rotation. */
 	if (data == RETRO_HW_FRAME_BUFFER_VALID) {
@@ -1361,10 +1367,11 @@ static void idle_note_input(bool any)
 }
 
 /* The speed. The step the player chose with SELECT+R2 (faster) and SELECT+L2
- * (slower), reset at every RUN and kept across the menu. A state on the state
- * plane that only Diatom writes: `SPEED x=1.5`, as the reply to `SPEED` and
- * unsolicited on every step, so the launcher can say so on screen - at the
- * ends too, where the step does not move, so a press is always answered.
+ * (slower), or with the Fast Forward hotkey, reset at every RUN and kept
+ * across the menu. A state on the state plane that only Diatom writes:
+ * `SPEED x=1.5`, as the reply to `SPEED` and unsolicited on every step, so the
+ * launcher can say so on screen - at the ends too, where the step does not
+ * move, so a press is always answered.
  *
  * The steps are in halves of the normal speed, and a half is what a fast turn
  * runs: a fast turn stands for two refreshes (below), so it runs one core
@@ -1372,9 +1379,22 @@ static void idle_note_input(bool any)
  * about 2.5x on a heavy SNES or GBA game, as 3x did, so it was a step that
  * said more than it did. Nothing under 1x: slow motion would stretch the
  * sound or drop it, and fast forward's silence is only right going fast.
- * MENU+R1 stepped 2x, 3x, 4x and off until 2026-11-07. */
-static const int SPEED_HALVES[] = { 2, 3, 4, 6 };
+ * MENU+R1 stepped 2x, 3x, 4x and off until 2026-11-07.
+ *
+ * And Max, past 3x (2026-11-23, asked for on the Discord: a Game Boy Pokemon
+ * game went faster under RetroArch on an RK3326): no step to hold to, a turn
+ * runs frames until the next would not fit its two refreshes, as a turn short
+ * of its step always has, and the loop never sleeps, so the game runs as fast
+ * as the handheld can run it and draw it 30 times a second. SPEED_MAX_HALVES
+ * is only a turn's ceiling, 32x, for a core that costs next to nothing (the
+ * stub, a desktop): no handheld game comes near it. Muted as every fast step. */
+#define SPEED_MAX_HALVES 64
+static const int SPEED_HALVES[] = { 2, 3, 4, 6, SPEED_MAX_HALVES };
 #define SPEED_STEPS ((int)(sizeof SPEED_HALVES / sizeof SPEED_HALVES[0]))
+#define SPEED_MAX_IX (SPEED_STEPS - 1)
+/* Fast Forward's speed from 1x (RUN ffspeed=, SETHOTKEYS ffspeed=): 2x until
+ * the launcher says another */
+#define SPEED_FF_DEFAULT_IX 2
 /* frameskip=steady: how many frames after the last that started late it
  * keeps drawing every second one, half a second, so a game that is slow by
  * moments does not change between 60 and 30 at every frame */
@@ -1385,6 +1405,17 @@ static const int SPEED_HALVES[] = { 2, 3, 4, 6 };
  * exit summary's figure for stretch, 6.6 to 7.0 ms, rounded up. */
 #define FAST_PRESENT_GUESS_US 7000.0
 static int  g_speed_ix;     /* into SPEED_HALVES; 0 is 1x */
+static int  g_ff_ix = SPEED_FF_DEFAULT_IX;  /* where Fast Forward goes from 1x */
+
+/* "1.5", "2", "3" or "max": Fast Forward's speed; anything else is 2x */
+static void ffspeed_set(const char *v)
+{
+	g_ff_ix = SPEED_FF_DEFAULT_IX;
+	if (!v) return;
+	if (!strcmp(v, "1.5"))      g_ff_ix = 1;
+	else if (!strcmp(v, "3"))   g_ff_ix = 3;
+	else if (!strcmp(v, "max")) g_ff_ix = SPEED_MAX_IX;
+}
 
 /* The speed in halves: 2 is 1x */
 static int speed_half(void)
@@ -1493,11 +1524,15 @@ static void step_report(int half, long frames, double turns_us, uint64_t held_us
                         const struct step_sleep *sl)
 {
 	double ran_us = held_us > paused ? (double)(held_us - paused) : 0.0;
+	char step[16];
 
-	printf("diatom: speed %.1fx held %.1fs, reached %.2fx (%.2fx of the clock), "
+	/* "1.5x", or "max", whose every turn is short of its ceiling */
+	if (half >= SPEED_MAX_HALVES) snprintf(step, sizeof step, "max");
+	else snprintf(step, sizeof step, "%.1fx", half / 2.0);
+	printf("diatom: speed %s held %.1fs, reached %.2fx (%.2fx of the clock), "
 	       "%llu audio frame(s) dropped, slept %.2fs (%.2fs after %ld of %ld turns short "
 	       "of the step), lost %.2fs\n",
-	       half / 2.0, held_us / 1000000.0,
+	       step, held_us / 1000000.0,
 	       turns_us > 0.0 ? (double)frames * frame_us / turns_us : 0.0,
 	       ran_us > 0.0 ? (double)frames * frame_us / ran_us : 0.0,
 	       (unsigned long long)dropped, sl->us / 1000000.0, sl->short_us / 1000000.0,
@@ -1505,10 +1540,11 @@ static void step_report(int half, long frames, double turns_us, uint64_t held_us
 	fflush(stdout);
 }
 
-/* "1", "1.5", "2", "3": the step as SPEED says it */
+/* "1", "1.5", "2", "3", "max": the step as SPEED says it */
 static void speed_said(int half, char *out, size_t n)
 {
-	if (half % 2) snprintf(out, n, "%d.5", half / 2);
+	if (half >= SPEED_MAX_HALVES) snprintf(out, n, "max");
+	else if (half % 2) snprintf(out, n, "%d.5", half / 2);
 	else          snprintf(out, n, "%d", half / 2);
 }
 
@@ -2316,7 +2352,7 @@ static bool state_plane_msg(const diatom_msg *m)
 		if (!stick_set(m->dmode, true))
 			diatom_proto_send("ERROR\tcode=bad_stick\tmsg=%s", m->dmode);
 		return true;
-	case DIATOM_MSG_SETHOTKEYS: hotkeys_set(m->hotkeys, true); return true;
+	case DIATOM_MSG_SETHOTKEYS: ffspeed_set(m->ffspeed); hotkeys_set(m->hotkeys, true); return true;
 	case DIATOM_MSG_PLAYER2:    player2_emit();      return true;
 	case DIATOM_MSG_SETPLAYER2: player2_set(m->on, m->buttons, m->players); return true;
 	case DIATOM_MSG_PREMAP:
@@ -2525,19 +2561,24 @@ static uint64_t g_power_calm_us;
 static chord    g_sel;
 static uint32_t g_sel_was, g_sel_pad, g_sel_live, g_sel_took;
 static unsigned g_sel_acts;
+/* MENU's chords (chord.h, mchord), judged at the same polls: the acts they
+ * made for the frame loop, and their keys as the launcher said them */
+static mchord   g_mc;
+static unsigned g_mc_acts;
 
 static uint32_t sel_poll(uint32_t pad, uint32_t pressed, uint32_t *give)
 {
 	const uint32_t view = chord_view(&g_sel, pad, g_sel_pad, pressed, g_sel_live);
 	chord_out o = chord_turn(&g_sel, view, g_sel_was,
 	                         diatom_port_now_us() / 1000, g_sel_live);
+	const uint32_t mine = mchord_poll(&g_mc, pad, pressed, &g_mc_acts);
 
 	g_sel_was = view;
 	g_sel_pad = pad;
 	g_sel_acts |= o.acts;
 	g_sel_took |= o.took;
-	*give = o.give;
-	return o.hide;
+	*give = o.give & ~mine;
+	return o.hide | mine;
 }
 
 /* SELECT's keys for each hotkey (chord.h): the shoulders' four unless the
@@ -2564,7 +2605,27 @@ static void sel_reset(uint32_t pad)
 	g_sel_was = g_sel_pad = pad;
 	g_sel_acts = 0;
 	g_sel_took = 0;
+	mchord_restart(&g_mc, pad);
+	g_mc_acts = 0;
 	diatom_env_poll_hook(sel_poll);
+}
+
+/* The launcher's MENU chords (RUN menukeys=): "" none, MENU's buttons the
+ * game's as ever */
+static void menukeys_set(const char *spec)
+{
+	int key[MCHORD_ACTS];
+
+	mchord_reset(&g_mc, g_sel_pad);
+	if (spec && spec[0]) {
+		if (mchord_keys_parse(spec, key)) {
+			mchord_set_keys(&g_mc, key);
+			printf("diatom: menu keys %s\n", spec);
+			fflush(stdout);
+		} else {
+			diatom_port_log(DIATOM_LOG_WARN, "menukeys: refused, none");
+		}
+	}
 }
 
 /* The launcher's keys: "" the shoulders' four. `say` answers HOTKEYS ok= */
@@ -2735,6 +2796,8 @@ static int run_session_inner(const diatom_session *sn)
 	g_speed_ix = 0;
 	g_sel_states = true;
 	hotkeys_set(sn->hotkeys, false);
+	menukeys_set(sn->menukeys);
+	ffspeed_set(sn->ffspeed);
 	snprintf(g_shots, sizeof g_shots, "%s", sn->shots ? sn->shots : "");
 	diatom_env_core_quit_reset();
 	g_audio_fast = false;
@@ -3266,9 +3329,19 @@ static int run_session_inner(const diatom_session *sn)
 			last_shown = shown;
 
 			diatom_env_frame_begin();
+			g_frame_pic = false;
 			g_core->run();
 			frames++;
 			ran++;
+			/* A picture is one the panel gets: FPS is those (emumeter.h). A
+			 * frame run undrawn under frameskip=late still hands over one, the
+			 * last frame's pixels again (DSperate), and it is not presented
+			 * (the present, below), so it is not counted: a DS game that left
+			 * out two frames in three read 60 fps (1.1.0). At 1x a turn is
+			 * one frame, so this is the present's own test; fast, each frame
+			 * of the turn drawn is counted, as the step's FPS always was. */
+			if (g_frame_pic && (shown || pace_present_undrawn(g_frame_gpu, fast, sn->late_skip)))
+				g_pictures++;
 			/* The game ended itself (env.c, RETRO_ENVIRONMENT_SHUTDOWN): no
 			 * frame more, and the session ends as a quit does */
 			if (diatom_env_core_quit()) break;
@@ -3317,7 +3390,8 @@ static int run_session_inner(const diatom_session *sn)
 			                                  g_pictures, run_us);
 
 			diatom_now_turn(t, emumeter_frames(&em, frames), run_us,
-			                speed_half() / 2.0, diatom_audio_dropped());
+			                g_speed_ix == SPEED_MAX_IX ? 0.0 : speed_half() / 2.0,
+			                diatom_audio_dropped());
 			if (card_due && t - t_start > paused_us && t - t_start - paused_us >= card_after) {
 				card_due = false;
 				if (diatom_hw_active()) card_later = true;
@@ -3475,7 +3549,8 @@ static int run_session_inner(const diatom_session *sn)
 
 		/* SELECT's chords (chord.h): SELECT+R1 saves to the quick slot,
 		 * SELECT+L1 loads from it, SELECT+R2 steps the speed up and
-		 * SELECT+L2 down. Judged at the core's polls (sel_poll) and acted on
+		 * SELECT+L2 down, and Fast Forward turns 1x into its speed and any
+		 * fast step into 1x. Judged at the core's polls (sel_poll) and acted on
 		 * here, once a turn, before the DS's L2 and R2 below, so a shoulder
 		 * a chord took does not also switch a screen. */
 		{
@@ -3502,9 +3577,13 @@ static int run_session_inner(const diatom_session *sn)
 				         (acts & (1u << CHORD_QUIT)) ? "quit" : "reset");
 				g_pause_requested = true;
 			}
-			if (acts & ((1u << CHORD_FASTER) | (1u << CHORD_SLOWER))) {
+			if (acts & ((1u << CHORD_FASTER) | (1u << CHORD_SLOWER) | (1u << CHORD_FFWD))) {
 				int to = g_speed_ix + step;
 
+				/* One press each way, as RetroArch's toggle: from 1x to
+				 * the speed it is given, from any fast step (one SELECT+R2
+				 * reached too) back to 1x. Over a step in the same turn. */
+				if (acts & (1u << CHORD_FFWD)) to = g_speed_ix > 0 ? 0 : g_ff_ix;
 				if (to < 0) to = 0;
 				if (to >= SPEED_STEPS) to = SPEED_STEPS - 1;
 				if (to != g_speed_ix) {
@@ -3513,7 +3592,12 @@ static int run_session_inner(const diatom_session *sn)
 					            paused_us - step_pause0, frame_us,
 					            diatom_audio_dropped() - step_drop0, &step_sleep);
 					g_speed_ix = to;
-					printf("diatom: speed %.1fx\n", speed_half() / 2.0);
+					{
+						char x[8];
+
+						speed_said(speed_half(), x, sizeof x);
+						printf("diatom: speed %s%s\n", x, g_speed_ix == SPEED_MAX_IX ? "" : "x");
+					}
 					fflush(stdout);
 					step_frames = 0;
 					step_us = 0.0;
@@ -3535,8 +3619,9 @@ static int run_session_inner(const diatom_session *sn)
 		 * SELECT to its (sel_took). MENU+L1
 		 * switched the screens too, from before L2 did; it went on
 		 * 2026-11-06, L2 alone being the one way, and L1 under MENU
-		 * is the DS's own L again. The pointer goes to the core on its next
-		 * frame. */
+		 * was the DS's own L again until MENU's chords (mchord) took it
+		 * for the screenshot, where the launcher gives them. The pointer
+		 * goes to the core on its next frame. */
 		{
 			uint32_t sty_mask = 0;
 
@@ -3625,6 +3710,26 @@ static int run_session_inner(const diatom_session *sn)
 			 * Read every frame so `levels_moved` stays current. */
 			if (levels_moved() && (buttons & DIATOM_BIT(DIATOM_BTN_MENU)))
 				menu_chorded = true;
+		}
+
+		/* MENU's chords (chord.h, mchord), judged at the core's polls and
+		 * acted on here, after MENU's own press, so one made in the turn
+		 * MENU went down still leaves MENU opening nothing: the screenshot
+		 * as SELECT's (shot_take: its notice, its shutter), and the lock,
+		 * a pause as MENU's, for the launcher to lock the handheld over
+		 * the game and resume it (PAUSED for=lock) */
+		{
+			const unsigned mc = g_mc_acts;
+
+			g_mc_acts = 0;
+			if (mc) {
+				menu_chorded = true;
+				if (mc & (1u << MCHORD_SHOT)) shot_take();
+				if ((mc & (1u << MCHORD_LOCK)) && diatom_proto_active()) {
+					snprintf(g_pause_for, sizeof g_pause_for, "%s", "lock");
+					g_pause_requested = true;
+				}
+			}
 		}
 
 		/* MENU is Diatom's own key and the ports no longer act on it, because
@@ -3790,6 +3895,9 @@ static int run_session_inner(const diatom_session *sn)
 			 * (2026-11-16); flat out it is 1/12 ms, 1.39x. Never over the
 			 * step for long: one turn of debt at most (below). */
 			next_us += frame_us * 2.0 * ran / speed_half();
+			/* Max holds to no step: the next turn at once, no debt kept
+			 * and none given up, since there is no schedule to be behind */
+			if (g_speed_ix == SPEED_MAX_IX) next_us = (double)diatom_port_now_us();
 		} else {
 			next_us += frame_us * periods;
 			/* Locked (src/pace.h): the measured refresh as the period, and
@@ -3811,11 +3919,9 @@ static int run_session_inner(const diatom_session *sn)
 		now = diatom_port_now_us();
 
 		if (next_us > (double)now) {
-			struct timespec ts;
 			double d = next_us - (double)now;
-			ts.tv_sec  = (time_t)(d / 1000000.0);
-			ts.tv_nsec = (long)(fmod(d, 1000000.0) * 1000.0);
-			nanosleep(&ts, NULL);
+
+			diatom_port_sleep_us(d);
 			step_sleep.us += d;
 			if (turn_short) step_sleep.short_us += d;
 		} else if (fast) {
@@ -4324,7 +4430,9 @@ int main(int argc, char **argv)
 			/* Black around a new game until the launcher says otherwise */
 			border_off();
 			sn.hotkeys = m.hotkeys;
+			sn.ffspeed = m.ffspeed;
 			sn.shots   = m.shots;
+			sn.menukeys = m.menukeys;
 			sn.mode   = start_mode;
 			sn.filter = start_filter;
 			sn.strength = start_strength;

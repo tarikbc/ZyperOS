@@ -1,7 +1,7 @@
 # The Pixel 2's files package/splash/r36s/ was made from
 # (scripts/make-splash-frames.py --r36s writes this)
 52ca4bdfddc11ff8c10601cc2db25bd9172ef367e5cf54f8f69cce7196c449a0  frames.bin
-a36785803150c4ab728a484110031c0823c30dd1eb357c045b154908016cbc01  frames-light.bin
+17ef091e84f9406306ada1ffb19a9969f55986a8877b2008bb029a17acf66f49  frames-light.bin
 a4b5065cbe895daf89809e62e6c63d9f642559b285262cffc6347699e536d554  first-start-de.bin
 d986f565d45d777e0f63bd6d2e766616b3c57fdc2ee4a7d4084ab503b4aaaa59  first-start-es.bin
 8b22472d29d0ace406942bdbeecdd76f6dd70d43108655653bc3410f9c738037  first-start-fr.bin
@@ -20,7 +20,7 @@ e06bda86d73afff4706f24aad16263d7e877f9dffc13a6f585b35c1f4d96bae5  first-start-pt
 159eebe396ef6407d73a239ff50bd589c595dc1196ef238cd81d637db56d5ea9  first-start.bin
 # And what it made from them, package/splash/r36s/
 0e75a0c1749c92b47771c598a799a1074ac95001cf753b0f430cd8f70461f78e  r36s/frames.bin
-49bfa460898ed6a1e856dd523a64ba109c85049e164161fcdda24785065eef10  r36s/frames-light.bin
+0c120699d690774ca25addc69757a54e4bb6013c7d81be49f7166255acfb2fda  r36s/frames-light.bin
 69e5293fda7c51f09a24de31b56166eeb32ff0543112d9e3566de6d9a0904985  r36s/first-start-de.bin
 ffffbb492a97c1c8c95e9bea3b3a730f1a490672bf839572e0126707b5bc2e2a  r36s/first-start-es.bin
 1e33bf612597344a9a4af9ab35acd98621fa5bf53ff992edfcabf162fed920db  r36s/first-start-fr.bin

@@ -114,6 +114,29 @@ bool saver_show_step(saver_show *s, unsigned now_ms, bool ready, float *alpha);
 /* Whether a frame is wanted though no new picture came: a fade is moving. */
 bool saver_show_moving(const saver_show *s);
 
+/* ---- another had the screen ------------------------------------------------ */
+
+/* The screensaver is a mode of the shelf's loop (saver_screen.c), and a gap
+ * between two of its passes means something else had the screen in between
+ * (a menu, a game, a message): what it drew is not there any more, so it
+ * ends. The gap is from the END of its last pass to the start of this one:
+ * a pass of its own can be long, the first of a clip opening its snap in
+ * mp4d (half a second and more on a Pixel 2), and measured from the pass's
+ * start, the next pass took its own opening for a gap and ended itself, 213
+ * times in 40 minutes, a clip never shown (2026-11-21). */
+#define SAVER_GAP_MS 500u
+typedef struct { unsigned end; bool set; } saver_beat;
+
+/* At a pass's start: whether something else had the screen since the last
+ * pass ended. Never at the first pass. */
+bool saver_beat_lost(const saver_beat *b, unsigned now_ms);
+
+/* At a pass's end, whatever it did and however long it took */
+void saver_beat_done(saver_beat *b, unsigned now_ms);
+
+/* Forgotten: the screensaver ended, and the next one starts fresh */
+void saver_beat_clear(saver_beat *b);
+
 /* ---- which one ------------------------------------------------------------- */
 
 /* The last few shown, so the next is another: indexes into the pool. */
@@ -127,5 +150,29 @@ void saver_recent_add(saver_recent *r, int idx);
  * SAVER_RECENT shown while there is another to give (and never the very last
  * when n > 1). -1 when n <= 0. */
 int saver_pick(int n, uint32_t r, const saver_recent *recent);
+
+/* ---- where the picture goes (2026-11-23) -------------------------------------
+ *
+ * A snap plays over the whole screen, as large as it takes it, the slabs
+ * over it (saver_fit on the screen, at most 8 times its size). A cover never
+ * goes under the two slabs, the game's at the foot and the keys' at the top:
+ * a tall one ran under "Play / Any other button goes back". Its place is in
+ * the middle of the screen's width, as large as it fits clear of both slabs
+ * by `gap` (`game` and `keys`, on a `sw` by `sh` screen): in the band
+ * between them, the whole width, in its middle; or in the column between
+ * them, the whole height, when the slabs leave one there and it is larger.
+ * The picture, `w` by `h`, in its own shape, at most `most` times its size.
+ * Pure, for tools/saver-check.c. */
+typedef struct { float x, y, w, h; } saver_rect;
+
+/* `w` by `h` as large as `box` takes it, at most `most` times, centered in
+ * it; nothing (0 by 0) when either has no size */
+saver_rect saver_fit(saver_rect box, int w, int h, float most);
+
+saver_rect saver_art_place(float sw, float sh, saver_rect game, saver_rect keys, float gap,
+                           int w, int h, float most);
+
+/* Whether two rectangles share any point of area */
+bool saver_rect_meet(saver_rect a, saver_rect b);
 
 #endif

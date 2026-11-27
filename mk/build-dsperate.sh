@@ -16,7 +16,7 @@
 # (dsperate_frameskip, auto by default) is the change our first patch made,
 # folded in upstream; it leaves out exactly the frames ours did for Diatom's
 # frameskip=late and frameskip=steady (a frame-for-frame check, 2026-11-16).
-# Plus seven patches of ours (below).
+# Plus eight patches of ours (below).
 #
 # PGO: DSperate commits a GCC profile with each release, made with GCC 13.3 on
 # Ubuntu 24.04 (its CI), and the wrapper's build.sh applies it. A profile only
@@ -139,6 +139,17 @@
 # (DS_R3D_BANDS=n still overrides). It changes one function of render3d.cpp,
 # which loses its profile (the build log counts it).
 #
+# The eighth, mk/patches/dsperate-lr-zip-cache.patch: a zipped game is
+# inflated once into .dsperate beside its zip and kept for the next launch
+# (DSperate's cart/zip_cache.h), and DSperate's own frontend keeps that
+# folder under cart.cache_mb, 2 GB, the least recently launched first. The
+# wrapper never set NDS::rom_cache_max_bytes, so nothing ever went: every
+# zipped DS game a player had played stayed at its unpacked size (asked for
+# on Discord, 2026-11-23). The patch sets the same 2 GB, which the launcher
+# also holds after each game (src/dscache.h), so the two agree. Only
+# libretro.cpp changes. mk/dsperate-zipcache-check.sh loads a zip beside
+# 2.5 GB of unpacked games and holds the core to it.
+#
 # The result is checked before it is installed: no unversioned undefined
 # symbol (it would not dlopen), and nothing newer than plastron's glibc 2.42
 # and libstdc++ 6.0.34 (GLIBCXX_3.4.34). It needs GLIBC_2.38 and GLIBCXX_3.4.30
@@ -151,6 +162,7 @@
 # state the v3.0.5 core made (tools/dsperate-state-v305.state.gz) is taken,
 # and the game runs on from it, which Diatom's STATE_READS rests on: the
 # DS players' resume points made before the move to v3.4.1 still load.
+# And mk/dsperate-zipcache-check.sh: the cap on its unpacked zips.
 #
 #   mk/build-dsperate.sh          build, install to vendor/cores
 #
@@ -163,7 +175,7 @@ SRC=${SRC:-/tmp/zyperos-dsperate-lr}
 REPO=${DSPERATE_LR:-https://github.com/thwonp/dsperate-lr.git}
 LR=27b9d76fb4c900d29f9629806f316527b5da90c2   # the wrapper's newest, which pins DSperate v3.3.0
 DS=ecb27c96a80dd2c4bf31a0316f9eef9354d73e04   # DSperate v3.4.1, in place of that pin
-SHA=5b42bc5c4ada2fb1f0a7f6b8cb9344f860a0db5f17a36ebde711cb677e5860a2
+SHA=0361a61a571ce61d34d3c8407cc71a6c288cf808c7bd9efc449d6ec03763093b
 IMAGE=dsperate-lr-cross
 PLAT=linux/amd64
 
@@ -185,6 +197,7 @@ git -C "$SRC" apply "$ROOT/mk/patches/dsperate-lr-rtc.patch"
 git -C "$SRC" apply "$ROOT/mk/patches/dsperate-lr-ext-bg.patch"
 git -C "$SRC" apply "$ROOT/mk/patches/dsperate-lr-frame-direct.patch"
 git -C "$SRC" apply "$ROOT/mk/patches/dsperate-lr-bands.patch"
+git -C "$SRC" apply "$ROOT/mk/patches/dsperate-lr-zip-cache.patch"
 docker image inspect $IMAGE >/dev/null 2>&1 ||
 	docker build --platform $PLAT -q -t $IMAGE "$SRC" >/dev/null
 
@@ -208,6 +221,8 @@ sh "$ROOT/mk/dsperate-rtc-check.sh" "$SO"
 # Extended backgrounds drawn as before (the fifth)
 sh "$ROOT/mk/dsperate-extbg-check.sh" "$SO"
 sh "$ROOT/mk/dsperate-state-check.sh" "$SO"
+# The 2 GB of unpacked zips (the eighth)
+sh "$ROOT/mk/dsperate-zipcache-check.sh" "$SO"
 GOT=$(shasum -a 256 "$SO" | cut -d' ' -f1)
 if [ "$GOT" != "$SHA" ]; then
 	echo "!! dsperate sha256 $GOT, expected $SHA" >&2
@@ -217,7 +232,7 @@ if [ "$GOT" != "$SHA" ]; then
 fi
 mkdir -p "$ROOT/vendor/cores"
 cp "$SO" "$ROOT/vendor/cores/"
-echo "  built  dsperate (dsperate-lr ${LR%${LR#???????}}, DSperate v3.4.1) + PGO + thread layout + language + clock + extended BG runs + direct frames + two 3D bands, untuned ARMv8.0"
+echo "  built  dsperate (dsperate-lr ${LR%${LR#???????}}, DSperate v3.4.1) + PGO + thread layout + language + clock + extended BG runs + direct frames + two 3D bands + zip cache cap, untuned ARMv8.0"
 echo "  sha256 $GOT"
 # Which patches are in it, for mk/payload.sh to hold it to: the 1.0.1 images
 # shipped a core built before the language patch (mk/core-stamp.sh)

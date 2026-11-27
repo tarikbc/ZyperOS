@@ -76,8 +76,10 @@ def session(tag, runs, watch=None, seen=None, **env):
                                   SDL_RENDER_DRIVER="software",
                                   SDL_AUDIODRIVER="dummy", **env),
                          stdout=subprocess.DEVNULL, stderr=err)
-    for _ in range(100):
-        if os.path.exists(sock): break
+    # The waits are the wall clock's, and only waits: each ends as soon as
+    # what it waits for is there (2 to 4 s until 2026-11-24)
+    end = time.time() + 30
+    while not os.path.exists(sock) and time.time() < end:
         time.sleep(0.05)
     s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     s.connect(sock)
@@ -105,19 +107,17 @@ def session(tag, runs, watch=None, seen=None, **env):
         s.sendall((m + "\n").encode())
 
     ran = []
-    drain(2.0, "READY")
+    drain(30.0, "READY")
     for core, rom in runs:
         send("RUN\tcore=" + core + ("\trom=" + rom if rom else ""))
-        got = drain(4.0, "RUNNING")
+        got = drain(30.0, "RUNNING")
         ran.append(any(l.startswith("RUNNING") for l in got))
         if watch: seen.append(os.path.exists(watch))
         send("STOP")
-        drain(3.0, "EXIT")
+        drain(30.0, "EXIT")
         if watch: seen.append(os.path.exists(watch))
     send("QUIT")
-    time.sleep(0.5)
-    p.terminate()
-    try: p.wait(3)
+    try: p.wait(30)
     except subprocess.TimeoutExpired: p.kill()
     err.close()
     return ran, open(err_path, errors="replace").read().splitlines()

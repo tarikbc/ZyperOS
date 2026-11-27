@@ -179,6 +179,105 @@ de = Drücke überall %s für Einstellungen.
 ja = %s でどこでも設定を開けます。
 it = Premi %s per le impostazioni, ovunque.
 
+[tour.menu.note]
+note = The MENU lesson's note, beside Zyper's corner: MENU held with a button, on every screen and in a game too, takes a screenshot. %s is the keys as printed, "MENU+L1" ("FN+L1" on the R36S); the lock, MENU's other chord, is the lesson after (tour.lock). Keep it about as long as English's.
+en = %s takes a screenshot.
+zh-Hans = %s 截图。
+es = %s hace una captura.
+pt-BR = %s tira uma captura.
+fr = %s fait une capture.
+de = %s: Bildschirmfoto.
+ja = %s でスクショ。
+it = %s fa uno screenshot.
+
+[tour.quit.title]
+note = The lesson after Settings: leaving a game, MENU and then X (the in-game menu's Quit, whose X does it from anywhere on the menu). Short, as the other lessons' titles.
+en = Leave a Game
+zh-Hans = 退出游戏
+es = Salir del juego
+pt-BR = Sair do jogo
+fr = Quitter un jeu
+de = Spiel beenden
+ja = ゲームを終える
+it = Esci dal gioco
+
+[tour.quit.line]
+note = Under the title: in a game, MENU opens the in-game menu and X quits. %s is the MENU key as it is printed: MENU, or FN on the R36S. Keep it as it is, in Latin letters, and X too.
+en = In a game, press %s, then X.
+zh-Hans = 游戏中按 %s，再按 X。
+es = En un juego, presiona %s y luego X.
+pt-BR = No jogo, aperte %s e depois X.
+fr = En jeu, appuyez sur %s, puis X.
+de = Im Spiel %s drücken, dann X.
+ja = ゲーム中に %s、続けて X。
+it = In gioco, premi %s, poi X.
+
+[tour.quit.note]
+note = The second line: the game keeps its resume point, and the next start of it goes on from there. Keep it about as long as English's.
+en = It picks up there next time.
+zh-Hans = 下次会从这里继续。
+es = La próxima vez sigue desde ahí.
+pt-BR = Da próxima vez, continua dali.
+fr = La prochaine fois, il reprend là.
+de = Nächstes Mal geht es dort weiter.
+ja = 次はそこから続きます。
+it = La prossima volta riprende da lì.
+
+[tour.lock.title]
+note = The lesson after Leave a Game: MENU held with a button locks the handheld on every screen, in a game too (MENU > System > Hotkeys' Lock Screen). Short, as the other lessons' titles.
+en = Lock the Screen
+zh-Hans = 锁定屏幕
+es = Bloquear la pantalla
+pt-BR = Bloquear a tela
+fr = Verrouiller l'écran
+de = Bildschirm sperren
+ja = 画面をロック
+it = Blocca lo schermo
+
+[tour.lock.line]
+note = Under the title: the first %s is the MENU key as it is printed (MENU, or FN on the R36S), the second the button with it (L2, or the one MENU > System > Hotkeys gives Lock Screen). Keep both as they are, in Latin letters.
+en = Hold %s, then press %s to lock.
+zh-Hans = 按住 %s，再按 %s 锁屏。
+es = Mantén %s y presiona %s para bloquear.
+pt-BR = Segure %s e aperte %s para bloquear.
+fr = Maintenez %s, puis %s pour verrouiller.
+de = Halte %s, dann %s zum Sperren.
+ja = %s を押しながら %s でロック。
+it = Tieni %s, poi premi %s per bloccare.
+
+[tour.lock.note]
+note = The lock lesson's second line: MENU held with its button locks on every screen of the launcher, and in a game too. Keep it about as long as English's.
+en = On every screen, in a game too.
+zh-Hans = 所有画面均可，游戏中也可。
+es = En toda pantalla, y en juego.
+pt-BR = Em toda tela, no jogo também.
+fr = Sur tout écran, en jeu aussi.
+de = Überall, auch im Spiel.
+ja = どの画面でも。ゲーム中も。
+it = Ovunque, anche in gioco.
+
+[tour.unlock.title]
+note = The lesson after Lock the Screen: the lock opens again with SELECT and START held together. Short, as the other lessons' titles.
+en = Unlock the Screen
+zh-Hans = 解锁屏幕
+es = Desbloquear la pantalla
+pt-BR = Desbloquear a tela
+fr = Déverrouiller l'écran
+de = Bildschirm entsperren
+ja = 画面のロックを解除
+it = Sblocca lo schermo
+
+[tour.unlock.line]
+note = Under the title: how the lock opens, SELECT and START held together for Hold to Unlock's seconds. %s is the seconds as the page writes them: 0.5 (0,5 with a decimal comma), 1, 2, 3 or 5. SELECT and START are the buttons' printed names, drawn as their keys. Keep it about as long as English's.
+en = Hold SELECT and START %s s to unlock.
+zh-Hans = 按住 SELECT 和 START %s 秒解锁。
+es = Mantén SELECT y START %s s para desbloquear.
+pt-BR = Segure SELECT e START %s s para desbloquear.
+fr = Maintenez SELECT et START %s s pour déverrouiller.
+de = SELECT und START %s s halten zum Entsperren.
+ja = SELECT と START を %s 秒押して解除。
+it = Tieni SELECT e START %s s per sbloccare.
+
 [tour.select.title]
 en = Music
 zh-Hans = 音乐
@@ -662,6 +761,39 @@ fr = Maintenez %s et VOL+.
 de = Halte %s, dann VOL+.
 ja = %s を押しながら VOL+。
 it = Tieni %s, poi premi VOL+.
+
+[tour.wrong.hold_key]
+note = In the lock lesson, its button alone (L2): the lock is MENU held with it. The first %s is the button pressed, as printed (L2); the second the MENU key as it is printed: MENU, or FN on the R36S. Keep both as they are, in Latin letters.
+en = That's %s. Hold %s too.
+zh-Hans = 这是 %s。请同时按住 %s。
+es = Eso es %s. Mantén %s también.
+pt-BR = Só %s? Segure %s junto.
+fr = C'est %s. Maintenez aussi %s.
+de = Das war %s. Halte auch %s.
+ja = それは %s。%s も押さえて。
+it = Hai premuto %s. Tieni anche %s.
+
+[tour.wrong.chord_key]
+note = In the lock lesson, MENU alone: how the chord goes. The first %s is the MENU key as it is printed (MENU, or FN on the R36S), the second the button with it (L2). One line in his bubble, beside "START: skip": keep it within English's length.
+en = Hold %s, then press %s.
+zh-Hans = 按住 %s，再按 %s。
+es = Mantén %s, luego %s.
+pt-BR = Segure %s e aperte %s.
+fr = Maintenez %s et %s.
+de = Halte %s, dann %s.
+ja = %s を押しながら %s。
+it = Tieni %s, poi premi %s.
+
+[tour.wrong.first]
+note = In the Leave a Game lesson, X before MENU: MENU comes first, then X. The first %s is the button pressed (X), the second the MENU key as it is printed: MENU, or FN on the R36S. Keep both as they are, in Latin letters.
+en = That's %s. Press %s first.
+zh-Hans = 这是 %s。请先按 %s。
+es = Eso es %s. Primero %s.
+pt-BR = Você apertou %s. Aperte %s antes.
+fr = C'est %s. D'abord %s.
+de = Das war %s. Erst %s.
+ja = それは %s。先に %s を押して。
+it = Hai premuto %s. Prima %s.
 
 [tour.key.up]
 note = A button pressed, said in "That's %s.": the d-pad's directions, the volume keys and the brightness keys.

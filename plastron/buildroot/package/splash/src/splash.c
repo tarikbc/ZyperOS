@@ -46,6 +46,13 @@
  * the fbdev console, shows its own picture, and the write is seen by nobody.
  * An older splash ignores the variable and keeps the first picture.
  *
+ * A start that takes longer than it should says so over the loop: from 5 s
+ * the step under way, from 20 s "Taking longer than usual" and what to do,
+ * and the first start's line, its bar still a minute, says what to do too;
+ * SELECT held 2 s shows the kernel's latest lines; and every 2 s from the
+ * start a beat goes into the kernel's log (slow_tick; slowline.h, slowio.h;
+ * ZyperOS's DESIGN.md 11.20). A start on time draws nothing new.
+ *
  * With SPLASH_OUT and SPLASH_OUT_LOG it also draws the port's latest output
  * at the screen's foot, the same way, into its own buffer only: the letters
  * and the box ZyperOS's launcher wrote, and the log the port prints into,
@@ -76,6 +83,7 @@
 
 #include "bright.h"
 #include "portout.h"
+#include "slowio.h"
 #include "zytheme.h"
 
 #define FRAMES     "/usr/share/splash/frames.bin"
@@ -201,6 +209,7 @@ static struct {
 	char card[128], stat[64];   /* CARD, and its partition's /sys stat */
 	unsigned long long written0, total;
 	unsigned filled;            /* the bar's rows filled, from by1 up */
+	double moved;               /* when the bar last grew, or the copy went up */
 	int dirty;                  /* buffers still to be given the rect */
 } copy;
 
@@ -348,6 +357,7 @@ static void copy_draw(uint32_t *pixels)
 	if (rows > copy.filled) {
 		copy.filled = rows;
 		copy.dirty = 2;
+		copy.moved = since_boot();
 	}
 	for (unsigned r = 0; r < copy.h; r++) {
 		uint32_t *dst = pixels + (size_t)(copy.y + r) * frame_w + copy.x;
@@ -472,6 +482,97 @@ static void bright_apply(void)
 	log_to_kernel(line);
 }
 
+/*
+ * A start slower than usual (slowline.h; ZyperOS's DESIGN.md 11.20): from 5 s
+ * the step under way at the foot, from 20 s "Taking longer than usual" and
+ * what to do, in the boot screen's language and theme; SELECT held 2 s shows
+ * the kernel's latest lines (the tester's view); the first start's line, its
+ * bar still a minute, becomes what to do. And every 2 s a beat in the
+ * kernel's log, from the start: the time, the frames on the panel, the step.
+ * Nothing is read or drawn before 4.5 s but the beat's step, so a start on
+ * time costs what it did.
+ */
+static slow_run slow;
+static struct {
+	int      loaded, dirty, lo, hi, stuck;
+	double   stage_at, beat_at;
+	char     stage[4];
+	unsigned frames;
+	slowio_keys keys;
+	slowio_kmsg kmsg;
+} sl = { .beat_at = SLOW_BEAT_S };
+
+/* Rows of the buffer the lines changed, for both buffers: each holds the
+ * frame from two before */
+static void sl_rows(int lo, int hi)
+{
+	if (hi <= lo) return;
+	if (sl.hi <= sl.lo) {
+		sl.lo = lo;
+		sl.hi = hi;
+	} else {
+		if (lo < sl.lo) sl.lo = lo;
+		if (hi > sl.hi) sl.hi = hi;
+	}
+	sl.dirty = 2;
+}
+
+static void slow_tick(uint32_t *pixels, double now, int light, int copying)
+{
+	char line[96];
+	int lo = 0, hi = 0;
+
+	if (now >= sl.beat_at) {
+		double stage_at = 0;
+
+		slowio_stage(sl.stage, now, &stage_at);
+		slow_beat(line, sizeof line, sl.beat_at, sl.frames, sl.stage);
+		log_to_kernel(line);
+		while (sl.beat_at <= now) sl.beat_at += SLOW_BEAT_S;
+	}
+	if (now < SLOW_STAGE_S - 0.5) return;
+	if (!sl.loaded) {
+		/* Landscape: the Pixel 2's panel is mounted turned, 480 x 640; the
+		 * R36S's is the screen as it is seen */
+		int turned = frame_w < frame_h;
+
+		sl.loaded = 1;
+		slow_run_init(&slow, turned ? frame_h : frame_w, turned ? frame_w : frame_h, frame_w, turned,
+		              light ? 0xffe6e4da : 0xff111310, light ? 0xff3d403e : 0xffc3c3ba,
+		              light ? 0xff5a5d5a : 0xff969998);
+		snprintf(line, sizeof line, "splash: slow, %s\n",
+		         slowio_load(&slow, getenv("zylang")) == 0 ? "its lines ready" : "no lines to say it with");
+		log_to_kernel(line);
+	}
+	slowio_stage(sl.stage, now, &sl.stage_at);
+	if (copying) {
+		/* The copy has its own line and bar; its bar still a minute, the
+		 * line says what to do */
+		/* The bar's length: the Pixel 2's runs down its turned panel's
+		 * rows, a panel seen as it is (the R36S's) along its columns */
+		unsigned len = copy.bx1 - copy.bx0 > copy.by1 - copy.by0 ? copy.bx1 - copy.bx0 : copy.by1 - copy.by0;
+
+		if (copy.filled < len && now - copy.moved >= SLOW_STALL_S) {
+			slow_copy_stuck(&slow, pixels, &lo, &hi);
+			if (!sl.stuck) {
+				sl.stuck = 1;
+				sl_rows(lo, hi);
+				log_to_kernel("splash: the copy's bar has not moved for a minute; what to do is said\n");
+			}
+		}
+		return;
+	}
+	{
+		int held = slowio_select(&sl.keys, now) >= SLOW_TESTER_S;
+		char foot[96];
+
+		if (held) slowio_kmsg_poll(&sl.kmsg);
+		snprintf(foot, sizeof foot, "%s  %.1f s  %u frames", sl.stage[0] ? sl.stage : "-", now, sl.frames);
+		if (slow_frame(&slow, pixels, now, sl.stage, held, sl.kmsg.line, sl.kmsg.n, foot, &lo, &hi))
+			sl_rows(lo, hi);
+	}
+}
+
 int main(int argc, char **argv)
 {
 	struct sigaction sa = { .sa_handler = on_stop };
@@ -490,6 +591,10 @@ int main(int argc, char **argv)
 
 	if (argc == 3 && !strcmp(argv[1], "--still"))
 		return still(argv[2]);
+	/* The boot screen's first word in the kernel's log: a console that
+	 * ends before it (crashlog's report after a restart) stopped before
+	 * init had started this */
+	log_to_kernel("splash: started\n");
 
 	light = light_ground = theme_light(why, sizeof why);
 	if (light && access(FRAMES_LIGHT, R_OK) == 0) {
@@ -599,9 +704,12 @@ int main(int argc, char **argv)
 			if (!copy.shown) {
 				copy.shown = 1;
 				copy.dirty = 2;
+				copy.moved = since_boot();
 			}
 			copy_draw(pixels);
 		}
+		/* A start slower than usual says so, and beats (slow_tick) */
+		if (animated) slow_tick(pixels, since_boot(), light_ground, copy.shown);
 		if (seq == 1) {
 			memcpy(next->map, pixels, size);
 		} else {
@@ -615,6 +723,12 @@ int main(int argc, char **argv)
 				if (copy.y < lo) lo = copy.y;
 				if (copy.y + copy.h > hi) hi = copy.y + copy.h;
 				copy.dirty--;
+			}
+			/* ...and the slow lines' rows when they changed */
+			if (sl.dirty) {
+				if ((unsigned)sl.lo < lo) lo = sl.lo;
+				if ((unsigned)sl.hi > hi) hi = sl.hi;
+				if (!--sl.dirty) sl.lo = sl.hi = 0;
 			}
 			if (hi > lo)
 				memcpy(next->map + lo * frame_w, pixels + lo * frame_w,
@@ -637,6 +751,7 @@ int main(int argc, char **argv)
 		}
 		n = to;
 		shown = n;
+		sl.frames++;
 	}
 
 	/*

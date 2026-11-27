@@ -22,15 +22,15 @@ SRC := $(I18N_TABLES) $(filter-out $(I18N_TABLES),$(wildcard src/*.c)) $(wildcar
        src/device/pixel2_coreopts.c $(filter-out src/device/pixel2_coreopts.c,$(wildcard src/device/*_coreopts.c))
 # Desk mode (src/device/desk.h): the host build's window as a handheld. Here
 # alone: no device builds it.
-SRC += src/device/desk.c src/device/deskface.c
+SRC += src/device/desk.c src/device/deskface.c src/device/deskcable.c
 # src/main.c and the files split from it, which call into one another: the
 # checks that link the rest of src/ leave them all out.
 MAIN_SRC := src/main.c src/about_screen.c src/aout_route.c src/bgm_screen.c \
             src/bt_screen.c src/cheats_screen.c src/clock_screen.c src/ctl_channel.c src/ctltab_screen.c \
             src/devmode_screen.c src/dl_screen.c src/dlcount.c src/gamedel_screen.c src/gameinfo_screen.c \
             src/gamern_screen.c src/hotkeys_screen.c src/hover_sweep.c src/hudmenu_screen.c src/ingame_screen.c src/launch_screen.c \
-            src/lights_screen.c src/media_screen.c src/menu_panel.c src/menu_runner.c \
-            src/mp4_screen.c src/nowplaying_looks.c src/nowplaying_screen.c src/place.c src/player2_screen.c \
+            src/lights_screen.c src/media_screen.c src/menu_panel.c src/menu_runner.c src/menukeys_screen.c \
+            src/mp4_screen.c src/nowplaying_looks.c src/nowplaying_screen.c src/place.c src/player2_screen.c src/link_screen.c \
             src/portload.c src/powerscreens.c src/radl_screen.c src/raqueue.c src/saver_screen.c \
             src/scraper_screen.c src/search_screen.c src/shelf_draw.c src/shelf_keys.c \
             src/shelfbuild.c src/shots.c src/shots_screen.c src/signin_screen.c src/stats_screen.c \

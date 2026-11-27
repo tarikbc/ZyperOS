@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <sys/stat.h>
@@ -250,12 +251,22 @@ static int one_game(const char *stem, const char *dest)
 	return r;
 }
 
+/* The key's check to its end: 30 s at most on the monotonic clock, though it returns as soon as
+ * the check is over. 2000 spins of 1 ms were too few once make check ran four at a time on a
+ * loaded Mac (2026-11-24). */
 static sgdb_try settle(void)
 {
 	sgdb_try t;
-	int spins = 0;
+	struct timespec now;
+	long until;
 
-	while ((t = sgdb_try_poll()) == SGDB_TRY_RUNNING && spins++ < 2000) usleep(1000);
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	until = (long)now.tv_sec * 1000 + now.tv_nsec / 1000000 + 30000;
+	while ((t = sgdb_try_poll()) == SGDB_TRY_RUNNING) {
+		clock_gettime(CLOCK_MONOTONIC, &now);
+		if ((long)now.tv_sec * 1000 + now.tv_nsec / 1000000 >= until) break;
+		usleep(1000);
+	}
 	/* One line of the message panel at 640 wide: no message may scroll */
 	CHECK(strlen(sgdb_try_said()) <= 34, "\"%s\" is longer than a line", sgdb_try_said());
 	return t;

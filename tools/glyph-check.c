@@ -23,7 +23,7 @@ static const char *const NAME[] = {
 	"REPEAT", "REPEAT_ONE", "SHUFFLE", "CHARGE", "TRANSFER", "TERMINAL", "USB", "WIFI",
 	"ARROWS", "FINISH", "CANCEL", "PLAY", "CHECK", "HEADPHONES", "LAPTOP", "PHONE",
 	"TO_CARD", "FROM_CARD", "COVER", "FILM", "CLOUD", "BOOK", "GRID", "HEART", "CLOCK",
-	"TROPHY", "SHELF", "WAND",
+	"TROPHY", "SHELF", "WAND", "BEACON", "SEARCH",
 };
 _Static_assert(sizeof NAME / sizeof NAME[0] == UI_GLYPH_COUNT, "a ui_glyph with no name in tools/glyph-check.c");
 

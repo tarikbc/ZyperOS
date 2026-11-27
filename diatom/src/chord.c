@@ -48,7 +48,7 @@ void chord_set_keys(chord *c, const int key[CHORD_ACTS])
 }
 
 static const char *const ACT_NAME[CHORD_ACTS] = {
-	"save", "load", "faster", "slower", "shot", "shader", "display", "reset", "quit"
+	"save", "load", "faster", "slower", "shot", "shader", "display", "reset", "quit", "ffwd"
 };
 
 /* The buttons a hotkey can be held with: never SELECT, its holder, nor
@@ -245,4 +245,80 @@ chord_out chord_turn(chord *c, uint32_t held, uint32_t was, uint64_t now_ms,
 		c->next = 0;
 	}
 	return o;
+}
+
+/* ---- MENU's chords (chord.h) -------------------------------------------- */
+
+static const char *const MACT_NAME[MCHORD_ACTS] = { "shot", "lock" };
+
+void mchord_reset(mchord *m, uint32_t pad)
+{
+	int i;
+
+	for (i = 0; i < MCHORD_ACTS; i++) m->key[i] = -1;
+	mchord_restart(m, pad);
+}
+
+void mchord_restart(mchord *m, uint32_t pad)
+{
+	m->was = pad;
+	m->hidden = 0;
+}
+
+bool mchord_keys_parse(const char *spec, int key[MCHORD_ACTS])
+{
+	int next[MCHORD_ACTS], i;
+	const char *p = spec;
+
+	if (!spec) return false;
+	for (i = 0; i < MCHORD_ACTS; i++) next[i] = -1;
+	while (*p) {
+		const char *end = strchr(p, ','), *colon;
+		size_t n = end ? (size_t)(end - p) : strlen(p);
+		int a = -1, k;
+
+		colon = memchr(p, ':', n);
+		if (!colon) return false;
+		for (i = 0; i < MCHORD_ACTS; i++)
+			if (strlen(MACT_NAME[i]) == (size_t)(colon - p) && !strncmp(MACT_NAME[i], p, (size_t)(colon - p)))
+				a = i;
+		k = name_at(colon + 1, n - (size_t)(colon + 1 - p), false);
+		/* START is Home with MENU, held: never a chord of these */
+		if (a < 0 || k < 0 || k == DIATOM_BTN_START || next[a] >= 0) return false;
+		for (i = 0; i < MCHORD_ACTS; i++)
+			if (next[i] == k) return false;
+		next[a] = k;
+		if (!end) break;
+		p = end + 1;
+	}
+	memcpy(key, next, sizeof next);
+	return true;
+}
+
+void mchord_set_keys(mchord *m, const int key[MCHORD_ACTS])
+{
+	memcpy(m->key, key, sizeof m->key);
+	m->hidden = 0;
+}
+
+uint32_t mchord_poll(mchord *m, uint32_t pad, uint32_t pressed, unsigned *acts)
+{
+	/* MENU held now or at the last poll: let go in the same moment as the
+	 * button went down, it was still held with it */
+	const bool menu = ((pad | m->was) & MENU) != 0;
+	const uint32_t went = (pad & ~m->was) | pressed;
+	int i;
+
+	for (i = 0; i < MCHORD_ACTS; i++) {
+		const uint32_t k = m->key[i] >= 0 ? DIATOM_BIT(m->key[i]) : 0;
+
+		if (k && menu && (went & k) && !(m->hidden & k)) {
+			*acts |= 1u << i;
+			m->hidden |= k;
+		}
+	}
+	/* a button let go is the game's again at its next press */
+	m->hidden &= pad;
+	m->was = pad;
+	return m->hidden;
 }

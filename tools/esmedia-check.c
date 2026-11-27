@@ -215,6 +215,26 @@ int main(void)
 	CHECK(!es_has_video("nds", "Tetris DS (Europe).nds", "Tetris DS (Europe)"));
 	CHECK(!es_has_video("GB", "Tetris (World).gb", "Tetris (World)"));
 
+	/* The same from the index alone, a game es_media finds a cover for and
+	 * no other (the screensaver's games, 2026-11-23): by gamelist.xml, by
+	 * images/'s names, by media/images/, and none for a game with none */
+	printf("covers from the index alone (es_has_cover, game_media_listed):\n");
+	CHECK(es_has_cover("nds", "Mario Kart DS (USA).nds", "Mario Kart DS (USA)"));
+	CHECK(es_has_cover("nds", "Picross DS (Europe).nds", "Picross DS (Europe)"));
+	CHECK(es_has_cover("nds", "Disc Set/Disc Set.cue", "Disc Set"));
+	CHECK(es_has_cover("psx", "Crash (USA).chd", "Crash (USA)"));
+	CHECK(es_has_cover("sfc", "Zelda (USA).sfc", "Zelda (USA)"));
+	CHECK(!es_has_cover("GB", "Tetris (World).gb", "Tetris (World)"));
+	{
+		char *own[] = { "Tetris (World)" };
+
+		CHECK(game_media_listed("GB", "Tetris (World).gb", "Tetris (World)", ES_COVER, own, 1));
+		CHECK(!game_media_listed("GB", "Tetris (World).gb", "Tetris (World)", ES_COVER, NULL, 0));
+		CHECK(game_media_listed("sfc", "Zelda (USA).sfc", "Zelda (USA)", ES_COVER, NULL, 0));
+		CHECK(game_media_listed("psx", "Crash (USA).chd", "Crash (USA)", ES_VIDEO, NULL, 0));
+		CHECK(!game_media_listed("sfc", "Zelda (USA).sfc", "Zelda (USA)", ES_VIDEO, NULL, 0));
+	}
+
 	printf("the game's own first, then ES's (game_media):\n");
 	{
 		char snap[ES_PATH], want[ES_PATH];
@@ -246,6 +266,24 @@ int main(void)
 		      !out[0]);
 		CHECK(!game_media(roms, "GB", "Tetris (World).gb", "Tetris (World)", ES_VIDEO, true, out, sizeof out) &&
 		      !out[0]);
+		/* A PICO-8 cart is its own cover, after the others (src/cartlabel.h) */
+		put("Roms/PICO-8/carts/celeste.p8.png", "png");
+		snprintf(want, sizeof want, "%s/PICO-8/carts/celeste.p8.png", roms);
+		CHECK(game_media(roms, "PICO-8", "carts/celeste.p8.png", "celeste.p8", ES_COVER, true,
+		                 out, sizeof out) && !strcmp(out, want));
+		CHECK(!game_media(roms, "PICO-8", "carts/celeste.p8.png", "celeste.p8", ES_VIDEO, true,
+		                  out, sizeof out) && !out[0]);
+		put("Roms/PICO-8/.media/celeste.p8.png", "png");
+		snprintf(want, sizeof want, "%s/PICO-8/.media/celeste.p8.png", roms);
+		CHECK(game_media(roms, "PICO-8", "carts/celeste.p8.png", "celeste.p8", ES_COVER, true,
+		                 out, sizeof out) && !strcmp(out, want));
+		unlink(want);
+		/* only a cart: a .p8 text cart, or a plain .png, is no cover */
+		put("Roms/PICO-8/jelpi.p8", "pico-8 cartridge");
+		put("Roms/PICO-8/shot.png", "png");
+		CHECK(!game_media(roms, "PICO-8", "jelpi.p8", "jelpi", ES_COVER, true, out, sizeof out) && !out[0]);
+		CHECK(!game_media(roms, "PICO-8", "shot.png", "shot", ES_COVER, true, out, sizeof out) && !out[0]);
+		CHECK(!game_media_cart(roms, "PICO-8", "gone.p8.png", out, sizeof out) && !out[0]);
 		snprintf(want, sizeof want, "%s/psx/.media/Crash (USA).mp4", roms);
 		unlink(want);
 		snprintf(want, sizeof want, "%s/nds/.media/Picross DS (Europe).png", roms);

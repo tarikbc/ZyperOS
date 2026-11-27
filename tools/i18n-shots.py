@@ -246,8 +246,14 @@ EXTRA = {
     # ...and at its end: with View and Shader (1.0.5), Box Art is below the
     # first shot's rows
     "system-menu-end": ("demo", "PS1", ["--screen", "games", "--menu", "Downloads"]),
+    # Favorites First under Sort By, On (DESIGN.md 11.70), its longer value
+    # in most languages, over a shelf of its favorites first
+    "system-menu-favfirst": ("demo", "PS1", ["--screen", "games", "--menu", "Favorites First"]),
     "storage-art": ("demo", "PS1", ["--storage", "art"]),
     "storage-states": ("demo", "PS1", ["--storage", "states"]),
+    "storage-ds": ("demo", "PS1", ["--storage", "ds"]),
+    # ...its row focused, the line under the list saying what it is
+    "storage-ds-row": ("demo", "PS1", ["--storage", "main", "0"]),
     "storage-delete": ("demo", "PS1", ["--storage", "delete"]),
     "storage-done": ("demo", "PS1", ["--storage", "done"]),
     "storage-first": ("demo", "PS1", ["--storage", "first"]),
@@ -345,6 +351,11 @@ EXTRA = {
     "keyboard": ("demo", "PS1", ["--keyboard"]),
     # The ScreenScraper sign-in's title, the longest the keyboard has
     "keyboard-ss-user": ("demo", "PS1", ["--keyboard", "--kb-ss-user"]),
+    # Rename on an arcade set or a port: the name shown only, its title and
+    # its note before the hints; emptied, the original name dimmed in the
+    # field (src/gamern_screen.c)
+    "keyboard-rename-shown": ("demo", "PS1", ["--screen", "games", "--kb-rename-shown"]),
+    "keyboard-rename-shown-empty": ("demo", "PS1", ["--screen", "games", "--kb-rename-shown", "empty"]),
     "video-controls": ("demo", "MUSE", ["--nowplaying", "0", "0", "83", "--video", "controls"]),
     "video-full": ("demo", "MUSE", ["--nowplaying", "0", "0", "83", "--video", "hidden"]),
     # A video this CPU cannot carry, its notice: too big (AV1 at 60 fps), with
@@ -374,14 +385,30 @@ EXTRA = {
     **{"mp4-look-list-%s" % _l: ("media", "MUSE", ["--screen", "games", "--menu", "Player Look", "--press",
                                                    "a", "--pick-at", str(_k)])
        for _k, _l in enumerate(("cover", "cassette", "vinyl", "classic", "spectrum"))},
+    # MP4's Tape Styles (DESIGN.md 11.64): the Clear card, Worn paused (its
+    # pause's word where the time left was), a style's name in its pill as
+    # Up or Down leaves it, and MENU's Tape Style list on each style, its
+    # note in the picture's narrow column
+    "np-tape-clear": ("demo", "MUSE", ["--nowplaying", "0", "0", "83", "--np-look", "cassette", "--np-tape", "clear"]),
+    "np-tape-worn-paused": ("demo", "MUSE", ["--nowplaying", "0", "0", "83", "--np-look", "cassette",
+                                             "--np-tape", "worn", "--paused"]),
+    "np-tape-said": ("demo", "MUSE", ["--nowplaying", "0", "0", "83", "--np-look", "cassette",
+                                      "--np-tape", "band", "--np-tape-said"]),
+    **{"mp4-tape-list-%s" % _l: ("media", "MUSE", ["--screen", "games", "--np-look", "cassette", "--menu",
+                                                   "Tape Style", "--press", "a", "--pick-at", str(_k)])
+       for _k, _l in enumerate(("pinstripe", "band", "ferric", "metal", "clear", "red", "worn"))},
     # its Repeat row on One, the value no other shot has
-    "mp4-menu-repeat-one": ("media", "MUSE", ["--screen", "games", "--menu", "--mode", "repeat one"]),
+    "mp4-menu-repeat-one": ("media", "MUSE", ["--screen", "games", "--menu", "Repeat", "--mode", "repeat one"]),
     # MP4's menu with its cursor on the Equalizer row, the same as MENU's
     "mp4-menu-eq": ("media", "MUSE", ["--screen", "games", "--menu", "Equalizer"]),
     # its Album Art row, under the fold since Repeat and Equalizer (opened, it
     # asks MusicBrainz, which no shot can hold still)
     "mp4-menu-art": ("media", "MUSE", ["--screen", "games", "--menu", "Album Art"]),
     "mp4-locked": ("demo", "MUSE", ["--nowplaying", "0", "0", "83", "--locked"]),
+    # MENU+L2's lock on any screen (src/menukeys_screen.h), its unlock held
+    # half way; and MENU+L1's notice over the shelf
+    "menu-locked": ("demo", "PS1", ["--menu-lock", ".5"]),
+    "menu-shot-notice": ("demo", "PS1", ["--screen", "games", "--menu-shot-notice"]),
     "mp4-locked-video": ("demo", "MUSE", ["--nowplaying", "0", "0", "83", "--video", "hidden", "--locked"]),
     "tour-lang": ("demo", "PS1", ["--tour", "lang", "3500"]),
     "tour-lang-ja": ("demo", "PS1", ["--tour", "lang", "3000", "--tour-pick", "6"]),
@@ -390,6 +417,21 @@ EXTRA = {
     "tour-a": ("demo", "PS1", ["--tour", "a", "4000", "300"]),
     "tour-wrong": ("demo", "PS1", ["--tour", "vol", "3000", "--tour-wrong", "select", "420"]),
     "tour-menu": ("demo", "PS1", ["--tour", "menu", "2000"]),
+    # Leave a Game: the in-game menu open over the game, X pressing next;
+    # and X before MENU, his answer that MENU comes first
+    "tour-quit": ("demo", "PS1", ["--tour", "quit", "1900"]),
+    "tour-quit-wrong": ("demo", "PS1", ["--tour", "quit", "3000", "--tour-wrong", "x", "420"]),
+    # ...and the player's MENU counted: its check on, the menu waiting for X
+    "tour-quit-held": ("demo", "PS1", ["--tour", "quit", "2000", "--tour-held", "400"]),
+    # Lock the Screen: the lock's panel on the dark stage; L2 alone (hold
+    # MENU too) and MENU alone (how the chord goes)
+    "tour-lock": ("demo", "PS1", ["--tour", "lock", "2600"]),
+    "tour-lock-wrong": ("demo", "PS1", ["--tour", "lock", "3000", "--tour-wrong", "l2", "420"]),
+    "tour-lock-wrong-menu": ("demo", "PS1", ["--tour", "lock", "3000", "--tour-wrong", "menu", "420"]),
+    # Unlock the Screen: SELECT and START held, the lock's bar filling, and
+    # a wrong press's answer
+    "tour-unlock": ("demo", "PS1", ["--tour", "unlock", "2000", "--tour-held", "1000"]),
+    "tour-unlock-wrong": ("demo", "PS1", ["--tour", "unlock", "3000", "--tour-wrong", "a", "420"]),
     "tour-bright": ("demo", "PS1", ["--tour", "bright", "2000"]),
     "tour-power": ("demo", "PS1", ["--tour", "power", "1800"]),
     "tour-finish": ("demo", "PS1", ["--tour", "finish", "500"]),
@@ -575,11 +617,13 @@ for _scroll in ("0.5", "1"):
     EXTRA.setdefault("about-3-scroll-" + _scroll, ("demo", "PS1", ["--about", "3", "--about-scroll", _scroll]))
 # The Scraper page's run saying what it is doing past a game's name (the
 # catalog, a game with no art, the checksums), and done with the reason it
-# passed a system over or stopped a source (art_status's lines)
+# passed a system over or stopped a source (art_status's lines), and three
+# systems passed over (art.problems)
 for _k, _w in enumerate(("catalog", "no-art", "checksums")):
     EXTRA.setdefault("scraper-page-run-" + _w, ("demo", "PS1", ["--scraper-page", "17", str(_k)]))
-for _k, _w in enumerate(("no-folder", "not-in-table", "no-curl", "index-failed", "index-bad", "ss-quota",
-                         "ss-too-many", "ss-busy", "ss-no-answer", "sg-refused", "sg-busy", "sg-no-answer")):
+for _k, _w in enumerate(("no-folder", "not-in-table", "no-curl", "index-failed", "index-refused", "index-bad",
+                         "ss-quota", "ss-too-many", "ss-busy", "ss-no-answer", "sg-refused", "sg-busy",
+                         "sg-no-answer", "many")):
     EXTRA.setdefault("scraper-page-done-" + _w, ("demo", "PS1", ["--scraper-page", "16", str(_k)]))
 # Every month: Date & Time's page on the 3rd of each (its name in full), and
 # MENU's Date & Time row on the 15th (its short name, --status's date=), in
@@ -647,11 +691,12 @@ CONFIRM_QUESTIONS = (
     "wifi-forget", "wifi-forget-joined", "pico8-restart-display", "pico8-restart-buttons",
     "pico8-reset", "game-reset", "splore-wifi", "cheats-crash", "cheats-first", "hotkeys-swap",
     "hotkeys-reset-game", "hotkeys-reset-system", "hotkeys-reset-every", "storage-unused-art",
-    "storage-old-states", "storage-system-snaps", "storage-media-folder", "storage-media-file",
+    "storage-old-states", "storage-ds-copies", "storage-system-snaps", "storage-media-folder", "storage-media-file",
     "storage-orphan-port", "game-delete", "port-delete", "update-rollback", "collection-delete",
     "screenshot-delete", "media-video-delete", "sgdb-unlink", "ss-unlink", "snaps-delete-all",
     "reset-buttons-game", "reset-buttons-all", "usb-offer", "dl-sign-out", "dl-delete-videos",
-    "dl-delete-cheats", "dl-delete-sets", "dl-sys-videos", "dl-sys-sets", "dl-sys-cheats", "bt-forget")
+    "dl-delete-cheats", "dl-delete-sets", "dl-sys-videos", "dl-sys-sets", "dl-sys-cheats", "bt-forget",
+    "link-gambatte")
 for _q in CONFIRM_QUESTIONS:
     EXTRA.setdefault("ask-" + _q, ("demo", "PS1", ["--ask", _q]))
 # System Update (DESIGN.md 11.17, 2026-11-11): What's New scrolled to its
@@ -660,6 +705,12 @@ EXTRA.setdefault("update-notes-end", ("demo", "PS1", ["--update", "--update-scro
 EXTRA.setdefault("update-mark", ("demo", "PS1", ["--status", "10:08 24h wifi=3 batt=82 update=42"]))
 for _k in ("available", "ready"):
     EXTRA.setdefault("update-news-" + _k, ("demo", "PS1", ["--upnews", _k]))
+# The last start's restart (DESIGN.md 11.70): Zyper's bubble with the
+# longest code of a start that did not finish and of a freeze while playing,
+# and About ZyperOS's Last Restart row, from the card's copy said yesterday
+EXTRA.setdefault("lastboot-start", ("demo", "PS1", ["--lastboot", "stage=L1;reason=W;kernel_time=118.4"]))
+EXTRA.setdefault("lastboot-froze", ("demo", "PS1", ["--lastboot", "stage=H;reason=P;kernel_time=18342.5"]))
+EXTRA.setdefault("about-0-restart", ("demo", "PS1", ["--about", "0"]))
 EXTRA.setdefault("hotspot-waiting", ("demo", "PS1", ["--hotspot", "ZyperOS-7A2B", "q7mx-3kpa", "0 joined", "waiting"]))
 EXTRA.setdefault("gamemenu-dual", ("demo", "PS1", ["--gamemenu", "0", "dual"]))
 # ...and its Display tab, where the screens' three rows are, on the Stylus row
@@ -801,6 +852,7 @@ EXTRA.setdefault("gamemenu-strength-list", ("demo", "PS1", ["--gamemenu", "2", "
 SHOT_SETTINGS["gamemenu-strength-list"] = {"shader.PS1": "crt", "shader_strength.PS1": "50"}
 EXTRA.setdefault("menu-shader-list", ("demo", "PS1", ["--menu", "Shader", "--press", "a"]))
 SHOT_SETTINGS["menu-shader-list"] = {"launcher_shader": "scanlines"}
+SHOT_SETTINGS["system-menu-favfirst"] = {"favfirst.PS1": "on"}
 
 # LCD No Backlight (src/app.h SHADERS' only), the Game Boy's three's alone:
 # in the in-game menu of a Game Boy Advance game, its row and its list under
@@ -855,6 +907,7 @@ _MGS = "map.PS1." + R.FOCUS + ".chd"
 _SONIC = "Sonic Adventure (USA).chd"
 for _name, _tag, _flags in (
         ("end", "PS1", ["--gamemenu", "13"]), ("pick", "PS1", ["--gamemenu", "5", "--gm-pick"]),
+        ("pick-swap", "PS1", ["--gamemenu", "5", "--gm-pick", "--pick-at", "2"]),
         ("all", "PS1", ["--gamemenu", "0", "--gm-all"]), ("warn", "PS1", ["--gamemenu", "3"]),
         ("ask", "PS1", ["--gamemenu", "12", "--gm-ask"]),
         ("ask-all", "PS1", ["--gamemenu", "12", "--gm-ask", "--gm-all"]),
@@ -983,6 +1036,9 @@ for _name, _flags in (("home-recents", []), ("shelf-recents", ["--screen", "game
 # game's details on Add to Collection and its list, the shelf's menu at its
 # top and in one, and Delete Collection's question
 SHOT_TEXT = {}
+SHOT_TEXT["about-0-restart"] = {
+    "userdata/lastboot.txt": "reason=W\nstage=L1\nkernel_time=118.4\ntime=2026-11-23 22:14:05\n"
+                             "version=1.1.0\ndevice=px2\nlast=-\nseen=%d\n" % (int(__import__("time").time()) - 86400)}
 _COLL = {"Collections/Couch Co-op.txt": "/Roms/SNES/Super Mario World (USA).sfc\n"
                                         "/Roms/Game Boy Advance/Mario Kart - Super Circuit (USA).gba\n"
                                         "/Roms/PlayStation/Tekken 3 (USA).chd\n",
@@ -1114,11 +1170,12 @@ for _name, _flags in (("shelf-recents-screen", ["--screen", "games"]),
 
 
 # The Video view (DESIGN.md 11.57): a game with no snap, its card whole
-# above the band; its snap playing (the test picture), the band up; the band
-# down to its strip, and halfway there; MENU's View on Video and its list
+# above the band; its snap playing (the test picture), the band up; at rest,
+# the band and the name's card away, and halfway there; MENU's View on Video
+# and its list
 for _name, _flags in (("shelf-video", ["--screen", "games", "--view", "video"]),
                       ("shelf-video-snap", ["--screen", "games", "--view", "video", "--snap", "1"]),
-                      ("shelf-video-strip", ["--screen", "games", "--view", "video", "--snap", "1", "--band", "1"]),
+                      ("shelf-video-rest", ["--screen", "games", "--view", "video", "--snap", "1", "--band", "1"]),
                       ("shelf-video-half", ["--screen", "games", "--view", "video", "--snap", "1", "--band", ".5"]),
                       ("system-menu-view-video", ["--screen", "games", "--view", "video", "--menu", "View"]),
                       ("system-menu-view-video-list", ["--screen", "games", "--view", "video", "--menu", "View",
@@ -1126,11 +1183,18 @@ for _name, _flags in (("shelf-video", ["--screen", "games", "--view", "video"]),
     EXTRA.setdefault(_name, ("demo", "PS1", _flags))
 
 
+# The List view (DESIGN.md 11.39): the snap at the height of the rows (the
+# test picture) with the details over its foot, and halfway down at rest
+for _name, _flags in (("shelf-list-snap", ["--screen", "games", "--view", "list", "--snap", "1"]),
+                      ("shelf-list-rest", ["--screen", "games", "--view", "list", "--snap", "1", "--band", ".5"])):
+    EXTRA.setdefault(_name, ("demo", "PS1", _flags))
+
+
 # Screenshots (src/shotname.h, DESIGN.md 11.68): the Screenshot hotkey's
 # pictures on the card, each a PNG made up here as Diatom names them, at its
 # game's own size, and one of a game no longer on the card. The home on the
 # group, its shelf in Covers, Grid and List, a shot opened with A (the Video
-# view) and its band down to the strip, Delete Screenshot's question and its
+# view) and at rest, its band and card away, Delete Screenshot's question and its
 # message, MENU's Sort By list, and Home Systems with the group's row Off
 _SHOTS = {}
 for (_folder, _game, _when, _wh, _sky, _ground, _hue) in (
@@ -1147,7 +1211,7 @@ for _name, _flags in (("home-screenshots", []),
                       ("shelf-screenshots-grid", ["--screen", "games", "--view", "grid"]),
                       ("shelf-screenshots-list", ["--screen", "games", "--view", "list"]),
                       ("screenshots-viewer", ["--screen", "games", "--shelf-press", "a"]),
-                      ("screenshots-viewer-strip", ["--screen", "games", "--shelf-press", "a", "--band", "1"]),
+                      ("screenshots-viewer-rest", ["--screen", "games", "--shelf-press", "a", "--band", "1"]),
                       ("screenshots-delete", ["--screen", "games", "--shots-delete"]),
                       ("screenshots-said", ["--screen", "games", "--shots-said"]),
                       ("screenshots-menu", ["--screen", "games", "--menu", "Sort By"]),
@@ -1217,6 +1281,11 @@ def set_lib(card, settings, on):
 for _tab in range(6):
     EXTRA.setdefault("menu-tab-%d" % _tab, ("demo", "PS1", ["--menu-tab", str(_tab), "--menu", "0"]))
 EXTRA.setdefault("menu-display-theme", ("demo", "PS1", ["--menu-tab", "1", "--menu", "Theme"]))
+# Game Names' two (DESIGN.md 11.71), each with its note and its example name
+# under the list, in every language: Short and File Name
+for _k in range(2):
+    EXTRA.setdefault("menu-game-names-%d" % _k, ("demo", "PS1", ["--menu-tab", "1", "--menu", "5", "--press", "a",
+                                                                "--pick-at", str(_k)]))
 # Display's Screensaver at off: "Off", a status begun with a capital as every
 # row's value is (menu.off, and scraper.off and ssh.off, its words)
 EXTRA.setdefault("menu-saver-off", ("demo", "PS1", ["--menu-tab", "1", "--menu", "Screensaver"]))
@@ -1342,8 +1411,8 @@ EXTRA.setdefault("theme-folders-list-teal", ("demo", "PS1", ["--look-page", "the
 # Color's Handheld Color list, each of its six under the cursor
 _BORDER_SET = {"display.GB": "integer", "display_source.GB": "160x144", "display_shape.GB": "1.11111"}
 _BORDER_PIC = ["Borders/Game Boy/Waves.png"]
-# Border's lists say only its own kinds (--expect-en): Blur where the device
-# draws it (not the Brick), the rest on both
+# Border's lists say only its own kinds (--expect-en), in their order and each
+# once: Blur where the device draws it, the rest on both
 _BORDER_EXPECT = "Off|Blur?|Handheld|Handheld, Whole|Your Own"
 _BORDER_WORDS = (("off", "Off"), ("blur", "Blur"), ("handheld", "Handheld"), ("whole", "Handheld, Whole"),
                  ("own", "Your Own"))
@@ -1516,6 +1585,26 @@ SHOT_SETTINGS["appearance-list-on-auto"] = dict(_AUTO)
 EXTRA.setdefault("night-page-off-auto", ("demo", "PS1", ["--look-page", "night", "0"]))
 SHOT_SETTINGS["night-page-off-auto"] = dict(_AUTO, **{"night.from": "1350", "night.until": "690"})
 SHOT_STATUS["night-page-off-auto"] = "10:08 12h wifi=off batt=82"
+# What a list's cursor shows (src/ds/hover.h, DESIGN.md 11.3): each list
+# with its cursor off the choice kept, the screen showing the one under it
+# and the tick on the kept one (Theme's three are above)
+EXTRA.setdefault("menu-battery-list-percentage", ("demo", "PS1", ["--menu-tab", "1", "--menu", "Battery Icon",
+                                                                   "--press", "a", "--pick-at", "1"]))
+EXTRA.setdefault("menu-home-list-gallery", ("demo", "PS1", ["--menu-tab", "1", "--menu", "Home Screen",
+                                                             "--press", "a", "--pick-at", "1"]))
+EXTRA.setdefault("system-menu-view-list-grid", ("demo", "NES", ["--screen", "games", "--menu", "View",
+                                                                 "--press", "a", "--pick-at", "1"]))
+EXTRA.setdefault("system-menu-sort-list", ("demo", "PS1", ["--screen", "games", "--menu", "Sort By",
+                                                            "--press", "a", "--pick-at", "2"]))
+EXTRA.setdefault("language-list-deutsch", ("demo", "PS1", ["--language", "5"]))
+EXTRA.setdefault("gamemenu-quick-list", ("demo", "PS1", ["--gamemenu", "3", "--gm-tab", "0", "--gm-choose",
+                                                          "--pick-at", "1"]))
+EXTRA.setdefault("gamemenu-dual-screens-focus", ("demo", "PS1", ["--gamemenu", "2", "dual", "--gm-tab", "1",
+                                                                  "--gm-choose", "--pick-at", "1"]))
+EXTRA.setdefault("hud-pick-corner-bottom-right", ("demo", "PS1", ["--gamemenu", "0", "--gm-tab", "1", "--hud-page", "2",
+                                                                   "--hud-pick", "2", "--pick-at", "3",
+                                                                   "--hud-shows", "fps,speed,temp"]))
+SHOT_SETTINGS["hud-pick-corner-bottom-right"] = {"hud": "1"}
 
 # The pop-ups the SELECT hotkeys put over a game (src/main.c, on_quick and
 # on_speed), each as it says: the slot saved, loaded, empty or failed, a game
@@ -1525,15 +1614,19 @@ SHOT_STATUS["night-page-off-auto"] = "10:08 12h wifi=off batt=82"
 # friend's browser joining and leaving
 for _kind in ("saved", "loaded", "save_failed", "load_failed", "slot_empty", "no_states", "dslang",
               "corestate", "stick_on", "stick_off", "player2_joined", "player2_left",
-              "player2_stopped", "shot", "shader", "display", "cheats", "cheats_one"):
+              "player2_stopped", "shot", "shader", "display", "cheats", "cheats_one",
+              "link_linked", "link_lost", "link_left"):
     EXTRA.setdefault("popup-" + _kind, ("demo", "PS1", ["--popup", _kind]))
 # A Famicom Disk System game's disk as L1 and R1 move it (src/diskpopup.h)
 for _kind in ("disk_side", "disk_in", "disk_out", "disk_first"):
     EXTRA.setdefault("popup-" + _kind, ("demo", "NES", ["--popup", _kind]))
 EXTRA.setdefault("popup-speed-half", ("demo", "PS1", ["--popup", "speed", "3"]))
 EXTRA.setdefault("popup-speed-whole", ("demo", "PS1", ["--popup", "speed", "4"]))
+# Max (0), and 1x, as Fast Forward turns it off
+EXTRA.setdefault("popup-speed-max", ("demo", "PS1", ["--popup", "speed", "0"]))
+EXTRA.setdefault("popup-speed-one", ("demo", "PS1", ["--popup", "speed", "2"]))
 # The Hotkeys list (src/hotkeys_screen.h): MENU > System's, at its top and its
-# end (Home, the line under it, Reset Hotkeys); a game's, Applies To on each
+# end (Home, Reset Hotkeys, the footer for MENU's chords); a game's, Applies To on each
 # of its three and All Controls at the end; the capture screen waiting and
 # with SELECT and Y down; the swap question; Reset Hotkeys' question for each
 # scope; and Reset Game's question over the game
@@ -1549,8 +1642,25 @@ for _name, _flags in (
         ("reset-every", ["--hotkeys", "103", "--hk-ask", "2"]),
         ("reset-system", ["--screen", "games", "--hk-game", "--hk-scope", "1", "--hotkeys", "103", "--hk-ask", "2"]),
         ("reset-game", ["--screen", "games", "--hk-game", "--hk-scope", "2", "--hotkeys", "103", "--hk-ask", "2"]),
-        ("reset-ask", ["--screen", "games", "--hk-game", "--hotkeys", "103", "--hk-ask", "3"])):
+        ("reset-ask", ["--screen", "games", "--hk-game", "--hotkeys", "103", "--hk-ask", "3"]),
+        # MENU's chords on every screen (src/menukeys.h): their rows, and
+        # Screenshot's capture with MENU and L1 down
+        ("menu-keys", ["--hotkeys", "109"]),
+        ("menu-capture", ["--hotkeys", "107", "--hk-capture", "1"]),
+        ("menu-capture-keys", ["--hotkeys", "107", "--hk-capture", "2", "--hk-key", "4"]),
+        ("menu-swap", ["--hotkeys", "107", "--hk-ask", "1"])):
     EXTRA.setdefault("hotkeys-" + _name, ("demo", "PS1", _flags))
+# Fast Forward and its speed under it (src/hotkeys.h): as they come, None and
+# 2x; set, SELECT+Y and Max, both in the accent-ink, in MENU > System's and a
+# game's; and its capture screen
+EXTRA.setdefault("hotkeys-ffwd", ("demo", "PS1", ["--hotkeys", "9"]))
+EXTRA.setdefault("hotkeys-ff-speed", ("demo", "PS1", ["--hotkeys", "120"]))
+EXTRA.setdefault("hotkeys-ff-set", ("demo", "PS1", ["--hotkeys", "120"]))
+SHOT_LIB["hotkeys-ff-set"] = {"hotkeys": "1;ffwd:y,ffspeed:max"}
+EXTRA.setdefault("hotkeys-ff-game", ("demo", "PS1", ["--screen", "games", "--hk-game", "--hk-scope", "0",
+                                                     "--hotkeys", "120"]))
+SHOT_LIB["hotkeys-ff-game"] = {"hotkeys": "1;ffwd:y,ffspeed:max"}
+EXTRA.setdefault("hotkeys-ff-capture", ("demo", "PS1", ["--hotkeys", "9", "--hk-capture", "2", "--hk-key", "3"]))
 # NES Player 2 (src/p2.h): its page over a paused NES game in every state
 # (--player2), the code on the hotspot with nobody yet and its address under
 # it, a player connected, the cable, before A on each link, with neither
@@ -1561,6 +1671,33 @@ for _kind in ("hotspot", "connected", "cable", "off", "off-cable", "none", "fail
     EXTRA.setdefault("player2-" + _kind, ("demo", "NES", ["--screen", "games", "--player2", _kind]))
 EXTRA.setdefault("gamemenu-player2", ("demo", "NES", ["--screen", "games", "--gamemenu", "4",
                                                        "--player2", "connected"]))
+# The Game Boy's Link Cable (src/link.h, DESIGN.md 11.72): its page over a
+# paused Game Boy game in every state (--link), Host and Join, the host's
+# network starting and waiting, the joiner looking and the hosts found, joining,
+# linked, after a lost link and each failure, and the Wi-Fi coming back; and
+# the in-game menu on its row on Gambatte, linked, waiting, lost and with no
+# adapter in
+for _kind in ("tiles", "starting", "waiting", "looking", "found", "joining", "linked", "lost",
+              "failed", "stopping", "failed-network", "failed-join", "failed-busy", "failed-game",
+              "failed-code", "cable-tiles", "cable-waiting", "cable-joining", "failed-cable"):
+    EXTRA.setdefault("link-" + _kind, ("demo", "GB", ["--screen", "games", "--link", _kind]))
+# ...and the joiner's keyboard asking for the code the host shows
+EXTRA.setdefault("keyboard-link", ("demo", "PS1", ["--keyboard", "0", "48", "--kb-link"]))
+for _name, _kind in (("gamemenu-link", "linked"), ("gamemenu-link-waiting", "waiting"),
+                     ("gamemenu-link-lost", "lost"), ("gamemenu-link-no-adapter", "no-adapter")):
+    EXTRA.setdefault(_name, ("demo", "GB", ["--screen", "games", "--gamemenu", "4", "--link", _kind]))
+    SHOT_SETTINGS[_name] = {"core.GB": "gambatte"}
+
+# On mGBA (Tarik's decision, 2026-11-27): the Link Cable row on a Game Boy
+# game running on mgba, and a game's own core on its details page, on a
+# card with both cores (stand-ins, gbcores_card): the shelf's ("mgba
+# (Shelf's)") and its own (gambatte, as the Link Cable's restart leaves it)
+EXTRA.setdefault("gamemenu-link-mgba", ("gbcores", "GB", ["--screen", "games", "--gamemenu", "4",
+                                                          "--link", "tiles"]))
+SHOT_SETTINGS["gamemenu-link-mgba"] = {"core.GB": "mgba"}
+EXTRA.setdefault("info-core-shelf", ("gbcores", "GB", ["--screen", "games", "--info"]))
+EXTRA.setdefault("info-core-own", ("gbcores", "GB", ["--screen", "games", "--info"]))
+SHOT_SETTINGS["info-core-own"] = {"core.GB.Pokemon - Red Version (USA, Europe).gb": "gambatte"}
 
 # MENU > System Update in the states whose lines are longest, each as the
 # status file the update program writes it (src/sysupdate.c); the second is
@@ -1578,7 +1715,11 @@ UPDATE_STATES = {
     "update-error-download": ("state error\nversion 0.1.1\ndownload 83000000\nkind system\ntime {now}\n", True),
     "update-needs-system": ("state needs-system\nversion 0.3.0\ntime {now}\n", True),
     "update-too-big": ("state too-big\nversion 0.3.0\nkind system\ntime {now}\n", True),
-    "update-space": ("state space\nversion 0.2.0\ndownload 14200000\ntime {now}\n", True),
+    # The card too full: what the update needs, beside the shot's stand-in
+    # free room (src/shots.c)
+    "update-space": ("state space\nversion 0.2.0\ndownload 14200000\nneed 410000000\ntime {now}\n", True),
+    # ...and as a program from before need was written says it
+    "update-space-old": ("state space\nversion 0.2.0\ndownload 14200000\ntime {now}\n", True),
     "update-available-offline": ("state available\nversion 0.1.1\ndownload 83000000\nkind system\ntime {now}\n", False),
     "update-ready": ("state ready\nversion 0.1.1\nkind system\ntime {now}\n", True),
 }
@@ -1799,7 +1940,7 @@ KNOWN_KEYS = set()
 
 # The scratch cards every run shoots from, by name
 CARDS = ["demo", "empty", "scummvm", "openbor", "ports", "all", "portdocs", "media", "pmcard", "psp",
-         "es", "systems", "pico8"]
+         "es", "systems", "pico8", "gbcores"]
 
 
 def make_cards(top):
@@ -1823,6 +1964,12 @@ def make_cards(top):
     R.openbor_card(cards["openbor"])
     R.psp_card(cards["psp"])
     pico8_card(cards["pico8"])
+    # The demonstration card with the Game Boy's two cores (stand-in files,
+    # as pico8_card's fake08): its Core rows have a choice
+    R.demo_card(cards["gbcores"], None, {"artwork": {}})
+    (cards["gbcores"] / "ZyperOS/cores").mkdir(parents=True, exist_ok=True)
+    for _c in ("mgba", "gambatte"):
+        (cards["gbcores"] / f"ZyperOS/cores/{_c}_libretro.so").write_bytes(b"")
     R.card_dirs(cards["empty"])
 
 

@@ -126,6 +126,11 @@ static void upgrade(void)
 		CHECK(!got.title[0] && !strcmp(got.synopsis, "Old prose") && !strcmp(got.year, "1991"));
 		CHECK(db_has(d, "favorite.NES.old.zip") && db_has(d, "sess.1.1.NES\told.zip"));
 		CHECK(!db_game_title(d, "NES", "old.zip", title, sizeof title) && !title[0]);
+		/* The player's names' table, made on the old card: none yet, then
+		 * one, which the next open still has (src/gamern.h, gr_shown_set) */
+		CHECK(!db_user_title(d, "NES", "old.zip", title, sizeof title) == !pass);
+		if (!pass) CHECK(db_user_title_set(d, "NES", "old.zip", "Player's Name"));
+		CHECK(db_user_title(d, "NES", "old.zip", title, sizeof title) && !strcmp(title, "Player's Name"));
 		db_close(d);
 	}
 	CHECK(sqlite3_open(libpath, &raw) == SQLITE_OK);
@@ -136,6 +141,10 @@ static void upgrade(void)
 	strcpy(m.title, "日本語 é 🚀 (Special)"); strcpy(m.year, "2000");
 	CHECK(db_game_set(d, "NES", "old.zip", &m)); db_close(d);
 	d = db_open(libpath, DB_LIBRARY);
+	CHECK(db_game_get(d, "NES", "old.zip", &got) && !strcmp(got.title, m.title));
+	/* A download's title beside the player's name: each kept, the player's shown */
+	CHECK(db_user_title(d, "NES", "old.zip", title, sizeof title) && !strcmp(title, "Player's Name"));
+	CHECK(db_user_title_set(d, "NES", "old.zip", NULL) && !db_user_title(d, "NES", "old.zip", title, sizeof title));
 	CHECK(db_game_get(d, "NES", "old.zip", &got) && !strcmp(got.title, m.title));
 	CHECK(db_game_title(d, "NES", "old.zip", small, sizeof small) && !strcmp(small, "日"));
 	m.title[0] = '\0'; strcpy(m.synopsis, "Updated prose");
@@ -610,6 +619,125 @@ static void file_shown(void)
 	lib_free(&list);
 }
 
+/* Games of one title told apart (lib_titles_apart, 2026-11-23: drmoze's
+ * TurboGrafx-16 showed "Bonk's Adventure" twice, its USA and Japanese dumps
+ * named alike by a download) */
+static void apart_put(game_entry *e, const char *file, unsigned dir, const char *title)
+{
+	const char *base = strrchr(file, '/'), *dot;
+
+	memset(e, 0, sizeof *e);
+	snprintf(e->file, sizeof e->file, "%s", file);
+	base = base ? base + 1 : file;
+	dot = strrchr(base, '.');
+	snprintf(e->name, sizeof e->name, "%.*s", dot ? (int)(dot - base) : (int)strlen(base), base);
+	snprintf(e->title, sizeof e->title, "%s", title);
+	e->dir = (unsigned short)dir;
+}
+
+static const char *apart_title(const game_list *l, const char *file)
+{
+	int i = lib_find_entry(l, NULL, 0, file);
+	return i >= 0 ? l->items[i].title : "(missing)";
+}
+
+static void titles_apart(void)
+{
+	game_entry it[8];
+	game_list l = { .items = it };
+
+	/* Each its region */
+	apart_put(&it[0], "Bonk's Adventure (USA).pce", 0, "Bonk's Adventure");
+	apart_put(&it[1], "PC Genjin (Japan).pce", 0, "Bonk's Adventure");
+	apart_put(&it[2], "Boxyboy (USA).pce", 0, "Boxyboy");
+	apart_put(&it[3], "Bonk's Revenge (USA, Europe).pce", 0, "Bonk's Revenge");
+	apart_put(&it[4], "PC Genjin 2 (Japan).pce", 0, "bonk's revenge");
+	l.count = 5;
+	lib_titles_apart(&l);
+	CHECK(!strcmp(apart_title(&l, "Bonk's Adventure (USA).pce"), "Bonk's Adventure (USA)"));
+	CHECK(!strcmp(apart_title(&l, "PC Genjin (Japan).pce"), "Bonk's Adventure (Japan)"));
+	CHECK(!strcmp(apart_title(&l, "Boxyboy (USA).pce"), "Boxyboy"));
+	CHECK(!strcmp(apart_title(&l, "Bonk's Revenge (USA, Europe).pce"), "Bonk's Revenge (USA, Europe)"));
+	CHECK(!strcmp(apart_title(&l, "PC Genjin 2 (Japan).pce"), "bonk's revenge (Japan)"));
+	/* Again: the same, not a second mark */
+	lib_titles_apart(&l);
+	CHECK(!strcmp(apart_title(&l, "PC Genjin (Japan).pce"), "Bonk's Adventure (Japan)"));
+	CHECK(it[1].apart == strlen("Bonk's Adventure") && it[2].apart == 0);
+	/* One of them named otherwise: the other goes back to its name */
+	strcpy(it[1].title, "PC Genjin"); it[1].apart = 0;
+	lib_titles_apart(&l);
+	CHECK(!strcmp(apart_title(&l, "Bonk's Adventure (USA).pce"), "Bonk's Adventure") && it[0].apart == 0);
+
+	/* One region: the brackets the others do not all have, a revision, a
+	 * translation, a disc */
+	apart_put(&it[0], "Zelda (USA).nes", 0, "Zelda");
+	apart_put(&it[1], "Zelda (USA) (Rev 1).nes", 0, "Zelda");
+	apart_put(&it[2], "Zelda (Japan).nes", 0, "Zelda");
+	apart_put(&it[3], "Zelda (Japan) [T+Eng].nes", 0, "Zelda");
+	l.count = 4;
+	lib_titles_apart(&l);
+	CHECK(!strcmp(apart_title(&l, "Zelda (USA).nes"), "Zelda (USA)"));
+	CHECK(!strcmp(apart_title(&l, "Zelda (USA) (Rev 1).nes"), "Zelda (USA) (Rev 1)"));
+	CHECK(!strcmp(apart_title(&l, "Zelda (Japan).nes"), "Zelda (Japan)"));
+	CHECK(!strcmp(apart_title(&l, "Zelda (Japan) [T+Eng].nes"), "Zelda (Japan) [T+Eng]"));
+	/* No region at all */
+	apart_put(&it[0], "Game (Rev 1).gb", 0, "Game");
+	apart_put(&it[1], "Game (Rev 2).gb", 0, "Game");
+	apart_put(&it[2], "Game.gb", 0, "Game");
+	l.count = 3;
+	lib_titles_apart(&l);
+	CHECK(!strcmp(apart_title(&l, "Game (Rev 1).gb"), "Game (Rev 1)"));
+	CHECK(!strcmp(apart_title(&l, "Game (Rev 2).gb"), "Game (Rev 2)"));
+	CHECK(!strcmp(apart_title(&l, "Game.gb"), "Game"));
+	/* Brackets alike: the file, then its folders */
+	apart_put(&it[0], "Bonk (USA).pce", 0, "Bonk");
+	apart_put(&it[1], "Bonk (USA).zip", 0, "Bonk");
+	l.count = 2;
+	lib_titles_apart(&l);
+	CHECK(!strcmp(apart_title(&l, "Bonk (USA).pce"), "Bonk \xc2\xb7 Bonk (USA).pce"));
+	CHECK(!strcmp(apart_title(&l, "Bonk (USA).zip"), "Bonk \xc2\xb7 Bonk (USA).zip"));
+	/* Titles that are the files' names already (Game Names: File Name):
+	 * the extension alone, not the name twice */
+	apart_put(&it[0], "Bonk (USA).pce", 0, "Bonk (USA)");
+	apart_put(&it[1], "Bonk (USA).zip", 0, "Bonk (USA)");
+	lib_titles_apart(&l);
+	CHECK(!strcmp(apart_title(&l, "Bonk (USA).pce"), "Bonk (USA) \xc2\xb7 pce"));
+	CHECK(!strcmp(apart_title(&l, "Bonk (USA).zip"), "Bonk (USA) \xc2\xb7 zip"));
+	apart_put(&it[0], "Hacks/Bonk.pce", 5, "Bonk");
+	apart_put(&it[1], "Mine/Bonk.pce", 4, "Bonk");
+	lib_titles_apart(&l);
+	CHECK(!strcmp(apart_title(&l, "Hacks/Bonk.pce"), "Bonk \xc2\xb7 Hacks/Bonk.pce"));
+	CHECK(!strcmp(apart_title(&l, "Mine/Bonk.pce"), "Bonk \xc2\xb7 Mine/Bonk.pce"));
+	/* A shelf's folder is no game: one named as a game is left alone */
+	apart_put(&it[0], "Bonk", 0, "Bonk"); it[0].folder = 3;
+	apart_put(&it[1], "Bonk (USA).pce", 0, "Bonk");
+	lib_titles_apart(&l);
+	CHECK(!strcmp(it[0].title, "Bonk") && !strcmp(it[1].title, "Bonk"));
+
+	/* The scan: a download's one name for two dumps, and the files' own */
+	{
+		game_list list = { 0 };
+		game_meta m = { 0 };
+
+		directory("PCE");
+		touch("PCE/Bonk's Adventure (USA).pce"); touch("PCE/PC Genjin (Japan).pce");
+		touch("PCE/Neutopia (USA).pce"); touch("PCE/Neutopia (Japan).pce");
+		touch("PCE/Boxyboy (USA).pce");
+		strcpy(m.title, "Bonk's Adventure");
+		CHECK(db_game_set(db_lib(), "PCE", "Bonk's Adventure (USA).pce", &m));
+		CHECK(db_game_set(db_lib(), "PCE", "PC Genjin (Japan).pce", &m));
+		CHECK(lib_scan(root, "PCE", "pce", &list) && list.count == 5);
+		CHECK(!strcmp(apart_title(&list, "Bonk's Adventure (USA).pce"), "Bonk's Adventure (USA)"));
+		CHECK(!strcmp(apart_title(&list, "PC Genjin (Japan).pce"), "Bonk's Adventure (Japan)"));
+		CHECK(!strcmp(apart_title(&list, "Neutopia (USA).pce"), "Neutopia (USA)"));
+		CHECK(!strcmp(apart_title(&list, "Neutopia (Japan).pce"), "Neutopia (Japan)"));
+		CHECK(!strcmp(apart_title(&list, "Boxyboy (USA).pce"), "Boxyboy"));
+		/* Nothing changed under it: a refresh says nothing changed */
+		for (int i = 0; i < list.count; i++) CHECK(!lib_refresh_title(db_lib(), "PCE", &list.items[i]));
+		lib_free(&list);
+	}
+}
+
 static int rm_one(const char *path, const struct stat *st, int flag, struct FTW *ftw)
 {
 	(void)st; (void)flag; (void)ftw;
@@ -621,7 +749,7 @@ int main(void)
 	CHECK(mkdtemp(root) != NULL);
 	snprintf(libpath, sizeof libpath, "%s/library.db", root);
 	snprintf(devpath, sizeof devpath, "%s/device.db", root);
-	parse_titles(); upgrade(); runner(); library(); disc_folders(); m3u_discs(); file_shown(); db_shutdown();
+	parse_titles(); upgrade(); runner(); library(); disc_folders(); m3u_discs(); file_shown(); titles_apart(); db_shutdown();
 	/* A unique fixture tree (mkdtemp's), removed whole */
 	nftw(root, rm_one, 16, FTW_DEPTH | FTW_PHYS);
 	if (failures) return 1;

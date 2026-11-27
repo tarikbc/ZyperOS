@@ -11,7 +11,7 @@
 #include "i18n.h"
 #include "theme.h"
 #include "ui.h"
-#include "ds/flex.h"     /* the list and its panel, laid out by rules */
+#include "listbox.h"     /* the list and its media, laid out by rules */
 #include "ds/layout.h"
 #include "ds/mark.h"
 #include "ds/focus.h"
@@ -22,51 +22,39 @@
 #include <stdio.h>
 #include <string.h>
 
-/* The list's geometry (DESIGN.md 11.39), laid out by rules (src/ds/flex.h):
- * the heading and the foot are the cover row's (games_frame), so turning
- * View over moves nothing but the middle; in the middle, from the page's
- * margins, the list's column and the focused entry's panel, GL_GAP apart */
-#define GL_TOP_GAP   28      /* the first row's top under the heading's line (200):
-                              * room for the triangle that says more is above */
-#define GL_GAP       48      /* the list's column to the panel */
-#define GL_PANEL_W   320
+/* The list's boxes (src/listbox.h, DESIGN.md 11.39): the rows down the
+ * left, the focused entry's media at the right as tall as they are, its
+ * details over its foot */
 #define GL_PLATE_OUT 24      /* the focus plate past the list's column at its left */
-typedef struct { SDL_Rect list, panel; } gl_frame;
-static gl_frame gl_layout(void)
+static const gl_boxes *gl_layout(void)
 {
-	static ds_flex F;
-	static gl_frame g;
+	static gl_boxes b;
 	static bool done;
 
 	if (!done) {
-		const shelf_frame sf = games_frame();
-		const int top = sf.sys.y + sf.sys.h + GL_TOP_GAP;
-		const int root = ds_flex_begin(&F, ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H,
-		                               &(ds_box){ .dir = DS_ROW, .gap = GL_GAP,
-		                                          .pad = { sf.sys.x, top, ZYPEROS_SCREEN_W - sf.sys.x - sf.sys.w,
-		                                                   ZYPEROS_SCREEN_H - sf.keys.y } });
-		const int list = ds_flex_add(&F, root, &(ds_box){ .grow = 1 });
-		const int panel = ds_flex_add(&F, root, &(ds_box){ .w = GL_PANEL_W });
-
-		ds_flex_solve(&F);
-		g.list = ds_flex_rect(&F, list);
-		g.panel = ds_flex_rect(&F, panel);
+		b = gl_boxes_for(games_frame().sys, ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H);
 		done = true;
 	}
-	return g;
+	return &b;
 }
-#define GL_X        (gl_layout().list.x - GL_PLATE_OUT)          /* the focus plate's left (40); the text's is 64 */
-#define GL_W        (gl_layout().list.w + GL_PLATE_OUT)          /* to 592 */
-#define GL_TOP      (gl_layout().list.y)                         /* the first row's top (200) */
-#define GL_ROW_H    56      /* a row: meta's 37 and room either side */
-#define GL_MARK_X   (gl_layout().list.x + 16)                    /* a row's mark, centered here (80) */
-#define GL_NAME_X   (gl_layout().list.x + 56)                    /* a row's name (120) */
-#define GL_END_X    (gl_layout().list.x + gl_layout().list.w - 24) /* a row's right end (568): a folder's count, a heart */
-#define GL_PANEL_X  (gl_layout().panel.x)                        /* the focused entry's panel (640), to 960 */
-#define GL_COVER_H  320     /* the cover's box under the heading */
+#define GL_X        (gl_layout()->list.x - GL_PLATE_OUT)         /* the focus plate's left (40); the text's is 64 */
+#define GL_W        (gl_layout()->list.w + GL_PLATE_OUT)         /* to 464 */
+#define GL_TOP      (gl_layout()->list.y)                        /* the first row's top (200) */
+#define GL_MARK_X   (gl_layout()->list.x + 16)                   /* a row's mark, centered here (80) */
+#define GL_NAME_X   (gl_layout()->list.x + 56)                   /* a row's name (120) */
+#define GL_END_X    (gl_layout()->list.x + gl_layout()->list.w - 24) /* a row's right end (440): a folder's count, a heart */
+#define GL_PANEL_X  (gl_layout()->media.x)                       /* the media's box (512), to 960 */
+#define GL_PANEL_W  (gl_layout()->media.w)
+#define GL_FOOT     (gl_layout()->media.y + gl_layout()->media.h) /* the box's foot, the rows' (648) */
+/* The details over the media's foot: the facts and A's hint, inset from the
+ * picture's sides and the box's foot (gl_details_col), on the ground fading
+ * up from it */
+static int g_col_x, g_col_w;
+#define GL_FACT_X   g_col_x
+#define GL_FACT_W   g_col_w                                      /* 400 over a snap */
 #define GL_FACT_STEP 32
-#define GL_FACT_Y   (GL_TOP + GL_COVER_H + GL_FACT_STEP)         /* the first fact's capitals (552); the next GL_FACT_STEP down */
-#define GL_A_Y      (GL_FACT_Y + 3 * GL_FACT_STEP + 16)          /* A's hint, under three facts (664) */
+#define GL_A_Y      (gl_layout()->a_y)                           /* A's hint (604) */
+#define GL_A_GAP    (gl_layout()->a_gap)
 /* The mark of a game: a small card, its band in the system's color and the
  * name's first letter on it */
 #define GL_MARK_W   36
@@ -221,21 +209,39 @@ static void gl_row(SDL_Renderer *r, const gl_info *in, void *ctx, int i, int y,
 	}
 }
 
-/* A fact under the cover, at most the panel wide */
+/* The details are laid out twice a frame: once only to count their lines,
+ * so they stand on A's hint at the media's foot whatever their number, then
+ * drawn; and drawn at an alpha, as they go down at rest (gl_details) */
+static bool g_dry;
+static Uint8 g_alpha = 255;
+static ds_rgb g_warning;     /* the firmware line's color over the media (gl_details_ground) */
+
+static void gl_say(const char *s)
+{
+	if (!g_dry) ui_fit_drawn(s);
+}
+
+/* A fact over the media's foot, at most the details' width */
 static int gl_fact_in(SDL_Renderer *r, const char *s, int y, SDL_Color c)
 {
 	TTF_Font *f = page_font(PAGE_CHROME);
 	char fit[256];
 
 	if (!s || !*s) return y;
-	ui_fit_text(f, s, fit, sizeof fit, GL_PANEL_W);
-	ui_text(r, f, fit, GL_PANEL_X, ui_cap_y(f, y), -1, c);
-	return y + 32;
+	if (!g_dry) {
+		ui_fit_text(f, s, fit, sizeof fit, GL_FACT_W);
+		c.a = (Uint8)(c.a * g_alpha / 255);
+		ui_text(r, f, fit, GL_FACT_X, ui_cap_y(f, y), -1, c);
+	}
+	return y + GL_FACT_STEP;
 }
 
+/* In **text-soft**, a step up from the ground's **text-dim**: it needs
+ * the least ground under it to keep 4.5:1 over any picture (about 75%, where
+ * text-dim needs 87 to 94%) */
 static int gl_fact(SDL_Renderer *r, const char *s, int y)
 {
-	return gl_fact_in(r, s, y, UI_TEXT_DIM);
+	return gl_fact_in(r, s, y, UI_TEXT_SOFT);
 }
 
 /* A fact that may take two lines, balanced, in the panel's width: the
@@ -248,10 +254,10 @@ static int gl_fact_lines(SDL_Renderer *r, const char *s, int y, SDL_Color c)
 	int n, i;
 
 	if (!s || !*s) return y;
-	if (ui_text_width(f, s) <= GL_PANEL_W) return gl_fact_in(r, s, y, c);
-	n = ui_balance_lines(f, s, GL_PANEL_W, 2, lines);
+	if (ui_text_width(f, s) <= GL_FACT_W) return gl_fact_in(r, s, y, c);
+	n = ui_balance_lines(f, s, GL_FACT_W, 2, lines);
 	if (n < 2) return gl_fact_in(r, s, y, c);
-	ui_fit_drawn(s);    /* drawn in lines, said whole to the host's check */
+	gl_say(s);    /* drawn in lines, said whole to the host's check */
 	for (i = 0; i < n; i++) y = gl_fact_in(r, lines[i], y, c);
 	return y;
 }
@@ -270,20 +276,25 @@ static int gl_fact_origin(SDL_Renderer *r, const char *s, int y, bool two)
 	char head[256], line[512];
 	int tail;
 
-	if (!s || !*s || ui_text_width(f, s) <= GL_PANEL_W) return gl_fact(r, s, y);
+	if (!s || !*s || ui_text_width(f, s) <= GL_FACT_W) return gl_fact(r, s, y);
 	for (p = s; (p = strstr(p, DOT)); p++) dot = p;
 	if (!dot || dot == s || !dot[sizeof DOT - 1]) return gl_fact(r, s, y);
-	ui_fit_drawn(s);    /* drawn in parts, said whole to the host's check */
+	gl_say(s);    /* drawn in parts, said whole to the host's check */
 	snprintf(head, sizeof head, "%.*s", (int)(dot - s), s);
 	if (two) {
 		y = gl_fact(r, head, y);
 		return gl_fact(r, dot + sizeof DOT - 1, y);
 	}
 	tail = ui_text_width(f, dot);
-	if (tail >= GL_PANEL_W) return gl_fact(r, s, y);
-	ui_fit_text(f, head, line, sizeof line, GL_PANEL_W - tail);
+	if (tail >= GL_FACT_W) return gl_fact(r, s, y);
+	ui_fit_text(f, head, line, sizeof line, GL_FACT_W - tail);
 	snprintf(line + strlen(line), sizeof line - strlen(line), "%s", dot);
-	ui_text(r, f, line, GL_PANEL_X, ui_cap_y(f, y), -1, UI_TEXT_DIM);
+	if (!g_dry) {
+		SDL_Color c = UI_TEXT_SOFT;
+
+		c.a = (Uint8)(c.a * g_alpha / 255);
+		ui_text(r, f, line, GL_FACT_X, ui_cap_y(f, y), -1, c);
+	}
 	return y + GL_FACT_STEP;
 }
 
@@ -299,13 +310,125 @@ static int gl_fact_played(SDL_Renderer *r, const char *played, int y, bool two)
 	size_t hn;
 
 	snprintf(line, sizeof line, fmt, played);
-	if (!two || ui_text_width(f, line) <= GL_PANEL_W) return gl_fact(r, line, y);
-	if (!at || at[2] || (hn = (size_t)(at - fmt)) == 0) return gl_fact_lines(r, line, y, UI_TEXT_DIM);
+	if (!two || ui_text_width(f, line) <= GL_FACT_W) return gl_fact(r, line, y);
+	if (!at || at[2] || (hn = (size_t)(at - fmt)) == 0) return gl_fact_lines(r, line, y, UI_TEXT_SOFT);
 	while (hn > 0 && fmt[hn - 1] == ' ') hn--;
 	snprintf(head, sizeof head, "%.*s", (int)hn, fmt);
-	ui_fit_drawn(line);    /* drawn in lines, said whole to the host's check */
+	gl_say(line);    /* drawn in lines, said whole to the host's check */
 	y = gl_fact(r, head, y);
 	return gl_fact(r, played, y);
+}
+
+/* The facts, from `y` down, one GL_FACT_STEP a line; where the next line
+ * would be. Three fit as they always did: a fact takes a second line only
+ * where the ones after it still fit in three. */
+static int gl_facts(SDL_Renderer *r, const gl_info *in, int games, int y)
+{
+	TTF_Font *chrome = page_font(PAGE_CHROME);
+	char line[96];
+
+	if (games > 0) {
+		snprintf(line, sizeof line, TN(S_SHELF_GAMES, games), games);
+		return gl_fact(r, line, y);
+	}
+	bool cheats = in->cheats && *in->cheats;
+	int later = (cheats ? 1 + in->cheats_crashed : 0) + in->has_achievements;
+	int played = in->played && *in->played;
+	int needs = in->needs && *in->needs ? 1 + (ui_text_width(chrome, in->needs) > GL_FACT_W) : 0;
+	const int last = y + 2 * GL_FACT_STEP;
+
+	y = gl_fact_origin(r, in->origin, y,
+	                   y + (1 + (in->install || in->howto) + needs + played + later) * GL_FACT_STEP <= last);
+	if (in->install || in->howto) y = gl_fact(r, T(S_PORTMASTER_NOT_INSTALLED), y);
+	/* Firmware it cannot start without, in **warning** */
+	y = gl_fact_lines(r, in->needs, y, ui_col(g_warning, 255));
+	/* Played on two lines where they fit: Spanish's "Tiempo de juego: 12 h
+	 * 34 min" is wider than the details */
+	if (played) y = gl_fact_played(r, in->played, y, y + (1 + later) * GL_FACT_STEP <= last);
+	if (in->has_achievements) {
+		snprintf(line, sizeof line, T(S_GAMES_ACHIEVEMENTS), in->earned, in->total);
+		y = gl_fact(r, line, y);
+	}
+	/* and how many of its cheats are on (DESIGN.md 11.66) */
+	if (cheats) y = gl_fact(r, in->cheats, y);
+	if (cheats && in->cheats_crashed) y = gl_fact(r, T(S_CHEATS_SHELF_CRASHED_LINE), y);
+	return y;
+}
+
+/* The ground over the picture's foot, as the Video view's over the top of
+ * its snap (DESIGN.md 11.57): none at `from`, `alpha` at `full` and on to
+ * the box's foot, across the picture */
+static void gl_ground(SDL_Renderer *r, SDL_FRect pic, int from, int full, Uint8 alpha)
+{
+	const ds_rgb g = theme()->ground;
+	const float x0 = pic.x, x1 = pic.x + pic.w;
+	const SDL_Color none = { g.r, g.g, g.b, 0 }, on = { g.r, g.g, g.b, alpha };
+	const SDL_Vertex v[6] = {
+		{ { x0, (float)from }, none, { 0, 0 } }, { { x1, (float)from }, none, { 0, 0 } },
+		{ { x1, (float)full }, on, { 0, 0 } },   { { x0, (float)full }, on, { 0, 0 } },
+		{ { x1, (float)GL_FOOT }, on, { 0, 0 } }, { { x0, (float)GL_FOOT }, on, { 0, 0 } },
+	};
+	const int idx[12] = { 0, 1, 2, 0, 2, 3, 3, 2, 4, 3, 4, 5 };
+
+	if (alpha > 0) SDL_RenderGeometry(r, NULL, v, 6, idx, 12);
+}
+
+/* How much ground the details' lines need under them (src/listbox.h): as
+ * much as **text-soft** needs to keep 4.5:1 over any picture, and with a
+ * firmware line in **warning** as much as it needs, up to the Video view's
+ * band's 92%; past that the warning line is walked toward **text** as far
+ * as it must (g_warning). Worked out from the theme that is on, its tone and
+ * all, once a look. */
+#define GL_GROUND_MOST 235   /* 92%, the Video view's band's surface */
+static int gl_details_ground(const gl_info *in, int games)
+{
+	static unsigned gen = ~0u;
+	static int tone = -1, soft, warn;
+	const ds_theme *th = theme();
+
+	if (gen != look_gen() || tone != theme_index()) {
+		gen = look_gen();
+		tone = theme_index();
+		soft = gl_ground_alpha(th->ground, th->text_soft);
+		warn = gl_ground_alpha(th->ground, th->warning);
+		if (warn < soft) warn = soft;
+		if (warn > GL_GROUND_MOST) warn = GL_GROUND_MOST;
+		g_warning = gl_line_on(th->ground, warn, th->warning, th->text);
+	}
+	return !games && in->needs && *in->needs ? warn : soft;
+}
+
+/* The details over the media's foot (my pick in the List View lab,
+ * 2026-11-23: "show the details on top of the video in a very subtle way,
+ * maybe with a gradient, and collapse the details in 2s so u can see the
+ * full media"): over the picture at `pic` (its frame, as the cover turns
+ * into the snap), A's hint inset from the box's foot and the picture's
+ * left, the facts standing on it, on the ground fading up from the foot
+ * over GL_FADE above them. At rest, `down` of the way: they fade and sink
+ * a DS_INSET as they go. */
+#define GL_FADE (2 * GL_FACT_STEP)
+static void gl_details(SDL_Renderer *r, const gl_info *in, int games, float down, SDL_FRect pic)
+{
+	const int dy = (int)lroundf(DS_INSET * down);
+	int lines, y, top, ground;
+
+	if (down >= 1) return;
+	gl_details_col(pic, &g_col_x, &g_col_w);
+	ground = gl_details_ground(in, games);
+	g_dry = true;
+	lines = gl_facts(r, in, games, 0) / GL_FACT_STEP;
+	g_dry = false;
+	y = GL_A_Y - GL_A_GAP - (lines - 1) * GL_FACT_STEP;
+	top = lines > 0 ? y - GL_FACT_STEP / 2 : GL_A_Y - DS_HINT_GLYPH_FOCUS / 2;
+	g_alpha = (Uint8)lroundf(255 * (1 - down));
+	gl_ground(r, pic, top - GL_FADE, top, (Uint8)(ground * g_alpha / 255));
+	if (lines > 0) gl_facts(r, in, games, y + dy);
+	page_hint_fade(r, "A", in->a_word ? in->a_word
+	                       : T(games > 0 || in->opens ? S_GAMES_OPEN : in->howto ? S_PICO8_HOW_TO_ADD
+	                           : in->install ? S_PORTMASTER_INSTALL
+	                           : in->resumable ? S_GAMES_RESUME : S_GAMES_PLAY),
+	               GL_FACT_X, GL_A_Y + dy, true, false, g_alpha);
+	g_alpha = 255;
 }
 
 uint32_t gl_draw(gl_motion *m, SDL_Renderer *r, const gl_info *in,
@@ -377,21 +500,26 @@ uint32_t gl_draw(gl_motion *m, SDL_Renderer *r, const gl_info *in,
 	if (top + GL_ROWS < in->count - 0.01f)
 		ds_more(r, GL_X + GL_W / 2.0f, GL_TOP + GL_ROWS * GL_ROW_H + 10 - DS_MORE_H / 2.0f, false, UI_TEXT_DIM);
 
-	/* The focused entry: its card, whole, at the top of the panel, and its
-	 * facts under it */
+	/* The focused entry: its card, whole in the box at its own shape, its
+	 * foot on the box's; its snap the same; its details over that foot */
 	if (in->count > 0) {
-		int w = 0, h = 0, y = GL_FACT_Y;
-		float cb = 1;
+		int w = 0, h = 0;
+		float cb = 1, down;
 		SDL_Texture *t = texture(ctx, in->cursor, &w, &h, &cb);
 		int games = in->folder_of ? in->folder_of(ctx, in->cursor) : 0;
-		char line[96];
+		float k = in->snap && in->snap_k > 0 && in->snap_w > 0 && in->snap_h > 0
+		        ? fminf(in->snap_k, 1) : 0;
+		uint32_t next = UINT32_MAX;
+		/* The picture's frame, the details' place: the box until the art
+		 * is in, the cover's, and as it turns, the frame growing to the
+		 * snap's */
+		SDL_FRect pic = { (float)GL_PANEL_X, (float)GL_TOP, (float)GL_PANEL_W, (float)(GL_FOOT - GL_TOP) };
 
 		if (t && w > 0 && h > 0) {
-			float f = fminf((float)GL_PANEL_W / w, (float)GL_COVER_H / h);
-			SDL_FRect dst = { GL_PANEL_X + (GL_PANEL_W - w * f) / 2, GL_TOP, w * f, h * f };
-			float k = in->snap && in->snap_k > 0 && in->snap_w > 0 && in->snap_h > 0
-			        ? fminf(in->snap_k, 1) : 0;
+			SDL_FRect dst = gl_media_fit(gl_layout(), (float)w, (float)h);
 			Uint8 was;
+
+			pic = dst;
 
 			SDL_GetTextureAlphaMod(t, &was);
 			SDL_SetTextureAlphaMod(t, (Uint8)lroundf(was * (1 - k)));
@@ -399,70 +527,38 @@ uint32_t gl_draw(gl_motion *m, SDL_Renderer *r, const gl_info *in,
 			SDL_SetTextureAlphaMod(t, was);
 			if (k > 0) {
 				/* The cover turns into its video, as on the cover row: the
-				 * snap, whole at its own shape in the panel's box, through a
-				 * frame that grows from the cover's rect to its own */
-				float sf = fminf((float)GL_PANEL_W / in->snap_w, (float)GL_COVER_H / in->snap_h);
-				SDL_FRect vr = { GL_PANEL_X + (GL_PANEL_W - in->snap_w * sf) / 2, GL_TOP,
-				                 in->snap_w * sf, in->snap_h * sf };
+				 * snap, whole at its own shape in the box, through a frame
+				 * that grows from the cover's rect to its own */
+				SDL_FRect vr = gl_media_fit(gl_layout(), (float)in->snap_w, (float)in->snap_h);
 				SDL_Rect clip = { (int)floorf(dst.x + (vr.x - dst.x) * k),
 				                  (int)floorf(dst.y + (vr.y - dst.y) * k),
 				                  (int)ceilf(dst.w + (vr.w - dst.w) * k) + 1,
 				                  (int)ceilf(dst.h + (vr.h - dst.h) * k) + 1 };
 
+				pic = (SDL_FRect){ dst.x + (vr.x - dst.x) * k, dst.y + (vr.y - dst.y) * k,
+				                   dst.w + (vr.w - dst.w) * k, dst.h + (vr.h - dst.h) * k };
 				SDL_RenderSetClipRect(r, &clip);
 				SDL_SetTextureAlphaMod(in->snap, (Uint8)lroundf(255 * k));
 				SDL_RenderCopyF(r, in->snap, in->snap_src.w > 0 ? &in->snap_src : NULL, &vr);
 				SDL_SetTextureAlphaMod(in->snap, 255);
 				SDL_RenderSetClipRect(r, NULL);
 			}
-			/* Its snap's mark, the cover row's, fading as the snap comes */
-			if (in->has_snap && k < 1)
-				ds_play_disc(r, (int)lroundf(dst.x + dst.w) - DS_BADGE_INSET - DS_BADGE,
-				             (int)lroundf(dst.y + dst.h) - DS_BADGE_INSET - DS_BADGE, DS_BADGE,
-				             (Uint8)lroundf(255 * (1 - k)));
-			/* And the wait before it, a bar under the cover filling */
-			if (in->snap_wait > 0 && k < 1) {
-				int bw = (int)lroundf(dst.w), bx = (int)lroundf(dst.x);
-				int by = (int)lroundf(dst.y + dst.h) + 12;
-
-				ds_bar(r, bx, by, bw, (int)lroundf(bw * fminf(in->snap_wait, 1)), (Uint8)lroundf(255 * (1 - k)));
-			}
 		}
-		if (games > 0) {
-			snprintf(line, sizeof line, TN(S_SHELF_GAMES, games), games);
-			y = gl_fact(r, line, y);
-		} else {
-			/* The panel holds three facts above A: a fact takes a second
-			 * line only where the ones after it still fit */
-			bool cheats = in->cheats && *in->cheats;
-			int later = (cheats ? 1 + in->cheats_crashed : 0) + in->has_achievements;
-			int played = in->played && *in->played;
-			int needs = in->needs && *in->needs ?
-			            1 + (ui_text_width(chrome, in->needs) > GL_PANEL_W) : 0;
-			const int last = GL_FACT_Y + 2 * GL_FACT_STEP;
+		/* The details: down at rest while the snap plays (hold-band), up
+		 * at a press or as the snap goes */
+		down = in->details > 0 ? fminf(in->details, 1)
+		                       : snaprest_step(&m->details, k >= 1, now, &next);
+		if (next < wait) wait = next;
+		gl_details(r, in, games, down, pic);
+		/* Its snap's mark, the cover row's, over the details' ground, fading
+		 * as the snap comes */
+		if (t && w > 0 && h > 0 && in->has_snap && k < 1) {
+			SDL_FRect dst = gl_media_fit(gl_layout(), (float)w, (float)h);
 
-			y = gl_fact_origin(r, in->origin, y,
-			                   y + (1 + (in->install || in->howto) + needs + played + later) * GL_FACT_STEP <= last);
-			if (in->install || in->howto) y = gl_fact(r, T(S_PORTMASTER_NOT_INSTALLED), y);
-			/* Firmware it cannot start without, in **warning** */
-			y = gl_fact_lines(r, in->needs, y, ui_col(theme()->warning, 255));
-			/* Played on two lines where they fit: Spanish's "Tiempo de
-			 * juego: 12 h 34 min" is wider than the panel */
-			if (played) y = gl_fact_played(r, in->played, y, y + (1 + later) * GL_FACT_STEP <= last);
-			if (in->has_achievements) {
-				snprintf(line, sizeof line, T(S_GAMES_ACHIEVEMENTS), in->earned, in->total);
-				y = gl_fact(r, line, y);
-			}
-			/* and how many of its cheats are on (DESIGN.md 11.66) */
-			if (in->cheats && *in->cheats) y = gl_fact(r, in->cheats, y);
-			if (in->cheats && *in->cheats && in->cheats_crashed)
-				y = gl_fact(r, T(S_CHEATS_SHELF_CRASHED_LINE), y);
+			ds_play_disc(r, (int)lroundf(dst.x + dst.w) - DS_BADGE_INSET - DS_BADGE,
+			             (int)lroundf(dst.y + dst.h) - DS_BADGE_INSET - DS_BADGE, DS_BADGE,
+			             (Uint8)lroundf(255 * (1 - k)));
 		}
-		page_hint(r, "A", in->a_word ? in->a_word
-		                  : T(games > 0 || in->opens ? S_GAMES_OPEN : in->howto ? S_PICO8_HOW_TO_ADD
-		                      : in->install ? S_PORTMASTER_INSTALL
-		                      : in->resumable ? S_GAMES_RESUME : S_GAMES_PLAY),
-		          GL_PANEL_X, GL_A_Y, true, false);
 	}
 	/* The foot, as the cover row's (DESIGN.md 11.4): B, START back to the
 	 * covers, Y and X for a game */

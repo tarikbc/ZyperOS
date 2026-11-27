@@ -5,6 +5,7 @@
 #include "levels.h"
 #include "platform.h"
 #include "powerhold.h"
+#include "wdog.h"
 
 #include <dirent.h>
 #include <fcntl.h>
@@ -1086,7 +1087,12 @@ static int diatom_wait(void)
 		 * below the mixer: measured 2026-09-16 by muting a tone played from a
 		 * second process while Diatom held the dmix slave. */
 		plat_mute_poll(false);
+		/* The launcher's loop, while a game has the screen (wdog.h): fed
+		 * here and for each line, as a Diatom that talks without a pause
+		 * keeps this inner loop turning */
+		wdog_feed();
 		while ((l = dline((int)device_game_wait(100)))) {
+			wdog_feed();
 			if      (strncmp(l, "RUNNING", 7) == 0) d_got_running = 1;
 			/* The menu is the launcher's, and so are the levels while it is
 			 * up: taken at PAUSED as at EXIT. Taken only at EXIT, a press in
@@ -1125,9 +1131,11 @@ static int diatom_wait(void)
 			else if (strncmp(l, "STYLUS\t", 7) == 0) d_note_stylus(l);
 			else if (strncmp(l, "SCREENS\t", 8) == 0) d_note_screens(l);
 			else if (strncmp(l, "CHEEVO\t", 7) == 0) d_note_cheevo(l);
-			/* The step, "1" to "3" in halves: "1.5" is 3 */
+			/* The step, "1" to "3" in halves: "1.5" is 3; "max" is 0 */
 			else if (strncmp(l, "SPEED\tx=", 8) == 0) {
-				if (d_on_speed) d_on_speed((int)(strtod(l + 8, NULL) * 2.0 + 0.5));
+				const int half = !strcmp(l + 8, "max") ? 0 : (int)(strtod(l + 8, NULL) * 2.0 + 0.5);
+
+				if (d_on_speed && (half == 0 ? !strcmp(l + 8, "max") : half >= 2)) d_on_speed(half);
 			}
 			/* R2 in a PSP game: "STICK\ton=1" while the d-pad is the stick;
 			 * or the answer to the menu's own SETSTICK (d_note_stick) */

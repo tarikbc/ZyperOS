@@ -172,8 +172,13 @@ typedef struct {
 	SDL_Texture *(*row_icon)(int row);
 	/* Told the cursor's row each pass, after the keys and before the
 	 * frame is drawn, so an option's list shows the choice under it
-	 * (src/ds/hover.h) in the frame the cursor reaches it. NULL: none. */
+	 * (src/ds/hover.h) in the frame the cursor reaches it, and a show that
+	 * waits for the cursor to rest is started on time. NULL: none. */
 	void   (*at)(app *a, void *ctx, int sel);
+	/* Up and Down make no move sound where the cursor moves: the screen's
+	 * `at` plays it once the choice is heard (UI Sounds' list, the click in
+	 * the voice under the cursor). An edge still sounds. */
+	bool     quiet_moves;
 } menu_style;
 
 /* ---- the menu runner (main.c's menu_run) ------------------------------------
@@ -423,6 +428,10 @@ void snap_draw(app *a, mm_pose pose);
 int snap_shown(void);
 int menu_step_heard(app *a, const menu_row *rows, int n, int sel,
                     int dir, in_button b);
+/* The same step with no move sound (menu_style's quiet_moves): the edge's
+ * sound only, where the cursor stays */
+int menu_step_quiet(app *a, const menu_row *rows, int n, int sel,
+                    int dir, in_button b);
 int panel_settle(int lv);
 void panel_close_at(app *a, int lv, bool cut, unsigned now);
 
@@ -478,10 +487,11 @@ void language_apply(app *a, lang l, bool keep);
  * (Computer Connected), PANEL_LIST rows the panel's width with a line under
  * each name (What did you plug in?, the Scraper's Settings). They were read
  * off the first tile's name before (tile_glyph), which cut "ScreenScraper". */
+/* PANEL_LINK: the Link Cable's page (src/linkpanel.h) */
 /* PANEL_CONFIRM a question with two answers (src/ds/confirm.h): its rows the
  * question, the left answer and the right, its marks theirs (confirm_show). */
 enum { PANEL_MENU, PANEL_HOT, PANEL_TILES, PANEL_P2, PANEL_MOVE, PANEL_TILES_GRID, PANEL_LIST,
-       PANEL_CONFIRM };
+       PANEL_LINK, PANEL_CONFIRM };
 typedef struct {
 	bool     run;            /* ours runs now, as `mode`, and has the name (mdns) */
 	bool     up;             /* sshlink_start or sshlink_start_net said yes */
@@ -585,6 +595,8 @@ typedef struct {
 	 * cable's (the link is the phone's network, as Wi-Fi's is) */
 	bool        phone;
 	bool        hot_failed, ssh_shown;
+	bool        services;       /* the cable's SSH and name, once usb0 has its address */
+	bool        drawn;          /* the page's first frame is up: the cable's services may start */
 	bool        rescan_due;     /* ended behind the shelf with the shelf changed */
 	const char *name;
 	char        pin[32], login[96], addr[96];
@@ -728,6 +740,7 @@ bool sgb_row_shown(const app *a, int sys);
 bool dslang_row_shown(const app *a, int sys);
 const char *dslang_label(dsl_choice c, char *buf, size_t n);
 void view_turn(app *a, int sys, int dir);
+void view_set(app *a, int sys, int k, bool keep);
 void home_turn(app *a, int dir);
 float grid_shape_load(const app *a, int sys);
 void grid_shape_save(const app *a, int sys, float shape);
@@ -737,6 +750,8 @@ int mp4_rows_kind(void);
 int mp4_kinds(void);
 void free_view_textures(sysview *v);
 void mp4_show(sysview *v, ml_kind kind);
+/* The same, shown and not saved: Show's list's cursor (src/ds/hover.h) */
+void mp4_show_only(sysview *v, ml_kind kind);
 void auto_off_save(int seconds);
 void saver_save(int seconds);
 void charge_limit_apply(void);

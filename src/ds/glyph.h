@@ -32,7 +32,9 @@
  * SteamGridDB - and a heart for the favorites. And MENU > Downloads'
  * (11.53): a cup with two handles for achievements, books standing on a
  * shelf for libretro, whose open book is now the names and details, and a
- * wand with its sparkles for cheats. */
+ * wand with its sparkles for cheats. And the Link Cable's two (11.72): a dot
+ * with two arcs each side, sending out, for Host, and a magnifying glass
+ * for Join. */
 typedef enum {
 	UI_GLYPH_REPEAT, UI_GLYPH_REPEAT_ONE, UI_GLYPH_SHUFFLE,
 	UI_GLYPH_CHARGE, UI_GLYPH_TRANSFER, UI_GLYPH_TERMINAL,
@@ -44,6 +46,7 @@ typedef enum {
 	UI_GLYPH_COVER, UI_GLYPH_FILM,
 	UI_GLYPH_CLOUD, UI_GLYPH_BOOK, UI_GLYPH_GRID, UI_GLYPH_HEART, UI_GLYPH_CLOCK,
 	UI_GLYPH_TROPHY, UI_GLYPH_SHELF, UI_GLYPH_WAND,
+	UI_GLYPH_BEACON, UI_GLYPH_SEARCH,
 	UI_GLYPH_COUNT
 } ui_glyph;
 void ui_glyph_draw(SDL_Renderer *r, ui_glyph g, int cx, int cy, int size,

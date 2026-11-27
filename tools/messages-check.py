@@ -16,7 +16,7 @@ LAUNCHER = ("src/main.c", "src/about_screen.c", "src/aout_route.c", "src/bgm_scr
             "src/gameinfo_screen.c", "src/gamern_screen.c", "src/ingame_screen.c",
             "src/launch_screen.c", "src/lights_screen.c", "src/media_screen.c",
             "src/menu_panel.c", "src/menu_runner.c", "src/mp4_screen.c",
-            "src/nowplaying_looks.c", "src/nowplaying_screen.c", "src/place.c", "src/player2_screen.c",
+            "src/nowplaying_looks.c", "src/nowplaying_screen.c", "src/place.c", "src/player2_screen.c", "src/link_screen.c",
             "src/portload.c", "src/powerscreens.c", "src/raqueue.c", "src/saver_screen.c",
             "src/scraper_screen.c", "src/search_screen.c", "src/shelf_draw.c",
             "src/shelf_keys.c", "src/shelfbuild.c", "src/shots.c", "src/signin_screen.c",
@@ -68,8 +68,9 @@ sites = {
     # port that could not start; Splore with no network joined; a game whose
     # own file is empty or cut short (src/gamefile.h), a zip packed with a
     # method Diatom cannot read, a disc whose firmware is missing or the wrong
-    # size, and a core that would not load (src/startfail.h)
-    "launch_port_core": (0, 2), "splore_open": (0, 1), "launch": (0, 4),
+    # size, and a core that would not load (src/startfail.h); launch_on is
+    # launch's body, launch the game's own core around it
+    "launch_port_core": (0, 2), "splore_open": (0, 1), "launch_on": (0, 4),
 }
 for name, counts in sites.items():
     body = function(name)

@@ -6,6 +6,7 @@
 #include "config.h"
 #include "texload.h"
 #include "systemart_data.h"
+#include "platform.h"
 #include <SDL_image.h>
 #include <assert.h>
 #include <math.h>
@@ -86,6 +87,34 @@ int main(void)
         assert(home_letter_jump(one, 3, 1, 1) == 1 && home_letter_jump(one, 3, 2, -1) == 0);
         assert(home_letter_jump(one, 3, 0, -1) == 0);       /* one group: nowhere to go */
         assert(home_letter_jump(one, 1, 0, 1) == 0 && home_letter_jump(one, 0, 0, 1) == 0);
+        /* Held down a list (MENU > Storage in A to Z): the same jumps, but
+         * never round an end */
+        assert(home_letter_held(k, n, 1, 1) == 3 && home_letter_held(k, n, 6, 1) == 7);
+        assert(home_letter_held(k, n, 7, 1) == 7);          /* the foot: stays */
+        assert(home_letter_held(k, n, 4, -1) == 3 && home_letter_held(k, n, 3, -1) == 1);
+        assert(home_letter_held(k, n, 0, -1) == 0);         /* the top: stays */
+        assert(home_letter_held(one, 3, 1, 1) == 1 && home_letter_held(one, 3, 2, -1) == 0);
+        /* A repeat of that hold (home_held_step): a letter, two from a
+         * second held and four from three, as MP4's seek grows; in no letter
+         * order (Size), five rows, then ten and twenty; and stopped at the
+         * ends */
+        const unsigned char az[] = { 1, 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 2 };
+        const int an = sizeof az;
+        assert(home_held_step(az, an, 1, 1, 300) == 2);     /* a letter */
+        assert(home_held_step(az, an, 1, 1, 999) == 2);
+        assert(home_held_step(az, an, 1, 1, 1000) == 3);    /* two from a second */
+        assert(home_held_step(az, an, 1, 1, 3000) == 5);    /* four from three */
+        assert(home_held_step(az, an, 8, 1, 5000) == 10);   /* to the foot... */
+        assert(home_held_step(az, an, 10, 1, 5000) == 10);  /* ...and stays */
+        assert(home_held_step(az, an, 5, -1, 1500) == 3 && home_held_step(az, an, 2, -1, 3000) == 0);
+        assert(home_held_step(k, n, 1, 1, 1000) == 6);      /* a letter is its rows */
+        assert(home_held_step(NULL, 100, 0, 1, 300) == HOME_HELD_ROWS && HOME_HELD_ROWS == 5);
+        assert(home_held_step(NULL, 100, 5, 1, 300) == 10 && home_held_step(NULL, 100, 10, -1, 300) == 5);
+        assert(home_held_step(NULL, 100, 0, 1, 1000) == 10 && home_held_step(NULL, 100, 0, 1, 3000) == 20);
+        assert(home_held_step(NULL, 100, 97, 1, 300) == 99);  /* stops at the end */
+        assert(home_held_step(NULL, 100, 99, 1, 300) == 99);
+        assert(home_held_step(NULL, 100, 3, -1, 300) == 0 && home_held_step(NULL, 100, 0, -1, 300) == 0);
+        assert(home_held_step(NULL, 0, 0, 1, 300) == 0);
         assert(home_group_key("FAV", "x", "Favorites") == 1);
         assert(home_group_key("PRT", "port", "Ports") == 2);
         assert(home_group_key("GB", "gambatte", "game boy") == 'G');
@@ -301,7 +330,13 @@ int main(void)
     assert(!h.atlas.tex);
     assert(home_draw(&h,r,HOME_GALLERY,&missing,1,0,"No games","Open games",0,true)==UINT32_MAX);
     assert(home_draw(&h,r,HOME_GALLERY,NULL,0,0,"","",0,true)==UINT32_MAX);
+    /* The Brick's screen is the window (src/device/brick.c, the file this
+     * host build runs): no frame of the home is drawn over the last one's
+     * picture there, as a swap leaves an older page of fb0 under it, so the
+     * still home draws whole frames, not focus frames (a Brick tester's
+     * flickering menu, 2026-11-21). Only desk mode's screen texture keeps it. */
+    assert(!plat_screen_kept());
     home_free(&h); page_fonts_quit(); ui_quit(); SDL_DestroyRenderer(r); SDL_FreeSurface(surface); IMG_Quit(); SDL_Quit();
-    puts("ok: home choice, labels, motion, cached music, renderer state, bounded assets, worker isolation, and missing art");
+    puts("ok: home choice, labels, motion, cached music, renderer state, bounded assets, worker isolation, missing art, and no focus frame on a screen that is not kept");
     return 0;
 }
