@@ -1,0 +1,107 @@
+From: plastron
+Subject: [PATCH] PX30 (GKD Pixel 2): the chip's own reset restarts the RK817 too
+
+A watchdog's reset (zytest=hang on 1.1.1-test.2, 2026-11-26) never started
+ZyperOS again: the reset was the PX30's alone, the RK817 stayed on, so
+vccio_sd stayed at 1.8 V and the card in its SDR104 signalling, which the
+boot ROM cannot read at 3.3 V, and it started the handheld's own loader
+instead (its charging screen, then its red "system failure").
+
+zypmicrst, a command the Pixel 2's boot.scr runs at every start (the
+RK817's restart sets its registers back): GPIO0_A4 in its function 2, the
+SoC's reset out, and the RK817's sleep pin set to restart the whole PMU,
+active low, as Rockchip's own kernel does (rk808's "pmic-reset" state);
+only when the line reads high there. A command and not this board file's
+init, as the wiring is the Pixel 2's and the R36S shares this U-Boot. U-Boot's
+own pmic write stops at register 0xec, under SYS_CFG3's 0xf4. Measured on
+that Pixel 2 with the registers set by hand: the watchdog's reset came back
+in ZyperOS 16 s later, no button, the RAM and pstore kept, ON_SOURCE 0x04.
+
+A start with that reason is never a charger's, and sets zy_reset=chip,
+which boot.scr puts on the kernel's line as zyreset=chip for ZyperOS's
+crashlog.
+---
+--- a/board/hardkernel/odroid_go2/go2.c
++++ b/board/hardkernel/odroid_go2/go2.c
+@@ -11,6 +11,8 @@
+ #include <stdlib.h>
+ #include <power/pmic.h>
+ #include <power/rk8xx_pmic.h>
++#include <linux/delay.h>
++#include <command.h>
+ 
+ #define DTB_DIR			"rockchip/"
+ 
+@@ -114,6 +116,60 @@
+  * own there (0x02, read on a Pixel 2 on 2026-11-06, against 0x40 for the
+  * charger), so one never comes back as a charger's start.
+  */
++/*
++ * plastron: zypmicrst, which the GKD Pixel 2's boot.scr runs at every start
++ * (board/px2/boot-prelude.cmd, where the why is): the PX30's own resets
++ * restart the RK817 too, as Rockchip's own kernel sets it up (rk808's
++ * "pmic-reset" state): GPIO0_A4 in its function 2, the SoC's reset out, and
++ * the RK817's sleep pin set to restart the whole PMU, active low. A command
++ * the board's own script runs rather than this board file's init, as the pin
++ * is the Pixel 2's: the R36S and its clones share this U-Boot, not that
++ * wiring. Armed only when the line reads high (idle) in function 2, as on
++ * the Pixel 2 measured: low would restart the RK817 at once.
++ */
++#define PX30_PMUGRF_GPIO0A_IOMUX	0xff010000
++#define PX30_GPIO0_EXT_PORTA		0xff040050
++#define PX2_SYS_CFG3_RST_LOW		0x18	/* RST_FUNC 0, SLPPOL low, SLPPIN reset */
++#define PX2_SYS_CFG3_SLP_MASK		0xf8	/* RST_FUNC, SLPPOL, SLPPIN */
++
++static int do_zypmicrst(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
++{
++	struct udevice *pmic;
++	int i;
++
++	if (uclass_get_device_by_driver(UCLASS_PMIC, DM_DRIVER_GET(rockchip_rk805), &pmic)) {
++		printf("zypmicrst: no RK817\n");
++		return CMD_RET_FAILURE;
++	}
++	/* GPIO0_A4, bits 9:8, with their write mask */
++	writel(0x3 << (8 + 16) | 0x2 << 8, PX30_PMUGRF_GPIO0A_IOMUX);
++	for (i = 0; i < 5; i++) {
++		udelay(20);
++		if (!(readl(PX30_GPIO0_EXT_PORTA) & BIT(4))) {
++			writel(0x3 << (8 + 16), PX30_PMUGRF_GPIO0A_IOMUX);
++			printf("zypmicrst: the line reads low in function 2: not armed\n");
++			return CMD_RET_FAILURE;
++		}
++	}
++	if (pmic_clrsetbits(pmic, RK817_REG_SYS_CFG3, PX2_SYS_CFG3_SLP_MASK, PX2_SYS_CFG3_RST_LOW)) {
++		writel(0x3 << (8 + 16), PX30_PMUGRF_GPIO0A_IOMUX);
++		return CMD_RET_FAILURE;
++	}
++	return CMD_RET_SUCCESS;
++}
++
++U_BOOT_CMD(zypmicrst, 1, 0, do_zypmicrst,
++	   "the PX30's own resets restart the RK817 (the GKD Pixel 2's wiring)", "");
++
++/*
++ * plastron: a start after the chip's own reset, which zypmicrst above made a
++ * restart of the RK817 with a reason of its own in ON_SOURCE (0x04): never a
++ * charger's start, and the kernel's line says so (zy_reset=chip, boot.scr's
++ * zyreset=), so ZyperOS's crashlog reports it as the watchdog's (or the
++ * thermal cut-off's) even with nothing else kept.
++ */
++#define PX2_ON_CHIP_RESET		BIT(2)
++
+ static void px2_charge_boot(void)
+ {
+ 	struct udevice *pmic;
+@@ -122,6 +178,11 @@
+ 	if (uclass_get_device_by_driver(UCLASS_PMIC, DM_DRIVER_GET(rockchip_rk805), &pmic))
+ 		return;
+ 	on = pmic_reg_read(pmic, RK817_ON_SOURCE);
++	if (on >= 0 && (on & PX2_ON_CHIP_RESET) && !(on & (RK8XX_ON_PWRON | RK8XX_ON_PLUG_IN))) {
++		printf("Started by the chip's own reset (ON_SOURCE 0x%02x): zy_reset=chip\n", on);
++		env_set("zy_reset", "chip");
++		return;
++	}
+ 	if (on < 0 || !(on & RK8XX_ON_PLUG_IN) || (on & RK8XX_ON_PWRON))
+ 		return;
+ 	printf("Started by a charger: zy_charge=1\n");

@@ -594,10 +594,11 @@ bool plat_usb_audio_present(void);
  * browser opens (addr may be NULL); false on a device that moves files over
  * Wi-Fi. */
 bool plat_cable_link(char *addr, size_t n);
-/* A fresh connection over that cable, as if it were plugged in again: the
- * transfer screen asks for one as it opens, since a computer can drop the
- * link while the device goes on believing it is up. Nothing on a device with
- * no cable link. */
+/* A fresh connection over that cable, as if it were plugged in again, when
+ * the link needs one: the transfer screen asks as it opens, since a computer
+ * can drop the link while the device goes on believing it is up. A link in
+ * use is left as it is (cablefresh.h), and the launcher never waits on the
+ * controller for it (hwput.h). Nothing on a device with no cable link. */
 void plat_cable_reconnect(void);
 /* USB's charge-only rule: what is on the port, and the link (usbpeer.h) */
 #include "usbpeer.h"

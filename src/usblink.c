@@ -21,6 +21,10 @@ static bool     g_want;            /* the last look: a computer on the cable, no
 static bool     g_held;            /* the link is on for this plug */
 static bool     g_dev_answer;      /* ... because of Developer (SSH) */
 static unsigned g_at;
+/* Developer Mode's new plug: when it came, and whether its link is still to
+ * be looked at (USBLINK_SETTLE_MS) */
+static unsigned g_plug_at;
+static bool     g_plug_check;
 /* The setting as the database has it (-1 its default, 0, 1), or -2 before it
  * is read: usblink_follow asks five times a second, and only
  * usblink_set_developer writes it */
@@ -124,18 +128,42 @@ static bool look(db *dev, unsigned now_ms, bool take)
 			return false;
 		}
 		if (usblink_developer(dev)) {
-			/* A computer plugged in again gets a fresh link. Kept bound
-			 * across the unplug, the controller could come back from it -
-			 * through the port's host role, which usbrole gives it while
-			 * the plug settles - not offering itself, and the computer saw
-			 * nothing until another replug (Pixel 2, 2026-11-05). File
-			 * Transfer's screen makes a fresh one as it opens for the same
-			 * reason (plat_cable_reconnect). */
+			/* A computer plugged in again gets a fresh link if it needs
+			 * one. Kept bound across the unplug, the controller could come
+			 * back from it - through the port's host role, which usbrole
+			 * gives it while the plug settles - not offering itself, and
+			 * the computer saw nothing until another replug (Pixel 2,
+			 * 2026-11-05). So a link the computer has not configured
+			 * USBLINK_SETTLE_MS after the plug is made fresh; one it took
+			 * is left alone, as a rebind at every plug made the computer
+			 * meet the handheld three times over and held the screen
+			 * (2026-11-24). Where the controller cannot tell (the Brick),
+			 * the fresh link comes at once, as before. */
 			if (peer == USB_PEER_COMPUTER && g_peer != USB_PEER_COMPUTER && g_peer != -2) {
-				plat_usb_link(2);
-				fprintf(stderr, "usb: a computer is on the cable: a fresh link\n");
+				if (plat_usb_configured() < 0) {
+					plat_usb_link(2);
+					fprintf(stderr, "usb: a computer is on the cable: a fresh link\n");
+				} else {
+					if (!plat_usb_link(-1)) plat_usb_link(1);
+					g_plug_at = now_ms;
+					g_plug_check = true;
+					fprintf(stderr, "usb: a computer is on the cable: its link looked at in %u s\n",
+					        USBLINK_SETTLE_MS / 1000);
+				}
 			} else if (!plat_usb_link(-1)) {
 				plat_usb_link(1);
+			}
+			if (peer != USB_PEER_COMPUTER) {
+				g_plug_check = false;
+			} else if (g_plug_check && now_ms - g_plug_at >= USBLINK_SETTLE_MS) {
+				g_plug_check = false;
+				if (plat_usb_configured() == 1) {
+					fprintf(stderr, "usb: the computer took the link: left as it is\n");
+				} else {
+					plat_usb_link(2);
+					fprintf(stderr, "usb: the computer did not take the link in %u s: a fresh link\n",
+					        USBLINK_SETTLE_MS / 1000);
+				}
 			}
 			g_peer = peer;
 			g_asked = peer == USB_PEER_COMPUTER;

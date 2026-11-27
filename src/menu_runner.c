@@ -20,6 +20,7 @@
 #include "zyperdraw.h"
 #include "zyperrig.h"
 #include "levels.h"
+#include "wdog.h"
 #ifdef ZYPEROS_DESK
 #include "device/desk.h"
 #endif
@@ -806,13 +807,18 @@ static menu_result wifi_key(app *a, void *ctx, in_button key, int sel)
 	 * of a handheld is often the power button. */
 	if (sel == 0) {
 		if (w->on) {
+			/* Wi-Fi's own waits have no end of their own (wdog.h) */
+			wdog_hold("Wi-Fi");
 			wifi_down();
+			wdog_release();
 			wifi_pref_save(false);
 			w->on = false;
 			w->n = 0;
 		} else {
 			wait_panel(a, T(S_MENU_WIFI), T(S_WIFI_TURNING_ON));
+			wdog_hold("Wi-Fi");
 			w->on = wifi_up();
+			wdog_release();
 			wifi_pref_save(w->on);
 			if (!w->on) {
 				if (!result_message(a, T(S_MENU_WIFI), T(S_WIFI_DID_NOT_COME_UP)))
@@ -837,7 +843,9 @@ static menu_result wifi_key(app *a, void *ctx, in_button key, int sel)
 		}
 
 		wait_panel(a, T(S_MENU_WIFI), T(S_WIFI_CONNECTING));
+		wdog_hold("Wi-Fi");
 		ok = wifi_connect(w->nets[k].ssid, psk[0] ? psk : NULL);
+		wdog_release();
 		/* Wiped as soon as it has been handed over. It still exists in the
 		 * supplicant's config, which is the point, but there is no reason for
 		 * a copy to sit in the launcher's stack afterwards. */

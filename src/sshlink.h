@@ -63,6 +63,13 @@
  * start; sshlink_status says why in the screen's words. */
 bool sshlink_start(const char *addr, const char *pin, const char *keydir);
 
+/* The cable's SSH running already on `addr` with a password (Developer
+ * Mode's, sshlink_start): its password becomes `pin` in place, in the file
+ * its namespace reads, and dropbear goes on with its sessions, rather than
+ * a stop and a start (which ended them and held the screen while it
+ * waited). False, with nothing changed, for anything else: then start. */
+bool sshlink_repin(const char *addr, const char *pin);
+
 /* Start SSH on the cable's `addr` alone, keys only (over a port). False as
  * sshlink_start_net is, with no key. */
 bool sshlink_start_cable_keys(const char *addr, const char *keydir);

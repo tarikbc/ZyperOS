@@ -211,6 +211,8 @@
 #include "shelf_draw.h"
 #include "zyperdraw.h"
 #include "zypermark.h"
+#include "klog.h"
+#include "wdog.h"
 #include "levels.h"
 #ifdef ZYPEROS_DESK
 #include "device/desk.h"
@@ -6647,6 +6649,11 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "crash: the launcher before this one crashed: %s\n",
 		        plat_spawn_detached(cl, NULL, "/") ? "its record handed to crashlog" : "crashlog would not start");
 	}
+#if defined(__linux__) && !defined(ZYPEROS_DESK)
+	/* The risky parts' lines in the kernel's log too, which outlives a
+	 * freeze, and on the card at once (klog.h) */
+	klog_open(NULL);
+#endif
 
 	for (int i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "--shot") && i + 1 < argc) {
@@ -8574,6 +8581,11 @@ int main(int argc, char *argv[])
 		scraper_page(&a, NULL);
 		a.running = false;
 	}
+#if defined(__linux__) && !defined(ZYPEROS_DESK)
+	/* The watchdog, from the main loop on (wdog.h): on a handheld only,
+	 * never in a shot */
+	if (!shot_path && a.running) wdog_start(NULL, plat_backlight);
+#endif
 	while (a.running) {
 		plat_input_poll(&a.in);
 		if (a.in.quit_requested || want_quit) break;
@@ -8864,6 +8876,7 @@ int main(int argc, char *argv[])
 	xs_end();
 
 done:
+	wdog_stop();                         /* the way out is long, and nothing draws */
 	ctl_stop();
 	/* The downloads' requests with the launcher: the next run starts from
 	 * what is missing */

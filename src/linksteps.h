@@ -81,6 +81,42 @@ void link_steps_wifi(link_steps *s, bool joined, unsigned long requests, unsigne
 /* The hint the screen shows now, LH_NONE before a step has waited its time. */
 int link_steps_hint(const link_steps *s, unsigned now_ms);
 
+/* ---- a fresh link as File Transfer opens (plat_cable_reconnect) -------- */
+
+/* The controller lets go of the cable and takes it again, so the computer
+ * sees the handheld plugged in afresh: for a computer that dropped the
+ * handheld while the controller here went on saying "configured" and never
+ * offered itself again (a Mac, 2026-10-08; only a restart brought it back).
+ * Only for that: every File Transfer did it before, over a link in use too,
+ * and the Pixel 2's controller can hang in the toggle (hwput.h, 2026-11-21).
+ *
+ * So not for a link bound a moment ago (LINK_FRESH_MS: the computer is
+ * meeting it now), and for any other link that is not whole (not
+ * "configured", or no carrier: there is nothing to keep); and for one that
+ * looks whole, only when the computer does not answer at its address over
+ * it (an ARP request, link_arp_request: what a computer that dropped the
+ * handheld cannot do, and what one with the link in use does at once,
+ * whatever its firewall says). `state_tells`: the controller's state is
+ * worth reading (the TrimUI Brick's says "configured" through unplugs and
+ * chargers, so there only the carrier and the answer count). */
+#define LINK_FRESH_MS 5000u
+
+/* Whether to look for the computer's answer first: a link that is whole */
+bool link_fresh_ask(bool just_bound, bool state_tells, bool configured, bool carrier);
+
+/* Whether to make it fresh, with the answer when it was asked for */
+bool link_wants_fresh(bool just_bound, bool state_tells, bool configured, bool carrier,
+                      bool answered);
+
+/* The ARP request "who has `tip`, tell `sip`" from `smac` (addresses in
+ * network order), the 28 bytes that follow the Ethernet header */
+#define LINK_ARP_LEN 28
+void link_arp_request(unsigned char out[LINK_ARP_LEN], const unsigned char smac[6],
+                      unsigned sip, unsigned tip);
+
+/* Whether `p` (`n` bytes after the Ethernet header) is the reply from `tip` */
+bool link_arp_answer(const unsigned char *p, size_t n, unsigned tip);
+
 /* ---- what the device's files say, for plat_cable_sense ------------------ */
 
 /* /sys/class/udc/<udc>/state: "configured" */

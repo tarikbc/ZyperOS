@@ -56,4 +56,20 @@ if load ${devtype} ${devnum}:${distro_bootpart} ${zy_state} /theme.txt; then
 	env import -t ${zy_state} ${filesize} zytheme zyzone zylang zybright
 fi
 setenv zy_theme "zytheme=${zytheme} zyzone=${zyzone} zylang=${zylang} zybright=${zybright}"
+# A test of the start's watchdog, once: zytest=hang or zytest=stall in
+# /zytest.txt on this partition, which a computer can write, goes onto the
+# kernel's line for this start (plastron's hwdog says what each does), and
+# the file is written back as zytest=- at once, so the start after is a
+# normal one whatever this one does. Nothing at all without the file.
+setenv zy_test
+setenv zytest -
+if load ${devtype} ${devnum}:${distro_bootpart} ${zy_state} /zytest.txt; then
+	env import -t ${zy_state} ${filesize} zytest
+	if test "${zytest}" != "-"; then
+		setenv zy_test "zytest=${zytest}"
+		setenv zytest -
+		env export -t ${zy_state} zytest
+		fatwrite ${devtype} ${devnum}:${distro_bootpart} ${zy_state} /zytest.txt ${filesize}
+	fi
+fi
 if test "${slot}" = "b"; then setenv zy_part 4; else setenv slot a; setenv zy_part 2; fi

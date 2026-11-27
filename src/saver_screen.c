@@ -54,7 +54,8 @@
 static struct {
 	bool         on;
 	bool         video;              /* the pool is of snaps; else of covers */
-	unsigned     started, last_pass, last_draw;
+	unsigned     started, last_draw;
+	saver_beat   beat;               /* its passes' ends: another had the screen */
 	saver_start  st;                 /* when it starts: lives while it is off too */
 	saver_show   show;
 	saver_recent recent;
@@ -243,6 +244,7 @@ void saver_stop(app *a, const char *why)
 	(void)a;
 	if (!g_sv.on) return;
 	g_sv.on = false;
+	saver_beat_clear(&g_sv.beat);
 	/* The daemon stops that same frame, and the picture is let go */
 	snap_off();
 	if (g_sv.cover) { SDL_DestroyTexture(g_sv.cover); g_sv.cover = NULL; }
@@ -425,10 +427,22 @@ void saver_shot(app *a)
 	g_sv.cover = NULL;
 }
 
+static bool saver_pass_once(app *a);
+
 /* One pass of the shelf's loop, after the power button and Auto Off have had
  * theirs. True when the screensaver took the pass (the loop goes round
- * again). */
+ * again). Its end is kept, whatever the pass did and however long its snap
+ * took to open, so the next pass's gap is only what came between
+ * (saver_beat_lost). */
 bool saver_pass(app *a)
+{
+	bool took = saver_pass_once(a);
+
+	if (g_sv.on) saver_beat_done(&g_sv.beat, plat_now_ms());
+	return took;
+}
+
+static bool saver_pass_once(app *a)
 {
 	unsigned now = plat_now_ms();
 	bool any = false, press = false, busy, newpic = false, ready, draw;
@@ -439,7 +453,7 @@ bool saver_pass(app *a)
 
 	/* A gap: a menu, a game or a message had the screen in between, and
 	 * whatever this drew is not on it any more */
-	if (g_sv.on && now - g_sv.last_pass >= 500) saver_stop(a, "something else had the screen");
+	if (g_sv.on && saver_beat_lost(&g_sv.beat, now)) saver_stop(a, "something else had the screen");
 	for (b = 0; b < IN_COUNT && !any; b++)
 		any = a->in.pressed[b] || a->in.down[b];
 	if (!battery_now(&pct, &charging)) pct = -1;
@@ -455,8 +469,6 @@ bool saver_pass(app *a)
 			return false;
 		if (!saver_begin(a, now)) return false;
 	}
-	g_sv.last_pass = now;
-
 	/* Decoding video warms the chip: "Getting hot" (src/heat.h) is due, so
 	 * the screensaver goes, and the shelf says it as it does on any pass
 	 * (heat_watch takes it). It stays gone until a button. */

@@ -1018,6 +1018,15 @@
 	status = "okay";
 };
 
+/*
+ * The PX30's watchdog, px30.dtsi's, disabled there: on, for a freeze that
+ * nothing else catches (linux-px2.config). U-Boot starts it, the kernel
+ * pets it until plastron's hwdog opens it.
+ */
+&wdt {
+	status = "okay";
+};
+
 &pinctrl {
 	btns {
 		btn_pins: btn-pins {

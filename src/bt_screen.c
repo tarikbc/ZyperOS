@@ -12,6 +12,7 @@
 #include "uisound.h"
 #include "zyperdraw.h"
 #include "levels.h"
+#include "wdog.h"
 
 #include <SDL.h>
 #include <stdio.h>
@@ -153,6 +154,9 @@ void bt_screen(app *a)
 
 				wait_panel(a, "Bluetooth",
 				           want ? T(S_BT_TURNING_ON) : T(S_BT_TURNING_OFF));
+				/* The stack's start and the radio's power, a minute and
+				 * more at worst (bt.c's waits): a long task (wdog.h) */
+				wdog_hold("Bluetooth");
 				/* On: the stack first when there is no adapter (Bluetooth
 				 * was off at boot), so the switch works now rather than at
 				 * the next boot. Never bt_power without one: bluetoothctl
@@ -171,11 +175,15 @@ void bt_screen(app *a)
 					if (!want) bt_down();
 					snprintf(u.note, sizeof u.note, "%s", want ? T(S_BT_ON) : T(S_BT_OFF));
 				}
+				wdog_release();
 				note_until = now + 4000;
 				next_refresh = 0;
 			} else if (u.cursor < u.n) {
 				bt_device *d = &u.dev[u.cursor];
 
+				/* A pair, a connect and the others let go: over a
+				 * minute at worst (wdog.h) */
+				wdog_hold("Bluetooth");
 				if (d->connected) {
 					wait_panel(a, "Bluetooth", T(S_BT_DISCONNECTING));
 					if (bt_disconnect(d->mac)) d->connected = false;
@@ -223,6 +231,7 @@ void bt_screen(app *a)
 						}
 					}
 				}
+				wdog_release();
 				next_refresh = 0;
 			}
 		}
@@ -236,12 +245,14 @@ void bt_screen(app *a)
 		if (a->in.pressed[IN_X] && u.cursor >= 0 && u.cursor < u.n &&
 		    u.dev[u.cursor].bonded && bt_forget_asked(a, &u.dev[u.cursor])) {
 			wait_panel(a, "Bluetooth", T(S_BT_FORGETTING));
+			wdog_hold("Bluetooth");
 			if (bt_forget(u.dev[u.cursor].mac)) {
 				bt_asoundrc(P_ROOT, P_USERDATA);
 				snprintf(u.note, sizeof u.note, "%s", T(S_BT_FORGOTTEN)); note_until = now + 4000;
 			} else {
 				snprintf(u.note, sizeof u.note, "%s", T(S_BT_NOT_UNPAIRED)); note_until = now + 4000;
 			}
+			wdog_release();
 			next_refresh = 0;
 		}
 

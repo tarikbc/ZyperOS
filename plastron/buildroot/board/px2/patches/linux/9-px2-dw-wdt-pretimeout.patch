@@ -1,0 +1,68 @@
+From: plastron
+Subject: [PATCH] watchdog: dw_wdt: the pre-timeout interrupt from the start
+
+On the GKD Pixel 2 the DesignWare watchdog's own reset is the PX30's
+alone: the RK817 stays on, so the card stays in the 1.8 V signalling of
+SDR104, and the boot ROM, which reads it at 3.3 V, cannot, and starts the
+handheld's own loader instead (its charging screen, then its red "system
+failure": 2026-11-26, a zytest=hang start on 1.1.1-test.2). Linux's own
+restart is the RK817's (rk8xx-core's DEV_RST, priority 192, ahead of this
+driver's 128): a power cycle that the card comes back from, and the RAM
+and pstore with it.
+
+So the watchdog's first stage is its interrupt now, from the probe on, a
+watchdog the bootloader started too, where the device tree gives the IRQ
+and a pretimeout governor is built in: the panic governor's panic dumps
+the log into pstore and restarts through the RK817. The chip's reset
+stays one TOP later, for a kernel that takes no interrupt at all.
+
+In that mode the core's own keepalive has to come within one TOP: the
+hardware heartbeat is one TOP there, and the userspace timeout is still
+judged against both stages.
+---
+--- a/drivers/watchdog/dw_wdt.c
++++ b/drivers/watchdog/dw_wdt.c
+@@ -234,11 +234,20 @@
+ 	 * kernel(watchdog_dev.c) helps to feed watchdog before
+ 	 * wdd->max_hw_heartbeat_ms
+ 	 */
+-	if (top_s * 1000 <= wdd->max_hw_heartbeat_ms)
++	if (top_s * 1000 <= (u64)dw_wdt_get_max_timeout_ms(dw_wdt) * dw_wdt->rmod)
+ 		wdd->timeout = timeout * dw_wdt->rmod;
+ 	else
+ 		wdd->timeout = top_s;
+ 
++	/*
++	 * plastron: in IRQ mode the first TOP alone ends in the pre-timeout
++	 * interrupt, so the core's own keepalive (a watchdog running from the
++	 * bootloader, before anything opens it) has to come within one TOP,
++	 * not two: at two TOPs' half it came as the interrupt did.
++	 */
++	wdd->max_hw_heartbeat_ms = dw_wdt->rmod == DW_WDT_RMOD_IRQ ?
++		timeout * MSEC_PER_SEC : dw_wdt_get_max_timeout_ms(dw_wdt);
++
+ 	return 0;
+ }
+ 
+@@ -647,6 +656,21 @@
+ 		/* Limit timeout value to hardware constraints. */
+ 		dw_wdt_set_timeout(wdd, wdd->timeout);
+ 	}
++
++	/*
++	 * plastron: the pre-timeout interrupt from the start, the bootloader's
++	 * watchdog too, where it has one and a governor is built in. On the
++	 * GKD Pixel 2 the watchdog's own reset is the PX30's alone: the RK817
++	 * stays on, the card stays in its 1.8 V signalling (SDR104), and the
++	 * boot ROM cannot read it and starts the handheld's own loader instead
++	 * (2026-11-26). The interrupt's governor panics, and the panic's
++	 * restart is the RK817's (rk8xx-core's DEV_RST, ahead of this driver's
++	 * restart handler): a power cycle of the card, the RAM and pstore kept.
++	 * The chip's reset stays, a TOP later, for a kernel that takes no
++	 * interrupt at all.
++	 */
++	if (IS_ENABLED(CONFIG_WATCHDOG_PRETIMEOUT_GOV) && wdd->info == &dw_wdt_pt_ident)
++		dw_wdt_set_pretimeout(wdd, 1);
+ 
+ 	platform_set_drvdata(pdev, dw_wdt);
+ 

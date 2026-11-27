@@ -175,6 +175,11 @@ desk-r36s:
 check-desk: native
 	@python3 tools/desk-check.py
 
+# USB File Transfer's opening in desk mode over a stand-in cable whose
+# controller writes are slow (tools/xferopen-check.py, src/device/deskcable.h)
+check-xferopen: native
+	@python3 tools/xferopen-check.py
+
 # The home's d-pad held, in desk mode: the Grid's rows to each end, Spotlight's
 # groups forward
 check-homekeys: native
@@ -1037,6 +1042,11 @@ check-crashrec: build-native/crashrec-check
 build-native/crashrec-check: tools/crashrec-check.c src/crashrec.c src/crashrec.h FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -D_GNU_SOURCE -O1 -g -Wall -Wextra -o $@ tools/crashrec-check.c src/crashrec.c -lpthread
+
+# plastron's hwdog, the hardware watchdog's petter (package/hwdog), against
+# stand-in files for the device and the kernel's log (tools/hwdog-check.sh)
+check-hwdog:
+	@sh tools/hwdog-check.sh
 
 # The display's gamma table, emptied (src/panelgamma.h): the launcher's and
 # Diatom's code against a stand-in display, with Linux's request numbers
@@ -2271,6 +2281,15 @@ check-device-compile:
 	echo "  portkeys: tools/portkeys.c, the Pixel 2's keys, bar and motor over a port, whole"; \
 	$(CC) $$F -Isrc -Idiatom/src -Idiatom/include tools/portkeys.c tools/pkkeys.c tools/pkfeel.c \
 		tools/pkshutter.c src/pcm_out.c; \
+	echo "  launcher: every src/*.c and src/ds/*.c as a device builds them (mk/cross.mk, no ZYPEROS_DESK),"; \
+	echo "    a call to an undeclared function an error, as plastron's GCC makes it"; \
+	mkdir -p build-native/device-compile; \
+	printf '#define SS_DEVID ""\n#define SS_DEVPASS ""\n' > build-native/device-compile/ss_creds.h; \
+	for d in pixel2 brick; do \
+		$(CC) -std=gnu11 -D_GNU_SOURCE -fsyntax-only -Werror=implicit-function-declaration -Werror=implicit-int \
+			-DZYPEROS_VERSION='"0.0"' -DZYPEROS_PROFILE=device_profile_$$d -DZYPEROS_DEVICE_ID=\"$$d\" \
+			-Ibuild-native/device-compile -Isrc $$S $$(ls src/*.c src/ds/*.c | grep -v '^src/i18n_tables.c$$'); \
+	done; \
 	echo "ok: every device file compiles"
 
 # The handhelds' models (src/device/td_model.h): every key once, the GKD
@@ -2365,10 +2384,29 @@ check-resident:
 		echo "check-resident: skipped, no SDL2"; \
 	fi
 
-build-native/resident-check: tools/resident-check.c src/resident.c src/powerhold.c src/platform.h src/device.h FORCE
+build-native/resident-check: tools/resident-check.c src/resident.c src/powerhold.c src/wdog.c src/klog.c src/platform.h src/device.h FORCE
 	@mkdir -p build-native
 	@$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g $$(sdl2-config --cflags) \
-	      -o $@ tools/resident-check.c src/resident.c src/powerhold.c src/canvas.c $$(sdl2-config --libs)
+	      -o $@ tools/resident-check.c src/resident.c src/powerhold.c src/wdog.c src/klog.c src/canvas.c $$(sdl2-config --libs) -lpthread
+
+# The launcher never stops on the USB controller, and says where it would
+# have (tools/usbhang-check.c): the controller's writes in a child with a
+# timeout against a FIFO nobody reads (src/hwput.h), File Transfer's fresh
+# link from fake controller files (src/cablefresh.h), the kept log lines in a
+# stand-in kernel log and what the filter costs (src/klog.h), and the
+# watchdog with short times and a stuck loop (src/wdog.h). USBHANG_BEFORE=1
+# runs 1.1.0's reconnect in place of the fresh link, which it fails.
+USBHANG_SRC := tools/usbhang-check.c src/hwput.c src/klog.c src/cablefresh.c src/linksteps.c src/wdog.c
+check-usbhang: build-native/usbhang-check$(if $(USBHANG_BEFORE),-before)
+	@./build-native/usbhang-check$(if $(USBHANG_BEFORE),-before)
+
+build-native/usbhang-check: $(USBHANG_SRC) src/hwput.h src/klog.h src/cablefresh.h src/linksteps.h src/wdog.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -Werror -D_GNU_SOURCE -O1 -g -o $@ $(USBHANG_SRC) -lpthread
+
+build-native/usbhang-check-before: $(USBHANG_SRC) FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -DUSBHANG_BEFORE -O1 -g -o $@ $(USBHANG_SRC) -lpthread
 
 # spawn_detached (src/spawn.h): a program that outlives the launcher, with
 # real processes - its own pid back, not this process's child, a failed exec
@@ -2384,10 +2422,10 @@ build-native/spawn-check: tools/spawn-check.c src/spawn.c src/spawn.h FORCE
 # The launcher's resident.c, the device stubbed, against a real Diatom: the
 # zone chosen in Date & Time reaches a game's clock (tools/gamezone-check.c).
 # Run by check-diatom, after Diatom's own build.
-build-native/gamezone-check: tools/gamezone-check.c src/resident.c src/powerhold.c src/platform.h src/device.h FORCE
+build-native/gamezone-check: tools/gamezone-check.c src/resident.c src/powerhold.c src/wdog.c src/klog.c src/platform.h src/device.h FORCE
 	@mkdir -p build-native
 	@$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g $$(sdl2-config --cflags) \
-	      -o $@ tools/gamezone-check.c src/resident.c src/powerhold.c src/canvas.c $$(sdl2-config --libs)
+	      -o $@ tools/gamezone-check.c src/resident.c src/powerhold.c src/wdog.c src/klog.c src/canvas.c $$(sdl2-config --libs) -lpthread
 
 build-native/clock-check: tools/clock-check.c src/clock.c src/clock.h src/menu.h $(I18N_SRC) FORCE
 	@mkdir -p build-native

@@ -30,7 +30,15 @@ esac
 DATA=${PART}3
 DISK=/sys/block/${CARD#/dev/}
 
+# The kernel's panic for a task stuck 60 s, which the kernel's line sets for
+# the start (boot-prelude.cmd), off for a long write to the card: a fresh
+# card's format
+hung_panic_off() {
+	[ -w /proc/sys/kernel/hung_task_panic ] && echo 0 > /proc/sys/kernel/hung_task_panic
+}
+
 create() {
+	hung_panic_off
 	echo "datapart: first boot, adding $DATA over the rest of the card" > /dev/kmsg
 	# Right after the system, on a 4 MiB boundary (the card's erase blocks):
 	# after root, or after root B (partition 4) on a card with two system
