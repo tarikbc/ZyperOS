@@ -43,6 +43,7 @@ const device_profile device_profile_brick = {
 	 * (src/device/brick_coreopts.c) */
 	.coreopts = dev_coreopts_brick,
 	.speaker_mono = false,
+	.mute_switch = true,   /* the side switch, gpio243, 1 when down */
 	.rumble = false,   /* GPIO 227 on bldo3, not run until the tester's buzz (Brick parity item 14) */
 	.player2 = false,
 	.usb_shared_port = false,

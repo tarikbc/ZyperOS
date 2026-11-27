@@ -6,6 +6,7 @@
 #include <SDL.h>
 #include <SDL_image.h>
 #include "texload.h"
+#include "cartlabel.h"
 
 #include "screencard.h"
 #include "cardgen.h"   /* cardgen_kept: a card is shown in its own theme only */
@@ -158,13 +159,8 @@ static void unqueue(int at)
  * pointed at: the list they came from can be rebuilt while this runs. */
 static SDL_Surface *decode(const char *path)
 {
-	SDL_Surface *raw, *conv;
-
-	if (!path || !*path) return NULL;
-	if (!(raw = IMG_Load(path))) return NULL;
-	conv = SDL_ConvertSurfaceFormat(raw, SDL_PIXELFORMAT_ARGB8888, 0);
-	SDL_FreeSurface(raw);
-	return conv;
+	/* A PICO-8 cart as its label (src/cartlabel.h) */
+	return cart_label_load(path);
 }
 
 static bool (*g_late)(const char *key, char *path, size_t n);

@@ -25,6 +25,8 @@
 #include "bgm_menu.h"
 #include "blur.h"
 #include "cardgen.h"
+#include "cartlabel.h"
+#include "logcap.h"
 #include "cheevos.h"
 #include "clock.h"
 #include "config.h"
@@ -1458,12 +1460,8 @@ static float content_bottom(SDL_Surface *s)
  * pixels in; NULL if it is not there or will not decode. */
 static SDL_Surface *load_surface(const char *path)
 {
-	SDL_Surface *raw = IMG_Load(path), *conv;
-
-	if (!raw) return NULL;
-	conv = SDL_ConvertSurfaceFormat(raw, SDL_PIXELFORMAT_ARGB8888, 0);
-	SDL_FreeSurface(raw);
-	return conv;
+	/* A PICO-8 cart as its label (src/cartlabel.h) */
+	return cart_label_load(path);
 }
 
 SDL_Texture *load_image(SDL_Renderer *r, const char *path, int *w, int *h,
@@ -1476,6 +1474,7 @@ SDL_Texture *load_image(SDL_Renderer *r, const char *path, int *w, int *h,
 	if (!conv) return NULL;
 	if (cb) *cb = content_bottom(conv);
 	t = SDL_CreateTextureFromSurface(r, conv);
+	cart_label_sharp(t, conv);
 	SDL_FreeSurface(conv);
 	if (t) SDL_QueryTexture(t, NULL, NULL, w, h);
 	return t;
@@ -2362,7 +2361,9 @@ static bool es_cover_late(const char *key, char *path, size_t n)
 	if (!(file = strchr(k, '\t')) || !(name = strchr(file + 1, '\t'))) return false;
 	*file++ = '\0';
 	*name++ = '\0';
-	return es_media(P_ROMS, k, file, name, ES_COVER, true, path, n);
+	/* and a PICO-8 game's own cart, after the others (src/cartlabel.h) */
+	return es_media(P_ROMS, k, file, name, ES_COVER, true, path, n) ||
+	       game_media_cart(P_ROMS, k, file, path, n);
 }
 
 /* Whether game `i`'s slot on a shelf wants a card: it has none, or it holds a
@@ -2399,6 +2400,7 @@ static SDL_Texture *load_cover(app *a, int s, int i, const char *path)
 	if (!conv) return NULL;
 	v->cb[i] = content_bottom(conv);
 	t = SDL_CreateTextureFromSurface(a->r, conv);
+	cart_label_sharp(t, conv);
 	if (t) {
 		SDL_QueryTexture(t, NULL, NULL, &v->tw[i], &v->th[i]);
 		v->tex[i] = t;
@@ -2605,6 +2607,7 @@ void shelf_put(void *ctx, texload_got *g)
 		 * of that theme is, and gives way to the other's at a change */
 		v->tex[i] = g->theme >= 0 ? ui_card_upload(a->r, surf, g->theme)
 		                          : SDL_CreateTextureFromSurface(a->r, surf);
+		cart_label_sharp(v->tex[i], surf);      /* a PICO-8 cart's label */
 		if (v->tex[i])
 			SDL_QueryTexture(v->tex[i], NULL, NULL, &v->tw[i], &v->th[i]);
 		grid_note(a, s, i, surf, false);
@@ -3476,6 +3479,8 @@ static void on_cheevo_progress(int id, const char *text, int value, int target)
 	for (i = 0; i < chv_count(); i++)
 		if (chv_at(i)->id == id) { c = chv_at(i); break; }
 	if (!c || c->earned || c->earned_now) return;
+	/* One pop-up for a count kept at levels: the nearest one not earned */
+	if (!chv_progress_said(id)) return;
 	/* "74/100" as rcheevos writes it, spaced the way the list writes counts */
 	if (strchr(text, '/') && !strchr(text, ' '))
 		snprintf(count, sizeof count, "%.*s / %s", (int)(strchr(text, '/') - text),
@@ -4006,6 +4011,7 @@ static void status_gather(status_marks *m, bool moving)
 	m->wifi = wifi;
 	m->bt = plat_has_bluetooth() && aout_bt_sink()[0];
 	m->phones = plat_headphones_present();
+	m->muted = plat_muted();
 	m->batt = battery_now(&pct, &chg) ? pct : -1;
 	m->charging = chg;
 	m->held = chg && charge_held();
@@ -8205,6 +8211,8 @@ int main(int argc, char *argv[])
 	texload_set_late(es_cover_late);
 	art_es_media(es_art_cover, es_art_video);
 	if (!shot_path) texload_start();
+	/* This boot's zyperos.log held to about 2 MB (src/logcap.h) */
+	if (!shot_path) logcap_start();
 
 	/* The interface sounds, which read their files on a thread of their own,
 	 * so the first frame waits for none of them. Not for --shot, which

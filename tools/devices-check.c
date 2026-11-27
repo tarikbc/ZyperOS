@@ -121,6 +121,7 @@ static void brick(void)
 	   !p->speaker_mono && !p->player2 && !p->usb_shared_port && p->wifi == DEV_WIFI_BUILTIN,
 	   "brick: its own model, Bluetooth, GPU shaders and frames (from 1.1.0), two speakers, no Player 2, built-in Wi-Fi");
 	ck(p->screen_colors, "brick: Screen Colors, on its display's own gamma table");
+	ck(p->mute_switch, "brick: its side mute switch");
 	{
 		/* Its core options: some, and none of the Pixel 2's rumble until a
 		 * tester has felt its motor (src/device/brick_coreopts.c) */
@@ -162,6 +163,7 @@ static void smartpro(void)
 	ck(p->model == &td_model_smartpro && !p->model_borrowed && p->bluetooth && !p->gpu_shaders && !p->gpu_frames &&
 	   !p->speaker_mono && !p->player2 && !p->usb_shared_port && p->wifi == DEV_WIFI_BUILTIN,
 	   "smartpro: its own drawing, the Brick's board's answers");
+	ck(!p->mute_switch, "smartpro: no mute switch (the Brick's side switch is not on it)");
 	ck(dev_button_of(p, IN_SELECT)->icon == DEV_ICON_SQUARE && dev_button_of(p, IN_START)->icon == DEV_ICON_PLAY,
 	   "smartpro: SELECT's square and START's triangle, as printed");
 	ck(p->coreopts == device_profile_brick.coreopts && p->screen_colors && !p->rumble,
@@ -242,6 +244,7 @@ static void answers(void)
 		ck(plat_has_bluetooth() == p->bluetooth && plat_gpu_shaders() == p->gpu_shaders &&
 		   plat_gpu_frames() == p->gpu_frames &&
 		   plat_speaker_mono() == p->speaker_mono && plat_player2() == p->player2 &&
+		   plat_has_mute_switch() == p->mute_switch &&
 		   plat_brightness_on_volume() == (p->chords.bright == DEV_BRIGHT_MENU_VOL) &&
 		   plat_battery_lights() == p->chords.battery_chord, what);
 	}

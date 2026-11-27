@@ -1650,6 +1650,24 @@ boost kept like the level, games, MP4 and ports, headphones the same (a plug
 closes it), a mid-tone lift for brightness. A host shot: `--osd volume 20
 +4`.
 
+**Muted.** With the Brick's side switch down every output is silent, so the
+volume's bar does not move steps that play nothing: a press shows the pill
+with the speaker crossed in **text-soft**, no waves, no steps and no boost,
+and the word "Muted" after it in **menu** **text** (`levels.muted`, cut to
+the steps' room if a language runs longer). The pill is only as wide as
+what it holds, centered, as tall and as high as the bar: the mark's 84 (the
+room the steps start after), the word, and the bar's own 30 at the end
+(src/osdbar.c's osdbar_pill_w). Over a Diatom game, which has no font for
+the word, the same rule leaves the crossed speaker in an 84-wide pill that
+hugs it, from the launcher's SETMUTE. *(Tarik, 2026-11-26, on the first
+shots: the muted pill "too wide".)* The switch flipped while the bar is up
+replaces it whole on the next frame, the word measured before the pill is
+painted: its width is what it holds, not a level, so it does not slide as
+the level's mark does. The level still moves under it, as it did.
+Brightness has no mute. Host shots: `ZYPEROS_MUTE_SWITCH=on` with
+`--device brick` and `--osd volume N`; `--status muted` for the corner's
+mark (11.12). *(#482, 2026-11-26.)*
+
 **POWER held** (MENU > Power Button on **Hold**, 11.47) is the same pill with
 the power mark - a ring open at the top and the line down into it, as every
 power button has it - and 20 segments in **accent-ink** over **track**, one
@@ -1670,7 +1688,12 @@ left-aligned beside it. A progress notice is the achievement's name in
 **meta** **text-dim**, a strip **bar** high in **accent-ink** on **track**,
 and the count ("74 / 100") in **meta** **text** under it. Notices take turns:
 each has its time and a 300 ms gap before the next; unlocks go ahead of
-progress. The achievements list (a game's Achievements row) has the badge at the start
+progress. A count a set keeps at levels (Rayman 2's lums at 10, 30, 60...:
+achievements measuring the same value with only the target different, or
+named alike but for a trailing "I", "II" or "2") has one progress notice, the
+nearest level not earned, where it had one for every level *(2026-11-26, from
+metior: "Supressing redundant RetroAchievements")*; unlocks are as they were.
+The achievements list (a game's Achievements row) has the badge at the start
 of every row, greyed and faded until earned, and the count where the points
 are while it moves. *(My picks in the achievements lab,
 docs/design/mock/cheevos-lab.html, 2026-11-05: badge at the left, strip, on
@@ -2272,6 +2295,16 @@ it has priority for direct volume or brightness feedback.
   the jack (the codec's SW_HEADPHONE_INSERT): a headband of radius 9, a
   3-unit stroke as the rune's, its ends inside two cups 6 by 10, in
   **text-soft** (2026-11-09). Audio Channels' Auto plays stereo there.
+- **Muted**, 26 wide, between the fan and the battery, while the Brick's
+  side switch is down (gpio243 reads 1) and every output is silent,
+  headphones too: the volume bar's speaker, a body and a cone, and a cross
+  where its waves would be, a 3-unit stroke as the headphones', in
+  **text-soft**. Only on a handheld with the switch (the profile's
+  `mute_switch`: the Brick; the Smart Pro has none). The launcher's log
+  says "brick: mute switch on" or "off" at the start and at each flip.
+  *(#482, 2026-11-26: "no sound" on a Brick whose bar still moved; my
+  answer there: "I'll make the mute show on screen so this doesn't confuse
+  anyone".)*
 - **File Transfer**, 24 wide, left of the others while it runs behind the
   shelf (11.23): an arrow up and one down, 2.5-unit strokes, in **text-dim**
   with nothing moving and **text-soft** while files move; then a 2-unit ring
@@ -4970,6 +5003,15 @@ library's rows, so the card still works in the other system.
   from the page has the folder read again for its next listing. The page
   draws no video in 1.1.0 *(my call, 2026-11-20)*: the listing names each
   game's video (`video`), found the same way, for a later design.
+- **A PICO-8 cart is its own cover**, after ZyperOS's and ES's *(2026-11-26,
+  from moroboshi69: "Set the default boxart for PICO-8 games to use the
+  game's png")*: a `.p8.png` of a cart's size (160 x 205) shows its label,
+  the 128 x 128 at (16, 24) PICO-8 draws, drawn nearest so its pixels stay
+  sharp (src/cartlabel.h). The same on the shelf, its Video and List views,
+  the screensaver (which takes the shelf's lookup, ES's covers too, from
+  1.1.1), the menu and Recents' Last Screen. Box Art does not count it, so a
+  fetched cover can still come first; the File Transfer page shows the cart
+  whole.
 - **Box Art** counts an ES cover as a cover: it fetches only for games with
   neither, and **Cover and Video** (11.34) shows an ES cover as Now,
   credited "EmulationStation". A cover chosen there is ZyperOS's own, and

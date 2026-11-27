@@ -547,7 +547,9 @@ USB Wi-Fi adapter is plugged in: Wi-Fi and Wi-Fi File Transfer here (USB
 File Transfer stays, with a computer on the cable), and Album Art in MP4's.
 Downloads stays, here and in a console's menu: its download says it needs
 Wi-Fi, and its counts, Systems and accounts need none. Bluetooth is never
-there. A phone's USB tethering is internet too (see **File transfer**):
+there. With an adapter in, any Wi-Fi network will do, a hotspot too: a
+phone's, an Android handheld's or a laptop's. USB tethering from an Android
+phone or handheld is internet too, with no adapter (see **File transfer**):
 while it is on, Album Art is back, and Downloads' download works.
 
 ### Downloads
@@ -1151,6 +1153,12 @@ sun whose rays grow with the brightness. The mark and the segments are lime
 for volume and amber for brightness, on a bar in the theme that is on, light
 or dark.
 
+**The Brick's mute switch.** The switch on the Brick's side mutes everything,
+the speaker and headphones alike. While it is down, a crossed speaker sits
+next to the battery at the top right, and the volume keys show the bar with
+the speaker crossed and the word **Muted** in place of its steps (in a game,
+the crossed speaker alone). Flip the switch back to hear sound again.
+
 ### Past the top: the boost
 
 Some films and games are quiet even at the top of the volume. At the top,
@@ -1317,7 +1325,7 @@ shows how far it is. Under them, **Now** says what happened last, with the
 file's name, and **Browsers** (and **SSH** over the cable) who is connected.
 The address and the PIN stay at the top for the next browser.
 
-On the Pixel 2, an Android phone with USB tethering opens it too on the USB
+On the Pixel 2, an Android phone or handheld with USB tethering opens it too on the USB
 cable, with no adapter: answer **Phone** when the handheld asks what you
 plugged in, and turn on the phone's **USB tethering**. The phone shares its
 network over the cable and gives the handheld an address there, and **USB
@@ -1331,9 +1339,12 @@ it closes 10 seconds later). While USB tethering is on, the handheld also
 has the phone's internet: its clock sets itself from it, and **MENU >
 Downloads**, Cover and Video, System Update
 and PortMaster's install work over it as over Wi-Fi. Close File Transfer
-with **B** and the phone stays connected for them. Over the phone, which may
-be on mobile data, nothing large starts by itself: a System Update download
-cut short waits for **A**. An iPhone shares its network over USB only with a
+with **B** and the phone stays connected for them. Box art and video snaps
+download over it as over Wi-Fi. The one thing held back, since the phone may
+be on mobile data, is System Update's download: one cut short waits for **A**
+rather than starting again by itself. A phone's or a handheld's Wi-Fi
+hotspot, joined with a USB Wi-Fi adapter, is Wi-Fi like any other and holds
+nothing back. An iPhone shares its network over USB only with a
 computer it trusts, which the handheld cannot be, so use Wi-Fi File Transfer
 with an iPhone. Some Android devices have no USB tethering at all (the AYN
 Thor, an Android gaming handheld, offers it neither in Settings nor in its

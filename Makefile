@@ -1459,10 +1459,31 @@ build-native/gridrule-check: tools/gridrule-check.c src/gridrule.c src/gridrule.
 check-screencard: build-native/screencard-check
 	@./build-native/screencard-check
 
-build-native/screencard-check: tools/screencard-check.c src/screencard.c src/screencard.h FORCE
+build-native/screencard-check: tools/screencard-check.c src/screencard.c src/screencard.h \
+                               src/cartlabel.c src/cartlabel.h FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g $$(pkg-config --cflags sdl2 SDL2_image SDL2_ttf) -Isrc \
-	      -o $@ tools/screencard-check.c src/screencard.c $$(pkg-config --libs sdl2 SDL2_image) -lm
+	      -o $@ tools/screencard-check.c src/screencard.c src/cartlabel.c $$(pkg-config --libs sdl2 SDL2_image) -lm
+
+# A PICO-8 cart as its own cover (src/cartlabel.h): its label cut out of the
+# cart, at the place PICO-8 draws it, and drawn nearest
+check-cartlabel: build-native/cartlabel-check
+	@./build-native/cartlabel-check
+
+build-native/cartlabel-check: tools/cartlabel-check.c src/cartlabel.c src/cartlabel.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g $$(pkg-config --cflags sdl2 SDL2_image) -Isrc \
+	      -o $@ tools/cartlabel-check.c src/cartlabel.c $$(pkg-config --libs sdl2 SDL2_image)
+
+# Each zyperos.log held to about 2 MB (src/logcap.h): its boot, a marker
+# with the count, its newest lines, every line whole. Plain C
+check-logcap: build-native/logcap-check
+	@./build-native/logcap-check
+
+build-native/logcap-check: tools/logcap-check.c src/logcap.c src/logcap.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Isrc \
+	      -o $@ tools/logcap-check.c src/logcap.c -lpthread
 
 # The focus's marks on whole panel pixels (src/focusgeo.h, DESIGN.md 11.47):
 # each mark's edges against the Pixel 2's linear scaling, plain C

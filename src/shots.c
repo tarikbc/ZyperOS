@@ -466,6 +466,8 @@ bool shot_status_parse(const char *spec)
 		}
 		/* headphones in the jack: their mark */
 		else if (!strcmp(w, "phones=on")) shot_st.m.phones = true;
+		/* the mute switch down: the crossed speaker */
+		else if (!strcmp(w, "muted")) shot_st.m.muted = true;
 		else if (!strncmp(w, "xfer=", 5) && w[5] >= '0' && w[5] <= '9') {
 			shot_st.m.xfer = shot_st.m.xfer_moving = true;
 			shot_st.m.xfer_pct = atoi(w + 5);

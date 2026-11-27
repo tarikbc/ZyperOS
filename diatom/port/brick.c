@@ -652,6 +652,10 @@ static void osd_look_now(osdbar_look *l)
 
 	if (g_osd_kind != 2 && g_osd_look.kind == kind) *l = g_osd_look;
 	else osdbar_look_plain(l, kind, g_osd_level, g_osd_max);
+	/* The launcher's SETMUTE, the side switch down: the volume's bar says
+	 * so, with no steps moving that play nothing (#482). No word here: the
+	 * crossed speaker alone, where the launcher writes Muted beside it */
+	l->muted = kind == OSDBAR_VOLUME && g_muted;
 }
 
 /* The panel at a rung, and back as the nearest rung, so a level the launcher

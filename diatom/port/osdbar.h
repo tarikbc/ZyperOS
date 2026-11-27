@@ -110,10 +110,34 @@ typedef struct {
 	float fill[OSDBAR_BOOST_MAX];     /* 0..1 each */
 	float charge;                     /* 0..1, the charging cell's fill */
 	float grow, morph, tick, flash, push;   /* 0..1 each */
+	/* The volume's bar with the mute switch down (the Brick's side
+	 * switch): the speaker crossed in text-soft, no waves, no steps and no
+	 * boost, so a press shows nothing moving that plays nothing. The pill is
+	 * only as wide as what it holds, centered: the mark in the room it has
+	 * before the steps, then the host's word, `word_w` units wide ("Muted",
+	 * at most OSDBAR_WORD_MAX; 0 for a host with no words, which shows the
+	 * mark alone in a pill that hugs it), then the bar's own end padding.
+	 * The host writes the word from osdbar_word_x. */
+	bool muted;
+	float word_w;
 } osdbar_look;
+
+/* Where the steps stand, in the buffer's units: from OSDBAR_WORD_X0 to
+ * OSDBAR_WORD_X1 with their middle on OSDBAR_WORD_CY (src/osdbar.c's SEG_X0,
+ * SEG_X1 and the pill's middle); the most a muted bar's word may take is
+ * their width */
+#define OSDBAR_WORD_X0 (OSDBAR_W / 2 - 226 + 84)
+#define OSDBAR_WORD_X1 (OSDBAR_W / 2 + 226 - 30)
+#define OSDBAR_WORD_MAX (OSDBAR_WORD_X1 - OSDBAR_WORD_X0)
+#define OSDBAR_WORD_CY (OSDBAR_H / 2 - 2)   /* the pill 12 under the top, 64 tall */
 
 /* A look of the plain bar: the level, its mark at rest, no boost */
 void osdbar_look_plain(osdbar_look *l, int kind, int level, int max);
+
+/* The pill's width for a look, in units: 452 but for a muted volume's bar,
+ * which hugs its mark and word; and where in the buffer that word starts */
+float osdbar_pill_w(const osdbar_look *l);
+float osdbar_word_x(const osdbar_look *l);
 
 /* osdbar_render for a look: the same buffer, the same caching (a call with
  * the same look, theme and size at another opacity converts what was

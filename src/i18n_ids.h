@@ -907,6 +907,8 @@ typedef enum {
 	S_LAUNCH_CORE_VERSION,
 	S_LAUNCH_CORE_SYMBOL,
 	S_LAUNCH_CORE_FAILED,
+	/* res/strings/levels.txt */
+	S_LEVELS_MUTED,
 	/* res/strings/library.txt */
 	S_LIBRARY_FAVORITES,
 	S_LIBRARY_RECENTS,

@@ -182,7 +182,9 @@ fi
 # player's report can come several reboots after the fault. Only the last
 # boot's log is moved out of the way here; the older ones shift along in the
 # background, where nothing waits on them (in line, the renames took 260 ms of
-# the boot on TrimUI's firmware, measured 2026-10-02).
+# the boot on TrimUI's firmware, measured 2026-10-02). Each is held to about
+# 2 MB by the launcher (src/logcap.h): its start, a "... N lines dropped ..."
+# line and its newest lines, so everything here appends (>>), never writes.
 LOG=$LOGS_PATH/zyperos.log
 [ -f "$LOG" ] && mv -f "$LOG" "$LOG.prev"
 : > "$LOG"

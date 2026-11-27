@@ -867,6 +867,19 @@ bool device_power_pressed(void)
  * Allwinner disp2 engine, addressed with plain command numbers (not _IOWR) and
  * an unsigned long[4] argument block. */
 
+/* The mute switch said in the log as it changes, and once at the start:
+ * "no sound" with the switch down looked like a fault from a log that said
+ * nothing of it (#482). Its own memory, not `muted`, which a game's handover
+ * forgets, so a game ending says nothing new. */
+static int mute_said = -1;
+
+static void mute_say(int now)
+{
+	if (now == mute_said) return;
+	mute_said = now;
+	fprintf(stderr, "brick: mute switch %s\n", now ? "on" : "off");
+}
+
 #ifdef __linux__
 #include <sys/ioctl.h>
 
@@ -1311,10 +1324,16 @@ void plat_cable_reconnect(void)
  * emulator's. */
 bool plat_mute_poll(bool own_volume)
 {
-	int now = mute_switch_down() ? 1 : 0;
+	int now;
 
+	/* The Smart Pro runs this file and its system exports the same pin, but
+	 * has no switch on it: whatever PH19 reads there is not a mute, and
+	 * there is nothing to say */
+	if (!plat_has_mute_switch()) return false;
+	now = mute_switch_down() ? 1 : 0;
 	if (now == muted) return false;
 	muted = now;
+	mute_say(now);
 	/* Out of a game this side is the only writer. Diatom used to be told here
 	 * too, and it answered by applying its own level - which out of a game is
 	 * -1, unknown - so every unmute switched the speaker back off a moment
@@ -1690,9 +1709,26 @@ static void apply_volume(int v) { cur_vol = v; }
 static void apply_brightness(int b) { cur_bright = b; }
 /* No jack on the host, so nothing can be plugged into it. */
 void plat_audio_jack_poll(void) { }
-/* And no switch to flip. */
-bool plat_mute_poll(bool own_volume) { (void)own_volume; return false; }
-bool plat_muted(void) { return false; }
+/* And no switch to flip: ZYPEROS_MUTE_SWITCH=on stands for one down, under
+ * a profile that has one (--device brick), for the shots and the checks */
+static int muted = -1;
+bool plat_mute_poll(bool own_volume)
+{
+	const char *e = getenv("ZYPEROS_MUTE_SWITCH");
+	int now = e && !strcmp(e, "on");
+
+	(void)own_volume;
+	if (!plat_has_mute_switch()) return false;
+	if (now == muted) return false;
+	muted = now;
+	mute_say(now);
+	return true;
+}
+bool plat_muted(void)
+{
+	plat_mute_poll(true);
+	return muted == 1;
+}
 bool plat_headphones_present(void) { return false; }
 bool plat_usb_audio_present(void) { return false; }
 bool plat_cable_link(char *addr, size_t n)
@@ -1749,7 +1785,7 @@ bool plat_phone_link(bool act, char *ifname, size_t in, char *ip, size_t n)
 }
 bool plat_usb_iphone(void) { return false; }
 static void jack_forget(void) { }
-static void mute_forget(void) { }
+static void mute_forget(void) { muted = -1; }
 void plat_backlight(bool on) { (void)on; }
 void plat_backlight_dim(bool dim) { (void)dim; }
 void plat_display_plain(void) { }

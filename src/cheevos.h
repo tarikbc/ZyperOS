@@ -87,6 +87,14 @@ const char *chv_source(void);
 /* A count moving, from Diatom: kept on the achievement for the list. False
  * for an id not in the set. */
 bool chv_note_progress(int id, const char *text);
+/* Whether a count moving is said over the game. A set can count one thing at
+ * levels, Rayman 2's lums at 10, 30 and 60 as "Lums I", "Lums II" and so on,
+ * and one lum moved every level at once: five pop-ups for one lum. Only the
+ * nearest level not yet earned is said. Levels are achievements measuring the
+ * same value whose conditions differ only in the target, or whose titles
+ * differ only in a trailing roman numeral or number. The list keeps every
+ * count either way (chv_note_progress). */
+bool chv_progress_said(int id);
 
 int         chv_count(void);
 const cheevo *chv_at(int i);

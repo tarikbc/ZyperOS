@@ -18,7 +18,9 @@ static bool marks_same(const status_marks *a, const status_marks *b)
 	       a->blink_off == b->blink_off && a->pct_w == b->pct_w &&
 	       a->calc == b->calc && a->calc_step == b->calc_step &&
 	       a->xfer == b->xfer && a->xfer_moving == b->xfer_moving &&
-	       a->xfer_pct == b->xfer_pct && a->phones == b->phones;
+	       a->xfer_pct == b->xfer_pct && a->phones == b->phones &&
+	       a->usb == b->usb && a->update == b->update &&
+	       a->update_pct == b->update_pct && a->muted == b->muted;
 }
 
 /* The marks as a texture: painted by status_marks_render when what they show,
@@ -27,9 +29,11 @@ static bool marks_same(const status_marks *a, const status_marks *b)
  * One for the launcher, as the volume bar's is. */
 static void marks_blit(SDL_Renderer *r, const status_marks *m, int theme)
 {
-	/* 192 for all five marks (File Transfer's and headphones' too) and the
-	 * room of the battery's number or time, and the gap between them */
-	static uint32_t      px[(STATUS_PAD * 2 + 192 + STATUS_PCT_GAP + STATUS_PCT_MAX) *
+	/* 302 for every mark at once (a plug waiting, System Update, File
+	 * Transfer, the rune, headphones, the fan, the mute switch down and the
+	 * battery, seven gaps) and the room of the battery's number or time, and
+	 * the gap between them */
+	static uint32_t      px[(STATUS_PAD * 2 + 302 + STATUS_PCT_GAP + STATUS_PCT_MAX) *
 	                        (STATUS_PAD * 2 + STATUS_ROW)];
 	static SDL_Texture  *tex;
 	static SDL_Renderer *tex_for;
