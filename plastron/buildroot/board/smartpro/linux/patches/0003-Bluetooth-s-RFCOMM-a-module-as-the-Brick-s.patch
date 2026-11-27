@@ -1,0 +1,26 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Tarik Caramanico <tarikcaramanico@gmail.com>
+Subject: [PATCH] Bluetooth's RFCOMM a module, as the Brick's is.
+ board/brick/linux/patches/0045 made RFCOMM rfcomm.ko in brick_defconfig,
+ and brick-kmods takes rfcomm.ko for both boards, but smartpro_defconfig
+ (0001 here) still had RFCOMM, BNEP and HIDP at y: compiled into nothing
+ with CONFIG_BT=m, and no rfcomm.ko for scripts/build-brick-kernel.sh to
+ strip, so make smartpro-kernel stopped. The same change, here
+
+---
+--- a/arch/arm64/configs/smartpro_defconfig
++++ b/arch/arm64/configs/smartpro_defconfig
+@@ -73,12 +73,8 @@
+ # CONFIG_TCP_CONG_HTCP is not set
+ # CONFIG_IPV6 is not set
+ CONFIG_BT=m
+-CONFIG_BT_RFCOMM=y
++CONFIG_BT_RFCOMM=m
+ CONFIG_BT_RFCOMM_TTY=y
+-CONFIG_BT_BNEP=y
+-CONFIG_BT_BNEP_MC_FILTER=y
+-CONFIG_BT_BNEP_PROTO_FILTER=y
+-CONFIG_BT_HIDP=y
+ # CONFIG_BT_DEBUGFS is not set
+ CONFIG_XR_BT_LPM=m
+ CONFIG_XR_BT_FDI=m
