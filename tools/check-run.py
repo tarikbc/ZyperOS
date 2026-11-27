@@ -71,7 +71,7 @@ SPLIT = {'check-i18n-shots'}
 # launcher a language and a handheld; Diatom's parallel build and its 43
 # checks; Docker's (only with their flag); desk mode's presses and frames
 HEAVY = {'check-i18n-shots', 'check-diatom',
-         'check-desk', 'check-homekeys', 'check-videoview', 'check-mp4views', 'check-mp4resume',
+         'check-desk', 'check-homekeys', 'check-videoview', 'check-menukeys', 'check-mp4views', 'check-mp4resume',
          'check-ingame-colors', 'check-pico8-display', 'check-pico8-keys', 'check-pico8-mp4',
          'check-p8fx'}
 DOCKER = {'check-gpu-upright': 'UPRIGHT_DOCKER', 'check-p8fx-gl': 'P8FX_DOCKER'}

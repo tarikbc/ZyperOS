@@ -70,6 +70,10 @@ static void menu_pass_end(void *ctx, const SDL_Rect *panel, mm_pose pose) { pane
 #define MENU_KEY_SIZE 40
 /* Between On/Off and Y's glyph after it (MENU_KEY_Y_ON, MENU_KEY_Y_OFF) */
 #define MENU_KEY_GAP 16
+/* A quiet row's keys (a MENU_KEYS_MARK value on a row that is not live) at
+ * this much of their opacity: the glyphs as dimmed as its words, so the row
+ * reads as one that cannot be chosen (the Hotkeys list's Home) */
+#define MENU_DEAD_KEYS_OP 0.5f
 
 /* A row whose value is a scale's (src/ds/scale.h): a note's, a body's and a
  * rule's value is a mark, not text */
@@ -560,7 +564,7 @@ void menu_panel(app *a, const char *heading, const menu_row *rows,
 	 * footer (a MENU_RULE and only notes past it), drawn with pin_foot,
 	 * windows the rows above the rule and keeps the footer under them, as a
 	 * card pins its footer. Otherwise it is all list (nl == n). */
-	int nl = n, foot_h = 0, list_h = 0;
+	int nl = n, foot_h = 0, foot_gap = 0, list_h = 0;
 	/* A list too long for its window goes round without end (menu_loop_*,
 	 * DESIGN.md 11.3): `first` and `vsel` are then slots, not rows */
 	bool loop = false;
@@ -640,10 +644,14 @@ void menu_panel(app *a, const char *heading, const menu_row *rows,
 			if (g_menu_pin_foot) {
 				int j, k = -1;
 
-				for (j = 0; j < n; j++)
-					if (!rows[j].label && !ROW_IS_HR(rows[j])) { k = j; break; }
-				for (j = k + 1; k > sel && j < n; j++)
-					if (rows[j].live || (rows[j].label && !ROW_IS_NOTE(rows[j]))) k = -1;
+				/* The footer is the first rule of the rows' tail that is
+				 * only rules and notes: a rule between two groups of rows
+				 * above it is the list's own (the Hotkeys list's, before
+				 * MENU's chords), and not where the footer starts */
+				for (j = n - 1; j >= 0; j--) {
+					if (rows[j].live || (rows[j].label && !ROW_IS_NOTE(rows[j]))) break;
+					if (!rows[j].label && !ROW_IS_HR(rows[j])) k = j;
+				}
 				if (k > sel) {
 					/* A panel with a picture beside its rows holds the
 					 * height its pages have (below), so its footer comes
@@ -652,9 +660,14 @@ void menu_panel(app *a, const char *heading, const menu_row *rows,
 					 * (a button's list on the Controls tab, 11.45) */
 					int room = g_menu_side ? avail / row_h * row_h + pad - pad / 3 : avail;
 
+					/* and the more mark's room over it: the window
+					 * scrolls, so the mark under its rows is drawn,
+					 * and it sat on the footer's rule */
+					foot_gap = DS_MORE_H + 8;
+					foot_h = foot_gap;
 					for (j = k; j < n; j++) foot_h += ROW_H(rows[j]);
 					if (room - foot_h >= row_h) { nl = k; avail = room - foot_h; }
-					else foot_h = 0;
+					else foot_h = foot_gap = 0;
 				}
 			}
 			/* THE WINDOW ONLY MOVES WHEN THE CURSOR WOULD LEAVE IT.
@@ -1147,7 +1160,7 @@ void menu_panel(app *a, const char *heading, const menu_row *rows,
 		if (fk >= 0) {
 			if (fk >= n) break;
 			i = fk++;
-			y = content_y + list_h;
+			y = content_y + list_h + foot_gap;
 			for (j = nl; j < i; j++) y += ROW_H(rows[j]);
 		} else {
 			i = loop ? menu_loop_row(nl, v) : v;
@@ -1306,9 +1319,12 @@ void menu_panel(app *a, const char *heading, const menu_row *rows,
 			const int kw = ui_button_width(keys, MENU_KEYS_SIZE);
 			char lbl[192];
 
+			/* A quiet row's keys are quiet too (DESIGN.md 11.3: a dead row
+			 * text-dim at both), faded as its words are dimmed: the Hotkeys
+			 * list's Home, which no one can change */
 			ui_button_pressed(a->r, keys, content_x + content_w - kw / 2, y + ROW_H(rows[i]) / 2,
 			                  MENU_KEYS_SIZE, sel_w >= 0.5f ? UI_BUTTON_ON_ACCENT : UI_BUTTON_PLAIN,
-			                  0.0f, 1.0f, lc.a / 255.0f);
+			                  0.0f, 1.0f, lc.a / 255.0f * (rows[i].live || sel_w >= 0.5f ? 1.0f : MENU_DEAD_KEYS_OP));
 			ui_fit_text(fm, rows[i].label, lbl, sizeof lbl, content_w - kw - fit_gap);
 			ui_text(a->r, fm, lbl, content_x, ty, -1, lc);
 		} else if (two_col && menu_keys_is(rows[i].label)) {

@@ -67,6 +67,9 @@
 
 typedef struct {
 	bool     locked;
+	/* How long the pair is held to unlock, ms: MENU > System > Hotkeys'
+	 * Hold to Unlock (src/menukeys.h); 0 for MP4_UNLOCK_MS */
+	unsigned hold_ms;
 	bool     armed;        /* the pair has been let go since locking */
 	unsigned held_from;    /* both down together since then; 0 not */
 	unsigned lit_until;    /* the lock screen is lit until then */

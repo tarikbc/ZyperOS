@@ -1175,7 +1175,10 @@ The focused row is an **accent** fill, **radius.row**, its label and value in
 ends in a footer (a rule and only notes under it) and does not fit keeps the
 footer still under its rows (`menu_style.pin_foot`): the rows above the rule
 scroll in what room is left, as a card's body scrolls over its pinned
-footer. Elsewhere a long list's footer goes round with its rows.
+footer. The footer is the first rule of the rows' tail that holds only rules
+and notes, so a rule between two groups of rows above it stays the list's
+(the Hotkeys list's, 11.61); and the more mark under the window has its own
+room over the footer's rule, never on it. Elsewhere a long list's footer goes round with its rows.
 Opens and closes as 8.2 says.
 
 **Option rows, one rule (1.0.6).** A row whose value is one of several
@@ -1800,7 +1803,9 @@ for the reward, and a wrong press tilted, nudged and answered.)*
 | Go Back | B | the game shrinks back to its card | B |
 | See the Details | X | the card turns into the details, the info screen in small: the game's name over a rule, Synopsis in focus, Year, and Favorite Off with Y's glyph | X |
 | Keep a Favorite | Y | in those details Favorite turns from Off to On, the row's own Y pressing with the glyph; the line says Y does it in the details | Y |
-| Settings | MENU | a menu panel opens over the shelf | MENU, which opens nothing here |
+| Settings | MENU | a menu panel opens over the shelf; "MENU+L1 takes a screenshot." under the line | MENU, which opens nothing here |
+| Leave a Game | MENU, a comma and X (11.9's "one after the other"), MENU and X lit on the handheld | the stand-in game plays, MENU opens the in-game menu over it (its last row Quit, X's glyph at its right), X closes it as the game goes back into its card; "It picks up there next time." under the line | MENU, then X: MENU opens the menu on the stage (accept) and holds it for X, MENU or B closes it again (back); X first is "That's X. Press MENU first." |
+| Lock the Screen | MENU, a plus and L2 (the lock's button as Hotkeys has it), both lit on the handheld | the shelf goes dark at the chord, a press shows the lock's panel in small (the padlock, its bar), SELECT and START held fill the bar, and the screen comes back; "Hold SELECT and START 2 s to unlock." under the line (Hold to Unlock's seconds) | the chord itself, which locks the handheld as on any screen (11.61): the step's press is the lock opened again with SELECT and START held, and its reward comes as the screen does. MENU alone is "Hold MENU, then press L2.", L2 alone "That's L2. Hold MENU too." |
 | Music | SELECT, and L2/R2 lit on the handheld | MP4's Now Playing fades in; "L2/R2 play the previous or next song." under the line | SELECT, which opens nothing here |
 | Volume | the VOL rocker | a stand-in bar slides onto the stage and steps up | VOL+ or VOL-, which change the real volume and show the real bar |
 | Brightness | MENU+VOL: the MENU pill, a plus and the rocker (F1 and F2 on the Brick) | the stand-in bar's sun steps up | the chord, which changes the real brightness |
@@ -1810,6 +1815,15 @@ for the reward, and a wrong press tilted, nudged and answered.)*
 | Sounds | none | four tiles, Wood, Glass, Bubble and Off, heard as they are focused | A |
 | Menu Music | none, and no step on a card without tracks | On and Off, the music playing while On is focused | A |
 | Finish | A | Zyper hops among falling confetti, "You're all set!" in his bubble, "Every button is in MENU > Controls." | A |
+
+*(2026-11-26, the Pixel 2 test of 1.1.1-test.2: MENU's two other jobs got a
+lesson each, after Settings and before Music, so MENU is taught where it is
+used: leaving a game with MENU then X, and the lock, MENU+L2 on every screen,
+opened with SELECT and START held. Settings' note keeps the screenshot. The
+lock lesson takes the launcher's own lock rather than a stand-in, so what it
+teaches is what the handheld does, and START, which the lock takes while it
+is held with SELECT, still skips everywhere else. The Smart Pro and the R36S
+have the same keys and the same two lessons, the R36S's MENU said FN.)*
 
 *(2026-11-13: Keep a Favorite comes after See the Details, and its line says
 "In the details, press Y to add a favorite." Since 2026-11-08 Y on the
@@ -1852,7 +1866,7 @@ of the player's own goes on from wherever the loop was.
   40 bits of confetti falling and turning, in **accent** and **accent-ink**
   only: lime is success (3.3). Its A is heard from 600 ms, so the A that ends
   the last reward does not skip it.
-- **Progress**: a 40 x 6 segment for each lesson and each choice, at the top center, y 32: done
+- **Progress**: a 40 x 6 segment for each lesson and each choice (16, or 15 without menu music), at the top center, y 32: done
   **accent-ink**, current **text**, to come **track**. In the volume and
   brightness steps the real bar covers it while it shows.
 - **Stage**: 680 x 340 at (172, 84), **ground** mixed a third toward
@@ -1940,7 +1954,12 @@ of the player's own goes on from wherever the loop was.
     to the right, VOL 52 degrees to the left, both at 3.95, a little nearer.
     Brightness needs MENU and VOL, on opposite sides, so it faces front at
     3.45 and those keys stand out of its edges as tabs, 2.8 mm when lit,
-    the volume keys 4.6 so their + and - fit on them pressed too. Move
+    the volume keys 4.6 so their + and - fit on them pressed too. Lock the
+    Screen needs MENU and L2, a side and the top: it faces front the same
+    way, MENU a lit tab and L2 standing up out of the top edge as a lit
+    shoulder does facing front (tilted back to the shoulders, MENU on its
+    side went out of sight). Leave a Game, MENU and X, turns to MENU's side
+    as Settings does, X on the face beside it. Move
     Around (L1, R1) and Music (L2, R2) light shoulders on both sides, so
     they keep the front pose's 10 degrees and tilt it back 25, as seen from a
     little above, so the top shows with the lit shoulders standing up on it
@@ -2032,7 +2051,7 @@ of the player's own goes on from wherever the loop was.
     **surface** tile with a 3-unit **edge** (Off crossed through), the
     speaker's waves pinging as its voice plays.
   - **Progress**: the strip has a segment for each choice after the
-    lessons' ten, 14 (13 without tracks), filled as theirs are. On the
+    lessons' twelve, 16 (15 without tracks), filled as theirs are. On the
     Pixel 2 the choices are centered, as on the Brick: the handheld is for
     buttons, and these steps teach none.
   - Each step is a few texture copies and the words, at the panel's 60 fps:
@@ -2061,7 +2080,9 @@ of the player's own goes on from wherever the loop was.
   the volume and brightness keys are not wrong presses, and a press in the
   first 250 ms of a step, of any key, is the last step's thumb and is not
   heard. L1/R1 are wrong presses everywhere but Move Around, where they are
-  moves. L2 and R2 are wrong presses in every lesson, Music's too, whose note
+  moves. In Leave a Game and Lock the Screen Zyper says how the pair goes
+  (the table above); the lock itself, in any other step, is no press of the
+  tutorial's and locks the handheld as on any screen. L2 and R2 are wrong presses in every lesson, Music's too, whose note
   names them: no step waits for them, so Zyper answers "That's L2. Try
   SELECT." like any other misclick. The Pixel 2's device layer reads L2+R2
   together itself, outside a game, to flash the battery level on its side
@@ -7170,9 +7191,20 @@ and a game's **Controls tab > Hotkeys** (over the paused game), in the widest
 panel (menu_most_w): a row an action, its keys at its right drawn as this
 handheld's glyphs (11.9, `MENU_KEYS_MARK` as a value), "+" between them, or
 **None**; a key that differs from what the scope falls back to in the
-**accent-ink**. Then **Home** with MENU+START's glyphs, a quiet row, and the
-line "Held 1 s. It never changes."; then **Reset Hotkeys**, live when the
-scope shown has keys of its own, which asks first, as Reset Buttons does. In
+**accent-ink**. Then **Home** with MENU+START's glyphs (a handheld with that
+chord: the Pixel 2, the R36S), a quiet row the cursor passes, its glyphs
+faded to half as its words are dimmed; then **Reset Hotkeys**, live when the
+scope shown has keys of its own, which asks first, as Reset Buttons does.
+**What a group of rows is goes under the list**, never between its rows
+*(the Pixel 2 test of 1.1.1-test.2, 2026-11-26: "observations among the
+rows" was bad UX)*: a footer, a rule and one line in **menu** **text-dim**,
+pinned under the rows as an option list's note is (`pin_foot`), says it for
+the group the cursor is in. Among the game's hotkeys it is "Home Screen is
+fixed: held 1 s." where there is a Home row, and "In a game, with SELECT
+held." where there is none; among MENU's chords (below) "Everywhere but in a
+game."; a game's list on a handheld with no Home row has no footer. It
+follows the cursor in the frame it lands (`menu_style.at`), and is always one
+line, so the panel holds still. In
 a game **Applies To** comes first, round on Left and Right: **This Game** (as
 the Controls tab opens), the system by its home label, or **Every Game**, its
 value in the accent-ink where that scope has keys of its own; and last **All
@@ -7193,7 +7225,11 @@ and under the rule "Hold SELECT, then press a button." and "B with nothing
 held goes back.". Every button is read as a key until SELECT is let go, A
 and B too: SELECT down lights its glyph at 112 (the tutorial's pressed look),
 a button with it lights beside it with "+", and the second line says "Let go
-to keep them.". SELECT let go alone waits again; MENU, or B with nothing
+to keep them.". The glyphs are whole however long the handheld has been on:
+the shoulders' words are Regular at 112, and with the button faces' table at
+8 a session filled it with SemiBold sizes and L1 to R2 drew as empty rings
+(the Pixel 2 test of 1.1.1-test.2); the table is 32 now and never stands in
+nothing (`check-capture-glyphs`). SELECT let go alone waits again; MENU, or B with nothing
 held, leaves with no change. **A clash says so, and offers a swap**: the
 keys are another action's, so a question with two answers (11.3),
 **Swap Hotkeys**, asks "Give SELECT+R2 to Quick Save? Faster has it now and
@@ -7256,6 +7292,51 @@ with no folder) is neither felt nor heard.
   key=shot as it takes the frame and the launcher plays it; over your PICO-8
   portkeys plays it itself, on a thread of its own, the launcher being gone
   (tools/pkshutter.h). `check-shotfeel` holds both.
+
+**MENU and a button, on every screen** *(2026-11-22: "Ability to screenshot
+on all screens, maybe menu+l1 (add to tutorial)", "Ability to lock device
+on all screens, maybe menu+l2 (add to tutorial)")*. Outside a game, MENU
+held and L1 pressed saves the screen; MENU held and L2 pressed locks the
+handheld (src/menukeys.h). MENU opens on its release on both handhelds, as
+the Pixel 2's FUNCTION always has (it is the brightness chord's too) and as
+MENU does in a game, so a button pressed under it is MENU's chord and MENU
+then opens nothing; only the two chords' buttons are taken, every other
+press under MENU goes through as it did. Never START (MENU+START held is
+Home), SELECT, the d-pad or a volume key. In a game nothing changes: MENU is
+Diatom's, and the screenshot is SELECT and a button, above.
+
+- **The screenshot** is the frame as it was drawn, before the volume bar
+  over it, 1024 x 768, read back as it is presented and written off the
+  frame's thread to `Screenshots/ZyperOS/ZyperOS 2026-11-22 10.04.31.png`,
+  named as the hotkey names a game's. The shutter as it is taken, then a
+  game's notice over the screen at the foot: the picture small, "Screenshot
+  saved", "Screenshots/ZyperOS", for 1.5 s. On the home's Screenshots
+  group (11.68) as a game's: by its time, the newest first, named ZyperOS
+  ("ZyperOS · today 10:04" under it), the group's own lime its color, A
+  opening it whole, X deleting it; the group is read again on the shelf's
+  next pass after it is written *(2026-11-23: "must also show in the home's
+  Screenshots group, like game screenshots do")*.
+- **The lock** is MP4's (11.14): the screen dark, every button blocked but
+  the volume keys, a press showing the panel and how to open it, SELECT and
+  START held to unlock with the bar filling; over the ground, as no screen is
+  under it. Auto Off still turns the handheld off.
+- **MENU > System > Hotkeys** ends with them, under a rule, the footer saying
+  "Everywhere but in a game." while the cursor is on them: Screenshot and Lock Screen with their chords (A captures:
+  MENU held, then a button, MENU let go keeps it; a button the other has asks
+  the swap question), and **Hold to Unlock**, 1, 2, 3 or 5 s (2 s, MP4's
+  hold-unlock, until changed), for this lock and MP4's. A game's Controls tab
+  does not show them. *(My choices, to confirm: the names, the rule's line,
+  the four holds.)*
+- **The tutorial**'s MENU lesson says the screenshot as its note, "MENU+L1
+  takes a screenshot.", with the keys as Hotkeys has them, and the lock is
+  the lesson after Leave a Game, Lock the Screen (11.10), which the
+  launcher's own lock answers. Settings lights MENU alone: with the
+  shoulders lit too it turned to show them and MENU's dots went out of
+  sight; the lock's lesson faces front, MENU a tab and L2 standing up.
+
+Host shots: `hotkeys-menu-keys`, `hotkeys-menu-capture`,
+`hotkeys-menu-capture-keys`, `menu-locked` (`--menu-lock K`) and
+`menu-shot-notice`; `make check-menukeys` presses them in desk mode.
 
 ### 11.62 Two cores on a shelf: Gambatte
 *(DoctorIssa on the Discord asked for Gambatte; Tarik: "all good". mGBA

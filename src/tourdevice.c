@@ -100,6 +100,23 @@ static const td_key SHOULDER[4] = { TD_L1, TD_R1, TD_L2, TD_R2 };
 #define HALO_IN      10.0f
 #define HALO_OUT     22.0f
 
+/* The model's key a glyph part is: the lock's button, whichever Hotkeys
+ * gives it (L2 from the start) */
+static td_key td_key_of(tour_part p)
+{
+	switch (p) {
+	case TP_A:      return TD_A;
+	case TP_B:      return TD_B;
+	case TP_X:      return TD_X;
+	case TP_Y:      return TD_Y;
+	case TP_L1:     return TD_L1;
+	case TP_R1:     return TD_R1;
+	case TP_R2:     return TD_R2;
+	case TP_START:  return TD_START;
+	default:        return TD_L2;
+	}
+}
+
 /* The keys lesson `s` lights with `t`'s chords: Brightness's are MENU+VOL or
  * the device's own keys (F1 and F2) */
 static unsigned lit_of(const tour *t, tour_step s)
@@ -111,6 +128,8 @@ static unsigned lit_of(const tour *t, tour_step s)
 	case TOUR_X:      return 1u << TD_X;
 	case TOUR_Y:      return 1u << TD_Y;
 	case TOUR_MENU:   return 1u << TD_MENU;
+	case TOUR_QUIT:   return 1u << TD_MENU | 1u << TD_X;
+	case TOUR_LOCK:   return 1u << TD_MENU | 1u << td_key_of(tour_part_of(tour_menu_key(1)));
 	case TOUR_SELECT: return 1u << TD_SELECT | 1u << TD_L2 | 1u << TD_R2;
 	case TOUR_VOL:    return 1u << TD_VOLUP | 1u << TD_VOLDN;
 	case TOUR_BRIGHT: return t->bright == DEV_BRIGHT_MENU_VOL ? 1u << TD_MENU | 1u << TD_VOLUP | 1u << TD_VOLDN
@@ -133,11 +152,13 @@ static unsigned faces_of(const td_model *m, unsigned lit)
 
 #define BOTH_SIDES (1u << TD_FACE_LEFT | 1u << TD_FACE_RIGHT)
 
-/* Whether keys on `faces` show as tabs out of both side edges, as the
- * handheld faces front: keys on both sides and none on the top */
+/* Whether keys on `faces` show as tabs out of their side edges, as the
+ * handheld faces front: keys on both sides and none on the top, or a side's
+ * with a shoulder, which stands up out of the top edge as they face front */
 static bool tabs_on(unsigned faces)
 {
-	return (faces & BOTH_SIDES) == BOTH_SIDES && !(faces >> TD_FACE_TOP & 1u);
+	return ((faces & BOTH_SIDES) == BOTH_SIDES && !(faces >> TD_FACE_TOP & 1u)) ||
+	       ((faces & BOTH_SIDES) && (faces >> TD_FACE_TOP & 1u));
 }
 
 /* The view of `m` a lesson lighting keys on `faces` turns to: round to the
@@ -148,6 +169,11 @@ static bool tabs_on(unsigned faces)
 static td_view view_for(const td_model *m, unsigned faces)
 {
 	if (faces >> TD_FACE_LEDGE & 1u) return m->back;
+	/* A side's key with a shoulder (the Pixel 2's MENU with L2, the lock):
+	 * front, the side key a tab out of its edge and the shoulder standing
+	 * up out of the top, as Brightness's MENU and VOL; tilted back to the
+	 * shoulders, MENU on its side went out of sight */
+	if ((faces >> TD_FACE_TOP & 1u) && (faces & BOTH_SIDES)) return m->both;
 	if (faces >> TD_FACE_TOP & 1u) return m->top;
 	if (tabs_on(faces)) return m->both;
 	if (faces >> TD_FACE_RIGHT & 1u) return m->right;

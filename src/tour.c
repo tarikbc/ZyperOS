@@ -38,6 +38,10 @@
 /* The volume and brightness steps' loop: a stand-in bar comes in and steps
  * up twice. */
 #define LEVEL_LOOP_MS  3000
+/* Leave a Game's and Lock the Screen's loops: tour.h's TOUR_QUIT_* and
+ * TOUR_LOCK_*, which src/tourdraw.c's stages follow */
+#define QUIT_LOOP_MS   TOUR_QUIT_LOOP_MS
+#define LOCK_LOOP_MS   TOUR_LOCK_LOOP_MS
 
 /* ---- the steps ------------------------------------------------------------ */
 
@@ -75,6 +79,12 @@ typedef struct {
 	const tour_loop *loop;
 } step_def;
 
+/* MENU's chords, for the MENU lesson and the lock's (tour_menu_keys), and
+ * how long SELECT and START open the lock (tour_lock_hold) */
+static in_button g_mk_key[2] = { IN_L1, IN_L2 };
+static char g_mk_said[2][16] = { "MENU+L1", "MENU+L2" };
+static unsigned g_lock_hold_ms = 2000;
+
 static const step_def STEPS[TOUR_STEPS] = {
 	/* The language: his hello in the language under the cursor, the A on
 	 * the focused row (src/tourdraw.c) */
@@ -101,9 +111,23 @@ static const step_def STEPS[TOUR_STEPS] = {
 	 * pops is the one a favorite gets. */
 	[TOUR_Y]       = { S_TOUR_Y_TITLE, S_TOUR_Y_LINE,
 	                   NO_TEXT, NO_TEXT, NO_TEXT, TG_FACE, "Y", NO_TEXT, "Y", NULL, &LOOP_Y },
+	/* MENU's chords on every screen as its note (2026-11-22: "add to
+	 * tutorial"), as the shoulders ride on Move Around and Music; the
+	 * handheld lights MENU alone, so it stays turned to MENU */
 	[TOUR_MENU]    = { S_TOUR_MENU_TITLE, S_TOUR_MENU_LINE,
-	                   NO_TEXT, NO_TEXT, NO_TEXT, TG_PILL, "MENU", NO_TEXT, "MENU", NULL,
+	                   NO_TEXT, S_TOUR_MENU_NOTE, NO_TEXT, TG_PILL, "MENU", NO_TEXT, "MENU", NULL,
 	                   &LOOP_MENU },
+	/* MENU's two other jobs, after it (the Pixel 2 test of 1.1.1-test.2):
+	 * leaving a game, MENU and then X, as the in-game menu's Quit does from
+	 * anywhere on it; and the lock, MENU held with its button on every
+	 * screen, which the launcher carries out itself and the step takes
+	 * once SELECT and START have opened it again. Loops of their own. */
+	[TOUR_QUIT]    = { S_TOUR_QUIT_TITLE, S_TOUR_QUIT_LINE,
+	                   NO_TEXT, S_TOUR_QUIT_NOTE, NO_TEXT, TG_KEYS, "MENU, X", NO_TEXT, "MENU", NULL,
+	                   NULL },
+	[TOUR_LOCK]    = { S_TOUR_LOCK_TITLE, S_TOUR_LOCK_LINE,
+	                   NO_TEXT, S_TOUR_LOCK_NOTE, NO_TEXT, TG_KEYS, "MENU+L2", NO_TEXT, "MENU+L2", NULL,
+	                   NULL },
 	[TOUR_SELECT]  = { S_TOUR_SELECT_TITLE, S_TOUR_SELECT_LINE,
 	                   NO_TEXT, S_TOUR_SELECT_NOTE, NO_TEXT, TG_PILL,
 	                   "SELECT", NO_TEXT, "SELECT", NULL, &LOOP_SELECT },
@@ -160,6 +184,9 @@ static const char *with_menu(char *buf, size_t n, str_id id)
 	return buf;
 }
 
+static const char *key_said(tour_key k);
+static const char *lock_key_name(void);
+
 const tour_info *tour_step_info(tour_step s)
 {
 	/* A step's own, so two steps' can be held at once (the reward going
@@ -168,12 +195,20 @@ const tour_info *tour_step_info(tour_step s)
 	static tour_info info[TOUR_STEPS];
 	/* The words that name the MENU key, said with its word */
 	static char line[TOUR_STEPS][192], line_fn[TOUR_STEPS][192], want_fn[TOUR_STEPS][24];
+	static char lock_label[24], lock_want[24], lock_note[192];
 	const step_def *d;
 	const char *wk, *wf;
 
 	if (s < 0 || s >= TOUR_STEPS) s = TOUR_WELCOME;
 	d = &STEPS[s];
 	wk = d->want_key && !strcmp(d->want_key, "MENU") ? g_menu_word : d->want_key;
+	if (s == TOUR_LOCK) {
+		/* The lock's button as MENU > System > Hotkeys has it: the glyph
+		 * by its name ("MENU+L2"), the words with the key's own word */
+		snprintf(lock_label, sizeof lock_label, "MENU+%s", lock_key_name());
+		snprintf(lock_want, sizeof lock_want, "%s+%s", g_menu_word, lock_key_name());
+		wk = lock_want;
+	}
 	wf = d->want_fn;
 	if (wf && !strncmp(wf, "MENU+", 5)) {
 		snprintf(want_fn[s], sizeof want_fn[s], "%s%s", g_menu_word, wf + 4);
@@ -183,12 +218,44 @@ const tour_info *tour_step_info(tour_step s)
 	                       /* POWER held, when MENU > Power Button is Hold
 	                        * (src/powerhold.h): the step lands on the hold */
 	                       s == TOUR_POWER && powerhold_mode() ? T(S_TOUR_POWER_LINE_HOLD)
-	                       : s == TOUR_MENU ? with_menu(line[s], sizeof line[s], d->line)
+	                       : s == TOUR_MENU || s == TOUR_QUIT ? with_menu(line[s], sizeof line[s], d->line)
 	                                        : said(d->line),
 	                       with_menu(line_fn[s], sizeof line_fn[s], d->line_fn), said(d->note),
 	                       said(d->note_done), d->glyph, d->label,
 	                       d->want == NO_TEXT ? wk : T(d->want), wf, d->loop };
+	if (s == TOUR_MENU) {
+		static char note[200], shot[24];
+
+		snprintf(shot, sizeof shot, "%s+%s", g_menu_word, key_said(tour_key_of(g_mk_key[0])));
+		snprintf(note, sizeof note, T(S_TOUR_MENU_NOTE), shot);
+		info[s].note = note;
+	}
+	if (s == TOUR_LOCK) {
+		snprintf(line[s], sizeof line[s], T(d->line), g_menu_word, lock_key_name());
+		snprintf(lock_note, sizeof lock_note, T(d->note), (int)((g_lock_hold_ms + 500) / 1000));
+		info[s].line = line[s];
+		info[s].note = lock_note;
+		info[s].label = lock_label;
+	}
 	return &info[s];
+}
+
+void tour_menu_keys(in_button shot, in_button lock, const char *shot_said, const char *lock_said)
+{
+	g_mk_key[0] = shot;
+	g_mk_key[1] = lock;
+	snprintf(g_mk_said[0], sizeof g_mk_said[0], "%s", shot_said);
+	snprintf(g_mk_said[1], sizeof g_mk_said[1], "%s", lock_said);
+}
+
+in_button tour_menu_key(int i)
+{
+	return i == 0 || i == 1 ? g_mk_key[i] : IN_NONE;
+}
+
+void tour_lock_hold(unsigned ms)
+{
+	g_lock_hold_ms = ms ? ms : 2000;
 }
 
 /* Each choice's names, MENU's row values in the order its setting steps
@@ -240,6 +307,8 @@ static const char *const KEY_NAME[TK_KEYS] = {
 	[TK_L1] = "L1", [TK_R1] = "R1", [TK_L2] = "L2", [TK_R2] = "R2",
 	[TK_START] = "START", [TK_SELECT] = "SELECT", [TK_MENU] = "MENU",
 	[TK_POWER] = "POWER",
+	/* no button, and never a wrong press: the lock taken and opened */
+	[TK_LOCK] = "lock",
 };
 static const str_id KEY_WORDS[TK_KEYS] = {
 	[TK_UP] = S_TOUR_KEY_UP, [TK_DOWN] = S_TOUR_KEY_DOWN,
@@ -259,6 +328,14 @@ static const char *key_said(tour_key k)
 {
 	if (k == TK_MENU) return g_menu_word;
 	return KEY_NAME[k] ? KEY_NAME[k] : T(KEY_WORDS[k]);
+}
+
+/* The lock's button with MENU, as printed: L2 until Hotkeys says another */
+static const char *lock_key_name(void)
+{
+	const tour_key k = tour_key_of(g_mk_key[1]);
+
+	return k >= 0 && k < TK_KEYS && KEY_NAME[k] ? KEY_NAME[k] : "L2";
 }
 
 /* ---- the launcher's buttons ------------------------------------------------ */
@@ -375,6 +452,24 @@ float tour_focus_pos(const tour *t, uint32_t now)
 	return tour_shelf_pos(t, now);
 }
 
+tour_part tour_part_of(in_button b)
+{
+	switch (b) {
+	case IN_ACCEPT: return TP_A;
+	case IN_BACK:   return TP_B;
+	case IN_X:      return TP_X;
+	case IN_Y:      return TP_Y;
+	case IN_L1:     return TP_L1;
+	case IN_R1:     return TP_R1;
+	case IN_L2:     return TP_L2;
+	case IN_R2:     return TP_R2;
+	case IN_START:  return TP_START;
+	case IN_SELECT: return TP_SELECT;
+	case IN_MENU:   return TP_MENU;
+	default:        return TP_PARTS;
+	}
+}
+
 /* The demonstration's half of a part's press: the step's loop pressing its
  * own button, while the step waits for the player's. */
 static float demo_press(const tour *t, tour_part p, uint32_t now)
@@ -388,7 +483,24 @@ static float demo_press(const tour *t, tour_part p, uint32_t now)
 
 		return p == TP_A ? press_window(ms < 0 ? 0 : ms % LOOP_A_MS, 900, 1060) : 0.0f;
 	}
-	if (t->done || (t->step == TOUR_MOVE && t->moves > 0)) return 0.0f;
+	if (t->done || ((t->step == TOUR_MOVE || t->step == TOUR_QUIT) && t->moves > 0)) return 0.0f;
+	if (t->step == TOUR_QUIT) {
+		/* MENU, and X once the menu is open (tourdraw's quit_demo) */
+		tl = tour_loop_time(t, QUIT_LOOP_MS, now);
+		return p == TP_MENU ? press_window(tl, TOUR_QUIT_MENU_AT, TOUR_QUIT_MENU_AT + 160)
+		     : p == TP_X    ? press_window(tl, TOUR_QUIT_X_AT, TOUR_QUIT_X_AT + 160) : 0.0f;
+	}
+	if (t->step == TOUR_LOCK) {
+		/* MENU held over its button's press, then SELECT and START held
+		 * while the lock's bar fills (tourdraw's lock_demo) */
+		tl = tour_loop_time(t, LOCK_LOOP_MS, now);
+		if (p == TP_MENU) return press_window(tl, TOUR_LOCK_MENU_AT, TOUR_LOCK_KEY_AT + 500);
+		if (p == tour_part_of(g_mk_key[1]))
+			return press_window(tl, TOUR_LOCK_KEY_AT, TOUR_LOCK_KEY_AT + 160);
+		if (p == TP_SELECT || p == TP_START)
+			return press_window(tl, TOUR_LOCK_HOLD_AT, TOUR_LOCK_OPEN_AT);
+		return 0.0f;
+	}
 	if (st->loop) {
 		tl = tour_loop_time(t, st->loop->period, now);
 		return p == st->loop->part
@@ -737,7 +849,15 @@ static int missed(tour *t, tour_key k, uint32_t now)
 
 	/* On the Brick a volume key there is "That's volume. Try F1 or F2.",
 	 * the answer every other wrong press gets */
-	if (t->step == TOUR_BRIGHT && k == TK_VOL && chord)
+	if (t->step == TOUR_QUIT && t->moves == 0 && k == TK_X)
+		snprintf(t->hint, sizeof t->hint, T(S_TOUR_WRONG_FIRST), key_said(k), g_menu_word);
+	else if (t->step == TOUR_QUIT)
+		snprintf(t->hint, sizeof t->hint, T(S_TOUR_WRONG), key_said(k), t->moves ? "X" : g_menu_word);
+	else if (t->step == TOUR_LOCK && k == TK_MENU)
+		snprintf(t->hint, sizeof t->hint, T(S_TOUR_WRONG_CHORD_KEY), g_menu_word, lock_key_name());
+	else if (t->step == TOUR_LOCK && k == tour_key_of(g_mk_key[1]))
+		snprintf(t->hint, sizeof t->hint, T(S_TOUR_WRONG_HOLD_KEY), key_said(k), g_menu_word);
+	else if (t->step == TOUR_BRIGHT && k == TK_VOL && chord)
 		snprintf(t->hint, sizeof t->hint, T(S_TOUR_WRONG_HOLD_MENU), g_menu_word);
 	else if (t->step == TOUR_BRIGHT && k == TK_MENU && chord)
 		snprintf(t->hint, sizeof t->hint, T(S_TOUR_WRONG_CHORD), g_menu_word);
@@ -775,6 +895,12 @@ int tour_press(tour *t, tour_key k, uint32_t now)
 		if (answers(t, k)) return landed(t, now);
 		if (t->step == TOUR_BRIGHT && k == TK_VOL) return missed(t, k, now);
 		return TOUR_QUIET;
+	}
+	/* The lock, taken and opened again by the launcher as on any screen:
+	 * its step's press, and nothing in any other (it locked all the same) */
+	if (k == TK_LOCK) {
+		if (t->step != TOUR_LOCK || t->done) return TOUR_QUIET;
+		return landed(t, now);
 	}
 	/* Anywhere but its own step POWER is the caller's, and turns the
 	 * handheld off: tour_takes_power. */
@@ -841,6 +967,28 @@ int tour_press(tour *t, tour_key k, uint32_t now)
 		t->kept[c] = t->pick[c];
 		return landed(t, now);
 	}
+	/* Leave a Game: MENU opens the menu over the game, X then quits it;
+	 * MENU or B with it open closes it, as over a game. X first is MENU
+	 * first, in his answer. */
+	if (t->step == TOUR_QUIT) {
+		if (!t->moves) {
+			if (k != TK_MENU) return missed(t, k, now);
+			t->moves = 1;
+			t->moved_at = now;
+			t->wrong = false;
+			return DS_SOUND_ACCEPT;
+		}
+		if (k == TK_X) return landed(t, now);
+		if (k == TK_MENU || k == TK_B) {
+			t->moves = 0;
+			t->moved_at = now;
+			return DS_SOUND_BACK;
+		}
+		return missed(t, k, now);
+	}
+	/* Lock the Screen: every press that reaches the step is a wrong one,
+	 * the chord itself being the launcher's (TK_LOCK above) */
+	if (t->step == TOUR_LOCK) return missed(t, k, now);
 	if (!answers(t, k)) return missed(t, k, now);
 	if (t->step == TOUR_MOVE) {
 		/* L1/R1 jump as they do on the home, 3 systems (HOME_JUMP) */

@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include "tour_screen.h"
+#include "menukeys_screen.h"
 
 #include "aout_route.h"
 #include "app.h"
@@ -165,6 +166,18 @@ void tour_run(app *a, bool first)
 
 	bool lang_kept = false;
 
+	/* MENU's chords as MENU > System > Hotkeys has them, for its lesson
+	 * and the lock's, and how long SELECT and START open the lock */
+	unsigned unlocks = mk_unlocks();
+	{
+		const mk_table *m = mk_now();
+		char shot[16], lock[16];
+
+		mk_chord(m, MK_SHOT, shot, sizeof shot);
+		mk_chord(m, MK_LOCK, lock, sizeof lock);
+		tour_menu_keys(mk_in_of(m->key[MK_SHOT]), mk_in_of(m->key[MK_LOCK]), shot, lock);
+		tour_lock_hold(m->hold_ms);
+	}
 	tour_menu_word(dev_menu_word(plat_profile()));
 	tour_start(&t, plat_now_ms(), &plat_profile()->chords,
 	           dev_tutorial_model(plat_profile(), &plat_profile()->chords));
@@ -195,6 +208,13 @@ void tour_run(app *a, bool first)
 		/* The levels' keys work in every step, as on every screen, and
 		 * answer their own. */
 		levels_keys(&a->in, BOOST_HIDE);
+		/* MENU and its button locked the handheld during that poll, as on
+		 * any screen, and SELECT and START opened it: the lock lesson's
+		 * press (and nothing in any other step) */
+		if (mk_unlocks() != unlocks) {
+			unlocks = mk_unlocks();
+			tour_sound(tour_press(&t, TK_LOCK, now));
+		}
 		tour_set_music(&t, bgm_count() > 0);
 		n = tour_buttons(&t, a->in.pressed, now, snd);
 		/* A choice looked at is applied before its press is heard, so the

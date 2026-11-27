@@ -762,8 +762,17 @@ static void details_fav(SDL_Renderer *r, float a, float press)
 
 /* A menu over the little shelf (MENU), open `z` of the way: 8.2's open, from
  * 96% and clear to full and opaque, over **scrim.menu**. Its rows are bars;
- * the first is the **accent** fill and the fourth is dead. */
+ * the first is the **accent** fill and the fourth is dead. With `quit` 0 or
+ * more it is the in-game menu: its last row is Quit, X's glyph where its
+ * value is (MENU_KEY_X, 11.9), pressed `quit` of the way. */
+static void menu_panel_x(SDL_Renderer *r, float z, float quit);
+
 static void menu_panel(SDL_Renderer *r, float z)
+{
+	menu_panel_x(r, z, -1.0f);
+}
+
+static void menu_panel_x(SDL_Renderer *r, float z, float quit)
 {
 	static const float lab_w[5] = { 118, 96, 132, 108, 84 }, val_w[5] = { 0, 34, 70, 58, 46 };
 	const ds_theme *t = theme();
@@ -790,7 +799,10 @@ static void menu_panel(SDL_Renderer *r, float z)
 
 		if (sel) rr(r, PX(14), PY(y), 320 * k, 40 * k, 10 * k, col(rgb(t->accent), 1.0f));
 		rr(r, PX(34), PY(y + 15), lab_w[i] * k, 10 * k, 5 * k, lc);
-		if (val_w[i] > 0)
+		if (quit >= 0.0f && i == 4)
+			ui_button_pressed(r, "X", (int)lroundf(PX(348 - 34 - 16) + g_ox), (int)lroundf(PY(y + 20) + g_oy),
+			                  (int)lroundf(32 * k), UI_BUTTON_PLAIN, quit, 1.0f, g_op);
+		else if (val_w[i] > 0)
 			rr(r, PX(348 - 34 - val_w[i]), PY(y + 15), val_w[i] * k, 10 * k, 5 * k, vc);
 	}
 #undef PX
@@ -881,6 +893,107 @@ static void power_demo(SDL_Renderer *r, float t, bool zyper_on, const tour_hooks
 	      clampf((t - 2.0f * DS_MS_FADE_OUT) / DS_MS_FADE_OUT, 0.0f, 1.0f));
 }
 
+/* Leave a Game (MENU, then X): the stand-in game playing on the whole
+ * stage, the in-game menu opening over it at MENU, and at X the menu
+ * closing as the game goes back into its card, the launch zoom run back
+ * (11.10's Go Back), held, and the game again. The player's own MENU opens
+ * the menu and holds it open for X; their X runs the rest. */
+static void quit_stage(SDL_Renderer *r, const tour *t, uint32_t now, const tour_hooks *hk)
+{
+	const float xp = tour_part_press(t, TP_X, now);
+	float open, zoomed;
+
+	if (t->done) {
+		/* the player's X: the menu closes, the game goes into its card */
+		open = 1.0f - tour_ease(TC_IN, now, t->done_at, DS_MS_EXIT);
+		zoomed = 1.0f - tour_ease(TC_OUT, now, t->done_at + 80, DS_MS_LAUNCH);
+		zoom(r, zoomed, now, hk);
+		if (open > 0.0f) menu_panel_x(r, open, xp);
+		return;
+	}
+	if (t->moves > 0) {
+		/* their MENU: the menu opens over the game and waits for X */
+		zoom(r, 1.0f, now, hk);
+		menu_panel_x(r, tour_ease(TC_OUT, now, t->moved_at, DS_MS_MOVE), xp);
+		return;
+	}
+	{
+		const int tl = tour_loop_time(t, TOUR_QUIT_LOOP_MS, now);
+		/* The menu opens at MENU's release where MENU comes on release
+		 * (the Pixel 2), at the press on the Brick, as Settings' does */
+		const int at = TOUR_QUIT_MENU_AT + (t->menu_release ? 160 : 0);
+		const float back = ek(TC_FADE, tl, TOUR_QUIT_BACK_AT, DS_MS_FADE_OUT);
+		const float was = g_op;
+
+		open = ek(TC_OUT, tl, at, DS_MS_MOVE) * (1.0f - ek(TC_IN, tl, TOUR_QUIT_X_AT + 160, DS_MS_EXIT));
+		zoomed = 1.0f - ek(TC_OUT, tl, TOUR_QUIT_X_AT + 240, DS_MS_LAUNCH);
+		zoom(r, zoomed, now, hk);
+		if (open > 0.0f) menu_panel_x(r, open, xp);
+		if (back > 0.0f) {
+			g_op = was * back;
+			zoom(r, 1.0f, now, hk);
+			g_op = was;
+		}
+	}
+}
+
+/* The lock's panel in small, as src/nowplaying_screen.c's lock_panel draws
+ * it: the padlock in **accent-ink**, a bar for "Locked", one for how to open
+ * it, and the hold's bar filled `fill` of the way; at `op`, centered on the
+ * stage. */
+static void lock_panel_small(SDL_Renderer *r, float op, float fill)
+{
+	const ds_theme *t = theme();
+	const float w = 300.0f, h = 210.0f, x = (STAGE_W - w) / 2.0f, y = (STAGE_H - h) / 2.0f;
+	const float cx = STAGE_W / 2.0f, s = 54.0f, sw = s * 0.46f, th = s / 9.0f;
+	const float was = g_op;
+
+	if (op <= 0.0f) return;
+	g_op = was * op;
+	ui_lift_k(r, &(SDL_Rect){ (int)lroundf(x + g_ox), (int)lroundf(y + g_oy), (int)w, (int)h },
+	          CFG_NO_COLOR, UI_LIFT_PANEL, g_op);
+	rr(r, x, y, w, h, 20, col(rgb(t->surface), 1.0f));
+	ring(r, x, y, w, h, 20, DS_FRAME, col(rgb(t->edge), 1.0f));
+	/* the padlock: its shackle, the hole in it, its body */
+	rr(r, cx - sw / 2.0f, y + 26, sw, s * 0.62f, sw / 2.0f, col(rgb(t->accent_ink), 1.0f));
+	rr(r, cx - sw / 2.0f + th, y + 26 + th, sw - 2.0f * th, s * 0.62f, (sw - 2.0f * th) / 2.0f,
+	   col(rgb(t->surface), 1.0f));
+	rr(r, cx - s * 0.36f, y + 26 + s * 0.38f, s * 0.72f, s * 0.62f, 8, col(rgb(t->accent_ink), 1.0f));
+	rr(r, cx - 52, y + 104, 104, 14, 7, col(rgb(t->text), 0.6f));
+	rr(r, cx - 88, y + 134, 176, 10, 5, col(rgb(t->text_dim), 0.5f));
+	rr(r, x + 40, y + 168, w - 80, DS_BAR, 3, col(rgb(t->track), 1.0f));
+	if (fill > 0.0f)
+		rr(r, x + 40, y + 168, (w - 80) * clampf(fill, 0.0f, 1.0f), DS_BAR, 3, col(rgb(t->accent_ink), 1.0f));
+	g_op = was;
+}
+
+/* Lock the Screen (MENU and its button): the little shelf, dark as the
+ * lock turns the screen off, the lock's panel at a press, its bar filling
+ * as SELECT and START are held, and the screen back. The player's own
+ * chord locks the handheld itself (src/menukeys_screen.c); once they have
+ * opened it, the stage shows the bar full going and the shelf back. */
+static void lock_stage(SDL_Renderer *r, const tour *t, uint32_t now, const tour_hooks *hk)
+{
+	const ds_theme *th = theme();
+	float dark, panel, fill;
+
+	shelf(r, 0.0f, NULL, hk);
+	if (t->done) {
+		dark = panel = 1.0f - tour_ease(TC_OUT, now, t->done_at, DS_MS_FADE_OUT);
+		fill = 1.0f;
+	} else {
+		const int tl = tour_loop_time(t, TOUR_LOCK_LOOP_MS, now);
+		const float back = ek(TC_OUT, tl, TOUR_LOCK_OPEN_AT, DS_MS_FADE_OUT);
+
+		dark = ek(TC_OUT, tl, TOUR_LOCK_KEY_AT, DS_MS_QUICK) * (1.0f - back);
+		panel = ek(TC_OUT, tl, TOUR_LOCK_SHOW_AT, DS_MS_MOVE) * (1.0f - back);
+		fill = clampf((float)(tl - TOUR_LOCK_HOLD_AT) / (float)(TOUR_LOCK_OPEN_AT - TOUR_LOCK_HOLD_AT),
+		              0.0f, 1.0f);
+	}
+	if (dark > 0.0f) rr(r, 0, 0, STAGE_W, STAGE_H, 0, col(rgb(th->ink), 0.92f * dark));
+	lock_panel_small(r, panel, fill);
+}
+
 /* ---- a step's stage --------------------------------------------------------------- */
 
 /* What the step's press does, `a` of the way. */
@@ -964,6 +1077,14 @@ static void stage_inner(SDL_Renderer *r, const tour *t, uint32_t now, const tour
 			            in * (1.0f - out));
 		return;
 	}
+	if (t->step == TOUR_QUIT) {
+		quit_stage(r, t, now, hk);
+		return;
+	}
+	if (t->step == TOUR_LOCK) {
+		lock_stage(r, t, now, hk);
+		return;
+	}
 	if (!st->loop) {
 		shelf(r, 0.0f, NULL, hk);
 		return;
@@ -1025,6 +1146,21 @@ static void check(SDL_Renderer *r, float op, float sc)
 	check_at(r, 852.0f, 84.0f, op, sc);
 }
 
+/* The glyph part a key's name presses (TG_KEYS' halves) */
+static tour_part part_named(const char *name)
+{
+	static const struct { const char *n; tour_part p; } P[] = {
+		{ "MENU", TP_MENU }, { "A", TP_A }, { "B", TP_B }, { "X", TP_X }, { "Y", TP_Y },
+		{ "L1", TP_L1 }, { "R1", TP_R1 }, { "L2", TP_L2 }, { "R2", TP_R2 },
+		{ "START", TP_START }, { "SELECT", TP_SELECT },
+	};
+	size_t i;
+
+	for (i = 0; i < sizeof P / sizeof P[0]; i++)
+		if (!strcmp(P[i].n, name)) return P[i].p;
+	return TP_PARTS;
+}
+
 /* A step's button, 11.9, centered on (cx, cy): pressed by the loop and by
  * the hand, pulsing twice after a wrong press. */
 static void glyph(SDL_Renderer *r, const tour *t, tour_step s, float cx, float cy,
@@ -1059,6 +1195,33 @@ static void glyph(SDL_Renderer *r, const tour *t, tour_step s, float cx, float c
 	case TG_POWER:
 		ui_power(r, x, y, 96, P(TP_POWER), k, op);
 		break;
+	case TG_KEYS: {
+		/* Two keys by name, "MENU, X" or "MENU+L2", each its own glyph at
+		 * the pills' 64 pressed by its own part, the sign between in meta
+		 * text-dim as the brightness chord's plus: a plus in its room, a
+		 * comma close to the key before it (11.9) */
+		char a[16], b[16];
+		const char *sep = strpbrk(st->label, "+,");
+		const bool then = sep && *sep == ',';
+		float wa, wb, ws, w, x0;
+
+		if (!sep) break;
+		snprintf(a, sizeof a, "%.*s", (int)(sep - st->label), st->label);
+		snprintf(b, sizeof b, "%s", sep + (then ? 2 : 1));
+		wa = (float)ui_button_width(a, 64);
+		wb = (float)ui_button_width(b, 64);
+		ws = then ? 40.0f : 52.0f;
+		w = wa + ws + wb;
+		x0 = cx - w / 2.0f;
+		ui_button_pressed(r, a, (int)lroundf(cx + (x0 + wa / 2.0f - cx) * k + g_ox), y, 64,
+		                  UI_BUTTON_PLAIN, P(part_named(a)), k, op);
+		words(r, UI_F_META, then ? "," : "+",
+		      cx + (x0 + wa + (then ? 10.0f : ws / 2.0f) - cx) * k, cy, then ? -1 : 0,
+		      theme()->text_dim, 1.0f);
+		ui_button_pressed(r, b, (int)lroundf(cx + (x0 + wa + ws + wb / 2.0f - cx) * k + g_ox), y, 64,
+		                  UI_BUTTON_PLAIN, P(part_named(b)), k, op);
+		break;
+	}
 	case TG_CHORD:
 		/* The Pixel 2's MENU, a plus and the rocker; the Brick's F1 and F2 */
 		if (t->bright == DEV_BRIGHT_MENU_VOL) {

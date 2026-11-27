@@ -19,6 +19,9 @@
 
 /* The card's folder of them, under P_CARD */
 #define SHOT_DIR "Screenshots"
+/* ...and the launcher's own screens' in it, MENU+L1's (src/menukeys.h):
+ * Screenshots/ZyperOS/ZyperOS 2026-11-22 10.04.31.png, "ZyperOS" the game */
+#define SHOT_LAUNCHER_DIR "ZyperOS"
 /* " 2026-11-18 21.40.05.png": what follows the game's name */
 #define SHOT_STAMP_LEN 19
 #define SHOT_TAIL_LEN (1 + SHOT_STAMP_LEN + 4)

@@ -2533,22 +2533,29 @@ unsigned ui_mix(unsigned a, unsigned b, float t)
  * or menu.ttf's Regular. Opened the first time a size and weight are asked
  * for and kept until ui_quit, never closed sooner: the text cache keys on a
  * font's address, and a font closed with another opened in its place could
- * be handed the first one's textures. A screen asks for one or two sizes, so
- * the table does not fill; if it did, the nearest size open in the weight
- * stands in. A size that would not open is not retried every frame - its slot
- * says so with a NULL. */
-#define BUTTON_FONTS 8
+ * be handed the first one's textures. A screen asks for one or two sizes, but
+ * a session asks for every screen's: 18 on the Pixel 2 for the screens the
+ * i18n shots draw, 16 of them SemiBold (2026-11-26). With 8 the table filled
+ * with SemiBold ones, and the capture screen's Regular L1 at 112 (53 pt)
+ * found nothing in its weight to stand in: its glyph was an empty ring, on
+ * the Pixel 2 test of 1.1.1-test.2. So the table is 32, and if it ever fills
+ * the nearest size open stands in, in the weight if one is open and in the
+ * other if not, never nothing. A size that would not open is not retried
+ * every frame - its slot says so with a NULL. */
+#define BUTTON_FONTS 32
 static struct { int pt; bool semibold; TTF_Font *f; } button_fonts[BUTTON_FONTS];
 
 static TTF_Font *button_font(int pt, bool semibold)
 {
 	const char *path = semibold ? title_path_kept : font_path_kept;
-	int i, best = -1;
+	int i, best = -1, other = -1;
 
 	if (pt < 1) pt = 1;
 	/* Lexend's title face whatever the language: a button's letter is a mark */
 	if (semibold && pt == DS_TYPE_TITLE && fonts_latin[UI_F_TITLE]) return fonts_latin[UI_F_TITLE];
 	for (i = 0; i < BUTTON_FONTS; i++) {
+		int *pick;
+
 		if (button_fonts[i].pt == pt && button_fonts[i].semibold == semibold)
 			return button_fonts[i].f;
 		if (!button_fonts[i].pt) {
@@ -2559,10 +2566,12 @@ static TTF_Font *button_font(int pt, bool semibold)
 				fprintf(stderr, "font %s @%d: %s\n", path, pt, TTF_GetError());
 			return button_fonts[i].f;
 		}
-		if (button_fonts[i].f && button_fonts[i].semibold == semibold &&
-		    (best < 0 || abs(button_fonts[i].pt - pt) < abs(button_fonts[best].pt - pt)))
-			best = i;
+		if (!button_fonts[i].f) continue;
+		pick = button_fonts[i].semibold == semibold ? &best : &other;
+		if (*pick < 0 || abs(button_fonts[i].pt - pt) < abs(button_fonts[*pick].pt - pt))
+			*pick = i;
 	}
+	if (best < 0) best = other;
 	return best < 0 ? NULL : button_fonts[best].f;
 }
 

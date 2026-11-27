@@ -83,15 +83,26 @@ ja = なし
 it = Nessuno
 
 [hotkeys.home_note]
-note = A quiet line under the Hotkeys list's Home row (MENU+START, drawn as the buttons): held a second it goes home from anywhere, and no player can change it. One line at the menu's size in the widest panel, about 750 units: keep it as short as English's.
-en = Held 1 s. It never changes.
-zh-Hans = 按住 1 秒。不可更改。
-es = Mantén 1 s. No cambia.
-pt-BR = Segure 1 s. Não muda.
-fr = Maintenir 1 s. Ne change pas.
-de = 1 s halten. Ändert sich nie.
-ja = 1秒長押し。変更できません。
-it = Tieni 1 s. Non cambia.
+note = The Hotkeys list's footer, under a rule below the rows, while the cursor is among the game's hotkeys: the quiet Home row (MENU+START, drawn as the buttons) cannot be changed, and goes home from anywhere when held a second. Begins with the Home row's own name (controls.home). One line at the menu's size in the widest panel, about 750 units: keep it as short as English's.
+en = Home Screen is fixed: held 1 s.
+zh-Hans = 主屏幕固定：按住 1 秒。
+es = Inicio es fijo: mantén 1 s.
+pt-BR = Tela inicial é fixa: segure 1 s.
+fr = Accueil fixe\u00a0: maintenir 1 s.
+de = Startseite ist fest: 1 s halten.
+ja = ホーム画面は固定：1秒長押し。
+it = Home è fisso: tieni 1 s.
+
+[hotkeys.game_note]
+note = The Hotkeys list's footer on MENU > System > Hotkeys, under a rule below the rows, while the cursor is among the game's hotkeys on a handheld with no Home row (no MENU+START chord): they work in a game, SELECT held with the button. Pairs with hotkeys.menu_note, the footer of MENU's chords. SELECT is the button's printed name, drawn as its key. One line at the menu's size in the widest panel, about 750 units.
+en = In a game, with SELECT held.
+zh-Hans = 游戏中，按住 SELECT 使用。
+es = En juego, con SELECT pulsado.
+pt-BR = No jogo, com SELECT pressionado.
+fr = En jeu, SELECT maintenu.
+de = Im Spiel, mit gehaltenem SELECT.
+ja = ゲーム中、SELECT を押したまま。
+it = In gioco, con SELECT premuto.
 
 [hotkeys.reset_all]
 note = The last row of the Hotkeys list: puts back the hotkeys of the scope shown, after a question. As gamemenu.reset_buttons.
@@ -312,3 +323,37 @@ fr = Affichage
 de = Anzeige
 ja = 画面
 it = Schermo
+
+[hotkeys.menu_note]
+note = The footer of MENU > System > Hotkeys, under a rule below the rows, while the cursor is on its last rows: MENU held with a button, Screenshot and Lock Screen, and Hold to Unlock, which work on every screen of the launcher but not in a game (there SELECT and a button are the hotkeys above). One line at the menu's size in the widest panel, about 750 units.
+en = Everywhere but in a game.
+zh-Hans = 游戏以外的所有画面。
+es = En todas partes, salvo en juego.
+pt-BR = Em todo lugar, menos no jogo.
+fr = Partout, sauf en jeu.
+de = Überall außer im Spiel.
+ja = ゲーム中以外のすべての画面で。
+it = Ovunque, tranne in gioco.
+
+[hotkeys.unlock_hold]
+note = A row of MENU > System > Hotkeys: how long SELECT and START are held to unlock the lock (Lock Screen, and MP4's); its value is a number of seconds ("2 s"). A row's name, in Title Case where English writes one.
+en = Hold to Unlock
+zh-Hans = 长按解锁
+es = Mantener para desbloquear
+pt-BR = Segurar para desbloquear
+fr = Maintien pour déverrouiller
+de = Halten zum Entsperren
+ja = ロック解除の長押し
+it = Tieni per sbloccare
+
+[hotkeys.menu_capture_hint]
+note = The capture screen's first line under the keys for Screenshot or Lock Screen, MENU's chords: hold MENU, then press one more button. %s is the MENU key as it is printed: MENU, or FN on the R36S. Keep it as it is, in Latin letters. One line, about 760 units, as hotkeys.capture_hint.
+en = Hold %s, then press a button.
+zh-Hans = 按住 %s，再按一个键。
+es = Mantén %s y pulsa un botón.
+pt-BR = Segure %s e aperte um botão.
+fr = Maintenez %s, puis un bouton.
+de = %s halten, dann eine Taste.
+ja = %s を押したまま、ボタンを押す。
+it = Tieni %s e premi un tasto.
+
