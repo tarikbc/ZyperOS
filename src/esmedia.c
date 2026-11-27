@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include "esmedia.h"
+#include "cartlabel.h"
 #include "snaps.h"
 #include "titletext.h"
 
@@ -790,11 +791,22 @@ bool game_media_own(const char *roms, const char *folder, const char *name, es_k
 	return fits;
 }
 
+bool game_media_cart(const char *roms, const char *folder, const char *file, char *out, size_t n)
+{
+	if (!out || !n) return false;
+	out[0] = '\0';
+	if (!roms || !folder || !cart_label_file(file)) return false;
+	if (snprintf(out, n, "%s/%s/%s", roms, folder, file) < (int)n && is_file(out)) return true;
+	out[0] = '\0';
+	return false;
+}
+
 bool game_media(const char *roms, const char *folder, const char *file, const char *name,
                 es_kind kind, bool wait, char *out, size_t n)
 {
 	if (game_media_own(roms, folder, name, kind, out, n) && is_file(out)) return true;
-	return es_media(roms, folder, file, name, kind, wait, out, n);
+	if (es_media(roms, folder, file, name, kind, wait, out, n)) return true;
+	return kind == ES_COVER && game_media_cart(roms, folder, file, out, n);
 }
 
 static int own_cmp(const void *a, const void *b)

@@ -2,6 +2,7 @@
 #include "saver_screen.h"
 
 #include "app.h"
+#include "cartlabel.h"
 #include "ctl_channel.h"
 #include "esmedia.h"
 #include "mp4video.h"
@@ -182,14 +183,12 @@ static void saver_pool_build(app *a, bool video)
  * from IMG_LoadTexture of an RGB file drew nothing on the Pixel 2's GL). */
 static SDL_Texture *saver_cover_load(SDL_Renderer *r, const char *path, int *w, int *h)
 {
-	SDL_Surface *raw = IMG_Load(path), *conv;
+	SDL_Surface *conv = cart_label_load(path);   /* a PICO-8 cart as its label */
 	SDL_Texture *t;
 
-	if (!raw) return NULL;
-	conv = SDL_ConvertSurfaceFormat(raw, SDL_PIXELFORMAT_ARGB8888, 0);
-	SDL_FreeSurface(raw);
 	if (!conv) return NULL;
 	t = SDL_CreateTextureFromSurface(r, conv);
+	cart_label_sharp(t, conv);
 	*w = conv->w;
 	*h = conv->h;
 	SDL_FreeSurface(conv);

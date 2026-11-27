@@ -112,6 +112,58 @@ static int line_count(const char *path, const char *prefix)
 	return n;
 }
 
+/* One lum, five pop-ups (Discord, 2026-11): Rayman 2 counts its lums at
+ * five levels, and a lum moved all five counts at once. Only the nearest
+ * level not earned is said. */
+static int said(const int *ids, int n, int *which)
+{
+	int i, k = 0;
+
+	for (i = 0; i < n; i++)
+		if (chv_progress_said(ids[i])) { k++; *which = ids[i]; }
+	return k;
+}
+
+static void tiers(void)
+{
+	static const int lums[] = { 501, 502, 503, 504, 505 };
+	static const int hits[] = { 601, 602 };
+	FILE *f = fopen(g_set, "w");
+	int which = 0;
+
+	printf("  a count kept at levels:\n");
+	if (!f) { printf("  FAIL: cannot write %s\n", g_set); failures++; return; }
+	fputs("#! zyperos-cheevos 2\tgame=2001\tconsole=2\ttitle=Rayman 2\n", f);
+	/* Listed highest first, so the order of the file is not the answer */
+	fputs("#:\t505\t25\tLums V\tCollect 100 lums.\t1\n505\t0xH0010=1_A:0xH0020_M:0xX1234>=100\n", f);
+	fputs("#:\t504\t10\tLums IV\tCollect 80 lums.\t1\n504\t0xH0010=1_A:0xH0020_M:0xX1234>=80\n", f);
+	fputs("#:\t503\t10\tLums III\tCollect 60 lums.\t1\n503\t0xH0010=1_A:0xH0020_M:0xX1234>=60\n", f);
+	fputs("#:\t502\t5\tLums II\tCollect 30 lums.\t1\n502\t0xH0010=1_A:0xH0020_M:0xX1234>=30\n", f);
+	fputs("#:\t501\t5\tLums I\tCollect 10 lums.\t1\n501\t0xH0010=1_A:0xH0020_M:0xX1234>=10\n", f);
+	/* Same counter, another level of the game and another name: its own */
+	fputs("#:\t510\t5\tCave Lums\tCollect 20 in the cave.\t1\n510\t0xH0010=7_A:0xH0020_M:0xX1234>=20\n", f);
+	/* Levels by name and hits, with conditions that differ besides */
+	fputs("#:\t601\t5\tCages 1\tFree 5 cages.\t1\n601\t0xH0011=1_M:0xH0030=1.5.\n", f);
+	fputs("#:\t602\t5\tCages 2\tFree 10 cages.\t1\n602\t0xH0011=2_M:0xH0030=1.10.\n", f);
+	/* Not measured at all */
+	fputs("#:\t700\t5\tThe End\tFinish it.\t1\n700\t0xH0040=1\n", f);
+	fclose(f);
+
+	CHECK(chv_load(g_set) && chv_count() == 9, "the tiered set did not load");
+	CHECK(said(lums, 5, &which) == 1, "one lum said %d pop-ups, not 1",
+	      said(lums, 5, &which));
+	CHECK(which == 501, "the pop-up was for %d, not the nearest level (501)", which);
+	CHECK(chv_progress_said(510), "a count of its own was held back as a level");
+	CHECK(said(hits, 2, &which) == 1 && which == 601,
+	      "levels by name: %d pop-ups, for %d", said(hits, 2, &which), which);
+	CHECK(chv_progress_said(700) && chv_progress_said(1), "a plain one, or none, is said");
+
+	/* Lums I earned: the next level speaks */
+	chv_note_unlock(501);
+	CHECK(said(lums, 5, &which) == 1 && which == 502,
+	      "after the first level: %d pop-ups, for %d", said(lums, 5, &which), which);
+}
+
 int main(void)
 {
 	snprintf(g_set,    sizeof g_set,    "/tmp/zyperos-chv-%ld.set", (long)getpid());
@@ -376,6 +428,8 @@ int main(void)
 		rmdir(dir);
 		rmdir(shelf);
 	}
+
+	tiers();
 
 	remove(g_set); remove(g_active);
 	store_reset();

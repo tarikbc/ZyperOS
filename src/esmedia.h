@@ -108,12 +108,20 @@ void es_forget_folder(const char *folder);
  * would be cut short. Says nothing about whether it is there.
  *
  * game_media: that file when it is there with something in it, else
- * es_media's (`wait` as there), its full path into `out`; false, and `out`
- * empty, for a game with neither. */
+ * es_media's (`wait` as there), else for a cover the game's own cart
+ * (game_media_cart), its full path into `out`; false, and `out` empty, for
+ * a game with none of them.
+ *
+ * game_media_cart: a PICO-8 game whose file is a .p8.png cart is its own
+ * cover, last, after every other (src/cartlabel.h): the cart's path, when it
+ * is there. Drawn as its label by cart_label_load. Box Art's question of
+ * whether a game has a cover (es_art_cover) leaves it out, so a cover can
+ * still be fetched for it. */
 bool game_media_own(const char *roms, const char *folder, const char *name, es_kind kind,
                     char *out, size_t n);
 bool game_media(const char *roms, const char *folder, const char *file, const char *name,
                 es_kind kind, bool wait, char *out, size_t n);
+bool game_media_cart(const char *roms, const char *folder, const char *file, char *out, size_t n);
 
 /* game_media's question without a look at a file, for a whole shelf at once:
  * whether the game is in `own`, its own files' stems of that kind in the
