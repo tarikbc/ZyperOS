@@ -356,7 +356,8 @@ void lib_title(const char *name, char *out, size_t n)
 void lib_display_title(db *d, const char *folder, const char *file,
                        const char *name, char *out, size_t n)
 {
-	if (!db_game_title(d, folder, file, out, n)) lib_title(name, out, n);
+	if (!db_user_title(d, folder, file, out, n) && !db_game_title(d, folder, file, out, n))
+		lib_title(name, out, n);
 }
 
 /* The launch path past the folders of games it is kept in, when `dir` is
@@ -476,15 +477,16 @@ void lib_free(game_list *l)
 	l->scanned = false;
 }
 
-/* lib_refresh_title's answer for a fresh entry, from the folder's titles
- * read at once: the stored title as db_game_title gives it, else the cleaned
- * filename. */
-static void scan_title(const db_titles *titles, game_entry *e)
+/* lib_refresh_title's answer for a fresh entry, from the folder's names
+ * read at once, in lib_display_title's order: the player's name, the stored
+ * title as db_game_title gives it, else the cleaned filename. */
+static void scan_title(const db_titles *users, const db_titles *titles, game_entry *e)
 {
-	const char *stored = db_titles_find(titles, e->file);
+	const char *user = db_titles_find(users, e->file), *stored = db_titles_find(titles, e->file);
 	char title[LIB_NAME] = { 0 };
 
-	if (stored) title_text(stored, title, sizeof title);
+	if (user) title_text(user, title, sizeof title);
+	if (!title[0] && stored) title_text(stored, title, sizeof title);
 	if (!title[0]) lib_title(e->name, title, sizeof title);
 	memcpy(e->title, title, sizeof e->title);
 }
@@ -639,12 +641,14 @@ bool lib_scan(const char *roms_root, const char *folder, const char *exts,
 /* The titles from the database, and the shelf's order (lib_scan's second half) */
 void lib_scan_finish(const char *folder, game_list *l)
 {
-	db_titles titles;
+	db_titles titles, users;
 	int i;
 
 	if (!l->items || l->count <= 0) return;
 	db_titles_load(db_lib(), folder, &titles);
-	for (i = 0; i < l->count; i++) scan_title(&titles, &l->items[i]);
+	db_user_titles_load(db_lib(), folder, &users);
+	for (i = 0; i < l->count; i++) scan_title(&users, &titles, &l->items[i]);
+	db_titles_free(&users);
 	db_titles_free(&titles);
 	qsort(l->items, (size_t)l->count, sizeof *l->items, game_cmp);
 }

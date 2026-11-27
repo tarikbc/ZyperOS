@@ -136,6 +136,18 @@ bool db_titles_load(db *d, const char *folder, db_titles *out);
 /* The stored title of `file`, or NULL */
 const char *db_titles_find(const db_titles *t, const char *file);
 void db_titles_free(db_titles *t);
+
+/* The player's own name for a game whose file keeps its name (Rename on an
+ * arcade set, a BIOS set or a port, src/gamern.h): what the shelves and
+ * every screen show before the title above. Its own table, so a download of
+ * names (db_game_set) never writes over it and a game with no details has
+ * no games row for it. Read as db_game_title reads (title_text, empty is
+ * none). db_user_title_set with an empty or NULL title clears it; it goes
+ * with db_game_del and with a db_game_move of either file. Library scope. */
+bool db_user_title(db *d, const char *folder, const char *file, char *out, size_t n);
+bool db_user_title_set(db *d, const char *folder, const char *file, const char *title);
+/* A folder's player's names at once, for a shelf scan, as db_titles_load */
+bool db_user_titles_load(db *d, const char *folder, db_titles *out);
 bool db_game_set(db *d, const char *folder, const char *file, const game_meta *m);
 
 /* ScreenScraper's "we do not know this game" (src/ssrun.h, SS_UNKNOWN) and
@@ -151,12 +163,14 @@ bool db_ss_miss_clear(db *d, const char *folder, const char *file);
  * empty title: db_titles_find finds one, db_titles_free frees them */
 bool db_ss_misses_load(db *d, const char *folder, long long from, long long to,
                        db_titles *out);
-/* A game's row gone, details and title with it: the game was deleted from
- * the card (src/gamedel.h). True when there was one. */
+/* A game's row gone, details and title with it, and the player's name for
+ * it: the game was deleted from the card (src/gamedel.h). True when there
+ * was a games row. */
 bool db_game_del(db *d, const char *folder, const char *file);
 /* A game's row following its file to `to` (Rename, src/gamern.h), its title
  * emptied so the new name is what the shelf shows: what a scrape found stays
- * with it, and a scrape names it again. True when there was a row. */
+ * with it, and a scrape names it again. A player's name under either file
+ * goes too. True when there was a games row. */
 bool db_game_move(db *d, const char *folder, const char *from, const char *to);
 /* A setting's key changed, its value kept, over any setting `to` was. True
  * when there was one. */
