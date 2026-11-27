@@ -1,0 +1,48 @@
+# The start before this one did not finish, or the handheld froze, and was
+# restarted (src/lastboot.h, DESIGN.md 11.70): Zyper says so once in his
+# bubble on the home (11.23's), with the code, and About ZyperOS keeps the code
+# for 30 days. The code itself ("K1W · 0.6 s") is the same in every language.
+
+[lastboot.zyper]
+note = Zyper's bubble on the home, first line; Zyper is the dog, speaking: the handheld had to restart by itself. A ! belongs only here. tight: about 600 units at label size, two lines at most.
+en = I had to restart!
+zh-Hans = 我刚才重启了！
+es = ¡Tuve que reiniciar!
+pt-BR = Tive que reiniciar!
+fr = J'ai dû redémarrer !
+de = Ich musste neu starten!
+ja = 再起動しました！
+it = Ho dovuto riavviare!
+
+[lastboot.start]
+note = Under lastboot.zyper: the last start stopped before the home and was restarted. %s is the code, as "K1W · 0.6 s": keep it as it is. The logs are what File Transfer's Download logs packs; the Discord is ZyperOS's Discord server. tight: three lines of about 600 units at meta size.
+en = The last start did not finish. Code %s. Sending your logs on the Discord helps.
+zh-Hans = 上次启动未能完成。代码 %s。把日志发到 Discord 会很有帮助。
+es = El último encendido no terminó. Código %s. Enviar tus registros al Discord ayuda.
+pt-BR = A última inicialização não terminou. Código %s. Seus logs no Discord ajudam.
+fr = Le dernier démarrage a échoué. Code %s. Vos journaux sur le Discord nous aident.
+de = Der letzte Start wurde nicht beendet. Code %s. Deine Protokolle im Discord helfen.
+ja = 前回の起動が完了しませんでした。コード %s。ログを Discord に送ってもらえると助かります。
+it = L'ultimo avvio non si è concluso. Codice %s. Inviare i tuoi log sul Discord aiuta.
+
+[lastboot.froze]
+note = The same as lastboot.start when the handheld froze after the home (while playing) and was restarted. %s is the code. tight: three lines of about 600 units at meta size.
+en = The handheld froze. Code %s. Sending your logs on the Discord helps.
+zh-Hans = 掌机卡住了。代码 %s。把日志发到 Discord 会很有帮助。
+es = La consola se congeló. Código %s. Enviar tus registros al Discord ayuda.
+pt-BR = O console travou. Código %s. Seus logs no Discord ajudam.
+fr = La console s'est figée. Code %s. Vos journaux sur le Discord nous aident.
+de = Die Konsole ist eingefroren. Code %s. Deine Protokolle im Discord helfen.
+ja = 本体がフリーズしました。コード %s。ログを Discord に送ってもらえると助かります。
+it = La console si è bloccata. Codice %s. Inviare i tuoi log sul Discord aiuta.
+
+[lastboot.row]
+note = About ZyperOS, page 1: a row label. Its value is the code ("K1W · 0.6 s"), shown for 30 days after a restart ZyperOS made.
+en = Last Restart
+zh-Hans = 上次重启
+es = Último reinicio
+pt-BR = Último reinício
+fr = Dernier redémarrage
+de = Letzter Neustart
+ja = 前回の再起動
+it = Ultimo riavvio

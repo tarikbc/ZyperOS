@@ -42,6 +42,7 @@ extern int shot_popup_half;
 extern int shot_lowbatt;
 extern int shot_lowbatt_kind;
 extern int shot_heatpop;
+extern const char *shot_lastboot;
 extern int shot_ranews;
 extern const char *shot_upnews;
 extern int shot_charging;

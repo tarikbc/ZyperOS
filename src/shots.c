@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
+#include "lastboot.h"
 #include "ds/hover.h"
 #include "shots.h"
 #include "cheats_screen.h"
@@ -150,6 +151,8 @@ int shot_popup_half = 2;
 int shot_lowbatt = -1, shot_lowbatt_kind;
 /* --heatpop MS: Zyper's "Getting hot" on the home, MS ms in (DESIGN.md 11.23) */
 int shot_heatpop = -1;
+/* --lastboot: the summary the bubble says (src/lastboot.h), ";" for line ends */
+const char *shot_lastboot;
 /* --ranews N: Zyper's bubble saying N achievements earned offline went */
 int shot_ranews;
 /* --cheevos-waiting N: the list's heading with N of its unlocks waiting */
@@ -2558,6 +2561,15 @@ static void shot_compose_once(app *a)
 		if (shot_ranews > 0) {
 			snprintf(g_heatpop.line1, sizeof g_heatpop.line1, TN(S_CHEEVOS_SENT, shot_ranews), shot_ranews);
 			snprintf(g_heatpop.line2, sizeof g_heatpop.line2, "%s", T(S_CHEEVOS_SENT_WHERE));
+		}
+		if (shot_lastboot) {
+			char text[512], *c;
+			lastboot lb;
+
+			snprintf(text, sizeof text, "%s", shot_lastboot);
+			for (c = text; *c; c++) if (*c == ';') *c = '\n';
+			if (lastboot_parse(text, &lb)) lastboot_bubble(&lb);
+			else fprintf(stderr, "--lastboot: no stage or reason in %s\n", shot_lastboot);
 		}
 		if (shot_upnews) {
 			snprintf(g_heatpop.line1, sizeof g_heatpop.line1,

@@ -1344,6 +1344,20 @@ void ui_fit_tight(const char *s, int w, int room, int row_w)
 		i18n_note(i18n_watched(s) ? "tight" : "tight data", s);
 }
 
+/* Zyper's words in his bubble, cut to its lines: always ZyperOS's own (a
+ * table string formatted with a number, a version or a code, so no longer
+ * the table's pointer), so said as a cut, which fails check-i18n-shots,
+ * not as a name's */
+void ui_fit_cut(const char *s, char lines[][LB_LINE], int n)
+{
+	if (!s || strstr(s, "...")) return;
+	for (int k = 0; k < n; k++)
+		if (strstr(lines[k], "...")) {
+			i18n_note("cut", s);
+			return;
+		}
+}
+
 /* ---- the box a string must stay inside ---------------------------------
  *
  * A string that is wider than the panel, tile or plate it is drawn on is as
@@ -1594,6 +1608,7 @@ static void i18n_fit_seen(const char *src, const char *dst)
 #define i18n_fit_seen(src, dst) ((void)0)
 void ui_fit_frame(void) {}
 void ui_fit_tight(const char *s, int w, int room, int row_w) { (void)s; (void)w; (void)room; (void)row_w; }
+void ui_fit_cut(const char *s, char lines[][LB_LINE], int n) { (void)s; (void)lines; (void)n; }
 void ui_fit_drawn(const char *s) { (void)s; }
 void ui_fit_value(const char *s) { (void)s; }
 void ui_fit_mark(const SDL_Rect *q) { (void)q; }

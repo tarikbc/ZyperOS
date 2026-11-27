@@ -2312,6 +2312,12 @@ Battery saves are `.srm` files in `Saves/`, named after the game. Save states, t
 
 Open **MENU > Wi-Fi File Transfer** (**USB File Transfer** over the USB cable), open its address in a browser, and click **Download logs** under the folders (behind the ⋯ on a phone). You get one `.tar.gz` file holding the last ten boots' logs, on the Pixel 2 the USB port's last 50 plugs (`usb.log`: what was plugged in, what the handheld asked and did, and how long it stayed) and the Wi-Fi adapter's joins and drops, each drop with the reason the network or the adapter gave and the last signal seen (`wifi.log`), and a short summary of the device, ready to send to whoever is helping you. Wi-Fi network, headset and account names are masked in it, and the logs on the card are left as they are. The logs themselves are on the card, in `.userdata/brick/logs/` on the Brick and `.userdata/pixel2/logs/` on the Pixel 2.
 
+### A start that takes too long, or a restart
+
+A start normally reaches the home in about 2 seconds. If it takes longer, the boot screen says what it is doing after 5 seconds ("Checking the card · C3"), and after 20 seconds "Taking longer than usual" and what to do: if it stays like that, hold **POWER** for 10 seconds and turn the handheld on again. Testers can hold **SELECT** for 2 seconds on the boot screen to see the system's latest lines.
+
+If a start never finished, or the handheld froze while you played, and it was restarted, Zyper says so once on the home, with a short code such as **K1W · 0.6 s**: where it stopped (K1 is the kernel before the card was found, C3 the card's check, L1 ZyperOS starting, H while playing) and why (W a watchdog, P a crash). **MENU > About ZyperOS** keeps that code as **Last Restart** for 30 days. The full report is in your logs ([above](#sending-the-logs)) and, on the Pixel 2, in `zyperos-crash.txt` on the card's PX2BOOT drive; sending it with the code on the Discord helps find the cause.
+
 ## How it compares
 
 The GKD Pixel 2 has several operating systems to choose from. This is ZyperOS beside the one it comes with and four others, from what each one's own pages, code and releases say in November 2026. ROGUE OS set the bar for this handheld, and ZyperOS set out to match it.

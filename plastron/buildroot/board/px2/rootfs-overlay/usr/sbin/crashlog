@@ -14,8 +14,11 @@
 #     stall (21 s). A panic dumps the kernel's last lines into pstore and
 #     reboots 30 s later (panic=30, boot-prelude.cmd), the DDR still powered,
 #     so the start after has the report. A freeze that stops the whole chip
-#     (the DDR or its bus) stops these too; no hardware watchdog (a false
-#     reset under a long card copy is worse, plastron PR #115).
+#     (the DDR or its bus) stops these too: only the chip's own watchdog,
+#     where the image starts it (U-Boot, and plastron's hwdog pets it from
+#     init's first line, never touching the card, so a long card copy is no
+#     false reset as it was in plastron PR #115), resets that, with nothing
+#     said.
 #   - At the start after (this, run by init after the card is mounted), each
 #     dump the kernel kept, and the end of the kernel log before the reset,
 #     go into CRASH_DIR/crash-DATE.txt on the card (ZyperOS's logs folder,
@@ -40,13 +43,18 @@
 # .plastron/crash), CRASH_KEEP (how many reports CRASH_DIR keeps, 10). For a
 # check on a computer (tools/crashlog-check.sh), the same names and PSTORE,
 # the folder pstore is in, RCU_PANIC, the file the RCU stall panic is set
-# in, and RUN_REPORT, where this start's report stays for setuplog.
+# in, RUN_REPORT, where this start's report stays for setuplog, and
+# LASTBOOT, its summary for the launcher, ZYSTART, the start's marker (below),
+# and CMDLINE, the kernel's line.
 PSTORE=${PSTORE:-/sys/fs/pstore}
 RCU_PANIC=${RCU_PANIC:-/proc/sys/kernel/panic_on_rcu_stall}
 RUN_REPORT=${RUN_REPORT:-/run/crashlog.txt}
+LASTBOOT=${LASTBOOT:-/run/zyperos-lastboot.txt}
 CARD=/dev/mmcblk0
 CRASH_DIR=${CRASH_DIR:-/mnt/SDCARD/.plastron/crash}
 CRASH_KEEP=${CRASH_KEEP:-10}
+ZYSTART=${ZYSTART:-/mnt/SDCARD/.plastron/starting.txt}
+CMDLINE=${CMDLINE:-/proc/cmdline}
 [ -r /etc/default/datapart ] && . /etc/default/datapart
 [ -r /etc/default/crashlog ] && . /etc/default/crashlog
 case $CARD in
@@ -57,7 +65,9 @@ BOOT=${BOOT:-${PART}1}
 MNT=/run/crashlog
 
 # A report, kept: on the card beside the reports before it, the newest
-# CRASH_KEEP of them, and on PX2BOOT, the newest only
+# CRASH_KEEP of them, and on PX2BOOT, the newest only. With "lastboot", a
+# start's report: its name goes into LASTBOOT's summary, and the summary
+# beside it on PX2BOOT (zyperos-lastboot.txt)
 keep() {
 	# On the card, beside the reports before it, the newest CRASH_KEEP kept
 	if mkdir -p "$CRASH_DIR" 2> /dev/null; then
@@ -68,7 +78,8 @@ keep() {
 			name=$stem-$n.txt
 			n=$((n + 1))
 		done
-		cp "$1" "$CRASH_DIR/$name.new" && mv "$CRASH_DIR/$name.new" "$CRASH_DIR/$name"
+		cp "$1" "$CRASH_DIR/$name.new" && mv "$CRASH_DIR/$name.new" "$CRASH_DIR/$name" &&
+			[ "${2:-}" = lastboot ] && [ -f "$LASTBOOT" ] && echo "report=$name" >> "$LASTBOOT"
 		ls -1 "$CRASH_DIR" | grep '^crash-.*\.txt$' | sort -r | tail -n +$((CRASH_KEEP + 1)) |
 		while IFS= read -r old; do
 			rm -f "$CRASH_DIR/$old"
@@ -81,6 +92,8 @@ keep() {
 		mkdir -p $MNT
 		if mount -t vfat -o noatime,nosuid,nodev,noexec "$BOOT" $MNT 2> /dev/null; then
 			cp "$1" $MNT/zyperos-crash.new && sync && mv $MNT/zyperos-crash.new $MNT/zyperos-crash.txt
+			[ "${2:-}" = lastboot ] && [ -f "$LASTBOOT" ] && cp "$LASTBOOT" $MNT/zyperos-lastboot.new && sync &&
+				mv $MNT/zyperos-lastboot.new $MNT/zyperos-lastboot.txt
 			sync
 			umount $MNT
 		fi
@@ -118,6 +131,46 @@ fi
 
 mountpoint -q "$PSTORE" 2> /dev/null || mount -t pstore pstore "$PSTORE" 2> /dev/null
 
+# The chip reset itself, its watchdog or its thermal cut-off, when U-Boot
+# read it (the Pixel 2's: the RK817's ON_SOURCE after the restart the chip's
+# reset makes, zyreset=chip on the kernel's line): a watchdog's (W)
+zyreset=
+if [ -r "$CMDLINE" ]; then
+	for w in $(cat "$CMDLINE"); do
+		case $w in zyreset=*) zyreset=${w#zyreset=} ;; esac
+	done
+fi
+chipreset=
+case $zyreset in chip|wdt) chipreset=1 ;; esac
+
+# A start's marker on the card, for a reset that takes the RAM with it (the
+# PMIC's power cut, a handheld turned off by its reset, POWER held over a
+# frozen start): pstore then has nothing, and this says a start was under
+# way. Made here at every start, as soon as the card is mounted (stage=C1,
+# the card's mount done), and ZyperOS's init adds each step after it
+# (stage=U1, U2, L1: a line each, appended, no fork); the launcher removes it
+# at its home's first frame and init at a clean stop, the charging screen's
+# too. Found here, it is the start before's, which never got that far. Lines
+# appended, read by the last whole stage= line, so a write cut short leaves
+# the one before it; made in one write and synced in the background (dd's
+# fsync, of this file alone), off the start's way.
+was_start=
+was_stage=
+was_at=
+if [ -f "$ZYSTART" ]; then
+	was_start=1
+	was_stage=$(sed -n 's/^stage=\([A-Z][0-9]\)$/\1/p' "$ZYSTART" 2> /dev/null | tail -n 1)
+	was_at=$(sed -n 's/^start=\(.*\)$/\1/p' "$ZYSTART" 2> /dev/null | head -n 1)
+	[ -n "$was_stage" ] || was_stage=C1
+fi
+if mkdir -p "${ZYSTART%/*}" 2> /dev/null &&
+   printf 'start=%s\nstage=C1\n' "$(date '+%Y-%m-%d %H:%M:%S')" > "$ZYSTART" 2> /dev/null; then
+	# Only while it is there: dd would make it again, empty, after the
+	# launcher removed it. Its pid for a check that waits (ZYSTART_SYNC_PID).
+	( [ -f "$ZYSTART" ] && dd if=/dev/null of="$ZYSTART" conv=notrunc,fsync 2> /dev/null ) &
+	echo $! 2> /dev/null > "${ZYSTART_SYNC_PID:-/dev/null}"
+fi
+
 dumps=
 for f in "$PSTORE"/dmesg-ramoops-*; do
 	[ -f "$f" ] && dumps="$dumps $f"
@@ -129,16 +182,25 @@ reset=
 if [ -z "$dumps" ] && [ -f "$console" ]; then
 	tail -c 4096 "$console" | grep -q -E 'reboot: (Restarting system|Power down)' || reset=1
 fi
-[ -n "$dumps" ] || [ -n "$reset" ] || exit 0
+# The RAM kept nothing at all, and the start before never reached the home:
+# a report from its marker alone. With a console, the console says how it
+# ended (a restart asked for during a start says nothing).
+lost=
+[ -z "$dumps" ] && [ ! -f "$console" ] && [ -n "$was_start" ] && lost=1
+[ -n "$dumps" ] || [ -n "$reset" ] || [ -n "$lost" ] || exit 0
 
 now=$(date '+%Y-%m-%d %H:%M:%S')
 report=$(mktemp) || exit 0
 {
 	if [ -n "$dumps" ]; then
 		echo "ZyperOS's kernel stopped with a panic before this start ($now)."
+	elif [ -n "$lost" ]; then
+		echo "A start before this one ($now) did not reach ZyperOS's home, and the RAM was lost with it: the kernel kept nothing."
+		echo "That start: ${was_at:-its time not known}, its last step $was_stage. U-Boot read the reset as: ${zyreset:-nothing}."
 	else
 		echo "The handheld was reset before this start without the kernel's own restart ($now)."
 	fi
+	[ -n "$zyreset" ] && [ -z "$lost" ] && echo "U-Boot read the reset as: $zyreset (the chip's own: its watchdog or its thermal cut-off)."
 	[ -r /etc/zyperos/system ] && sed -n 's/^version /System version: /p' /etc/zyperos/system
 	echo "Kernel: $(uname -r)"
 	echo
@@ -155,7 +217,72 @@ report=$(mktemp) || exit 0
 	echo "--- end ---"
 } > $report 2> /dev/null
 
-keep $report
+# The summary the launcher says once, in Zyper's bubble with a short code
+# ("K1W · 0.6 s"), and keeps in About ZyperOS (ZyperOS's src/lastboot.h, its
+# DESIGN.md 11.70): key=value lines in LASTBOOT, for this start only (/run),
+# written whole and renamed. From what the kernel kept:
+# With nothing kept at all (lost, above): the marker's stage, reason W after
+# the chip's own reset (zyreset=chip), else X, and no kernel_time.
+#   reason  P a panic (the lockup detectors' and an RCU stall's too; the
+#           chip's watchdog's pre-timeout panic is a W), T one
+#           of hung_task's, R the card never found (rootwait), W a watchdog
+#           that restarted it: the launcher's ("zyperos: watchdog: ... an
+#           emergency sync, and a restart", then sysrq), or a reset with no
+#           panic before the home, which is the chip's watchdog's where the
+#           image starts it (U-Boot, and plastron's hwdog pets it); X a
+#           reset with nothing of its own to say after the home
+#           (the chip's watchdog, a power glitch, its thermal cut)
+#   stage   H once ZyperOS drew its first frame, else the last step the start
+#           said ("zyboot: stage=", from datapart and zyperos.init); before
+#           any, C1 once init ran, K2 once the card was found, else K1; and H
+#           for a console past two minutes with none of them left in it
+#   kernel_time  the kernel's clock at its last line; last, that line;
+#   report  the report's name in CRASH_DIR
+# Beside the report on PX2BOOT too (zyperos-lastboot.txt), for a computer.
+text=$(mktemp) || text=
+if [ -n "$text" ]; then
+	for f in $dumps $console; do [ -f "$f" ] && tr -d '\r' < "$f"; done > "$text" 2> /dev/null
+	kt=$(sed -n 's/^[^[]*\[ *\([0-9][0-9]*\.[0-9]*\)\].*/\1/p' "$text" | tail -n 1)
+	stage=$(sed -n 's/.*zyboot: stage=\([A-Z0-9]*\).*/\1/p' "$text" | tail -n 1)
+	if grep -q 'zyperos: first frame' "$text"; then stage=H
+	elif [ -z "$stage" ]; then
+		if grep -q -E 'Run /sbin/init|Run .* as init process' "$text"; then stage=C1
+		elif grep -q 'mmcblk0: p' "$text"; then stage=K2
+		elif [ "${kt%%.*}" -ge 120 ] 2> /dev/null; then stage=H
+		else stage=K1
+		fi
+	fi
+	if [ -n "$dumps" ]; then
+		# The watchdog's first stage, its pre-timeout interrupt, panics
+		# (the Pixel 2's dw_wdt): a watchdog's, not a panic of its own
+		if grep -q 'watchdog pretimeout event' "$text"; then why=W
+		elif grep -q -E 'blocked for more than|hung_task' "$text"; then why=T
+		elif ! grep -q 'mmcblk0: p' "$text" &&
+		     grep -q -E 'Waiting for root device|Cannot open root device|Unable to mount root' "$text"; then why=R
+		else why=P
+		fi
+	elif grep -q 'zyperos: watchdog: .*an emergency sync, and a restart' "$text" || [ "$stage" != H ] ||
+	     [ -n "$chipreset" ]; then why=W
+	else why=X
+	fi
+	if [ -n "$lost" ]; then
+		stage=$was_stage
+		kt=
+		if [ -n "$chipreset" ]; then why=W; else why=X; fi
+	fi
+	last=$(grep -v '^ *$' "$text" | tail -n 1 | cut -c1-120)
+	{
+		echo "reason=$why"
+		echo "stage=$stage"
+		[ -n "$kt" ] && echo "kernel_time=$kt"
+		echo "time=$now"
+		[ -r /etc/zyperos/system ] && sed -n 's/^version /version=/p; s/^device /device=/p' /etc/zyperos/system
+		echo "last=$last"
+	} > "$LASTBOOT.new" 2> /dev/null && mv "$LASTBOOT.new" "$LASTBOOT"
+	rm -f "$text"
+fi
+
+keep $report lastboot
 
 echo "crashlog: a report from before this start kept in $CRASH_DIR and on PX2BOOT" 2> /dev/null > /dev/kmsg
 # Said once: the dumps let go (the console is the kernel's to replace). The

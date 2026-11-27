@@ -36,6 +36,23 @@ hung_panic_off() {
 	[ -w /proc/sys/kernel/hung_task_panic ] && echo 0 > /proc/sys/kernel/hung_task_panic
 }
 
+# The step this start is on, for the boot screen, which says it when a start
+# is slower than usual (the splash's slowline.h; ZyperOS's DESIGN.md 11.20),
+# and for the kernel's log, whose end crashlog reports after a restart: U1
+# System Update's switch, U2 the copy of ZyperOS (its own line and bar,
+# below), L1 ZyperOS starting, up to its first frame. datapart says C1 to C3.
+# Builtins only: L1 is every start's. And onto the start's marker on the
+# card, where plastron's crashlog made one (the Pixel 2's; it says why): a
+# line appended, so a start that loses its RAM before the home is still
+# reported with its step. The launcher removes the marker at its home's
+# first frame, and stop below at a clean stop.
+ZYSTART=$CARD/.plastron/starting.txt
+stage() {
+	echo "$1" 2> /dev/null > ${SPLASH_STAGE:-/tmp/splash-stage}
+	echo "zyboot: stage=$1" 2> /dev/null > ${KMSG:-/dev/kmsg}
+	[ -f "$ZYSTART" ] && echo "stage=$1" 2> /dev/null >> "$ZYSTART"
+}
+
 # The boot animation says what is going on while ZyperOS is copied, about a
 # minute on a Pixel 2: a line under the lockup and a bar that fills as the
 # card does (the splash's copy_start; ZyperOS's DESIGN.md 11.20). One line:
@@ -48,6 +65,7 @@ hung_panic_off() {
 # splash does nothing with it.
 splash_copy() {
 	local f lang=
+	stage U2
 	for f in "$CARD"/.userdata/*/language; do
 		[ -f "$f" ] && read -r lang < "$f"
 		break
@@ -276,6 +294,7 @@ start() {
 	# the image's, and before anything from the card runs.
 	if [ -f /usr/lib/zyperos/update-apply.sh ] && update_pending; then
 		hung_panic_off
+		stage U1
 		sh /usr/lib/zyperos/update-apply.sh "$CARD"
 	fi
 	# launch.sh there, but not the launcher or its systems.cfg: the card check
@@ -322,6 +341,7 @@ start() {
 	fi
 	hung_panic_off
 	if [ -f "$LAUNCH" ]; then
+		stage L1
 		sh "$LAUNCH" < /dev/null > /dev/null 2>&1 &
 		echo $! > $PID
 		steady_memory < /dev/null > /dev/null 2>&1 &
@@ -383,6 +403,9 @@ stop() {
 	fi
 	killall -TERM zyperos.elf mp4d diatom 2>/dev/null
 	for i in $(seq 1 20); do pidof diatom > /dev/null || break; sleep 0.1; done
+	# A clean stop is no start left unfinished (a power-off from the charging
+	# screen, before the home): no marker for crashlog to find
+	rm -f "$ZYSTART"
 }
 
 case "$1" in

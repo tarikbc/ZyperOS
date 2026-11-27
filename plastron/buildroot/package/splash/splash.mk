@@ -28,6 +28,9 @@ define SPLASH_INSTALL_FIRST_START
 	$(INSTALL) -m 0644 $(SPLASH_PICTURES)/closed-missing*.bin $(SPLASH_PKGDIR)/glyphs.bin \
 		$(TARGET_DIR)/usr/share/splash/
 endef
+# A slow start's lines (src/slowline.h), each language's, and the tester's
+# view's letters (glyphs.bin), at the panel's scale
+SPLASH_SLOW = $(if $(filter smartpro,$(PLASTRON_DEVICE)),smartpro,brick)
 else
 SPLASH_DEPENDENCIES = libdrm zlib host-pkgconf
 SPLASH_SOURCE_C = splash.c
@@ -45,7 +48,12 @@ define SPLASH_INSTALL_FIRST_START
 	$(INSTALL) -d $(TARGET_DIR)/usr/share/splash
 	$(INSTALL) -m 0644 $(SPLASH_PKGDIR)/$(SPLASH_ART)first-start*.bin $(TARGET_DIR)/usr/share/splash/
 	$(INSTALL) -D -m 0644 $(SPLASH_PKGDIR)/$(SPLASH_ART)frames-light.bin $(TARGET_DIR)/usr/share/splash/frames-light.bin
+	$(INSTALL) -m 0644 $(SPLASH_PKGDIR)/glyphs.bin $(TARGET_DIR)/usr/share/splash/
 endef
+# A slow start's lines (src/slowline.h), each language's, at the panel's
+# scale: the Pixel 2's 640x480, which the R36S's is too; and the letters of
+# the tester's view (glyphs.bin, ZyperOS's tools/genbootslow.py)
+SPLASH_SLOW = px2
 endif
 
 define SPLASH_BUILD_CMDS
@@ -61,6 +69,8 @@ define SPLASH_INSTALL_TARGET_CMDS
 	$(INSTALL) -D -m 0755 $(@D)/splash $(TARGET_DIR)/usr/bin/splash
 	$(INSTALL) -D -m 0644 $(SPLASH_PKGDIR)/$(SPLASH_FRAMES) $(TARGET_DIR)/usr/share/splash/frames.bin
 	$(SPLASH_INSTALL_FIRST_START)
+	$(INSTALL) -d $(TARGET_DIR)/usr/share/splash/slow
+	$(INSTALL) -m 0644 $(SPLASH_PKGDIR)/slow/$(SPLASH_SLOW)/*.bin $(TARGET_DIR)/usr/share/splash/slow/
 endef
 
 # Both devices' inittabs start it through this, as their first line

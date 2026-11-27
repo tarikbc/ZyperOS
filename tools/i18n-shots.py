@@ -696,6 +696,12 @@ EXTRA.setdefault("update-notes-end", ("demo", "PS1", ["--update", "--update-scro
 EXTRA.setdefault("update-mark", ("demo", "PS1", ["--status", "10:08 24h wifi=3 batt=82 update=42"]))
 for _k in ("available", "ready"):
     EXTRA.setdefault("update-news-" + _k, ("demo", "PS1", ["--upnews", _k]))
+# The last start's restart (DESIGN.md 11.70): Zyper's bubble with the
+# longest code of a start that did not finish and of a freeze while playing,
+# and About ZyperOS's Last Restart row, from the card's copy said yesterday
+EXTRA.setdefault("lastboot-start", ("demo", "PS1", ["--lastboot", "stage=L1;reason=W;kernel_time=118.4"]))
+EXTRA.setdefault("lastboot-froze", ("demo", "PS1", ["--lastboot", "stage=H;reason=P;kernel_time=18342.5"]))
+EXTRA.setdefault("about-0-restart", ("demo", "PS1", ["--about", "0"]))
 EXTRA.setdefault("hotspot-waiting", ("demo", "PS1", ["--hotspot", "ZyperOS-7A2B", "q7mx-3kpa", "0 joined", "waiting"]))
 EXTRA.setdefault("gamemenu-dual", ("demo", "PS1", ["--gamemenu", "0", "dual"]))
 # ...and its Display tab, where the screens' three rows are, on the Stylus row
@@ -1020,6 +1026,9 @@ for _name, _flags in (("home-recents", []), ("shelf-recents", ["--screen", "game
 # game's details on Add to Collection and its list, the shelf's menu at its
 # top and in one, and Delete Collection's question
 SHOT_TEXT = {}
+SHOT_TEXT["about-0-restart"] = {
+    "userdata/lastboot.txt": "reason=W\nstage=L1\nkernel_time=118.4\ntime=2026-11-23 22:14:05\n"
+                             "version=1.1.0\ndevice=px2\nlast=-\nseen=%d\n" % (int(__import__("time").time()) - 86400)}
 _COLL = {"Collections/Couch Co-op.txt": "/Roms/SNES/Super Mario World (USA).sfc\n"
                                         "/Roms/Game Boy Advance/Mario Kart - Super Circuit (USA).gba\n"
                                         "/Roms/PlayStation/Tekken 3 (USA).chd\n",

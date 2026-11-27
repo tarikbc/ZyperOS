@@ -37,6 +37,16 @@ hung_panic_off() {
 	[ -w /proc/sys/kernel/hung_task_panic ] && echo 0 > /proc/sys/kernel/hung_task_panic
 }
 
+# The step this start is on, for the boot screen, which says it when a start
+# is slower than usual (the splash's slowline.h; ZyperOS's DESIGN.md 11.20),
+# and for the kernel's log, whose end crashlog reports after a restart:
+# C1 the games partition mounting, C2 it made, C3 its check. Builtins only:
+# C1 is every start's.
+stage() {
+	echo "$1" 2> /dev/null > ${SPLASH_STAGE:-/tmp/splash-stage}
+	echo "zyboot: stage=$1" 2> /dev/null > ${KMSG:-/dev/kmsg}
+}
+
 create() {
 	hung_panic_off
 	echo "datapart: first boot, adding $DATA over the rest of the card" > /dev/kmsg
@@ -89,6 +99,7 @@ repair() {
 	local cpu_max=/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq cpu_was= t0 t1 rest rc
 	flags=$(od -An -tu1 -j106 -N1 $DATA)
 	[ $(( flags & 2 )) -eq 0 ] && return
+	stage C3
 	echo "datapart: $DATA was not unmounted cleanly; checking it" > /dev/kmsg
 	if [ -n "$CHECK_CPU_MAX" ] && [ -w $cpu_max ] && read -r cpu_was < $cpu_max; then
 		echo "$CHECK_CPU_MAX" > $cpu_max
@@ -143,6 +154,7 @@ start() {
 	echo 2048 > $DISK/queue/read_ahead_kb
 	new=
 	if [ ! -b $DATA ]; then
+		stage C2
 		create || {
 			echo "datapart: couldn't create $DATA" > /dev/kmsg
 			return 1
@@ -152,6 +164,7 @@ start() {
 		repair
 	fi
 	mkdir -p $MOUNT
+	stage C1
 	mount -t exfat -o noatime $DATA $MOUNT || return 1
 	report
 	# The kernel's random numbers ready at once: last boot's seed from the

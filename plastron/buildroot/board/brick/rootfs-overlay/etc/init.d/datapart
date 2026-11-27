@@ -15,6 +15,16 @@ BUILT=0
 
 mark() { echo "$(cut -d' ' -f1 /proc/uptime) $1" >> /tmp/boot-times; }
 
+# The step this start is on, for the boot screen, which says it when a start
+# is slower than usual (the splash's slowline.h; ZyperOS's DESIGN.md 11.20),
+# and for the kernel's log, whose end crashlog reports after a restart:
+# C1 the games partition mounting, C2 it made, C3 its check. Builtins only:
+# C1 is every start's.
+stage() {
+	echo "$1" 2> /dev/null > ${SPLASH_STAGE:-/tmp/splash-stage}
+	echo "zyboot: stage=$1" 2> /dev/null > ${KMSG:-/dev/kmsg}
+}
+
 # A Brick that ran TrimUI's firmware has its clock in 2076: that firmware kept
 # the RTC's year from another base (2026 as 56), which this kernel reads as
 # 2076. Set once, on a fresh card's first boot, to when this system was built:
@@ -33,6 +43,7 @@ clock_once() {
 repair() {
 	state=$(od -An -tu1 -j106 -N1 $1)
 	[ $(( state & 2 )) -eq 0 ] && return
+	stage C3
 	echo "datapart: $1 was not unmounted cleanly; checking it" > /dev/kmsg
 	fsck.exfat -p $1 > /dev/null 2>&1
 	echo "datapart: fsck.exfat finished with status $?" > /dev/kmsg
@@ -95,10 +106,12 @@ start() {
 	games=$(part zyperos)
 	if [ -z "$games" ]; then
 		clock_once
+		stage C2
 		games=$(games_create)
 	fi
 	if [ -n "$games" ]; then
 		repair $games
+		stage C1
 		mount -t exfat -o noatime $games $SDCARD
 		[ -f /tmp/games-new ] && touch $SDCARD/.metadata_never_index
 		# The kernel's random numbers ready at once, as on the Pixel: last

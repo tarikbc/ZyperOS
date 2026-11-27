@@ -30,7 +30,14 @@
  * anything is gone (copying only each frame's band, the wordmark was wiped
  * and never came back). When the animation is over it holds the last frame
  * the same way, putting back EGL's pan if that comes later, until ZyperOS
- * draws, or 15 s.
+ * draws (half an hour at the most; it was 15 s until a slow start had lines
+ * to show).
+ *
+ * A start that takes longer than it should says so, as the Pixel 2's
+ * splash.c does: from 5 s the step under way, from 20 s "Taking longer than
+ * usual" and what to do; SELECT held 2 s shows the kernel's latest lines;
+ * and every 2 s from the start a beat goes into the kernel's log (slow_tick;
+ * slowline.h, slowio.h; ZyperOS's DESIGN.md 11.20).
  *
  * Started first thing, by inittab's first line; the framebuffer is there long
  * before the panel lights, so the first frame is waiting when it does.
@@ -65,6 +72,8 @@
 #include <time.h>
 #include <unistd.h>
 #include <zlib.h>
+
+#include "slowio.h"
 
 #define FRAMES     "/usr/share/splash/frames.bin"
 #define MISSING    "/usr/share/splash/closed-missing"
@@ -288,6 +297,74 @@ static void say_draw(uint32_t *pixels, unsigned w, unsigned h, unsigned *top, un
 	*rows = glyph_h;
 }
 
+/*
+ * A start slower than usual (slowline.h; ZyperOS's DESIGN.md 11.20), as the
+ * Pixel 2's splash.c says it: from 5 s the step under way at the foot, from
+ * 20 s "Taking longer than usual" and what to do; SELECT held 2 s shows the
+ * kernel's latest lines; and every 2 s a beat in the kernel's log. The
+ * Brick's and the Smart Pro's boot screen is Salt & Pepper's whatever the
+ * theme (they have its frames only). The panel line (/tmp/splash-say) sits
+ * where the step goes, so it gives way to it.
+ */
+static slow_run slow;
+static struct {
+	int      loaded, said_off, hold;
+	double   stage_at, beat_at;
+	char     stage[4];
+	unsigned frames;
+	slowio_keys keys;
+	slowio_kmsg kmsg;
+} sl = { .beat_at = SLOW_BEAT_S };
+
+/* One look at `now` over `pixels` (w x h): the rows that changed into
+ * [*lo, *hi), and 1 when there are some */
+static int slow_tick(uint32_t *pixels, unsigned w, unsigned h, double now, unsigned *lo, unsigned *hi)
+{
+	char line[96], foot[96];
+	int l = 0, k = 0, held, changed;
+
+	if (now >= sl.beat_at) {
+		double stage_at = 0;
+
+		slowio_stage(sl.stage, now, &stage_at);
+		slow_beat(line, sizeof line, sl.beat_at, sl.frames, sl.stage);
+		log_to_kernel(line);
+		while (sl.beat_at <= now) sl.beat_at += SLOW_BEAT_S;
+	}
+	if (now < SLOW_STAGE_S - 0.5) return 0;
+	if (!sl.loaded) {
+		sl.loaded = 1;
+		slow_run_init(&slow, w, h, w, 0, BACKGROUND, 0xffc3c3ba, 0xff969998);
+		snprintf(line, sizeof line, "splash: slow, %s\n",
+		         slowio_load(&slow, getenv("zylang")) == 0 ? "its lines ready" : "no lines to say it with");
+		log_to_kernel(line);
+	}
+	slow.keep = sl.hold;
+	slowio_stage(sl.stage, now, &sl.stage_at);
+	held = slowio_select(&sl.keys, now) >= SLOW_TESTER_S;
+	if (held) slowio_kmsg_poll(&sl.kmsg);
+	snprintf(foot, sizeof foot, "%s  %.1f s  %u frames", sl.stage[0] ? sl.stage : "-", now, sl.frames);
+	changed = slow_frame(&slow, pixels, now, sl.stage, held, sl.kmsg.line, sl.kmsg.n, foot, &l, &k);
+	/* The panel line gives way the first time the lines say something */
+	if (!sl.said_off && (slow.id[1] >= 0 || slow.tester)) {
+		sl.said_off = 1;
+		if (say[0] && glyph_h + 48 <= h) {
+			unsigned y0 = h - 48 - glyph_h;
+
+			slow_clear(pixels, w, w, h, 0, 0, (int)y0, w, glyph_h, BACKGROUND);
+			if (!changed || (unsigned)k <= (unsigned)l) { l = (int)y0; k = (int)(y0 + glyph_h); }
+			else { if ((int)y0 < l) l = (int)y0; if ((int)(y0 + glyph_h) > k) k = (int)(y0 + glyph_h); }
+			changed = 1;
+		}
+		say[0] = 0;
+		slow_frame(&slow, pixels, now, sl.stage, held, sl.kmsg.line, sl.kmsg.n, foot, &l, &k);
+	}
+	if (!changed || k <= l) return 0;
+	*lo = (unsigned)l;
+	*hi = (unsigned)k;
+	return 1;
+}
+
 /* The missing-files picture for the boot screen's language, or English's */
 static const char *missing_path(void)
 {
@@ -346,6 +423,11 @@ static void wait_for_power(void)
 int main(int argc, char **argv)
 {
 	int missing = argc > 1 && !strcmp(argv[1], "missing");
+
+	/* The boot screen's first word in the kernel's log: a console that
+	 * ends before it (crashlog's report after a restart) stopped before
+	 * init had started this */
+	if (!missing) log_to_kernel("splash: started\n");
 
 	/* First: SIGUSR1 left at its default would end this */
 	struct sigaction on = { .sa_handler = on_zyperos };
@@ -433,7 +515,7 @@ int main(int argc, char **argv)
 
 		if (frame_decode(n, (uint8_t *)pixels, &first_row, &rows))
 			break;
-		if (since_boot() - say_looked >= 0.1) {
+		if (!sl.said_off && since_boot() - say_looked >= 0.1) {
 			say_looked = since_boot();
 			say_read();
 		}
@@ -445,6 +527,18 @@ int main(int argc, char **argv)
 			if (!rows || say_top < first_row) first_row = say_top;
 			if (say_top + say_rows > last) last = say_top + say_rows;
 			rows = last - first_row;
+		}
+		/* ...and to the slow start's, when they changed */
+		{
+			unsigned lo, hi;
+
+			if (slow_tick(pixels, fix.line_length / 4, var.yres, since_boot(), &lo, &hi)) {
+				unsigned last = rows ? first_row + rows : hi;
+
+				if (!rows || lo < first_row) first_row = lo;
+				if (hi > last) last = hi;
+				rows = last - first_row;
+			}
 		}
 		for (;;) {
 			if (!still_ours(fd, yoffset, &took_back)) {
@@ -471,18 +565,26 @@ int main(int argc, char **argv)
 			repaired++;
 		}
 		shown = n;
+		sl.frames++;
 	}
 
-	/* The last frame held until ZyperOS draws */
-	double give_up = since_boot() + 15;
+	/* The last frame held until ZyperOS draws: half an hour at the most, as
+	 * long as a start that is stuck may want its lines (it was 15 s) */
+	double give_up = since_boot() + 1800;
+	sl.hold = 1;        /* no frame writes over the lines from here */
 	while (!stopped && since_boot() < give_up) {
 		struct timespec t = { 0, 8000000 };
+		unsigned lo, hi;
 
 		if (!still_ours(fd, yoffset, &took_back)) {
 			stopped = 1;
 			break;
 		}
-		if (since_boot() - say_looked >= 0.1) {
+		/* The slow start's lines, their changed rows straight to the page */
+		if (slow_tick(pixels, fix.line_length / 4, var.yres, since_boot(), &lo, &hi))
+			memcpy(page + (size_t)lo * fix.line_length, (uint8_t *)pixels + (size_t)lo * fix.line_length,
+			       (size_t)(hi - lo) * fix.line_length);
+		if (!sl.said_off && since_boot() - say_looked >= 0.1) {
 			say_looked = since_boot();
 			if (say_read()) {
 				say_draw(pixels, fix.line_length / 4, var.yres, &say_top, &say_rows);
