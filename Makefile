@@ -2629,6 +2629,16 @@ build-native/title-refresh-check: tools/title-refresh-check.c tools/title-refres
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Ibuild-native \
 	      -o $@ tools/title-refresh-check.c src/library.c src/sheet.c src/db.c src/stats.c $(I18N_SRC) -lsqlite3
 
+# MENU > Display > Game Names (DESIGN.md 11.71): Short, or the file's whole
+# name over a downloaded one, by the real scan, database and refresh
+check-gamenames: build-native/gamenames-check
+	@./build-native/gamenames-check
+
+build-native/gamenames-check: tools/gamenames-check.c src/db.c src/library.c src/sheet.c $(I18N_SRC) FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Isrc \
+	      -o $@ tools/gamenames-check.c src/db.c src/library.c src/sheet.c $(I18N_SRC) -lsqlite3
+
 # Host build of the launcher, for working on how the shelf looks.
 native:
 	$(MAKE) $(NATIVE_J) -f mk/native.mk VERSION=$(VERSION)
@@ -3345,6 +3355,13 @@ check-home-shots: native
 .PHONY: pico8-shots
 pico8-shots: native
 	@'$(PYIMG)' tools/pico8-shots.py
+
+# Game Names on the real launcher (tools/gamenames-shot-check.py): the List
+# view's rows under Short and File Name, as the Pixel 2 and the Brick, in
+# both themes, and MENU's row turning it over at once
+.PHONY: check-gamenames-shots
+check-gamenames-shots: native
+	@'$(PYIMG)' tools/gamenames-shot-check.py
 
 check-favorites-shots: native
 	@'$(PYIMG)' tools/favorites-shot-check.py

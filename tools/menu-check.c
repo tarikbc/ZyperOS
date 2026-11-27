@@ -1786,20 +1786,20 @@ static void menu_tabs(void)
 	}
 	ck(ok && at == n_all, "the tabs, one after another, are every row the device has");
 	m = sys_menu_tab_rows(&u, PT_DISPLAY, tab);
-	ck(m == 11 && tab[0] == PM_APPEARANCE && tab[1] == PM_THEME &&
-	   tab[2] == PM_HOME && tab[3] == PM_ORDER && tab[4] == PM_HOMESYS && tab[5] == PM_BATTERY &&
-	   tab[6] == PM_SAVER && tab[7] == PM_SHADER && tab[8] == PM_STRENGTH && tab[9] == PM_SCREEN &&
-	   tab[10] == PM_NIGHT,
-	   "Display: Appearance, Theme, Home Screen, System Order, Home Systems, Battery Icon, "
+	ck(m == 12 && tab[0] == PM_APPEARANCE && tab[1] == PM_THEME &&
+	   tab[2] == PM_HOME && tab[3] == PM_ORDER && tab[4] == PM_HOMESYS && tab[5] == PM_NAMES &&
+	   tab[6] == PM_BATTERY && tab[7] == PM_SAVER && tab[8] == PM_SHADER && tab[9] == PM_STRENGTH &&
+	   tab[10] == PM_SCREEN && tab[11] == PM_NIGHT,
+	   "Display: Appearance, Theme, Home Screen, System Order, Home Systems, Game Names, Battery Icon, "
 	   "Screensaver, Shader, Strength, Screen Colors, Night Mode (its page has the rest)");
 	u.no_strength = true;
 	m = sys_menu_tab_rows(&u, PT_DISPLAY, tab);
-	ck(m == 10 && tab[7] == PM_SHADER && tab[8] == PM_SCREEN,
+	ck(m == 11 && tab[8] == PM_SHADER && tab[9] == PM_SCREEN,
 	   "and no Strength while no system draws an old screen");
 	u.no_strength = false;
 	u.no_screen_colors = u.no_night = true;
 	m = sys_menu_tab_rows(&u, PT_DISPLAY, tab);
-	ck(m == 9 && tab[8] == PM_STRENGTH,
+	ck(m == 10 && tab[9] == PM_STRENGTH,
 	   "and no Screen Colors or Night Mode where the display has no table (the Brick)");
 	u.no_screen_colors = u.no_night = false;
 	m = sys_menu_tab_rows(&u, PT_GAMES, tab);
@@ -1818,16 +1818,24 @@ static void menu_tabs(void)
 	u.tab = PT_DISPLAY;
 	u.theme = "Lime";
 	n = (sys_menu_build)(&u, rows, &b, &heading);
-	ck(n == 11 && !strcmp(rows[1].label, "Theme") && !strcmp(val(&rows[1]), "Lime") &&
-	   !strcmp(rows[9].label, "Screen Colors") && !strcmp(val(&rows[9]), "Standard") &&
-	   !strcmp(rows[10].label, "Night Mode") && !strcmp(val(&rows[10]), "Off"),
+	ck(n == 12 && !strcmp(rows[1].label, "Theme") && !strcmp(val(&rows[1]), "Lime") &&
+	   !strcmp(rows[10].label, "Screen Colors") && !strcmp(val(&rows[10]), "Standard") &&
+	   !strcmp(rows[11].label, "Night Mode") && !strcmp(val(&rows[11]), "Off"),
 	   "Theme says its accent, Screen Colors its look and Night Mode its mode "
 	   "(Standard and Off when none is said)");
 	u.night = "By Hours";
 	n = (sys_menu_build)(&u, rows, &b, &heading);
-	ck(n == 11 && !strcmp(val(&rows[10]), "By Hours"), "and says what it is given");
-	ck(b.sound[9] == 0 && b.sound[10] == 0,
+	ck(n == 12 && !strcmp(val(&rows[11]), "By Hours"), "and says what it is given");
+	ck(b.sound[10] == 0 && b.sound[11] == 0,
 	   "Screen Colors and Night Mode open their pages, as Theme does: no row of steps");
+	/* Game Names (DESIGN.md 11.71), under Home Systems: Short when nothing
+	 * is said, as it ships, and stepped round like System Order */
+	ck(!strcmp(rows[5].label, "Game Names") && !strcmp(val(&rows[5]), "Short") && rows[5].live &&
+	   b.sound[5] == MENU_SND_RING, "Game Names reads Short when nothing is said, and steps round");
+	u.names = "File Name";
+	n = (sys_menu_build)(&u, rows, &b, &heading);
+	ck(!strcmp(val(&rows[5]), "File Name"), "and File Name when it is given");
+	u.names = NULL;
 	ck(!strcmp(sys_menu_tab_name(PT_CONNECTIONS), "Connections") &&
 	   !strcmp(sys_menu_tab_name(PT_ABOUT), "About"), "the tabs' names");
 }

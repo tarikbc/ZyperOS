@@ -7855,6 +7855,8 @@ int main(int argc, char *argv[])
 	}
 	system_order_load();
 	system_order_apply(&a.sys);
+	/* Before the scan, which titles each game by it */
+	game_names_load();
 	power_button_load();
 	homesys_load();
 

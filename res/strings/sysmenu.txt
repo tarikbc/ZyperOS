@@ -323,6 +323,61 @@ de = Systemreihenfolge
 ja = システムの並び順
 it = Ordine dei sistemi
 
+[sysmenu.game_names]
+note = A MENU row, on the Display tab: how every shelf names its games, Short (the name without the tags in brackets) or File Name (the file's whole name, with them)
+en = Game Names
+zh-Hans = 游戏名称
+es = Nombres de juegos
+pt-BR = Nomes dos jogos
+fr = Noms des jeux
+de = Spielnamen
+ja = ゲーム名
+it = Nomi dei giochi
+
+[sysmenu.names_short]
+note = Game Names' value, as it ships: each game by its name, the tags in brackets after it left out ("Final Fantasy VII")
+en = Short
+zh-Hans = 简短
+es = Cortos
+pt-BR = Curtos
+fr = Courts
+de = Kurz
+ja = 短く
+it = Brevi
+
+[sysmenu.names_file]
+note = Game Names' value: each game by its file's whole name on the card, with every tag in brackets ("Final Fantasy VII (USA) (Disc 1)"). The same word as the file name in the glossary
+en = File Name
+zh-Hans = 文件名
+es = Nombre de archivo
+pt-BR = Nome do arquivo
+fr = Nom de fichier
+de = Dateiname
+ja = ファイル名
+it = Nome del file
+
+[sysmenu.names_short_note]
+note = What Short does, under Game Names' list (sysmenu.names_short): each game by its name, without the tags in brackets the file has. Two short lines at most: keep the words before the example short, and the example name as it is, in English
+en = Without the tags: Final Fantasy VII
+zh-Hans = 不带标签：Final Fantasy VII
+es = Sin las etiquetas: Final Fantasy VII
+pt-BR = Sem as etiquetas: Final Fantasy VII
+fr = Sans les mentions : Final Fantasy VII
+de = Ohne Zusätze: Final Fantasy VII
+ja = タグなし：Final Fantasy VII
+it = Senza le etichette: Final Fantasy VII
+
+[sysmenu.names_file_note]
+note = What File Name does, under Game Names' list (sysmenu.names_file): each game by its file's whole name, with every tag in brackets (region, revision, disc, version). Two short lines at most: keep the words before the example short, and the example name as it is
+en = With every tag: Final Fantasy VII (USA) (Disc 1)
+zh-Hans = 含所有标签：Final Fantasy VII (USA) (Disc 1)
+es = Con todas las etiquetas: Final Fantasy VII (USA) (Disc 1)
+pt-BR = Com todas as etiquetas: Final Fantasy VII (USA) (Disc 1)
+fr = Avec toutes les mentions : Final Fantasy VII (USA) (Disc 1)
+de = Mit allen Zusätzen: Final Fantasy VII (USA) (Disc 1)
+ja = タグもすべて：Final Fantasy VII (USA) (Disc 1)
+it = Con tutte le etichette: Final Fantasy VII (USA) (Disc 1)
+
 [sysmenu.order_az]
 note = System Order's value: by name
 en = A to Z
