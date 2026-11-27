@@ -948,8 +948,8 @@ static bool game_has_snap(void *ctx, int i)
 	s = snap_names_for(folder);
 	name = v->list.items[i].name;
 	if (!s->on) return false;
-	return (s->n && bsearch(&name, s->stems, (size_t)s->n, sizeof *s->stems, snap_name_cmp)) ||
-	       es_has_video(folder, v->list.items[i].file, name);
+	/* The screensaver's question too (saver_pool_build) */
+	return game_media_listed(folder, v->list.items[i].file, name, ES_VIDEO, s->stems, s->n);
 }
 
 /* The heading of a shelf: its system, and on a folder of its games the

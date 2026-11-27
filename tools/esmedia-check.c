@@ -215,6 +215,26 @@ int main(void)
 	CHECK(!es_has_video("nds", "Tetris DS (Europe).nds", "Tetris DS (Europe)"));
 	CHECK(!es_has_video("GB", "Tetris (World).gb", "Tetris (World)"));
 
+	/* The same from the index alone, a game es_media finds a cover for and
+	 * no other (the screensaver's games, 2026-11-23): by gamelist.xml, by
+	 * images/'s names, by media/images/, and none for a game with none */
+	printf("covers from the index alone (es_has_cover, game_media_listed):\n");
+	CHECK(es_has_cover("nds", "Mario Kart DS (USA).nds", "Mario Kart DS (USA)"));
+	CHECK(es_has_cover("nds", "Picross DS (Europe).nds", "Picross DS (Europe)"));
+	CHECK(es_has_cover("nds", "Disc Set/Disc Set.cue", "Disc Set"));
+	CHECK(es_has_cover("psx", "Crash (USA).chd", "Crash (USA)"));
+	CHECK(es_has_cover("sfc", "Zelda (USA).sfc", "Zelda (USA)"));
+	CHECK(!es_has_cover("GB", "Tetris (World).gb", "Tetris (World)"));
+	{
+		char *own[] = { "Tetris (World)" };
+
+		CHECK(game_media_listed("GB", "Tetris (World).gb", "Tetris (World)", ES_COVER, own, 1));
+		CHECK(!game_media_listed("GB", "Tetris (World).gb", "Tetris (World)", ES_COVER, NULL, 0));
+		CHECK(game_media_listed("sfc", "Zelda (USA).sfc", "Zelda (USA)", ES_COVER, NULL, 0));
+		CHECK(game_media_listed("psx", "Crash (USA).chd", "Crash (USA)", ES_VIDEO, NULL, 0));
+		CHECK(!game_media_listed("sfc", "Zelda (USA).sfc", "Zelda (USA)", ES_VIDEO, NULL, 0));
+	}
+
 	printf("the game's own first, then ES's (game_media):\n");
 	{
 		char snap[ES_PATH], want[ES_PATH];

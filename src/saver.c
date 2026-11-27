@@ -150,3 +150,35 @@ int saver_pick(int n, uint32_t r, const saver_recent *recent)
 	}
 	return start;
 }
+
+/* ---- where the picture goes (saver.h) ------------------------------------------ */
+
+saver_rect saver_fit(saver_rect box, int w, int h, float most)
+{
+	float k;
+
+	if (box.w <= 0 || box.h <= 0 || w <= 0 || h <= 0) return (saver_rect){ box.x, box.y, 0, 0 };
+	k = box.w / w < box.h / h ? box.w / w : box.h / h;
+	if (k > most) k = most;
+	return (saver_rect){ box.x + (box.w - w * k) / 2, box.y + (box.h - h * k) / 2, w * k, h * k };
+}
+
+saver_rect saver_art_place(float sw, float sh, saver_rect game, saver_rect keys, float gap,
+                           int w, int h, float most)
+{
+	float keys_bot = keys.y + keys.h + gap, game_top = game.y - gap;
+	float keys_left = keys.x - gap, game_right = game.x + game.w + gap;
+	/* half the column's width: as far as both slabs leave it, from the middle */
+	float half = sw / 2 - game_right < keys_left - sw / 2 ? sw / 2 - game_right : keys_left - sw / 2;
+	saver_rect band = saver_fit((saver_rect){ 0, keys_bot, sw, game_top - keys_bot }, w, h, most);
+	saver_rect column = saver_fit((saver_rect){ sw / 2 - half, 0, 2 * half, sh }, w, h, most);
+
+	/* by area, with a whole pixel of room to call the column larger */
+	return column.w * column.h > band.w * band.h + 1.0f ? column : band;
+}
+
+bool saver_rect_meet(saver_rect a, saver_rect b)
+{
+	return a.w > 0 && a.h > 0 && b.w > 0 && b.h > 0 &&
+	       a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+}
