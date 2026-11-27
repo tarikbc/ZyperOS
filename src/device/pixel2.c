@@ -969,8 +969,8 @@ static void key_event(in_state *st, const struct input_event *ev)
 		/* Under FUNCTION, MENU's chord when the launcher takes it
 		 * (src/menukeys.h): no tap as it is let go, and MENU opens
 		 * nothing */
-		if (plat_menu_with(st, l2 ? IN_L2 : IN_R2, ev->value == 1, fn_down)) {
-			if (ev->value) fn_chorded = true;
+		if (plat_menu_with(st, l2 ? IN_L2 : IN_R2, ev->value == 1, fn.down)) {
+			if (ev->value) fn.chorded = true;
 			if (!l2_down && !r2_down) l2r2_chorded = false;
 			return;
 		}
@@ -991,8 +991,8 @@ static void key_event(in_state *st, const struct input_event *ev)
 
 			/* Under FUNCTION, MENU's chord when the launcher takes it, as
 			 * a volume key is brightness under it */
-			if (plat_menu_with(st, b, ev->value == 1, fn_down)) {
-				if (ev->value) fn_chorded = true;
+			if (plat_menu_with(st, b, ev->value == 1, fn.down)) {
+				if (ev->value) fn.chorded = true;
 				return;
 			}
 			/* A d-pad key: held while it or the stick holds it */
