@@ -103,7 +103,7 @@ typedef struct {
 	 * game's snap on the whole screen, its covers in a band at the foot;
 	 * never with either of those, and its band's motion */
 	bool video;
-	vv_motion vm;
+	snaprest vm;
 	/* The grid's place and motion, what it knows of each cover beyond its
 	 * texture (src/gamegrid.h), and the shape kept for this shelf in the
 	 * device's database (grid_shape_load), read when the grid opens it, and

@@ -1149,6 +1149,13 @@ for _name, _flags in (("shelf-video", ["--screen", "games", "--view", "video"]),
     EXTRA.setdefault(_name, ("demo", "PS1", _flags))
 
 
+# The List view (DESIGN.md 11.39): the snap at the height of the rows (the
+# test picture) with the details over its foot, and halfway down at rest
+for _name, _flags in (("shelf-list-snap", ["--screen", "games", "--view", "list", "--snap", "1"]),
+                      ("shelf-list-rest", ["--screen", "games", "--view", "list", "--snap", "1", "--band", ".5"])):
+    EXTRA.setdefault(_name, ("demo", "PS1", _flags))
+
+
 # Screenshots (src/shotname.h, DESIGN.md 11.68): the Screenshot hotkey's
 # pictures on the card, each a PNG made up here as Diatom names them, at its
 # game's own size, and one of a game no longer on the card. The home on the

@@ -1644,8 +1644,8 @@ int ui_text_tabular(SDL_Renderer *r, TTF_Font *f, const char *s, int x, int y,
  * and instantly leaves, which looks like a glitch rather than an end. */
 #define MQ_FADE_PX     36          /* how far the edges dissolve */
 #define MQ_FADE_STEP    3
-#define MQ_HOLD_MS   1400          /* stillness before it starts */
-#define MQ_END_MS     900          /* stillness at the far end */
+#define MQ_HOLD_MS   DS_MS_SLIDE_HOLD /* stillness before it starts */
+#define MQ_END_MS    DS_MS_SLIDE_END  /* stillness at the far end */
 #define MQ_SPEED_PXPS  70
 
 /* How far into a ping-pong a given phase has got: still at 0 for a beat, out

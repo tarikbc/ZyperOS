@@ -407,6 +407,14 @@ window.ZYPER_TOKENS = {
       "ms": 2000,
       "curve": "-"
     },
+    "slide-hold": {
+      "ms": 1400,
+      "curve": "-"
+    },
+    "slide-end": {
+      "ms": 900,
+      "curve": "-"
+    },
     "sheen": {
       "ms": 480,
       "curve": "turn"
