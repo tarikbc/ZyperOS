@@ -128,4 +128,28 @@ void saver_recent_add(saver_recent *r, int idx);
  * when n > 1). -1 when n <= 0. */
 int saver_pick(int n, uint32_t r, const saver_recent *recent);
 
+/* ---- where the picture goes (2026-11-23) -------------------------------------
+ *
+ * A snap plays over the whole screen, as large as it takes it, the slabs
+ * over it (saver_fit on the screen, at most 8 times its size). A cover never
+ * goes under the two slabs, the game's at the foot and the keys' at the top:
+ * a tall one ran under "Play / Any other button goes back". Its place is in
+ * the middle of the screen's width, as large as it fits clear of both slabs
+ * by `gap` (`game` and `keys`, on a `sw` by `sh` screen): in the band
+ * between them, the whole width, in its middle; or in the column between
+ * them, the whole height, when the slabs leave one there and it is larger.
+ * The picture, `w` by `h`, in its own shape, at most `most` times its size.
+ * Pure, for tools/saver-check.c. */
+typedef struct { float x, y, w, h; } saver_rect;
+
+/* `w` by `h` as large as `box` takes it, at most `most` times, centered in
+ * it; nothing (0 by 0) when either has no size */
+saver_rect saver_fit(saver_rect box, int w, int h, float most);
+
+saver_rect saver_art_place(float sw, float sh, saver_rect game, saver_rect keys, float gap,
+                           int w, int h, float most);
+
+/* Whether two rectangles share any point of area */
+bool saver_rect_meet(saver_rect a, saver_rect b);
+
 #endif
