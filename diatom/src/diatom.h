@@ -276,7 +276,7 @@ typedef enum {
 	DIATOM_MSG_SETMUTE,    /* hold it off, or release it: `on` = 1 | 0 */
 	DIATOM_MSG_QUIET,      /* report whether the game's own sound is held silent */
 	DIATOM_MSG_SETQUIET,   /* hold it silent, or let it play: `on` = 1 | 0 */
-	DIATOM_MSG_SPEED,      /* report the speed step: 1, 1.5, 2 or 3 */
+	DIATOM_MSG_SPEED,      /* report the speed step: 1, 1.5, 2, 3 or max */
 	DIATOM_MSG_CHANNELS,   /* report which ears hear what */
 	DIATOM_MSG_SETCHANNELS,/* set it: `dmode` = stereo | mono | left | right */
 	DIATOM_MSG_PREMAP,     /* the launcher has drawn: map the cores now */
@@ -291,7 +291,7 @@ typedef enum {
 	DIATOM_MSG_STYLUS,     /* report whether stylus mode is on */
 	DIATOM_MSG_SETSTYLUS,  /* turn it on or off: `on` = 1 | 0 */
 	DIATOM_MSG_SETHOTKEYS, /* SELECT's hotkeys: `hotkeys` (sent as `keys=`),
-	 * chord.h's chord_keys_parse form; answered HOTKEYS ok=1|0 */
+	 * chord.h's chord_keys_parse form, and `ffspeed`; answered HOTKEYS ok=1|0 */
 	DIATOM_MSG_SETSTICK,   /* the d-pad as the stick: `dmode` (sent as `mode=`)
 	 * = dpad | plain | toggle | toggle-stick | off; answered STICK on=1|0 */
 	/* Guest players, NES player 2 first (player2.h): the frames out and
@@ -393,6 +393,10 @@ typedef struct {
 	 * each hotkey, "save:r1,load:l1,shot:y" or "none" (chord.h); absent on
 	 * RUN, the shoulders' four as ever */
 	char hotkeys[160];
+	/* RUN ffspeed= and SETHOTKEYS ffspeed=: the speed the Fast Forward
+	 * hotkey (ffwd) turns on from 1x, "1.5", "2", "3" or "max"; absent or
+	 * anything else, 2x */
+	char ffspeed[8];
 	/* RUN shots=: where a screenshot goes, a path and the start of a file's
 	 * name ("/mnt/SDCARD/Screenshots/NES/Zelda"), the time and ".png" added;
 	 * absent, no screenshot */

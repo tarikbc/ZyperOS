@@ -96,6 +96,8 @@ typedef struct diatom_session {
 	bool          pace_smooth;
 	/* RUN hotkeys=: SELECT's keys (chord.h), "" for the shoulders' four */
 	const char   *hotkeys;
+	/* RUN ffspeed=: the speed Fast Forward turns on, "" for 2x */
+	const char   *ffspeed;
 	/* RUN shots=: a screenshot's folder and name, "" for none */
 	const char   *shots;
 } diatom_session;
@@ -1361,10 +1363,11 @@ static void idle_note_input(bool any)
 }
 
 /* The speed. The step the player chose with SELECT+R2 (faster) and SELECT+L2
- * (slower), reset at every RUN and kept across the menu. A state on the state
- * plane that only Diatom writes: `SPEED x=1.5`, as the reply to `SPEED` and
- * unsolicited on every step, so the launcher can say so on screen - at the
- * ends too, where the step does not move, so a press is always answered.
+ * (slower), or with the Fast Forward hotkey, reset at every RUN and kept
+ * across the menu. A state on the state plane that only Diatom writes:
+ * `SPEED x=1.5`, as the reply to `SPEED` and unsolicited on every step, so the
+ * launcher can say so on screen - at the ends too, where the step does not
+ * move, so a press is always answered.
  *
  * The steps are in halves of the normal speed, and a half is what a fast turn
  * runs: a fast turn stands for two refreshes (below), so it runs one core
@@ -1372,9 +1375,22 @@ static void idle_note_input(bool any)
  * about 2.5x on a heavy SNES or GBA game, as 3x did, so it was a step that
  * said more than it did. Nothing under 1x: slow motion would stretch the
  * sound or drop it, and fast forward's silence is only right going fast.
- * MENU+R1 stepped 2x, 3x, 4x and off until 2026-11-07. */
-static const int SPEED_HALVES[] = { 2, 3, 4, 6 };
+ * MENU+R1 stepped 2x, 3x, 4x and off until 2026-11-07.
+ *
+ * And Max, past 3x (2026-11-23, asked for on the Discord: a Game Boy Pokemon
+ * game went faster under RetroArch on an RK3326): no step to hold to, a turn
+ * runs frames until the next would not fit its two refreshes, as a turn short
+ * of its step always has, and the loop never sleeps, so the game runs as fast
+ * as the handheld can run it and draw it 30 times a second. SPEED_MAX_HALVES
+ * is only a turn's ceiling, 32x, for a core that costs next to nothing (the
+ * stub, a desktop): no handheld game comes near it. Muted as every fast step. */
+#define SPEED_MAX_HALVES 64
+static const int SPEED_HALVES[] = { 2, 3, 4, 6, SPEED_MAX_HALVES };
 #define SPEED_STEPS ((int)(sizeof SPEED_HALVES / sizeof SPEED_HALVES[0]))
+#define SPEED_MAX_IX (SPEED_STEPS - 1)
+/* Fast Forward's speed from 1x (RUN ffspeed=, SETHOTKEYS ffspeed=): 2x until
+ * the launcher says another */
+#define SPEED_FF_DEFAULT_IX 2
 /* frameskip=steady: how many frames after the last that started late it
  * keeps drawing every second one, half a second, so a game that is slow by
  * moments does not change between 60 and 30 at every frame */
@@ -1385,6 +1401,17 @@ static const int SPEED_HALVES[] = { 2, 3, 4, 6 };
  * exit summary's figure for stretch, 6.6 to 7.0 ms, rounded up. */
 #define FAST_PRESENT_GUESS_US 7000.0
 static int  g_speed_ix;     /* into SPEED_HALVES; 0 is 1x */
+static int  g_ff_ix = SPEED_FF_DEFAULT_IX;  /* where Fast Forward goes from 1x */
+
+/* "1.5", "2", "3" or "max": Fast Forward's speed; anything else is 2x */
+static void ffspeed_set(const char *v)
+{
+	g_ff_ix = SPEED_FF_DEFAULT_IX;
+	if (!v) return;
+	if (!strcmp(v, "1.5"))      g_ff_ix = 1;
+	else if (!strcmp(v, "3"))   g_ff_ix = 3;
+	else if (!strcmp(v, "max")) g_ff_ix = SPEED_MAX_IX;
+}
 
 /* The speed in halves: 2 is 1x */
 static int speed_half(void)
@@ -1493,11 +1520,15 @@ static void step_report(int half, long frames, double turns_us, uint64_t held_us
                         const struct step_sleep *sl)
 {
 	double ran_us = held_us > paused ? (double)(held_us - paused) : 0.0;
+	char step[16];
 
-	printf("diatom: speed %.1fx held %.1fs, reached %.2fx (%.2fx of the clock), "
+	/* "1.5x", or "max", whose every turn is short of its ceiling */
+	if (half >= SPEED_MAX_HALVES) snprintf(step, sizeof step, "max");
+	else snprintf(step, sizeof step, "%.1fx", half / 2.0);
+	printf("diatom: speed %s held %.1fs, reached %.2fx (%.2fx of the clock), "
 	       "%llu audio frame(s) dropped, slept %.2fs (%.2fs after %ld of %ld turns short "
 	       "of the step), lost %.2fs\n",
-	       half / 2.0, held_us / 1000000.0,
+	       step, held_us / 1000000.0,
 	       turns_us > 0.0 ? (double)frames * frame_us / turns_us : 0.0,
 	       ran_us > 0.0 ? (double)frames * frame_us / ran_us : 0.0,
 	       (unsigned long long)dropped, sl->us / 1000000.0, sl->short_us / 1000000.0,
@@ -1505,10 +1536,11 @@ static void step_report(int half, long frames, double turns_us, uint64_t held_us
 	fflush(stdout);
 }
 
-/* "1", "1.5", "2", "3": the step as SPEED says it */
+/* "1", "1.5", "2", "3", "max": the step as SPEED says it */
 static void speed_said(int half, char *out, size_t n)
 {
-	if (half % 2) snprintf(out, n, "%d.5", half / 2);
+	if (half >= SPEED_MAX_HALVES) snprintf(out, n, "max");
+	else if (half % 2) snprintf(out, n, "%d.5", half / 2);
 	else          snprintf(out, n, "%d", half / 2);
 }
 
@@ -2316,7 +2348,7 @@ static bool state_plane_msg(const diatom_msg *m)
 		if (!stick_set(m->dmode, true))
 			diatom_proto_send("ERROR\tcode=bad_stick\tmsg=%s", m->dmode);
 		return true;
-	case DIATOM_MSG_SETHOTKEYS: hotkeys_set(m->hotkeys, true); return true;
+	case DIATOM_MSG_SETHOTKEYS: ffspeed_set(m->ffspeed); hotkeys_set(m->hotkeys, true); return true;
 	case DIATOM_MSG_PLAYER2:    player2_emit();      return true;
 	case DIATOM_MSG_SETPLAYER2: player2_set(m->on, m->buttons, m->players); return true;
 	case DIATOM_MSG_PREMAP:
@@ -2735,6 +2767,7 @@ static int run_session_inner(const diatom_session *sn)
 	g_speed_ix = 0;
 	g_sel_states = true;
 	hotkeys_set(sn->hotkeys, false);
+	ffspeed_set(sn->ffspeed);
 	snprintf(g_shots, sizeof g_shots, "%s", sn->shots ? sn->shots : "");
 	diatom_env_core_quit_reset();
 	g_audio_fast = false;
@@ -3317,7 +3350,8 @@ static int run_session_inner(const diatom_session *sn)
 			                                  g_pictures, run_us);
 
 			diatom_now_turn(t, emumeter_frames(&em, frames), run_us,
-			                speed_half() / 2.0, diatom_audio_dropped());
+			                g_speed_ix == SPEED_MAX_IX ? 0.0 : speed_half() / 2.0,
+			                diatom_audio_dropped());
 			if (card_due && t - t_start > paused_us && t - t_start - paused_us >= card_after) {
 				card_due = false;
 				if (diatom_hw_active()) card_later = true;
@@ -3475,7 +3509,8 @@ static int run_session_inner(const diatom_session *sn)
 
 		/* SELECT's chords (chord.h): SELECT+R1 saves to the quick slot,
 		 * SELECT+L1 loads from it, SELECT+R2 steps the speed up and
-		 * SELECT+L2 down. Judged at the core's polls (sel_poll) and acted on
+		 * SELECT+L2 down, and Fast Forward turns 1x into its speed and any
+		 * fast step into 1x. Judged at the core's polls (sel_poll) and acted on
 		 * here, once a turn, before the DS's L2 and R2 below, so a shoulder
 		 * a chord took does not also switch a screen. */
 		{
@@ -3502,9 +3537,13 @@ static int run_session_inner(const diatom_session *sn)
 				         (acts & (1u << CHORD_QUIT)) ? "quit" : "reset");
 				g_pause_requested = true;
 			}
-			if (acts & ((1u << CHORD_FASTER) | (1u << CHORD_SLOWER))) {
+			if (acts & ((1u << CHORD_FASTER) | (1u << CHORD_SLOWER) | (1u << CHORD_FFWD))) {
 				int to = g_speed_ix + step;
 
+				/* One press each way, as RetroArch's toggle: from 1x to
+				 * the speed it is given, from any fast step (one SELECT+R2
+				 * reached too) back to 1x. Over a step in the same turn. */
+				if (acts & (1u << CHORD_FFWD)) to = g_speed_ix > 0 ? 0 : g_ff_ix;
 				if (to < 0) to = 0;
 				if (to >= SPEED_STEPS) to = SPEED_STEPS - 1;
 				if (to != g_speed_ix) {
@@ -3513,7 +3552,12 @@ static int run_session_inner(const diatom_session *sn)
 					            paused_us - step_pause0, frame_us,
 					            diatom_audio_dropped() - step_drop0, &step_sleep);
 					g_speed_ix = to;
-					printf("diatom: speed %.1fx\n", speed_half() / 2.0);
+					{
+						char x[8];
+
+						speed_said(speed_half(), x, sizeof x);
+						printf("diatom: speed %s%s\n", x, g_speed_ix == SPEED_MAX_IX ? "" : "x");
+					}
 					fflush(stdout);
 					step_frames = 0;
 					step_us = 0.0;
@@ -3790,6 +3834,9 @@ static int run_session_inner(const diatom_session *sn)
 			 * (2026-11-16); flat out it is 1/12 ms, 1.39x. Never over the
 			 * step for long: one turn of debt at most (below). */
 			next_us += frame_us * 2.0 * ran / speed_half();
+			/* Max holds to no step: the next turn at once, no debt kept
+			 * and none given up, since there is no schedule to be behind */
+			if (g_speed_ix == SPEED_MAX_IX) next_us = (double)diatom_port_now_us();
 		} else {
 			next_us += frame_us * periods;
 			/* Locked (src/pace.h): the measured refresh as the period, and
@@ -4324,6 +4371,7 @@ int main(int argc, char **argv)
 			/* Black around a new game until the launcher says otherwise */
 			border_off();
 			sn.hotkeys = m.hotkeys;
+			sn.ffspeed = m.ffspeed;
 			sn.shots   = m.shots;
 			sn.mode   = start_mode;
 			sn.filter = start_filter;

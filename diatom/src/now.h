@@ -17,7 +17,8 @@
  *            to retro_run that is two frames long (a game that draws at 30)
  *            counts two, as emumeter.h has it from the core's sound
  *   run_us   time since the clock started, less the menu's
- *   speed    the speed step in force (1, 1.5, 2...)
+ *   speed    the speed step in force (1, 1.5, 2...), 0 at Max, which has
+ *            no step
  *   dropped  audio frames the port would not take, since Diatom started
  *
  * The counters are 0 in the first writing. While a file of the same name with

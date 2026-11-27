@@ -554,7 +554,11 @@ int main(int argc, char **argv)
 			printf("panel     %.1f fps (%d new frames: nothing moves)\n", fr.fps, fr.frames);
 		else
 			printf("panel     no framebuffer on screen\n");
-		if (have_b && speed > 0.0)
+		if (have_b && speed > 0.0 && perf_kv_num(g_now_b, "speed") <= 0.0)
+			/* Max has no step: the now file says 0 (diatom/src/now.h) */
+			printf("game      %.2fx of the clock at Max (its own %.2f fps), %.0f audio frame(s) dropped\n",
+			       speed, perf_kv_num(g_now_b, "fps"), dropped);
+		else if (have_b && speed > 0.0)
 			printf("game      %.2fx of the clock at speed step %gx (its own %.2f fps), %.0f audio frame(s) dropped\n",
 			       speed, perf_kv_num(g_now_b, "speed"), perf_kv_num(g_now_b, "fps"), dropped);
 		else if (have_b)
