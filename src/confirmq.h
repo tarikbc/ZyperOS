@@ -64,6 +64,7 @@ typedef enum {
 	CQ_DL_SYS_SETS,          /* ...an Achievements cell */
 	CQ_DL_SYS_CHEATS,        /* ...a Cheats cell */
 	CQ_BT_FORGET,            /* X on a paired headset (MENU > Bluetooth) */
+	CQ_STORE_DS_COPIES,      /* Storage's Unpacked DS Games (src/dscache.h) */
 	CQ_COUNT
 } cq_id;
 

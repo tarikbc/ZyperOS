@@ -650,6 +650,24 @@ build-native/dsresume-check: tools/dsresume-check.c src/dsresume.c src/dsresume.
 	$(CC) -std=gnu11 -Wall -Wextra -Werror -D_GNU_SOURCE -O1 -g \
 	      -o $@ tools/dsresume-check.c src/dsresume.c src/atomic.c
 
+# The zipped DS games DSperate unpacks into .dsperate (src/dscache.h): where
+# a zip's copy goes, the cap after a DS game (the least recently launched
+# first, the game just played kept), Delete Game taking a game's copy,
+# Rename moving it and its tag, and Storage counting it as the game's, on a
+# scratch card. Plain C, no device.
+check-dscache: build-native/dscache-check
+	@./build-native/dscache-check
+
+build-native/dscache-check: tools/dscache-check.c src/dscache.c src/dscache.h src/gamedel.c src/gamedel.h src/storage.c \
+                            src/gamern.c src/gamern.h src/esmedia.c src/snaps.c \
+                            src/sheet.c src/portinfo.c src/library.c src/db.c src/favorites.c src/stats.c \
+                            src/atomic.c $(I18N_SRC) FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -Werror -D_GNU_SOURCE -O1 -g -Isrc \
+	      -o $@ tools/dscache-check.c src/dscache.c src/storage.c src/gamedel.c src/gamern.c src/esmedia.c src/snaps.c \
+	      src/sheet.c src/portinfo.c src/library.c src/db.c src/favorites.c src/stats.c src/atomic.c $(I18N_SRC) \
+	      -lsqlite3 -lpthread
+
 # The patched cores' stamps (mk/core-stamp.sh): a stamp written for a core
 # passes, and a core built before a patch changed, a core changed after its
 # build, a core with no stamp and a patch no core claims each fail, with what

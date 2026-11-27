@@ -235,7 +235,12 @@ static void gamedir(const char *dir, const char *script, char *out, size_t n)
 		last = strrchr(val, '/');
 		last = last ? last + 1 : val;
 		if (!*last || strchr(last, '$') || last[0] == '.') continue;
-		snprintf(out, n, "%s", last);
+		/* A name longer than `out` is no folder this can name: cut, it
+		 * would be another folder's */
+		if (snprintf(out, n, "%s", last) >= (int)n) {
+			out[0] = '\0';
+			continue;
+		}
 		break;
 	}
 	free(sh);

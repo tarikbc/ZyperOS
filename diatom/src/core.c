@@ -530,7 +530,12 @@ bool diatom_core_start(diatom_core *c, const char *rom_path)
 
 	/* A core that declared SET_SUPPORT_NO_GAME expects NULL, not a path. */
 	if (!rom_path) {
-		if (!c->load_game(NULL)) {
+		double t0 = dbg_now_ms();
+		bool started = c->load_game(NULL);
+
+		fprintf(stderr, "diatom: retro_load_game %-21s %6.1f ms\n",
+		        dbg_base(c->path), dbg_now_ms() - t0);
+		if (!started) {
 			fprintf(stderr, "diatom: core refused to start without content\n");
 			return false;
 		}
@@ -605,7 +610,16 @@ bool diatom_core_start(diatom_core *c, const char *rom_path)
 	 * core is handed (src/sgb.h): its options are read at the load */
 	diatom_sgb_apply((const unsigned char *)gi.data, gi.data ? gi.size : 0);
 	if (have_ext) diatom_env_set_game_info_ext(&ext);
-	ok = c->load_game(&gi);
+	{
+		/* Timed, as dlopen and retro_init are: a core that unpacks its
+		 * own zip does it in here (DSperate, into .dsperate beside the
+		 * zip, src/dscache.h), and this line is how long it took */
+		double t0 = dbg_now_ms();
+
+		ok = c->load_game(&gi);
+		fprintf(stderr, "diatom: retro_load_game %-21s %6.1f ms\n",
+		        dbg_base(c->path), dbg_now_ms() - t0);
+	}
 	diatom_env_set_game_info_ext(NULL);
 
 	/* The core has copied whatever it needs by now; libretro does not promise
