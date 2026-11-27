@@ -89,9 +89,15 @@ async def greeting(host, port, wait):
         return None
     except OSError:
         return b''
+    # A connection taken and no greeting in time is nothing answered in time
+    # too, so the second pass asks it again: it was b'', a refusal, never
+    # asked again, and a dropbear slow to greet (the check's own on a loaded
+    # Mac, 2026-11-24; a Pixel on a bad radio) was not found
     try:
         line = await asyncio.wait_for(r.readline(), wait)
-    except (asyncio.TimeoutError, OSError):
+    except asyncio.TimeoutError:
+        line = None
+    except OSError:
         line = b''
     w.close()
     return line

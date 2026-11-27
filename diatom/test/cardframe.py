@@ -8,6 +8,17 @@ against the stub core (RUN's card=, main.c's card_frame):
   - not written by a game that ends before the minute: the launcher shows the
     Auto picture until a game has run that long.
 
+On Diatom's test clock (port/desktop.c, DIATOM_TEST_CLOCK), so a game's
+time is its frames' (STUBCORE_INPUT_LOG counts them): the first game runs
+until its card is there, the second at least a second, past its 300 ms, on
+any machine. The early one is on the wall clock, a second of it, as Diatom
+on the test clock runs as fast as it can and could run its minute before
+this script's STOP came, and on the wall clock a busy machine makes a game
+slower, never faster. The card is written on a
+thread of its own, and until 2026-11-24 the first game ran 1.2 s of this
+script's time and the card was read at its EXIT, which a busy machine could
+reach before that thread had written it.
+
 Needs build/desktop (diatom and stubcore.so) and SKIPS without it, as
 check-proto does. SDL's dummy drivers: no window, no sound.
 
@@ -29,15 +40,19 @@ def check(name, ok, got=None):
     if not ok: fails.append(name)
 
 class Run:
-    def __init__(self, name, **env):
-        self.sock = f"{TMP}/{name}.sock"
-        self.p = subprocess.Popen(
-            [BIN, "--socket", self.sock, "--save", TMP, "--system", TMP],
-            env=dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_RENDER_DRIVER="software",
-                     SDL_AUDIODRIVER="dummy", **env),
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        for _ in range(100):
-            if os.path.exists(self.sock): break
+    """One Diatom. The waits are the wall clock's, and only waits: each ends
+    as soon as what it waits for is there"""
+    def __init__(self, name, clock=True, **env):
+        self.sock, self.log, self.out = f"{TMP}/{name}.sock", f"{TMP}/{name}.input", f"{TMP}/{name}.out"
+        with open(self.out, "w") as out:
+            self.p = subprocess.Popen(
+                [BIN, "--socket", self.sock, "--save", TMP, "--system", TMP],
+                env=dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_RENDER_DRIVER="software",
+                         SDL_AUDIODRIVER="dummy", STUBCORE_INPUT_LOG=self.log,
+                         **({"DIATOM_TEST_CLOCK": "0"} if clock else {}), **env),
+                stdout=out, stderr=subprocess.DEVNULL)
+        end = time.time() + 30
+        while not os.path.exists(self.sock) and time.time() < end:
             time.sleep(0.05)
         self.s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.s.connect(self.sock)
@@ -61,17 +76,29 @@ class Run:
     def send(self, line):
         self.s.sendall((line + "\n").encode())
 
-    def game(self, card, seconds):
+    def frames(self):
+        try:
+            with open(self.log) as f: return sum(1 for _ in f)
+        except OSError: return 0
+
+    def game(self, card, frames=None):
+        """A game until its card is there, or for `frames` frames"""
+        n = self.frames()
         self.send(f"RUN\tcore={STUB}\tcard={card}")
-        self.pump(10, "RUNNING")
-        self.pump(seconds)
+        self.pump(30, "RUNNING")
+        end = time.time() + 30
+        while time.time() < end and (os.path.exists(card) if frames is None
+                                     else self.frames() >= n + frames) is False:
+            self.pump(0.02)
         self.send("STOP")
-        self.pump(10, "EXIT")
+        self.pump(30, "EXIT")
 
     def close(self):
+        """QUIT, and what it said of its cards once it has gone"""
         self.send("QUIT")
-        try: self.p.wait(5)
+        try: self.p.wait(30)
         except subprocess.TimeoutExpired: self.p.kill()
+        return [l for l in open(self.out, errors="replace") if l.startswith("diatom: card frame")]
 
 def read(path):
     try:
@@ -80,22 +107,23 @@ def read(path):
 
 card = f"{TMP}/game.card.bmp"
 r = Run("once", DIATOM_CARD_FRAME_MS="300")
-r.pump(0.5, "READY")
-r.game(card, 1.2)
+r.pump(30, "READY")
+r.game(card)
 first = read(card)
 check("a game run past the minute leaves its card frame", first is not None, os.listdir(TMP))
 check("as a whole BMP", first is not None and first[:2] == b"BM" and len(first) > 54 and
       int.from_bytes(first[2:6], "little") == len(first), first[:16] if first else None)
 check("with nothing left aside", not os.path.exists(card + ".tmp"), os.listdir(TMP))
 before = os.stat(card).st_mtime_ns if first else 0
-r.game(card, 1.2)
-check("a second game never writes over it", read(card) == first and os.stat(card).st_mtime_ns == before)
-r.close()
+r.game(card, 60)                # a second of its clock, past the 300 ms
+said = r.close()
+check("a second game never writes over it", first is not None and read(card) == first and
+      os.stat(card).st_mtime_ns == before and len(said) == 1, said)
 
 early = f"{TMP}/early.card.bmp"
-r = Run("early", DIATOM_CARD_FRAME_MS="60000")
-r.pump(0.5, "READY")
-r.game(early, 0.8)
+r = Run("early", clock=False, DIATOM_CARD_FRAME_MS="60000")
+r.pump(30, "READY")
+r.game(early, 60)               # a second of its minute
 r.close()
 check("a game that ends before the minute writes none", not os.path.exists(early), os.listdir(TMP))
 

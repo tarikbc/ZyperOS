@@ -74,13 +74,17 @@ unsigned plat_now_ms(void)
 
 /* ---- a Diatom of its own ------------------------------------------------- */
 
+/* How long a wait below waits, in ms, on the monotonic clock. Each returns as soon as what it
+ * waits for holds, so this is only how long a broken Diatom keeps the check (2026-11-24). */
+#define WAIT_MS 30000
+
 static const char *g_bin;
 static char g_sock[64], g_log[64];
 static pid_t g_pid = -1;
 
 static void diatom_start(void)
 {
-	int i;
+	unsigned until;
 
 	unlink(g_sock);
 	fflush(stdout);
@@ -97,7 +101,7 @@ static void diatom_start(void)
 		execl(g_bin, g_bin, "--socket", g_sock, (char *)NULL);
 		_exit(127);
 	}
-	for (i = 0; i < 100 && access(g_sock, F_OK) != 0; i++) usleep(50000);
+	for (until = plat_now_ms() + WAIT_MS; access(g_sock, F_OK) != 0 && plat_now_ms() < until; ) usleep(10000);
 	if (access(g_sock, F_OK) != 0) {
 		printf("FAIL Diatom (%s) never listened on %s\n", g_bin, g_sock);
 		exit(1);
@@ -114,7 +118,7 @@ static void diatom_stop(void)
 	unlink(g_sock);
 }
 
-/* How many times Diatom's log says `needle`, after waiting for its answer */
+/* How many times Diatom's log says `needle` */
 static int said(const char *needle)
 {
 	char line[512];
@@ -129,15 +133,22 @@ static int said(const char *needle)
 }
 
 /* One game, as the launcher starts one with the zone it holds now: Date &
- * Time's plat_clock_zone, then resident.c's RUN, and a moment for Diatom
- * to try the core (it cannot load) and write its log. */
+ * Time's plat_clock_zone, then resident.c's RUN, and Diatom's answer to it:
+ * the core cannot load, so an ERROR, which Diatom sends once it has set the
+ * zone and written that to its log. Read as the Player 2 page reads an answer
+ * (plat_resident_sync_line), so the log is read once the RUN is done with,
+ * not after a moment for it: 400 ms was not always enough on a loaded Mac
+ * (2026-11-24). */
 static void game(const char *zone)
 {
+	char out[512] = "";
+
 	if (zone) plat_clock_zone(zone);
 	CHECK(plat_resident_send(&(plat_game_run){ .tag = "GBA", .core = "/nonexistent/core.so",
 	                                      .rom = "/nonexistent/game.gba" }),
 	      "RUN sent (%s)", zone ? zone : "the zone as it was");
-	usleep(400000);
+	CHECK(plat_resident_sync_line("ERROR\t", out, sizeof out, WAIT_MS),
+	      "Diatom answered it: %s", out[0] ? out : "(nothing)");
 }
 
 /* As platform.c's: the zone in TZ, for this process and what it sends */

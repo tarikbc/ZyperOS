@@ -41,7 +41,7 @@ def desk_module():
     return mod
 
 
-def ask(sock, line, timeout=10):
+def ask(sock, line, timeout=30):
     s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     s.settimeout(timeout)
     s.connect(str(sock))
@@ -80,11 +80,12 @@ def run(desk, tmp, device, size):
     log = open(tmp / f'{device}.log', 'w')
     p = subprocess.Popen([str(BINARY), '--device', device], env=env, stdout=log, stderr=subprocess.STDOUT)
     try:
-        for _ in range(200):
-            if sock.exists():
-                break
-            if p.poll() is not None:
-                break
+        # Waits below end as soon as what they wait for holds; their
+        # ceilings are only how long a loaded machine may take (2026-11-24:
+        # 5 s for the first screen was a guess at one, under make check's
+        # parallel run)
+        end = time.time() + 30
+        while time.time() < end and not sock.exists() and p.poll() is None:
             time.sleep(0.05)
         check(sock.exists(), f'{device}: the control socket is up')
         if not sock.exists():
@@ -93,9 +94,8 @@ def run(desk, tmp, device, size):
         st = ask(sock, 'state')
         check(st.get('device') == device and st.get('panel') == list(size),
               f'{device}: state says the {size[0]}x{size[1]} panel ({st})')
-        for _ in range(100):
-            if st.get('screen'):
-                break
+        end = time.time() + 30
+        while not st.get('screen') and time.time() < end:
             time.sleep(0.05)
             st = ask(sock, 'state')
         check(st.get('screen') == 'systems' and isinstance(st.get('cursor'), int) and st['cursor'] >= 0
@@ -108,9 +108,17 @@ def run(desk, tmp, device, size):
         ask(sock, 'release menu')
         check(held == ['menu'] and ask(sock, 'state').get('held') == [],
               f'{device}: a press is held until let go ({held})')
+        # The tap's time is the launcher's, from the press to the frame it
+        # shows in. Both are inside this ask, so it is no more than the
+        # ask's own time on this side: a bound a loaded machine stretches
+        # with it, where a fixed 1000 ms did not (2026-11-24). A time from a
+        # stale press, or from the wrong clock, is still over it.
+        t0 = time.monotonic()
         lat = ask(sock, 'latency down')
+        took = (time.monotonic() - t0) * 1000
         ms = lat.get('press_to_present_ms')
-        check(lat.get('ok') and ms is not None and 0 <= ms < 1000, f'{device}: a tap is timed to its frame ({ms} ms)')
+        check(lat.get('ok') and ms is not None and 0 <= ms <= took + 0.1,
+              f'{device}: a tap is timed to its frame ({ms} ms, in an ask of {took:.1f} ms)')
         ask(sock, 'zoom 2')
         ask(sock, 'frame 0')
         st = ask(sock, 'state')
@@ -119,7 +127,7 @@ def run(desk, tmp, device, size):
         check(bad.get('ok') is False and 'buttons' in bad.get('error', ''), f'{device}: an unknown button is refused')
         ask(sock, 'quit')
         try:
-            p.wait(timeout=10)
+            p.wait(timeout=30)
         except subprocess.TimeoutExpired:
             pass
         check(p.poll() == 0, f'{device}: quit ends it (exit {p.poll()})')

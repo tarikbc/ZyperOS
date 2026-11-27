@@ -135,7 +135,11 @@ class Page:
              '--disable-renderer-backgrounding', '--disable-background-timer-throttling',
              '--disable-backgrounding-occluded-windows', 'about:blank'],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        for _ in range(100):
+        # Chrome writes its port once it is up: a minute at most, as a
+        # loaded machine starts it slowly (2026-11-24: 10 s, under make
+        # check's parallel run, left DevToolsActivePort unwritten)
+        end = time.time() + 60
+        while time.time() < end and self.browser.poll() is None:
             port = self.profile / 'DevToolsActivePort'
             if port.is_file() and port.read_text().strip():
                 break
@@ -154,13 +158,16 @@ class Page:
             raise RuntimeError(f'{expr[:60]}...: {r["exceptionDetails"]}')
         return r.get('result', {}).get('value')
 
-    def until(self, expr, seconds=10):
+    def until(self, expr, seconds=30):
+        """expr again until it holds, at most `seconds`, and once more at the
+        end: it returns as soon as it holds, so the ceiling is only how long
+        a loaded machine may take, never a guess at how long a step takes"""
         end = time.time() + seconds
         while time.time() < end:
             if self.js(expr):
                 return True
             time.sleep(0.1)
-        return False
+        return bool(self.js(expr))
 
     def close(self):
         self.browser.terminate()
@@ -281,6 +288,34 @@ def shelf_games(card, web):
         folder, file, d, cover, video = line.split('\t')
         games[(folder, file)] = (int(d), page_path(cover), page_path(video))
     return games
+
+
+# The page's upload jobs, each looked up by its file's name. The queue
+# itself is no record: 2.5 s after its last file is done the page empties
+# it (app.js's clean), and a look at queue[0] then threw, or a wait for
+# the queue to be done never ended, when the check looked late
+# (2026-11-24, make check's parallel run). BATCH starts a batch: every job
+# the page queues from then on, kept as the page queues it.
+BATCH = ("window.__jobs = []; if (!queue.__kept) { queue.__kept = true; "
+         "queue.push = function (...j) { __jobs.push(...j); return Array.prototype.push.apply(this, j); }; }")
+JOBS = "JSON.stringify(__jobs.map((j) => j.file.name + ' ' + j.state + ' ' + (j.why || '')))"
+
+
+def held(page):
+    """A finger held still until the page lifts what it is on: its own
+    timer (app.js's dragLift, LIFT_MS after the press) has fired, waited
+    for rather than slept for. A sleep of 0.7 s for the page's 0.45 s let
+    the finger go before a loaded machine's timer came, and the row was
+    never picked (2026-11-24, make check's parallel run). The lift itself
+    is the page's: a page that never lifts a held row fails here."""
+    return page.until("!!drag && drag.on")
+
+
+def batch_went(*names):
+    """The batch went: these files and no others queued, each done, nothing
+    sending"""
+    return (f"!sending && JSON.stringify(__jobs.map((j) => j.file.name).sort()) === {json.dumps(json.dumps(sorted(names), separators=(',', ':')))}"
+            " && __jobs.every((j) => j.state === 'done')")
 
 
 RELEASE = {'tag_name': 'v0.4.1', 'assets': [
@@ -445,11 +480,9 @@ def main():
             got = page.js("[window.__picked.dirs, window.__picked.files.map((f) => f.rel + '/' + f.file.name)]")
             check(got == [['Pick', 'Pick/.media'], ['Pick/Game.nes', 'Pick/.media/Game.png']],
                   f'a picked folder keeps .media and leaves the rest hidden out: {got}')
-            page.js("enqueueTree(window.__picked, 'roms/NES')")
-            done = "!sending && queue.length > 0 && queue.every((j) => j.state === 'done')"
-            check(page.until(done), 'the picked folder went up: ' +
-                  str(page.js("queue.map((j) => j.file.name + ' ' + j.state + ' ' + (j.why || ''))")))
-            page.js("""(() => {
+            page.js(BATCH + "; enqueueTree(window.__picked, 'roms/NES')")
+            check(page.until(batch_went('Game.nes', 'Game.png')), 'the picked folder went up: ' + page.js(JOBS))
+            page.js(BATCH + """; (() => {
                 const file = (name, text) => ({ name, isFile: true, isDirectory: false,
                     file: (ok) => ok(new File([text], name)) });
                 const dir = (name, kids) => ({ name, isFile: false, isDirectory: true, createReader: () => {
@@ -458,9 +491,7 @@ def main():
                 const media = dir('.media', [file('Contra.png', 'COVER2'), file('.DS_Store', 'x'),
                     file('._Contra.png', 'x'), dir('.Trashes', [file('z.png', 'x')])]);
                 dropped({ items: [{ webkitGetAsEntry: () => media }], files: [] }, 'roms/NES'); })()""")
-            check(page.until(done + " && queue.some((j) => j.file.name === 'Contra.png')"),
-                  "a console's .media dropped onto its folder went up: " +
-                  str(page.js("queue.map((j) => j.file.name + ' ' + j.state + ' ' + (j.why || ''))")))
+            check(page.until(batch_went('Contra.png')), "a console's .media dropped onto its folder went up: " + page.js(JOBS))
             nes = card / 'Roms/NES'
             check((nes / 'Pick/Game.nes').read_bytes() == b'GAME' and
                   (nes / 'Pick/.media/Game.png').read_bytes() == b'COVER1',
@@ -476,7 +507,7 @@ def main():
             # page sends it with a trailer the handheld takes off: here, that
             # it does, for the queue and for a cover, and the card has each
             # file to the byte. Chrome hears every answer either way.
-            page.js("""(() => {
+            page.js(BATCH + """; (() => {
                 window.__puts = [];
                 const open = XMLHttpRequest.prototype.open;
                 XMLHttpRequest.prototype.open = function (m, url) { window.__puts.push(url); return open.apply(this, arguments); };
@@ -484,8 +515,8 @@ def main():
                 enqueue([f('k128.bin', 131072), f('k256.bin', 262144), f('k0.bin', 0), f('k1.bin', 1000)], 'roms/NES');
                 window.__cover = putFile('roms/NES/.media/k128.png', f('k128.png', 131072)).then(() => 'ok', (e) => e.message);
             })()""")
-            check(page.until(done + " && queue.length === 4", 20) and page.js("window.__cover") == 'ok',
-                  'they went up: ' + str(page.js("queue.map((j) => j.file.name + ' ' + j.state + ' ' + (j.why || ''))")))
+            check(page.until(batch_went('k128.bin', 'k256.bin', 'k0.bin', 'k1.bin')) and page.js("window.__cover") == 'ok',
+                  'they went up: ' + page.js(JOBS))
             puts = page.js("window.__puts")
             check(len(puts) == 4 and all(u.endswith('&trailer=16') == ('k1.bin' not in u) for u in puts),
                   f'the multiples of 128 KiB, an empty one too, went with the trailer, and only they: {puts}')
@@ -515,11 +546,13 @@ def main():
             page.js("enqueue([new File([new Uint8Array(1500000)], 'Lizard.nes'), "
                     "new File([new Uint8Array(400000)], 'Micro Mages.nes'), "
                     "new File([new Uint8Array(400000)], 'Alter Ego.nes')])")
-            check(page.until("/ left · about \\d+ s$/.test(document.getElementById('queueleft').textContent)", 8),
+            check(page.until("/ left · about \\d+ s$/.test(document.getElementById('queueleft').textContent)"),
                   'the queue says what is left and the time: ' +
                   str(page.js("document.getElementById('queueleft').textContent")))
             server.say('after')
-            check(page.until("document.getElementById('queuehead').textContent === '1 sent, 2 not sent'", 20),
+            # Lizard alone is 6 s at this speed; Chrome's throttled upload on
+            # a loaded machine is slower, and the wait ends when it lands
+            check(page.until("document.getElementById('queuehead').textContent === '1 sent, 2 not sent'", 90),
                   'the file on its way finished and the rest stayed: ' +
                   str(page.js("document.getElementById('queuehead').textContent")))
             check('closing' in (page.js("document.getElementById('queueleft').textContent") or ''),
@@ -615,21 +648,22 @@ def main():
             (x0, y0) = at(row('Set'))
             (x1, y1) = at("document.querySelector('#crumbs button[data-path=\"roms\"]')")
             page.dt.call('Input.dispatchTouchEvent', type='touchStart', touchPoints=[{'x': x0, 'y': y0}])
-            time.sleep(0.7)
+            lifted = held(page)
             for k in range(1, 9):
                 page.dt.call('Input.dispatchTouchEvent', type='touchMove',
                              touchPoints=[{'x': x0 + (x1 - x0) * k / 8, 'y': y0 + (y1 - y0) * k / 8}])
             page.dt.call('Input.dispatchTouchEvent', type='touchEnd', touchPoints=[])
-            check(page.until(f"!{row('Set')}") and (card / 'Roms/Set/Set.m3u').is_file(),
-                  "a finger held on a folder moved it whole onto a crumb above")
+            check(lifted and page.until(f"!{row('Set')}") and (card / 'Roms/Set/Set.m3u').is_file(),
+                  f"a finger held on a folder moved it whole onto a crumb above (lifted: {lifted})")
             page.until("!document.querySelector('#list li.sel')")
             # A finger held still on a row picks it, and the list is picking
             (x0, y0) = at(row('A Twice.nes'))
             page.dt.call('Input.dispatchTouchEvent', type='touchStart', touchPoints=[{'x': x0, 'y': y0}])
-            time.sleep(0.7)
+            lifted = held(page)
             page.dt.call('Input.dispatchTouchEvent', type='touchEnd', touchPoints=[])
-            check(page.until(f"{row('A Twice.nes')}.classList.contains('sel') && !document.getElementById('selbar').hidden"),
-                  'a finger held still on a row picks it, and the bar comes up')
+            check(lifted and page.until(f"{row('A Twice.nes')}.classList.contains('sel') && "
+                                        "!document.getElementById('selbar').hidden"),
+                  f'a finger held still on a row picks it, and the bar comes up (lifted: {lifted})')
             page.dt.call('Emulation.setTouchEmulationEnabled', enabled=False)
             server.stop()
 
@@ -797,9 +831,9 @@ def main():
             page.dt.call('Emulation.setTouchEmulationEnabled', enabled=True, maxTouchPoints=1)
             (x0, y0) = at(row('NES'))
             page.dt.call('Input.dispatchTouchEvent', type='touchStart', touchPoints=[{'x': x0, 'y': y0}])
-            time.sleep(0.7)
+            lifted = held(page)
             page.dt.call('Input.dispatchTouchEvent', type='touchEnd', touchPoints=[])
-            check(page.until(f"{toast}.textContent === {json.dumps(kept)}") and page.js(picked) == 0 and
+            check(lifted and page.until(f"{toast}.textContent === {json.dumps(kept)}") and page.js(picked) == 0 and
                   page.js("document.getElementById('selbar').hidden"),
                   "a finger held on a console's folder says why and picks nothing")
             page.dt.call('Emulation.setTouchEmulationEnabled', enabled=False)
@@ -855,20 +889,32 @@ def main():
 
             print('the PIN screen: the cursor in the first box from the start:')
             server = Server(card, web, 'update=off')
-            slow = lambda ms: page.dt.call('Network.emulateNetworkConditions', offline=False, latency=ms,
-                                           downloadThroughput=-1, uploadThroughput=-1)
             typed = "[...document.querySelectorAll('#boxes input')].map((b) => b.value).join('')"
             cursor = "[...document.querySelectorAll('#boxes input')].indexOf(document.activeElement)"
-            # The page's first question, "is there a session?" (/api/list),
-            # marked when its answer comes: a 401 has no resource timing entry
+            # A handheld slow to answer, as over a weak Wi-Fi: the page's
+            # first question, "is there a session?" (/api/list), held in the
+            # page until the check lets it go, so the page is up well before
+            # it says there is no session however slowly a loaded machine
+            # draws it. A latency of 1.5 s on every request stood in for it,
+            # and on a loaded machine the answer can come before the first
+            # box is looked at (2026-11-24, make check's parallel run). Marked
+            # once its answer has come and the page has had it: a task after
+            # the answer, so the page's own handling of it, in the
+            # microtasks after, is done by then.
             answered = 'window.listAnswered === true'
             page.dt.call('Page.enable')  # or the script below is never put in
             mark = page.dt.call('Page.addScriptToEvaluateOnNewDocument', source="""(() => {
                 const f = window.fetch;
+                let go;
+                const hold = new Promise((ok) => { go = ok; });
+                window.releaseList = () => go();
                 window.fetch = function (u) {
-                    const p = f.apply(this, arguments);
-                    if (String(u).includes('/api/list'))
-                        p.then(() => { window.listAnswered = true; }, () => { window.listAnswered = true; });
+                    if (!String(u).includes('/api/list') || window.listAsked) return f.apply(this, arguments);
+                    window.listAsked = true;
+                    const self = this, args = arguments;
+                    const p = hold.then(() => f.apply(self, args));
+                    const done = () => setTimeout(() => { window.listAnswered = true; }, 0);
+                    p.then(done, done);
                     return p;
                 };
             })()""")['identifier']
@@ -878,32 +924,29 @@ def main():
                              windowsVirtualKeyCode=48 + int(d))
                 page.dt.call('Input.dispatchKeyEvent', type='keyUp', key=d, code='Digit' + d,
                              windowsVirtualKeyCode=48 + int(d))
-            # A handheld slow to answer, as over a weak Wi-Fi: every request
-            # 1.5 s, so the page is up well before it says there is no session
-            slow(1500)
             fresh(page, f'{server.origin}/')
-            page.until("typeof sendPin === 'function'", 30)
+            page.until("typeof sendPin === 'function'")
             # The focus lands a moment after the script on a busy runner (a
             # CI part, 2026-11-21: -1 read at once): looked for while the
-            # handheld's answer, 1.5 s off, has not come
-            page.until(f"{cursor} === 0 || {answered}", 1.2)
-            check(not page.js(answered) and page.js(cursor) == 0,
+            # handheld's answer is held
+            asked = page.until(f"window.listAsked === true && {cursor} === 0")
+            check(asked and not page.js(answered),
                   f"before the handheld has answered, the first box has the cursor: {page.js(cursor)}")
             digit('4')
             digit('7')
-            ok = page.until(answered, 15)
-            time.sleep(0.3)  # the page's own handling of that answer, after the mark
+            page.until(f"{typed} === '47'")
+            page.js("releaseList()")
+            ok = page.until(answered)
             check(ok and page.js(f"{typed} === '47' && {cursor} === 2"),
                   f"digits typed before it answered stay, the cursor in the third box: "
                   f"answered {ok}, {page.js(typed)!r}, box {page.js(cursor)}")
             page.dt.call('Page.removeScriptToEvaluateOnNewDocument', identifier=mark)
             page.dt.call('Page.disable')
-            slow(0)
             # A press on the page outside the boxes takes the cursor out of
             # them; the next digit still goes into the first empty box
             page.js("document.activeElement.blur()")
             digit('2')
-            check(page.until(f"{typed} === '472' && {cursor} === 3", 5),
+            check(page.until(f"{typed} === '472' && {cursor} === 3"),
                   f"a digit typed with the cursor out of the boxes lands in the first empty one: "
                   f"{page.js(typed)!r}, box {page.js(cursor)}")
             server.stop()
@@ -918,6 +961,13 @@ def main():
             left = "document.getElementById('queueleft').textContent"
             row = "(document.querySelector('#queuelist .p') || {}).textContent"
             shown = lambda id: f"!document.getElementById('{id}').hidden"
+            # The one file of each batch below, by its job (BATCH): the queue
+            # is emptied 2.5 s after it is done
+            job = "__jobs[0]"
+            went = f"!!{job} && {job}.state === 'done'"
+            # and that clean, before the next batch: the panel's head and its
+            # first row are then the next file's
+            clean = "!sending && queue.length === 0"
             pattern = bytes(i * 13 % 251 for i in range(3000000))
             page.js("""(() => {
                 Object.assign(RESUME, { min: 0, ask: 300, wait: 1000, stall: 3000, check: 1500 });
@@ -934,12 +984,12 @@ def main():
                 (portal-serve's away and cut: Chrome's offline lets an upload
                 on its way finish)"""
                 offline(False, 262144)
-                page.js(f"enqueue([__drop({json.dumps(name)})], 'roms/NES')")
-                ok = page.until("queue.length > 0 && queue[0].loaded > 900000", 20)
+                page.js(BATCH + f"; enqueue([__drop({json.dumps(name)})], 'roms/NES')")
+                ok = page.until(f"{job} && {job}.loaded > 900000")
                 server.say('away')
                 server.say('cut')
                 offline(False)
-                return ok and page.until(f"{head} === 'Waiting for the handheld'", 10)
+                return ok and page.until(f"{head} === 'Waiting for the handheld'")
 
             check(cut('Drop.bin'), 'the network gone, the file waits for the handheld: ' + str(page.js(head)))
             check(page.js(f"{left}.startsWith('Connection lost. ') && {left}.endsWith(' is kept on the handheld, "
@@ -947,37 +997,36 @@ def main():
                   page.js(f"/^paused at \\d+%$/.test({row})") and page.js(shown('queuestop')),
                   'it says what is kept, the row is paused, and Stop sending is there: ' +
                   str(page.js(f"[{left}, {row}]")))
-            check(page.until(shown('queuecheck'), 15) and
+            check(page.until(shown('queuecheck')) and
                   page.js("document.getElementById('queuecheck').textContent") ==
                   f"Still no answer. Check that File Transfer is open on the handheld at {server.origin[7:]}.",
                   'after a while, the address to check: ' + str(page.js("document.getElementById('queuecheck').textContent")))
             check((nes / 'Drop.bin.part').is_file() and not (nes / 'Drop.bin').exists(),
                   'the handheld kept a part and nothing under the name')
             server.say('back')
-            check(page.until("queue[0].state === 'done'", 30), 'the network back, it went on: ' +
-                  str(page.js("queue.map((j) => j.state + ' ' + (j.why || ''))")))
+            check(page.until(went), 'the network back, it went on: ' + page.js(JOBS))
             puts = page.js("window.__puts")
             check(len(puts) >= 2 and '&from=0' in puts[0] and '&from=0' not in puts[-1],
                   f'the second try went on from where the first stopped: {puts}')
             check((nes / 'Drop.bin').read_bytes() == pattern and not (nes / 'Drop.bin.part').exists(),
                   'on the card to the byte, and no part left')
-            page.until("queue.length === 0", 5)
+            check(page.until(clean), 'and the panel is cleared after it: ' + page.js(JOBS))
 
             print('  a drop the browser does not notice: a file that stops moving waits too:')
             page.js("window.__puts.length = 0")
             offline(False, 262144)
-            page.js("enqueue([__drop('Still.bin')], 'roms/NES')")
-            check(page.until("queue.length > 0 && queue[0].loaded > 600000", 20), 'it went up a while')
+            page.js(BATCH + "; enqueue([__drop('Still.bin')], 'roms/NES')")
+            check(page.until(f"{job} && {job}.loaded > 600000"), 'it went up a while')
             server.say('away')
             # The computer's own buffers take what they can first, a few
             # seconds of it at this speed
             check(page.until(f"{head} === 'Waiting for the handheld'", 40), 'stopped moving, it waits: ' + str(page.js(head)))
             offline(False)
             server.say('back')
-            check(page.until("queue[0].state === 'done'", 30), 'the handheld back, it went on')
+            check(page.until(went), 'the handheld back, it went on: ' + page.js(JOBS))
             check((nes / 'Still.bin').read_bytes() == pattern and not (nes / 'Still.bin.part').exists(),
                   'on the card to the byte, and no part left')
-            page.until("queue.length === 0", 5)
+            check(page.until(clean), 'and the panel is cleared after it: ' + page.js(JOBS))
 
             print('  Stop sending:')
             page.js("RESUME.ask = 60000")
@@ -987,9 +1036,9 @@ def main():
             # first; its DELETE waits for it to come back
             page.js("document.getElementById('queuestop').click()")
             server.say('back')
-            check(page.until(f"{head} === '0 sent, 1 not sent'", 5) and page.js(f"{row} === 'not sent'"),
+            check(page.until(f"{head} === '0 sent, 1 not sent'") and page.js(f"{row} === 'not sent'"),
                   'it stopped, and the file stayed here: ' + str(page.js(f"[{head}, {row}]")))
-            check(page.until("document.getElementById('queueacts').hidden", 2), 'no button is left')
+            check(page.until("document.getElementById('queueacts').hidden"), 'no button is left')
             # Its DELETE may wait for a connection a while: the handheld's
             # queue of them filled with the page's asks while it was away
             for _ in range(250):
@@ -1012,12 +1061,11 @@ def main():
                   'it gave up, said so, and offers Try again: ' + str(page.js(f"[{head}, {left}, {row}]")))
             server.say('back')
             page.js("window.__puts.length = 0; document.getElementById('queueretry').click()")
-            check(page.until("queue[0].state === 'done'", 30), 'Try again sent it: ' +
-                  str(page.js("queue.map((j) => j.state + ' ' + (j.why || ''))")))
+            check(page.until(went), 'Try again sent it: ' + page.js(JOBS))
             puts = page.js("window.__puts")
             check(puts and all('&from=0' not in u for u in puts), f'from the part the handheld kept: {puts}')
             check((nes / 'Late.bin').read_bytes() == pattern, 'on the card to the byte')
-            page.until("queue.length === 0", 5)
+            check(page.until(clean), 'and the panel is cleared after it: ' + page.js(JOBS))
 
             print('  loaded again, the same file picked again:')
             check(cut('Again.bin'), 'waiting for the handheld before the page is left')
@@ -1031,8 +1079,8 @@ def main():
             check((nes / 'Again.bin.part').is_file(), 'the part is kept')
             fresh(page, f'{server.origin}/#roms/NES')
             check(page.until("document.readyState === 'complete' && typeof enqueue === 'function' && "
-                             "!document.getElementById('app').hidden", 10), 'the page came up again, still signed in')
-            page.js("""(() => {
+                             "!document.getElementById('app').hidden"), 'the page came up again, still signed in')
+            page.js(BATCH + """; (() => {
                 RESUME.min = 0;
                 window.__puts = [];
                 const open = XMLHttpRequest.prototype.open;
@@ -1040,7 +1088,7 @@ def main():
                 const d = new Uint8Array(3000000).map((_, i) => i * 13 % 251);
                 enqueue([new File([d], 'Again.bin', { lastModified: 1731500000000 })], 'roms/NES');
             })()""")
-            check(page.until("queue.length > 0 && queue[0].state === 'done'", 30), 'the file picked again went')
+            check(page.until(went), 'the file picked again went: ' + page.js(JOBS))
             puts = page.js("window.__puts")
             check(puts and all('&from=0' not in u for u in puts), f'it went on from the kept part: {puts}')
             check((nes / 'Again.bin').read_bytes() == pattern, 'on the card to the byte')

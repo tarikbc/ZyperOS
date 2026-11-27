@@ -12,6 +12,7 @@
  * directory on the include path, and this is the form SDL documents. */
 #include <SDL.h>
 #include <fcntl.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -31,6 +32,8 @@
  * with rate control aiming to hold it near half that. */
 #define AUDIO_BUFFER_FRAMES 4096
 #define AUDIO_FRAME_BYTES   (2 * (int)sizeof(int16_t))
+/* What SDL takes from the queue at once, a device period (audio_open) */
+#define AUDIO_PERIOD_FRAMES 1024
 
 static int           g_win_w = WINDOW_W, g_win_h = WINDOW_H;
 static SDL_Window   *g_window;
@@ -43,6 +46,112 @@ static SDL_AudioDeviceID g_audio;
 static bool          g_quit;
 static uint32_t      g_buttons;
 static uint32_t      g_pressed;     /* went down during the last poll */
+
+/* DIATOM_TEST_CLOCK: a clock of the port's own, for the checks of the
+ * pacing (test/displaylock.py, test/lateskip.py and the others that set it).
+ *
+ * On the wall clock a check of the pacing judges this computer as much as
+ * the pacing: make check runs a dozen checks at once beside other builds, a
+ * loop starts its frames late, and a rate or a frame left out says nothing
+ * of the rule. The merge gate's load of 12 had the display lock's run at
+ * 59.66 fps, slower than the unlocked 59.71 (2026-11-24), and a fast frame
+ * of frameskip=steady's left undrawn. So with this set, time moves only when
+ * something spends it:
+ *
+ *   - diatom_port_sleep_us, the frame loop's sleep to its next turn and a
+ *     held push's wait for room (src/audio.c), moves it on by the sleep
+ *   - the stub core's frame (STUBCORE_FRAME_US and the rest) moves it on by
+ *     its cost, through diatom_test_clock_spend, which it looks up by name
+ *     (test/stubcore.c); a stretch of frames slower than a refresh is then
+ *     exactly that slow
+ *
+ * Nothing else takes time: presenting, the socket and the core's own work
+ * are free, so the same run gives the same frames, the same skips and the
+ * same rate on an idle Mac, a loaded one or CI.
+ *
+ * The sound device is the clock's too, as SDL's dummy device plays on the
+ * wall clock: a queue of AUDIO_BUFFER_FRAMES, a period of AUDIO_PERIOD_FRAMES
+ * taken from it at once every period at AUDIO_RATE, what it does not hold
+ * then the device's silence, and what does not fit refused, as SDL's queue
+ * is. Written and read on the frame loop's thread alone: a core that makes
+ * its sound on a thread of its own is no check's.
+ *
+ * A busy machine and a device of its own mind, by fixed sequences, the same
+ * every run: the value is SLEEP[:LATE[:PPM]], each 0 when left out. Each
+ * sleep runs 0 to SLEEP microseconds over, which the absolute schedule
+ * (main.c) has to absorb, and which a sound-paced core's rule must not count
+ * as its frames' lateness (main.c, sound_debt_us). Each of the device's
+ * periods is taken 0 to LATE microseconds late (less than a period), as its
+ * thread wakes late, and the device plays PPM parts in a million slower
+ * than AUDIO_RATE: SDL's dummy device took its periods 22.5 ms apart on a
+ * Mac where 21.3 are due (2026-11-24), 5% slow, past what rate control
+ * follows, so a sound-paced core's pushes wait for room (src/audio.c,
+ * HOLD). The clock starts at 1000 s, not 0, which some timers read as
+ * never. */
+static int      g_tclock = -1;       /* -1 not read yet, 0 off, 1 on */
+static uint64_t g_tclock_us = 1000000000ull;
+static long     g_tclock_over;       /* the most a sleep overshoots, us */
+static long     g_tclock_dev_late;   /* the most a period is taken late, us */
+static long     g_tclock_dev_ppm;    /* how much slower the device plays, ppm */
+
+static bool tclock_on(void)
+{
+	if (g_tclock < 0) {
+		const char *e = getenv("DIATOM_TEST_CLOCK");
+		const long period = AUDIO_PERIOD_FRAMES * 1000000L / AUDIO_RATE;
+		char *end = NULL;
+
+		g_tclock = e != NULL;
+		g_tclock_over = e && *e ? strtol(e, &end, 10) : 0;
+		g_tclock_dev_late = end && *end == ':' ? strtol(end + 1, &end, 10) : 0;
+		g_tclock_dev_ppm = end && *end == ':' ? strtol(end + 1, NULL, 10) : 0;
+		if (g_tclock_over < 0) g_tclock_over = 0;
+		if (g_tclock_dev_late < 0) g_tclock_dev_late = 0;
+		if (g_tclock_dev_late >= period) g_tclock_dev_late = period - 1;
+	}
+	return g_tclock == 1;
+}
+
+/* For the stub core, by name (dlsym): `us` of its frame's work */
+void diatom_test_clock_spend(uint64_t us);
+void diatom_test_clock_spend(uint64_t us)
+{
+	__atomic_fetch_add(&g_tclock_us, us, __ATOMIC_RELAXED);
+}
+
+/* A fixed sequence's k-th number, 0 to most */
+static uint64_t tclock_pick(uint64_t k, long most)
+{
+	uint64_t x = (k + 1) * 0x9E3779B97F4A7C15ull;
+
+	if (most <= 0) return 0;
+	x ^= x >> 31; x *= 0xBF58476D1CE4E5B9ull; x ^= x >> 29;
+	return x % (uint64_t)(most + 1);
+}
+
+/* The test clock's sound device: what it holds, in frames, and how many of
+ * its periods it has taken since it opened, the k-th due k periods after
+ * the opening and 0 to DEVICE late */
+static bool     g_vaudio;
+static size_t   g_vq;
+static uint64_t g_vq_open, g_vq_periods;
+
+static void vaudio_play(void)
+{
+	const uint64_t now = __atomic_load_n(&g_tclock_us, __ATOMIC_RELAXED);
+
+	for (;;) {
+		const uint64_t k = g_vq_periods + 1;
+		const uint64_t at = g_vq_open +
+		                    (uint64_t)((double)k * AUDIO_PERIOD_FRAMES * 1e6 / AUDIO_RATE *
+		                               (1.0 + g_tclock_dev_ppm / 1e6)) +
+		                    tclock_pick(k, g_tclock_dev_late);
+
+		if (at > now) break;
+		g_vq = g_vq > AUDIO_PERIOD_FRAMES ? g_vq - AUDIO_PERIOD_FRAMES : 0;
+		g_vq_periods = k;
+	}
+}
 
 /* DIATOM_DESKFB (diatom_deskfb.h): the frames into a file ZyperOS's desk mode
  * shows in its own window, the buttons from it */
@@ -112,12 +221,21 @@ static bool audio_open(const char *name)
 	SDL_AudioSpec want, have;
 
 	if (g_audio) { SDL_CloseAudioDevice(g_audio); g_audio = 0; }
+	if (tclock_on()) {
+		/* The test clock's own device, empty, and nothing of SDL's */
+		g_vaudio = true;
+		g_vq = 0;
+		g_vq_open = __atomic_load_n(&g_tclock_us, __ATOMIC_RELAXED);
+		g_vq_periods = 0;
+		diatom_port_log(DIATOM_LOG_INFO, "audio: the test clock's device (DIATOM_TEST_CLOCK)");
+		return true;
+	}
 
 	SDL_memset(&want, 0, sizeof want);
 	want.freq     = AUDIO_RATE;
 	want.format   = AUDIO_S16SYS;
 	want.channels = 2;
-	want.samples  = 1024;
+	want.samples  = AUDIO_PERIOD_FRAMES;
 
 	if (SDL_WasInit(SDL_INIT_AUDIO) == 0 && SDL_InitSubSystem(SDL_INIT_AUDIO) != 0)
 		return false;
@@ -153,7 +271,7 @@ bool diatom_port_audio_set(const char *name, char *actual, size_t cap)
 	 * whatever is queued and costs a fresh A2DP stream setup. Repeated writes
 	 * are not hypothetical - a launcher that recomputes its routing on a timer
 	 * sends one whenever it thinks the answer might have moved. */
-	if (g_audio && !strcmp(want, g_audio_dev)) {
+	if ((g_audio || g_vaudio) && !strcmp(want, g_audio_dev)) {
 		diatom_port_audio_get(actual, cap);
 		return true;
 	}
@@ -183,7 +301,7 @@ bool diatom_port_audio_set(const char *name, char *actual, size_t cap)
  * nothing when it fails. */
 bool diatom_port_audio_start(void)
 {
-	if (g_audio) return true;
+	if (g_audio || g_vaudio) return true;
 	if (audio_open(NULL)) {
 		g_audio_dev[0] = '\0';
 		return true;
@@ -556,6 +674,16 @@ size_t diatom_port_audio_write(const int16_t *frames, size_t n)
 		g_audio_dev[0] = '\0';
 		audio_open(NULL);
 	}
+	if (g_vaudio) {
+		if (!frames || !n) return 0;
+		vaudio_play();
+		room = g_vq >= AUDIO_BUFFER_FRAMES ? 0 : AUDIO_BUFFER_FRAMES - g_vq;
+		if (n > room) n = room;
+		if (!n) return 0;
+		g_vq += n;
+		audio_log(frames, n);
+		return n;
+	}
 	if (!g_audio || !frames || !n) return 0;
 	queued = diatom_port_audio_queued();
 	room   = queued >= (size_t)AUDIO_BUFFER_FRAMES
@@ -570,6 +698,10 @@ size_t diatom_port_audio_write(const int16_t *frames, size_t n)
 
 size_t diatom_port_audio_queued(void)
 {
+	if (g_vaudio) {
+		vaudio_play();
+		return g_vq;
+	}
 	if (!g_audio) return 0;
 	return SDL_GetQueuedAudioSize(g_audio) / AUDIO_FRAME_BYTES;
 }
@@ -770,8 +902,23 @@ bool diatom_port_vblank(uint64_t *at_us, double *period_us)
 
 uint64_t diatom_port_now_us(void)
 {
+	if (tclock_on()) return __atomic_load_n(&g_tclock_us, __ATOMIC_RELAXED);
 	return diatom_ticks_to_us(SDL_GetPerformanceCounter(),
 	                          SDL_GetPerformanceFrequency());
+}
+
+void diatom_port_sleep_us(double us)
+{
+	static uint64_t sleeps;
+
+	if (!tclock_on()) {
+		diatom_nanosleep_us(us);
+		return;
+	}
+	if (us <= 0) return;
+	/* Rounded up, as a sleep is never shorter than asked, and the overshoot */
+	__atomic_fetch_add(&g_tclock_us, (uint64_t)ceil(us) + tclock_pick(sleeps++, g_tclock_over),
+	                   __ATOMIC_RELAXED);
 }
 
 void diatom_port_log(diatom_log_level lvl, const char *msg)

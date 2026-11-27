@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -29,12 +30,47 @@ static int fails, checks;
 	if (!(cond)) { fails++; printf("FAIL %s:%d: ", __FILE__, __LINE__); printf(__VA_ARGS__); printf("\n"); } \
 } while (0)
 
-static double ms_since(const struct timespec *t0)
+/* fn(arg) in a child process given 30 s, and what it returned, or -1 if it did not come back.
+ * What the FIFO's calls must not do is wait - for a reader that never comes, on a pipe that
+ * never empties - and that wait is for ever: so a call that comes back at all did not wait, on
+ * any computer, and the child's alarm ends one that does. They were timed (under 100 ms, under
+ * 5 s for 20000) until make check four at a time on a loaded Mac took longer for calls that
+ * never waited (2026-11-24). */
+static int in_child(int (*fn)(void *), void *arg)
 {
-	struct timespec t;
+	int p[2], r = -1, st;
+	pid_t pid;
 
-	clock_gettime(CLOCK_MONOTONIC, &t);
-	return (t.tv_sec - t0->tv_sec) * 1e3 + (t.tv_nsec - t0->tv_nsec) / 1e6;
+	fflush(stdout);
+	if (pipe(p) < 0) return -1;
+	if ((pid = fork()) == 0) {
+		int v;
+
+		close(p[0]);
+		alarm(30);
+		v = fn(arg);
+		_exit(write(p[1], &v, sizeof v) == (ssize_t)sizeof v ? 0 : 2);
+	}
+	close(p[1]);
+	if (pid < 0 || read(p[0], &r, sizeof r) != (ssize_t)sizeof r) r = -1;
+	close(p[0]);
+	if (pid > 0) waitpid(pid, &st, 0);
+	return r;
+}
+
+static int say_done(void *path)
+{
+	return side_lights_say_to(path, "done");
+}
+
+/* 20000 lines to a gauge that stopped reading: how many went */
+static int say_20000(void *path)
+{
+	int n, sent = 0;
+
+	for (n = 0; n < 20000; n++)
+		if (side_lights_say_to(path, "level volume 10 20")) sent++;
+	return sent;
 }
 
 #define ON(p) (1u << (p))
@@ -136,8 +172,7 @@ static void lines(void)
 static void fifo(void)
 {
 	char dir[] = "/tmp/sidelights-check.XXXXXX", path[64], buf[256];
-	struct timespec t0;
-	int rd, wr, n, sent;
+	int rd, wr, said, sent;
 	ssize_t got;
 
 	if (!mkdtemp(dir)) { CHECK(0, "mkdtemp: %s", strerror(errno)); return; }
@@ -147,9 +182,9 @@ static void fifo(void)
 	CHECK(access(path, F_OK) != 0, "and nothing made in its place");
 
 	if (mkfifo(path, 0600) < 0) { CHECK(0, "mkfifo: %s", strerror(errno)); return; }
-	clock_gettime(CLOCK_MONOTONIC, &t0);
-	CHECK(!side_lights_say_to(path, "done"), "a FIFO nobody reads: false");
-	CHECK(ms_since(&t0) < 100, "and at once, not waiting for a reader (%.1f ms)", ms_since(&t0));
+	said = in_child(say_done, path);
+	CHECK(said == 0, "a FIFO nobody reads: false");
+	CHECK(said >= 0, "and at once, not waiting for a reader");
 
 	/* The gauge holds it open for reading and writing both */
 	rd = open(path, O_RDWR | O_NONBLOCK);
@@ -168,11 +203,9 @@ static void fifo(void)
 	CHECK(got < 0 && errno == EAGAIN, "and nothing reached the reader");
 
 	/* A gauge that stopped reading: the pipe fills, and the launcher goes on */
-	clock_gettime(CLOCK_MONOTONIC, &t0);
-	for (n = 0, sent = 0; n < 20000; n++)
-		if (side_lights_say_to(path, "level volume 10 20")) sent++;
-	CHECK(sent < 20000, "a full pipe refuses lines (%d of 20000 went)", sent);
-	CHECK(ms_since(&t0) < 5000, "without waiting on it (%.0f ms for 20000)", ms_since(&t0));
+	sent = in_child(say_20000, path);
+	CHECK(sent >= 0, "without waiting on it");
+	CHECK(sent >= 0 && sent < 20000, "a full pipe refuses lines (%d of 20000 went)", sent);
 	/* What went in went whole: every line complete */
 	{
 		long total = 0, newlines = 0;

@@ -105,12 +105,22 @@ static bool zone_of(const char *name, char *tz, size_t n)
 	return pkset_zone_read(p, tz, n);
 }
 
-static long ms_since(const struct timespec *t0)
-{
-	struct timespec t;
+/* A busy timeout of 200 ms as 20 waits of 10 ms, counted: how many times it was asked, and how
+ * many times it gave up */
+static int busy_calls, busy_gave_up;
 
-	clock_gettime(CLOCK_MONOTONIC, &t);
-	return (t.tv_sec - t0->tv_sec) * 1000L + (t.tv_nsec - t0->tv_nsec) / 1000000L;
+static int busy_200(void *ctx, int n)
+{
+	struct timespec t = { 0, 10 * 1000 * 1000 };
+
+	(void)ctx;
+	busy_calls++;
+	if (n >= 20) {
+		busy_gave_up++;
+		return 0;
+	}
+	nanosleep(&t, NULL);
+	return 1;
 }
 
 /* 2026-11-04 at h:00 UTC, whatever TZ says */
@@ -168,20 +178,25 @@ static void setting(void)
 	}
 
 	/* Locked: another connection holds the file for writing, in a journal
-	 * mode where that keeps readers out, past the busy timeout */
+	 * mode where that keeps readers out, past the busy timeout. The timeout
+	 * a busy handler of the check's own, 20 waits of 10 ms as 200 ms, so
+	 * "not kept waiting" is told by what happened - one timeout, given up
+	 * once, not asked again - rather than by a time under 2 s, which a
+	 * loaded Mac running make check four at a time could stretch 200 ms of
+	 * sleeps past (2026-11-24) */
 	{
 		sqlite3 *w;
-		struct timespec t0;
 		bool got;
 
 		make_db("locked.db", "DELETE", "appearance", "dark");
 		w = open_db("locked.db");
 		sqlite3_exec(w, "BEGIN EXCLUSIVE;", NULL, NULL, NULL);
 		d = open_db("locked.db");
-		clock_gettime(CLOCK_MONOTONIC, &t0);
+		busy_calls = busy_gave_up = 0;
+		sqlite3_busy_handler(d, busy_200, NULL);
 		got = pkset_text(d, "appearance", v, sizeof v);
-		ck(!got, "a database locked past the timeout does not answer");
-		ck(ms_since(&t0) < 2000, "and the bar is not kept waiting for it");
+		ck(!got && busy_calls > 0, "a database locked past the timeout does not answer");
+		ck(busy_gave_up == 1, "and the bar is not kept waiting for it: one timeout, not tried again");
 		sqlite3_close(d);
 		sqlite3_exec(w, "ROLLBACK;", NULL, NULL, NULL);
 		sqlite3_close(w);

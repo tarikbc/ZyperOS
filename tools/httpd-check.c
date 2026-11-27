@@ -31,6 +31,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <arpa/inet.h>
@@ -41,6 +42,22 @@
 #include "../src/httpd.h"
 
 static int failures;
+
+/* How long a wait below waits for what it waits for, in ms, on the monotonic clock. Each
+ * returns as soon as that holds, so this is only how long a broken server keeps the check:
+ * a spin of 600 x 0.5 ms (0.3 s, and longer only by how late usleep wakes) was too few once
+ * make check ran four at a time on a loaded Mac (2026-11-24). Well under the server's own
+ * 20 s for a silent connection (src/httpd.c's IDLE_MS), so a slot freed only by that, not by
+ * the client hanging up, is still a failure here. */
+#define WAIT_MS 10000
+
+static long now_ms(void)
+{
+	struct timespec t;
+
+	clock_gettime(CLOCK_MONOTONIC, &t);
+	return (long)t.tv_sec * 1000 + t.tv_nsec / 1000000;
+}
 
 #define CHECK(cond, ...)                                                      \
 	do {                                                                      \
@@ -182,7 +199,7 @@ static void shutdown_server(void)
 static int cl_connect(void)
 {
 	struct sockaddr_in a;
-	struct timeval tv = { 3, 0 };
+	struct timeval tv = { WAIT_MS / 1000, 0 };
 	int fd = socket(AF_INET, SOCK_STREAM, 0);
 
 	memset(&a, 0, sizeof a);
@@ -195,7 +212,9 @@ static int cl_connect(void)
 		close(fd);
 		return -1;
 	}
-	/* Bounded, so a bug here is a failing check rather than a hung one. */
+	/* Bounded, so a bug here is a failing check rather than a hung one. Every read here
+	 * waits for a reply the server sends, and returns when it comes, so the bound is the
+	 * long one (WAIT_MS). */
 	setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv);
 	setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
 	return fd;
@@ -271,16 +290,16 @@ static size_t talk(int fd, const char *req, size_t reqlen, char *out, size_t out
  * httpd_poll, on the server thread's schedule. */
 static void wait_conns(int n)
 {
-	int i;
+	const long until = now_ms() + WAIT_MS;
 
-	for (i = 0; i < 600 && httpd_conn_count() < n; i++) usleep(500);
+	while (httpd_conn_count() < n && now_ms() < until) usleep(500);
 }
 
 static void settle(void)
 {
-	int i;
+	const long until = now_ms() + WAIT_MS;
 
-	for (i = 0; i < 600 && httpd_conn_count() > 0; i++) usleep(500);
+	while (httpd_conn_count() > 0 && now_ms() < until) usleep(500);
 }
 
 /* The body of a response, after the blank line. */
@@ -566,9 +585,14 @@ int main(void)
 		         "PUT /put HTTP/1.1\r\nHost: x\r\nContent-Length: 100000\r\n\r\n");
 		cl_write(fd, req, strlen(req));
 		cl_write(fd, sent, sizeof sent);
-		/* Give the server thread time to open the sink and write what came,
-		 * with the connection still up. */
-		usleep(150000);
+		/* Until the server thread has opened the sink, with the connection
+		 * still up: the file there is what it opened. A fixed 150 ms for it
+		 * was not always enough on a loaded Mac (2026-11-24). */
+		{
+			const long until = now_ms() + WAIT_MS;
+
+			while (stat(tmpsink, &st) != 0 && now_ms() < until) usleep(500);
+		}
 		/* Without this the rest is vacuous: a check that the file is gone
 		 * passes just as well when it was never created. */
 		CHECK(stat(tmpsink, &st) == 0,
@@ -588,7 +612,7 @@ int main(void)
 	printf("  a 101 hands the socket over:\n");
 	fresh(tmpf);
 	{
-		int fd = cl_connect(), i;
+		int fd = cl_connect();
 		const char *req = "GET /up HTTP/1.1\r\nHost: x\r\n\r\n";
 		size_t got = 0;
 		char buf[8];
@@ -607,7 +631,11 @@ int main(void)
 		CHECK(strstr(resp, "\r\nUpgrade: test\r\nConnection: Upgrade\r\n\r\n") != NULL,
 		      "the 101's headers are not the route's: \"%s\"", resp);
 		CHECK(strstr(resp, "Content-Length") == NULL, "a 101 said it has a body");
-		for (i = 0; i < 600 && g_taken < 0; i++) usleep(500);
+		{
+			const long until = now_ms() + WAIT_MS;
+
+			while (g_taken < 0 && now_ms() < until) usleep(500);
+		}
 		CHECK(g_taken >= 0, "the socket was never handed over");
 		CHECK(httpd_conn_count() == 0, "httpd still counts the connection it handed over");
 		CHECK(g_ends == 1 && g_end_whole == 1,
@@ -617,10 +645,9 @@ int main(void)
 
 			/* The client's bytes reach the taker, not httpd */
 			cl_write(fd, "ping", 4);
-			for (i = 0; i < 600; i++) {
+			for (const long until = now_ms() + WAIT_MS; now_ms() < until; usleep(500)) {
 				n = read(g_taken, buf, 4);
 				if (n > 0) break;
-				usleep(500);
 			}
 			CHECK(n == 4 && !memcmp(buf, "ping", 4), "the taker did not read what came");
 			/* And httpd_stop leaves it open */

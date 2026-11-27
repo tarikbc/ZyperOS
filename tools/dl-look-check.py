@@ -39,8 +39,17 @@ OWN = "Crash Bandicoot (USA)"         # its own snap, deleted after the first lo
 NONE = "Spyro the Dragon (USA)"       # no video anywhere
 EMPTY = "Tekken 3 (USA)"              # an empty snap
 ES = "Metal Gear Solid (USA)"         # EmulationStation's video
-SCRIPT = ",".join(["wait=300", f"look=PlayStation|{OWN}", "wait=1500", f"look=PlayStation|{NONE}",
-                   f"look=PlayStation|{EMPTY}", f"look=PlayStation|{ES}", f"look=PlayStation|{OWN}"])
+# Between the two looks at OWN, the launcher waits until the check has
+# deleted its snap (gone=PATH, at most 30 s), not a fixed 1500 ms on its own
+# clock: on a loaded machine the check read the first look's line late, and
+# the second look still found the snap (2026-11-24, make check's parallel
+# run). A delete that never comes still fails: the wait ends and the look
+# finds it.
+def script(snap):
+    return ",".join(["wait=300", f"look=PlayStation|{OWN}", f"gone={snap}", f"look=PlayStation|{NONE}",
+                     f"look=PlayStation|{EMPTY}", f"look=PlayStation|{ES}", f"look=PlayStation|{OWN}"])
+
+
 LOOK = re.compile(r"downloads-test: look PlayStation\|(.*) videos=(\d+) was(.*) now(.*)$")
 
 
@@ -71,7 +80,8 @@ def main():
         (ps / ".media" / (EMPTY + ".mp4")).write_bytes(b"")
         (ps / "videos").mkdir()
         (ps / "videos" / (ES + "-video.mp4")).write_bytes(b"\0\0\0\x18ftypmp42")
-        env = dict(R.env_for(card), ZYPEROS_DOWNLOADS_TEST=SCRIPT)
+        assert "," not in str(snap), snap      # the script's steps are split at commas
+        env = dict(R.env_for(card), ZYPEROS_DOWNLOADS_TEST=script(snap))
         p = subprocess.Popen([str(binary), "--lang", "en"], cwd=ROOT, env=env, text=True, errors="replace",
                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         try:

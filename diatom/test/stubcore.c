@@ -88,8 +88,14 @@
  * geometry held at the base, so a filter's output on a device can be set
  * beside what the launcher's Shader pictures say it is (tools/shaderdemo-device.sh).
  *
+ * And on Diatom's test clock (port/desktop.c, DIATOM_TEST_CLOCK): a frame's
+ * cost, its overshoot and the shown log's times are on that clock, not the
+ * wall's, so a check of the pacing is the same on any machine.
+ *
  * Test fixture. Not part of Diatom's runtime.
  */
+#define _GNU_SOURCE           /* RTLD_DEFAULT, on glibc */
+#include <dlfcn.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -426,10 +432,46 @@ static int burst_n;
  * macOS runner kept a 9 ms core for 45 to 50 ms a frame, and not evenly. The checks of a speed
  * (test/fastforward.py, test/hudspeed.py) are tried with it on, to see they
  * judge only what a slow machine can show. */
+/* Diatom's test clock (port/desktop.c, DIATOM_TEST_CLOCK): when it is on,
+ * a frame's cost is spent on it, not slept, and the shown log's times are
+ * its own; looked up by name in the program that loaded this core, so a
+ * frontend without one runs the stub on the wall clock as before */
+static void (*tclock_spend)(uint64_t us);
+static uint64_t (*tclock_now)(void);
+
+static void tclock_find(void)
+{
+	tclock_spend = NULL;
+	tclock_now = NULL;
+	if (!getenv("DIATOM_TEST_CLOCK")) return;
+	tclock_spend = (void (*)(uint64_t))dlsym(RTLD_DEFAULT, "diatom_test_clock_spend");
+	tclock_now = (uint64_t (*)(void))dlsym(RTLD_DEFAULT, "diatom_port_now_us");
+	if (!tclock_spend || !tclock_now) {
+		fprintf(stderr, "stubcore: DIATOM_TEST_CLOCK set, but no diatom_test_clock_spend "
+		        "in this program: the wall clock\n");
+		tclock_spend = NULL;
+		tclock_now = NULL;
+	}
+}
+
+/* `us` of the frame's time: on the test clock, or slept */
+static void spend_us(long us)
+{
+	struct timespec d;
+
+	if (us <= 0) return;
+	if (tclock_spend) {
+		tclock_spend((uint64_t)us);
+		return;
+	}
+	d.tv_sec = us / 1000000L;
+	d.tv_nsec = (us % 1000000L) * 1000L;
+	nanosleep(&d, NULL);
+}
+
 static void frame_late(void)
 {
 	static unsigned long long rng = 88172645463325252ull;
-	struct timespec d;
 	long us;
 
 	static unsigned calls;
@@ -443,9 +485,7 @@ static void frame_late(void)
 	calls++;
 	rng ^= rng << 13; rng ^= rng >> 7; rng ^= rng << 17;
 	us = (long)(rng % (unsigned long long)(overshoot_us + 1)) * (long)level / 3;
-	d.tv_sec = us / 1000000L;
-	d.tv_nsec = (us % 1000000L) * 1000L;
-	nanosleep(&d, NULL);
+	spend_us(us);
 }
 
 static void frame_cost(void)
@@ -455,6 +495,12 @@ static void frame_cost(void)
 	for (int i = 0; i < cost_at_n; i++)
 		if ((long)frame >= cost_at_frame[i]) frame_cost_us = cost_at_us[i];
 	if (frame_cost_us <= 0) { frame_late(); return; }
+	/* On the test clock, exactly the cost, precise or not */
+	if (tclock_spend) {
+		spend_us(frame_cost_us);
+		frame_late();
+		return;
+	}
 	/* Slept, not spent: the frontend's pacing sees only the time a frame
 	 * takes, and a sleep takes it however busy the machine is (make check
 	 * runs many at once), where a busy wait took longer on a busy one */
@@ -479,9 +525,7 @@ static void frame_cost(void)
 		frame_late();
 		return;
 	}
-	d.tv_sec = frame_cost_us / 1000000L;
-	d.tv_nsec = (frame_cost_us % 1000000L) * 1000L;
-	nanosleep(&d, NULL);
+	spend_us(frame_cost_us);
 	frame_late();
 }
 
@@ -534,6 +578,7 @@ bool retro_load_game(const struct retro_game_info *game)
 	/* Before RUNNING has gone out, so the frontend owes the launcher an ERROR
 	 * and must keep its hands off the display. */
 	if (!strcmp(crash_mode, "load")) *null_ptr = 1;
+	tclock_find();
 	{
 		const char *e = getenv("STUBCORE_FRAME_US");
 		frame_cost_us = e && *e ? strtol(e, NULL, 10) : 0;
@@ -814,10 +859,12 @@ void retro_run(void)
 	}
 	if (shown_log) {
 		struct timespec now;
+		long long t;
 
 		clock_gettime(CLOCK_MONOTONIC, &now);
-		fprintf(shown_log, "%d %lld\n", frame_unshown ? 0 : 1,
-		        (long long)now.tv_sec * 1000000LL + now.tv_nsec / 1000);
+		t = tclock_now ? (long long)tclock_now()
+		               : (long long)now.tv_sec * 1000000LL + now.tv_nsec / 1000;
+		fprintf(shown_log, "%d %lld\n", frame_unshown ? 0 : 1, t);
 		fflush(shown_log);
 	}
 	frame_cost();

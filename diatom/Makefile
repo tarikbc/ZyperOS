@@ -96,7 +96,17 @@ ifeq ($(PORT),desktop)
   # build on 2026-10-01 without it.
   ifeq ($(shell uname -s),Linux)
     LDFLAGS += -ldl -lpthread -lm
+    # The test clock's spend (port/desktop.c, DIATOM_TEST_CLOCK), which the
+    # stub core finds by name, and that alone: every symbol exported would
+    # let the program's names stand in for a core's own. A Mac's program
+    # exports its names anyway, and a core's two-level namespace keeps them
+    # apart.
+    LDFLAGS += -Wl,--dynamic-list=port/desktop.dynlist
   endif
+endif
+# The stub's dlsym, in libdl on an older glibc
+ifeq ($(shell uname -s),Linux)
+  STUB_LIBS := -ldl
 endif
 
 ifeq ($(PORT),brick)
@@ -152,7 +162,7 @@ stub: $(STUB)
 $(STUB): test/stubcore.c
 	@mkdir -p $(BUILD)
 	$(CC) -std=gnu11 -Wall -Wextra -Wno-unused-parameter -O2 -Isrc \
-	      -shared -fPIC -o $@ $< -lm
+	      -shared -fPIC -o $@ $< -lm $(STUB_LIBS)
 
 run-stub: $(BIN) $(STUB)
 	./$(BIN) --core $(STUB)
@@ -498,7 +508,10 @@ check-hudspeed:
 
 # The display lock end to end (src/pace.h): the stub at a GBA's 59.7275 fps
 # with a 60 Hz display runs at 60 and says so; pace=core, no display rate or
-# a 50 Hz one keep the core's own rate
+# a 50 Hz one keep the core's own rate. The rates on the desktop port's test
+# clock (DIATOM_TEST_CLOCK), its sleeps running over by a fixed sequence, so
+# they are the same under any load; on the wall clock only that both are
+# paced, never faster than their targets.
 check-displaylock:
 	$(FRESH_IF_BUILT)
 	@python3 test/displaylock.py
@@ -606,7 +619,7 @@ $(PORT_TEST): test/port_test.c port/desktop.c port/port_clock.h include/diatom_p
 	@mkdir -p $(BUILD)
 	$(CC) -std=gnu11 -Wall -Wextra -Wno-unused-parameter -O1 -g \
 	      -Iinclude -Isrc -Iport -o $@ test/port_test.c port/desktop.c \
-	      $(SDL_CFLAGS) $(SDL_LIBS)
+	      $(SDL_CFLAGS) $(SDL_LIBS) -lm
 
 # A port's power steps as data (port/port_power.h), written into a scratch
 # folder: no device, no SDL.
@@ -653,10 +666,10 @@ check-fastforward:
 # frameskip=late and frameskip=steady at 1x, end to end: the stub core slow
 # for a stretch (STUBCORE_FRAME_US_AT) writes which frames Diatom had drawn
 # (STUBCORE_SHOWN_LOG); late leaves out up to two in a row, steady exactly
-# every second one, and both draw every frame on time, judged only where the
-# stub's frame times show this machine started them on time. On
-# check-stateplane's terms: the stub core, about twenty seconds, skipped
-# unbuilt.
+# every second one, and both draw every frame on time, every frame judged on
+# the desktop port's test clock (DIATOM_TEST_CLOCK), so the same under any
+# load. On check-stateplane's terms: the stub core, about ten seconds,
+# skipped unbuilt.
 check-lateskip:
 	$(FRESH_IF_BUILT)
 	@python3 test/lateskip.py

@@ -621,6 +621,9 @@ static int finish(int code, const char *state)
 	__atomic_store_n(&g_share->guests, 0u, __ATOMIC_RELAXED);
 	httpd_stop();
 	if (g_dns >= 0) close(g_dns);
+	/* When, as the other lines say it: check-p2d judges "within a second"
+	 * by p2d's own clock, not by a loaded machine's wall around it */
+	fprintf(stderr, "p2d: gone at %ld ms\n", now_ms() - g_start_ms);
 	return code;
 }
 
@@ -687,7 +690,8 @@ int main(int argc, char **argv)
 
 		if (g_term) return 0;
 		if (now_ms() - t0 >= SHARE_WAIT_MS) {
-			fprintf(stderr, "p2d: no share at %s after %d s\n", g_share_path, SHARE_WAIT_MS / 1000);
+			fprintf(stderr, "p2d: no share at %s after %d s, at %ld ms\n", g_share_path, SHARE_WAIT_MS / 1000,
+			        now_ms() - g_start_ms);
 			return 1;
 		}
 		nanosleep(&ts, NULL);
@@ -742,7 +746,7 @@ int main(int argc, char **argv)
 			 * goes on */
 			bool ended = share_ended();
 
-			fprintf(stderr, "p2d: stopped%s\n", ended ? ", the game over" : "");
+			fprintf(stderr, "p2d: stopped at %ld ms%s\n", now_ms() - g_start_ms, ended ? ", the game over" : "");
 			return finish(0, ended ? "ended" : "stopped");
 		}
 		if (httpd_poll(on_request, NULL, NULL) > 0) moved = true;
@@ -751,15 +755,22 @@ int main(int argc, char **argv)
 		if (send_frames()) moved = true;
 		/* A phone that locked or walked out of range mid-press */
 		for (int k = 0; k < g_places; k++)
-			if (g_place[k].pad && now - g_place[k].pad_ms >= PAD_QUIET_MS) pad_set(k, 0);
+			if (g_place[k].pad && now - g_place[k].pad_ms >= PAD_QUIET_MS) {
+				pad_set(k, 0);
+				fprintf(stderr, "p2d: player %d's pad let go at %ld ms, %ld ms after its last\n", k + 2,
+				        now - g_start_ms, now - g_place[k].pad_ms);
+			}
 		if (now - last_beat >= BEAT_MS) {
 			beat();
 			last_beat = now;
 		}
 		if (now - last_look >= SHARE_LOOK_MS) {
+			long before = last_look;     /* the last look, which found the game going */
+
 			last_look = now;
 			if (share_ended()) {
-				fprintf(stderr, "p2d: the game ended\n");
+				fprintf(stderr, "p2d: the game ended at %ld ms, %ld ms after the look before\n",
+				        now - g_start_ms, now - before);
 				return finish(0, "ended");
 			}
 		}

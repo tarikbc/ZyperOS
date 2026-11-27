@@ -103,8 +103,10 @@ p = subprocess.Popen([BIN, "--socket", sock, "--save", TMP, "--system", TMP],
                      env=dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_RENDER_DRIVER="software",
                               SDL_AUDIODRIVER="dummy"),
                      stdout=subprocess.DEVNULL, stderr=log)
-for _ in range(100):
-    if os.path.exists(sock): break
+# The waits are the wall clock's, and only waits: each ends as soon as what
+# it waits for is there (3 to 8 s until 2026-11-24)
+end = time.time() + 30
+while not os.path.exists(sock) and time.time() < end:
     time.sleep(0.05)
 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 s.connect(sock)
@@ -134,11 +136,11 @@ def fields(line):
 
 def refused(core):
     s.sendall(f"RUN\tcore={core}\trom={ROM}\n".encode())
-    line, seen = lines_until("ERROR", 8.0)
+    line, seen = lines_until("ERROR", 30.0)
     return fields(line) if line else None
 
 try:
-    lines_until("READY", 3.0)
+    lines_until("READY", 30.0)
 
     f = refused(cores["x86"])
     check("an ELF of another machine: why=machine", f and f.get("code") == "core_load" and f.get("why") == "machine", f)
@@ -160,16 +162,14 @@ try:
 
     # After all of them a good core still runs
     s.sendall(f"RUN\tcore={STUB}\trom={ROM}\n".encode())
-    line, _ = lines_until("RUNNING", 8.0)
+    line, _ = lines_until("RUNNING", 30.0)
     check("and a good core after them runs", line is not None, line)
     s.sendall(b"STOP\n")
-    lines_until("EXIT", 5.0)
+    lines_until("EXIT", 30.0)
 finally:
     try: s.sendall(b"QUIT\n")
     except OSError: pass
-    time.sleep(0.3)
-    p.terminate()
-    try: p.wait(3)
+    try: p.wait(30)
     except subprocess.TimeoutExpired: p.kill()
     log.close()
 

@@ -55,12 +55,47 @@ static void fill(const int16_t *buf)
 		if (diatom_port_audio_write(buf, 512) == 0) break;
 }
 
+/* Whether `act` kept what was queued: the queue full, then read on each side
+ * of it. A full queue lasts 85 ms, so the second reading can find it empty
+ * without a reopen only when this machine took that long between the two,
+ * as a busy one can; those readings say nothing, and are taken again, up to
+ * twenty times. A reopen empties it however quick the readings are. */
+static bool kept_queue(const int16_t *buf, bool (*act)(void), bool *acted)
+{
+	int tries;
+
+	for (tries = 0; tries < 20; tries++) {
+		uint64_t t0;
+		size_t before, after;
+
+		fill(buf);
+		t0 = diatom_port_now_us();
+		before = diatom_port_audio_queued();
+		*acted = act();
+		after = diatom_port_audio_queued();
+		if (diatom_port_now_us() - t0 < 40000)
+			return !(before > 0 && after == 0);
+	}
+	printf("  (this machine never read the queue twice within 40 ms)\n");
+	return false;
+}
+
+static bool start_again(void) { return diatom_port_audio_start(); }
+
+static bool restate_default(void)
+{
+	char at[128];
+
+	return diatom_port_audio_set("", at, sizeof at);
+}
+
 int main(void)
 {
 	diatom_port_caps caps;
 	char at[128];
 	int16_t buf[512 * 2];
-	size_t queued_before, queued_after, took;
+	size_t took;
+	bool kept, acted;
 	int i;
 
 	/* SDL must not reach a real device, a real display, or the user's ears. */
@@ -87,11 +122,9 @@ int main(void)
 
 	printf("opening the sound device:\n");
 	ck(diatom_port_audio_start(), "the default device opens when asked");
-	fill(buf);
-	queued_before = diatom_port_audio_queued();
-	ck(diatom_port_audio_start(), "and asking again says it is open");
-	ck(!(queued_before > 0 && diatom_port_audio_queued() == 0),
-	   "without throwing away what was queued");
+	kept = kept_queue(buf, start_again, &acted);
+	ck(acted, "and asking again says it is open");
+	ck(kept, "without throwing away what was queued");
 
 	printf("where the sound is:\n");
 	diatom_port_audio_get(at, sizeof at);
@@ -105,14 +138,11 @@ int main(void)
 	   "audio still flows after the fallback");
 
 	printf("re-stating the current device:\n");
-	fill(buf);
-	queued_before = diatom_port_audio_queued();
-	ck(diatom_port_audio_set("", at, sizeof at), "succeeds");
-	queued_after = diatom_port_audio_queued();
 	/* If it reopened, the queue would be gone. That reopen costs a fresh
 	 * stream setup on a real sink and drops whatever was buffered. */
-	ck(!(queued_before > 0 && queued_after == 0),
-	   "does not throw away what was already queued");
+	kept = kept_queue(buf, restate_default, &acted);
+	ck(acted, "succeeds");
+	ck(kept, "does not throw away what was already queued");
 
 	printf("the queue respects the capacity it advertises:\n");
 	for (i = 0; i < 64; i++) diatom_port_audio_write(buf, 512);

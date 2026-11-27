@@ -417,8 +417,9 @@ int ra_flush_take_sent(void)
 #define RETRY_MS  (5u * 60u * 1000u)
 
 /* A pass handed over and not yet applied: one more would only be noted for
- * later (ra_flush_start) */
-static bool flush_in_flight(void)
+ * later (ra_flush_start). Public for tools/raoffline-check.c, which waits
+ * for a pass to be over rather than for a fixed time. */
+bool ra_flush_in_flight(void)
 {
 	bool busy;
 
@@ -441,7 +442,7 @@ void ra_flush_watch(unsigned now_ms)
 	online = net_online();
 	/* The pass that follows a game is on its way: this one would be the
 	 * same unlocks again, and that pass is this network's turn */
-	if (flush_in_flight()) { was_online = online; tried = now_ms; return; }
+	if (ra_flush_in_flight()) { was_online = online; tried = now_ms; return; }
 	if (online && (!was_online || (g_fl_last_failed && now_ms - tried >= RETRY_MS))) {
 		fprintf(stderr, "ra: a network, and %d unlock%s waiting: sending\n",
 		        chv_pending_count(), chv_pending_count() == 1 ? "" : "s");

@@ -17,6 +17,12 @@ stub (STUBCORE_INPUT_LOG):
     polls, the stick's L1 (l1:stick) tapped at each of the four turns the
     stick each time, and MENU tapped opens the menu once.
 
+On Diatom's test clock (port/desktop.c, DIATOM_TEST_CLOCK): the stub's
+100 ms frames are 100 ms on it, so SELECT held two polls before R1 is 200 ms
+of the 400 ms CHORD_HOLD_MS allows on any machine, where on the wall clock a
+busy one could stretch the two frames past it and the chord be the game's
+SELECT; and the 9 s of a game at 10 fps take a fraction of that.
+
 Needs a desktop build (diatom and stubcore.so, build/desktop unless the
 argument names another folder) and SKIPS without it, as check-proto does.
 SDL's dummy drivers: no window, no sound.
@@ -55,10 +61,11 @@ def session(name, script, polls, run_extra="", lines_out="", stub_env=None):
     sock, log = f"{TMP}/{name}.sock", f"{TMP}/{name}.log"
     p = subprocess.Popen([BIN, "--socket", sock, "--save", TMP, "--system", TMP],
                          env=dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_RENDER_DRIVER="software",
-                                  SDL_AUDIODRIVER="dummy", DIATOM_INPUT_SCRIPT=script,
+                                  SDL_AUDIODRIVER="dummy", DIATOM_TEST_CLOCK="0",
+                                  DIATOM_INPUT_SCRIPT=script,
                                   STUBCORE_INPUT_LOG=log, **(stub_env or {})),
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    for _ in range(100):
+    for _ in range(600):
         if os.path.exists(sock): break
         time.sleep(0.05)
     s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -66,10 +73,10 @@ def session(name, script, polls, run_extra="", lines_out="", stub_env=None):
     s.settimeout(0.05)
     buf, got = b"", []
 
-    def pump(seconds):
+    def pump(seconds, until=None):
         nonlocal buf
         end = time.time() + seconds
-        while time.time() < end:
+        while time.time() < end and not (until and any(l.startswith(until) for l in got)):
             try:
                 d = s.recv(65536)
                 if not d: return
@@ -83,18 +90,19 @@ def session(name, script, polls, run_extra="", lines_out="", stub_env=None):
                 if l == "PAUSED" or l.startswith("PAUSED\t"):
                     s.sendall(b"RESUME\n")
 
-    pump(0.3)
+    pump(30, "READY")
     s.sendall(f"RUN\tcore={STUB}{run_extra}\n{lines_out}".encode())
     # However slowly this machine runs it: the script counts polls, one a
     # frame, and a fixed wait ended before the script did on a CI runner
     end = time.time() + 120
     while frames_logged(log) < polls and time.time() < end:
         pump(0.2)
-    pump(0.5)
+    # Every line said before the STOP's EXIT, however late this script
+    # reads them
     s.sendall(b"STOP\n")
-    pump(1.0)
+    pump(30, "EXIT")
     s.sendall(b"QUIT\n")
-    try: p.wait(5)
+    try: p.wait(30)
     except subprocess.TimeoutExpired: p.kill()
     pads = []
     try:

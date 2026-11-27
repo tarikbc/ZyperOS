@@ -1667,6 +1667,8 @@ uint64_t diatom_port_now_us(void)
 	                          SDL_GetPerformanceFrequency());
 }
 
+void diatom_port_sleep_us(double us) { diatom_nanosleep_us(us); }
+
 void diatom_port_log(diatom_log_level lvl, const char *msg)
 {
 	static const char *tag[] = { "debug", "info", "warn", "error" };

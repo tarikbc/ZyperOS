@@ -13,6 +13,14 @@ its DDR's and GPU's ceilings (port/desktop.c), and this plays the launcher:
 it puts the DDR's ceiling down between games and in the menu, and reads what
 Diatom left there.
 
+On Diatom's test clock (port/desktop.c, DIATOM_TEST_CLOCK), whose sound
+device plays the stub's sound as it comes and whose frames are never late:
+on the wall clock SDL's dummy device counted the stub's sound as dropped and
+a busy machine made frames late, and each raised a light game's level
+(main.c, power_trouble) a second after its start, so its ceilings had to be
+read within that second. Here nothing raises it, and every wait is only a
+wait (2026-11-24).
+
 Needs build/desktop (diatom and stubcore.so) and SKIPS without it, as
 check-resident does. SDL's dummy drivers: no window, no sound.
 
@@ -54,7 +62,7 @@ def lifted():
     was last."""
     return read(RAM)[:1] == "0"
 
-def soon(pred, timeout=2.0):
+def soon(pred, timeout=30.0):
     """`pred` once it holds, or False after `timeout`. Diatom says RUNNING
     before it writes the game's ceilings (main.c: the level comes after the
     load, before the warmup), and after a RESUME the caller writes them once
@@ -69,10 +77,11 @@ sock, err_path = f"{TMP}/power.sock", f"{TMP}/power.err"
 err = open(err_path, "w")
 p = subprocess.Popen([BIN, "--socket", sock, "--save", TMP, "--system", TMP],
                      env=dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_RENDER_DRIVER="software",
-                              SDL_AUDIODRIVER="dummy", DIATOM_POWER_DIR=TMP),
+                              SDL_AUDIODRIVER="dummy", DIATOM_TEST_CLOCK="0",
+                              DIATOM_POWER_DIR=TMP),
                      stdout=subprocess.DEVNULL, stderr=err)
-for _ in range(100):
-    if os.path.exists(sock): break
+end = time.time() + 30
+while not os.path.exists(sock) and time.time() < end:
     time.sleep(0.05)
 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 s.connect(sock)
@@ -101,13 +110,13 @@ def send(m):
 
 def run(power=None):
     send(f"RUN\tcore={STUB}" + (f"\tpower={power}" if power else ""))
-    return any(l.startswith("RUNNING") for l in drain(4.0, "RUNNING"))
+    return any(l.startswith("RUNNING") for l in drain(30.0, "RUNNING"))
 
 def stop():
     send("STOP")
-    drain(3.0, "EXIT")
+    drain(30.0, "EXIT")
 
-drain(2.0, "READY")
+drain(30.0, "READY")
 check("at its start, Diatom lifts every ceiling", (read(RAM), read(GPU)) == ("0", "0"),
       (read(RAM), read(GPU)))
 
@@ -116,10 +125,10 @@ ok = run()
 check("the first game, at full power, lifts the launcher's ceiling",
       ok and soon(lifted), (ok, read(RAM)))
 send("PAUSE")
-paused = any(l == "PAUSED" for l in drain(2.0, "PAUSED"))
+paused = any(l == "PAUSED" for l in drain(30.0, "PAUSED"))
 launcher_slows()
 send("RESUME")
-drain(2.0, "RUNNING")
+drain(30.0, "RUNNING")
 check("back from the launcher's menu, the game lifts it again",
       paused and soon(lifted), (paused, read(RAM)))
 stop()
@@ -139,9 +148,7 @@ check("and its end lifts them for the launcher", soon(lambda: lifted() and read(
       (read(RAM), read(GPU)))
 
 send("QUIT")
-time.sleep(0.5)
-p.terminate()
-try: p.wait(3)
+try: p.wait(30)
 except subprocess.TimeoutExpired: p.kill()
 err.close()
 

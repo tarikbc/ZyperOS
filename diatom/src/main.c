@@ -3858,11 +3858,9 @@ static int run_session_inner(const diatom_session *sn)
 		now = diatom_port_now_us();
 
 		if (next_us > (double)now) {
-			struct timespec ts;
 			double d = next_us - (double)now;
-			ts.tv_sec  = (time_t)(d / 1000000.0);
-			ts.tv_nsec = (long)(fmod(d, 1000000.0) * 1000.0);
-			nanosleep(&ts, NULL);
+
+			diatom_port_sleep_us(d);
 			step_sleep.us += d;
 			if (turn_short) step_sleep.short_us += d;
 		} else if (fast) {

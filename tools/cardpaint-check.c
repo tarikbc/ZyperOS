@@ -93,10 +93,15 @@ static bool same_pixels(SDL_Surface *a, SDL_Surface *b)
 	return true;
 }
 
-/* A worker's answer for (7, idx), within two seconds */
+/* How long a wait below waits for what it waits for, in ms. Each returns as soon as that holds,
+ * so this is only how long a broken launcher keeps the check: two seconds were too few once make
+ * check ran four at a time on a loaded Mac (2026-11-24). SDL_GetTicks is monotonic. */
+#define WAIT_MS 30000
+
+/* A worker's answer for (7, idx) */
 static bool wait_for(int idx, texload_got *out)
 {
-	Uint32 until = SDL_GetTicks() + 2000;
+	Uint32 until = SDL_GetTicks() + WAIT_MS;
 
 	while (SDL_GetTicks() < until) {
 		texload_got g;
@@ -176,7 +181,7 @@ static void the_turn(void)
 	theme_init(APPEAR_LIGHT);
 	ui_card_order_set(&beard, "Metroid", 0x5A3FD8, false);
 	texload_want_or_draw(7, 900, "/no/such/.media/Metroid.png", NULL, &beard);
-	until = SDL_GetTicks() + 2000;
+	until = SDL_GetTicks() + WAIT_MS;
 	while (texload_waiting() < 1 && SDL_GetTicks() < until) SDL_Delay(1);
 	ck(texload_waiting() == 1, "the card of the theme that was has landed", NULL);
 
@@ -190,7 +195,7 @@ static void the_turn(void)
 	ck(pepper.theme_ix == DS_DARK, "an order is in the theme that is on", NULL);
 	want = ui_card_paint(&pepper, false);
 	texload_want_or_draw(7, 900, "/no/such/.media/Metroid.png", NULL, &pepper);
-	until = SDL_GetTicks() + 2000;
+	until = SDL_GetTicks() + WAIT_MS;
 	while (!delivered && SDL_GetTicks() < until) {
 		texload_deliver(theme_index(), count_put, NULL);
 		SDL_Delay(1);
@@ -201,7 +206,10 @@ static void the_turn(void)
 
 	/* Asked in Beard and in Salt & Pepper before either is drawn, as a turn
 	 * between two frames does: whichever lands, Salt & Pepper's alone is
-	 * handed over. */
+	 * handed over. Until the workers have nothing at all (texload_idle),
+	 * rather than for a fixed 300 ms: then whatever was going to land has
+	 * landed and been taken, and a loaded Mac that took longer than that to
+	 * draw one card is not a second card handed over or none. */
 	delivered = 0;
 	theme_init(APPEAR_LIGHT);
 	ui_card_order_set(&beard, "Kirby", 0xF080A0, false);
@@ -209,11 +217,13 @@ static void the_turn(void)
 	ui_card_order_set(&pepper, "Kirby", 0xF080A0, false);
 	texload_want_or_draw(7, 901, NULL, NULL, &beard);
 	texload_want_or_draw(7, 901, NULL, NULL, &pepper);
-	until = SDL_GetTicks() + 300;
-	while (SDL_GetTicks() < until) {
+	until = SDL_GetTicks() + WAIT_MS;
+	while (!texload_idle() && SDL_GetTicks() < until) {
 		texload_deliver(theme_index(), count_put, NULL);
 		SDL_Delay(1);
 	}
+	texload_deliver(theme_index(), count_put, NULL);
+	ck(texload_idle(), "both asks in both themes were answered", NULL);
 	ck(delivered == 1 && delivered_theme == DS_DARK,
 	   "asked in both themes at once, only the one on is handed over", NULL);
 	SDL_FreeSurface(want);
@@ -267,7 +277,7 @@ static void the_fallback(SDL_Renderer *r)
 			texload_want_or_draw(7, 2000 + k, NULL, NULL, &o);
 			asked++;
 		}
-		until = SDL_GetTicks() + 2000;
+		until = SDL_GetTicks() + WAIT_MS;
 		while (!texload_idle() && SDL_GetTicks() < until)
 			if (!texload_deliver(theme_index(), down_put, NULL)) SDL_Delay(1);
 		ck(texload_idle(), "every ask while the fonts were down was answered", NULL);
@@ -307,29 +317,46 @@ static void the_language(void)
  * and the held one when it is let go (its art does not decode, so it is drawn
  * without, as a missing one is). Holding one with a FIFO rather than a slow
  * card: whoever runs it, however fast, one card is in the middle of its paint
- * for as long as the other takes. */
+ * for as long as the other takes.
+ *
+ * That the held one is in its paint before the other is asked for is seen,
+ * not waited for: its first frame is a FIFO too, opened in the paint before
+ * the art, and a writer's open of a FIFO that will not wait (O_NONBLOCK)
+ * opens only once a reader has it open - the worker, in the paint. That lets
+ * the worker on, the frame does not decode (no data, then the end of it), and
+ * the worker goes on to the art and waits there. A fixed 200 ms for the
+ * worker to get there was not always enough on a loaded Mac, and then the
+ * second card could be drawn first, by either worker, proving nothing
+ * (2026-11-24). */
 static void the_two_at_once(void)
 {
 	const char *fifo = "build-native/cardpaint-check.fifo";
+	const char *probe = "build-native/cardpaint-check.frame.fifo";
+	const char *frames[UI_CARD_FRAMES] = { probe };
 	ui_card_order held, next;
 	texload_got g = { 0 };
 	bool got_next = false, got_held = false;
 	Uint32 until;
-	int fd;
+	int fd = -1;
 
 	unlink(fifo);
-	if (mkfifo(fifo, 0600) != 0) {
+	unlink(probe);
+	if (mkfifo(fifo, 0600) != 0 || mkfifo(probe, 0600) != 0) {
 		ck(0, "a FIFO to hold a card with", strerror(errno));
+		unlink(fifo);
 		return;
 	}
 	ui_card_order_set(&held, "Contra", 0xE6312E, false);
-	ui_card_order_game(&held, "8bit", fifo, NULL);
+	ui_card_order_game(&held, "8bit", fifo, frames);
 	texload_want_or_draw(7, 4000, "/no/such/.media/Contra.png", NULL, &held);
-	/* a worker has it, and is waiting on the FIFO */
-	SDL_Delay(200);
+	/* a worker has it, in its paint: it has the frame's FIFO open */
+	for (until = SDL_GetTicks() + WAIT_MS; fd < 0 && SDL_GetTicks() < until; SDL_Delay(1))
+		if ((fd = open(probe, O_WRONLY | O_NONBLOCK)) < 0 && errno != ENXIO) break;
+	ck(fd >= 0, "a worker is in the middle of the held card's paint", strerror(errno));
+	if (fd >= 0) close(fd);
 	ui_card_order_set(&next, "Metroid", 0xE6312E, false);
 	texload_want_or_draw(7, 4001, "/no/such/.media/Metroid.png", NULL, &next);
-	for (until = SDL_GetTicks() + 2000; !got_next && SDL_GetTicks() < until; SDL_Delay(1))
+	for (until = SDL_GetTicks() + WAIT_MS; !got_next && SDL_GetTicks() < until; SDL_Delay(1))
 		while (texload_take(&g)) {
 			if (g.sys == 7 && g.idx == 4001) got_next = g.surf != NULL;
 			if (g.sys == 7 && g.idx == 4000) got_held = true;
@@ -345,6 +372,7 @@ static void the_two_at_once(void)
 	if (g.surf) SDL_FreeSurface(g.surf);
 	if (fd >= 0) close(fd);
 	unlink(fifo);
+	unlink(probe);
 }
 
 int main(void)

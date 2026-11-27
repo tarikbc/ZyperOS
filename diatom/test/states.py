@@ -69,8 +69,10 @@ p = subprocess.Popen([BIN, "--socket", sock, "--save", TMP, "--system", TMP],
                               SDL_AUDIODRIVER="dummy", STUBCORE_STATE_PAD=str(PAD),
                               STUBCORE_INPUT_LOG=LOG),
                      stdout=err, stderr=err)
-for _ in range(100):
-    if os.path.exists(sock): break
+# The waits are the wall clock's, and only waits: each ends as soon as what
+# it waits for is there (2 to 4 s until 2026-11-24)
+end = time.time() + 30
+while not os.path.exists(sock) and time.time() < end:
     time.sleep(0.05)
 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 s.connect(sock)
@@ -97,21 +99,25 @@ def send(m):
     s.sendall((m + "\n").encode())
 
 def run(extra, secs):
-    """A game run for `secs`, then stopped: the first frame it ran"""
+    """A game run for `secs` of its frames (the stub's own count, at 60 a
+    second), then stopped: the first frame it ran. It slept `secs` of this
+    script's time until 2026-11-24, in which a busy machine could run none."""
     before = len(frames())
     send(f"RUN\tcore={STUB}\trom={ROM}" + extra)
-    ok = drain(4.0, "RUNNING") is not None
-    time.sleep(secs)
+    ok = drain(30.0, "RUNNING") is not None
+    end = time.time() + 30
+    while len(frames()) - before < int(secs * 60) and time.time() < end:
+        time.sleep(0.02)
     f = frames()[before:]
     return ok, (f[0] if f else None)
 
 A, B, C = f"{TMP}/A.state", f"{TMP}/B.state", f"{TMP}/C.state"
 try:
-    drain(2.0, "READY")
+    drain(30.0, "READY")
 
     ok, _ = run(f"\texit_state={A}", 1.0)
     send("STOP")
-    check("a game runs and stops", ok and drain(3.0, "EXIT") is not None)
+    check("a game runs and stops", ok and drain(30.0, "EXIT") is not None)
     last = frames()[-1] if frames() else 0
     h = header(A)
     check("its state is version 2, packed with LZ4, the core named where version 1 had it",
@@ -135,14 +141,14 @@ try:
           [l for l in log().splitlines() if "state:" in l])
 
     send(f"SAVE\tpath={C}")
-    check("a quick SAVE while the game runs is answered SAVED", drain(4.0, "SAVED") is not None)
+    check("a quick SAVE while the game runs is answered SAVED", drain(30.0, "SAVED") is not None)
     hc = header(C)
     check("and written packed", hc["version"] == 2 and hc["codec"] == 1
           and hc["len"] == 120 + hc["stored"] < PAD // 4, hc)
     send(f"LOAD\tpath={C}")
-    check("a quick LOAD of it is answered LOADED", drain(4.0, "LOADED") is not None)
+    check("a quick LOAD of it is answered LOADED", drain(30.0, "LOADED") is not None)
     send("STOP")
-    drain(3.0, "EXIT")
+    drain(30.0, "EXIT")
 
     # Version 1, as every Diatom before 2026-11-12 wrote it: 112 bytes of
     # header, the core's bytes as they are
@@ -157,7 +163,7 @@ try:
           f"state: restored {old} ({112 + 4 + PAD} bytes, {4 + PAD} from the core, version 1;" in log(),
           [l for l in log().splitlines() if "state:" in l])
     send("STOP")
-    drain(3.0, "EXIT")
+    drain(30.0, "EXIT")
 
     # Damaged in the packed block, and cut short
     with open(A, "rb") as f: good = bytearray(f.read())
@@ -175,13 +181,11 @@ try:
               ok and said and first is not None and first <= 2,
               (ok, first, [l for l in log().splitlines() if path in l]))
         send("STOP")
-        drain(3.0, "EXIT")
+        drain(30.0, "EXIT")
 
 finally:
     send("QUIT")
-    time.sleep(0.3)
-    p.terminate()
-    try: p.wait(3)
+    try: p.wait(30)
     except subprocess.TimeoutExpired: p.kill()
     err.close()
     shutil.rmtree(TMP, ignore_errors=True)

@@ -33,6 +33,13 @@ slot's round trip as the launcher drives it.
     d-pad is on its other side, and STICK is not said; stick=dpad-pad starts
     the N64's stick on the d-pad's side for such a button to turn.
 
+On Diatom's test clock (port/desktop.c, DIATOM_TEST_CLOCK): a frame is a
+frame's time on it, so SELECT held six polls is 100 ms of the 400 ms
+CHORD_HOLD_MS allows on any machine, where on the wall clock a busy one
+could stretch those polls past it and the tap be held SELECT. Each game
+runs until the core has read its polls, its lines are read until the
+STOP's EXIT, and every other wait is only that (2026-11-24).
+
 Needs build/desktop (diatom and stubcore.so) and SKIPS without it, as
 check-proto does. SDL's dummy drivers: no window, no sound.
 
@@ -75,22 +82,23 @@ def check(name, ok, got=None):
 
 p = subprocess.Popen([BIN, "--socket", SOCK, "--save", TMP, "--system", TMP],
                      env=dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_RENDER_DRIVER="software",
-                              SDL_AUDIODRIVER="dummy", DIATOM_INPUT_SCRIPT=SCRIPT,
+                              SDL_AUDIODRIVER="dummy", DIATOM_TEST_CLOCK="0", DIATOM_INPUT_SCRIPT=SCRIPT,
                               STUBCORE_INPUT_LOG=LOG),
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-for _ in range(100):
-    if os.path.exists(SOCK): break
+end = time.time() + 30
+while not os.path.exists(SOCK) and time.time() < end:
     time.sleep(0.05)
 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 s.connect(SOCK)
 s.settimeout(0.05)
 buf, got = b"", []
 
-def pump(seconds):
-    """Read for `seconds`, answering the hotkeys as the launcher does"""
+def pump(seconds, until=None):
+    """Read for `seconds`, or until a line that starts with `until`,
+    answering the hotkeys as the launcher does"""
     global buf
     end = time.time() + seconds
-    while time.time() < end:
+    while time.time() < end and not (until and any(l.startswith(until) for l in got)):
         try:
             d = s.recv(65536)
             if not d: return
@@ -124,16 +132,18 @@ def pump_until(path, n, limit=90.0):
     end = time.time() + limit
     while frames_logged(path) < n and time.time() < end:
         pump(0.2)
-    pump(0.5)
+    # A hotkey said before the core's last poll is in the socket by then:
+    # read and answered before the STOP
+    pump(0.2)
 
-pump(0.5)
+pump(30, "READY")
 check("READY says proto=14", any(l.startswith("READY\tproto=14") for l in got), got[:2])
 s.sendall(f"RUN\tcore={STUB}\n".encode())
 pump_until(LOG, 300)
 s.sendall(b"STOP\n")
-pump(1.5)
+pump(30, "EXIT")
 s.sendall(b"QUIT\n")
-try: p.wait(5)
+try: p.wait(30)
 except subprocess.TimeoutExpired: p.kill()
 
 check("SELECT+R1 says HOTKEY key=save once", got.count("HOTKEY\tkey=save") == 1, got)
@@ -185,23 +195,23 @@ RB, RY = 1 << 0, 1 << 1
 SOCK2, LOG2 = f"{TMP}/n64.sock", f"{TMP}/n64.log"
 p = subprocess.Popen([BIN, "--socket", SOCK2, "--save", TMP, "--system", TMP],
                      env=dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_RENDER_DRIVER="software",
-                              SDL_AUDIODRIVER="dummy", DIATOM_INPUT_SCRIPT=N64_SCRIPT,
+                              SDL_AUDIODRIVER="dummy", DIATOM_TEST_CLOCK="0", DIATOM_INPUT_SCRIPT=N64_SCRIPT,
                               STUBCORE_INPUT_LOG=LOG2),
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-for _ in range(100):
-    if os.path.exists(SOCK2): break
+end = time.time() + 30
+while not os.path.exists(SOCK2) and time.time() < end:
     time.sleep(0.05)
 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 s.connect(SOCK2)
 s.settimeout(0.05)
 buf, got = b"", []
-pump(0.3)
+pump(30, "READY")
 s.sendall(f"RUN\tcore={STUB}\nSETMAP\tmap=select:r2,r2:none,a:b,b:y,y:none,select+a:a,select+b:b,select+y:y\n".encode())
 pump_until(LOG2, 200)
 s.sendall(b"STOP\n")
-pump(1.0)
+pump(30, "EXIT")
 s.sendall(b"QUIT\n")
-try: p.wait(5)
+try: p.wait(30)
 except subprocess.TimeoutExpired: p.kill()
 check("the N64's map is taken, no ERROR for it", not any(l.startswith("ERROR") for l in got), got)
 frames = [int(line.split()[1]) for line in open(LOG2)]
@@ -235,23 +245,23 @@ UP = 1 << 4
 SOCK3, LOG3 = f"{TMP}/psp.sock", f"{TMP}/psp.log"
 p = subprocess.Popen([BIN, "--socket", SOCK3, "--save", TMP, "--system", TMP],
                      env=dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_RENDER_DRIVER="software",
-                              SDL_AUDIODRIVER="dummy", DIATOM_INPUT_SCRIPT=PSP_SCRIPT,
+                              SDL_AUDIODRIVER="dummy", DIATOM_TEST_CLOCK="0", DIATOM_INPUT_SCRIPT=PSP_SCRIPT,
                               STUBCORE_INPUT_LOG=LOG3),
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-for _ in range(100):
-    if os.path.exists(SOCK3): break
+end = time.time() + 30
+while not os.path.exists(SOCK3) and time.time() < end:
     time.sleep(0.05)
 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 s.connect(SOCK3)
 s.settimeout(0.05)
 buf, got = b"", []
-pump(0.3)
+pump(30, "READY")
 s.sendall(f"RUN\tcore={STUB}\tstick=toggle\nSETMAP\tmap=r2:stick\n".encode())
 pump_until(LOG3, 150)
 s.sendall(b"STOP\n")
-pump(1.0)
+pump(30, "EXIT")
 s.sendall(b"QUIT\n")
-try: p.wait(5)
+try: p.wait(30)
 except subprocess.TimeoutExpired: p.kill()
 frames = [int(line.split()[1]) for line in open(LOG3)]
 up = [i for i, b in enumerate(frames) if b & UP]
@@ -273,23 +283,23 @@ def live_run(tag, script, lines_out, nframes, run_extra=""):
     global s, buf, got, p
     p = subprocess.Popen([BIN, "--socket", sock, "--save", TMP, "--system", TMP],
                          env=dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_RENDER_DRIVER="software",
-                                  SDL_AUDIODRIVER="dummy", DIATOM_INPUT_SCRIPT=script,
+                                  SDL_AUDIODRIVER="dummy", DIATOM_TEST_CLOCK="0", DIATOM_INPUT_SCRIPT=script,
                                   STUBCORE_INPUT_LOG=log, STUBCORE_INPUT_ANALOG="1"),
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    for _ in range(100):
-        if os.path.exists(sock): break
+    end = time.time() + 30
+    while not os.path.exists(sock) and time.time() < end:
         time.sleep(0.05)
     s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     s.connect(sock)
     s.settimeout(0.05)
     buf, got = b"", []
-    pump(0.3)
+    pump(30, "READY")
     s.sendall(f"RUN\tcore={STUB}{run_extra}\n{lines_out}".encode())
     pump_until(log, nframes)
     s.sendall(b"STOP\n")
-    pump(1.0)
+    pump(30, "EXIT")
     s.sendall(b"QUIT\n")
-    try: p.wait(5)
+    try: p.wait(30)
     except subprocess.TimeoutExpired: p.kill()
     rows = [list(map(int, l.split())) for l in open(log)]
     return [r[1] for r in rows], [r[5] for r in rows]
