@@ -37,6 +37,13 @@
 #ifndef RK_STICKS
 #define RK_STICKS 0
 #endif
+/* Whether the headphone jack's switch is read, for the volume's window: not
+ * on the R36S (RK_JACK 0), whose line read "plugged" whatever was in the
+ * jack (ZyperOS's src/device/r36s.c says more). Its volume then keeps the
+ * speaker's window, as the launcher's does. */
+#ifndef RK_JACK
+#define RK_JACK 1
+#endif
 
 #include <SDL.h>
 
@@ -362,7 +369,7 @@ static void input_scan(void)
 			snprintf(g_pad_path, sizeof g_pad_path, "%s", path);
 		}
 		else if (g_keys_fd < 0 && BIT_IS_SET(keys, KEY_VOLUMEUP))       g_keys_fd = fd;
-		else if (g_jack_fd < 0 && BIT_IS_SET(sw, SW_HEADPHONE_INSERT))  g_jack_fd = fd;
+		else if (RK_JACK && g_jack_fd < 0 && BIT_IS_SET(sw, SW_HEADPHONE_INSERT)) g_jack_fd = fd;
 		else kept = false;
 		if (!kept) close(fd);
 	}
@@ -372,6 +379,7 @@ static void input_scan(void)
  * input device ("rk817_int Headphones"), found by input_scan. */
 static void jack_open(void)
 {
+	if (!RK_JACK) return;
 	if (g_jack_fd < 0) input_scan();
 	if (g_jack_fd < 0)
 		diatom_port_log(DIATOM_LOG_WARN, "pixel2: no headphone jack input; "

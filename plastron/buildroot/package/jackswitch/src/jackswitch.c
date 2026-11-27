@@ -7,8 +7,15 @@
  * the codec's "Playback Mux" stays on whatever it was set to. This sets it
  * to HP while headphones are in and SPK otherwise, once at startup and then
  * on every change. It sleeps in read() in between.
+ *
+ * Or one output for good, where the jack cannot be trusted: OUTPUT=HP or
+ * OUTPUT=SPK in /etc/default/jackswitch (the R36S's, board/r36s/
+ * rootfs-overlay), or zyaudio=HP or zyaudio=SPK on the kernel's line, which
+ * wins (on the R36S, zy_audio= in r36s-boot.txt), so a tester can try the
+ * other one without building anything.
  */
 #include <alsa/asoundlib.h>
+#include <ctype.h>
 #include <fcntl.h>
 #include <linux/input.h>
 #include <stdio.h>
@@ -54,6 +61,35 @@ static void log_to_kernel(const char *text)
 	}
 }
 
+/* "HP" or "SPK" after `key` in the file at `path` (a word starting at a
+ * line's or a space's edge), else NULL. */
+static const char *fixed_in(const char *path, const char *key)
+{
+	static char buf[4096];
+	size_t klen = strlen(key);
+	ssize_t n;
+	int fd = open(path, O_RDONLY | O_CLOEXEC);
+
+	if (fd < 0)
+		return NULL;
+	n = read(fd, buf, sizeof(buf) - 1);
+	close(fd);
+	if (n <= 0)
+		return NULL;
+	buf[n] = 0;
+	for (char *p = buf; (p = strstr(p, key)); p += klen) {
+		const char *v = p + klen;
+
+		if (p != buf && !isspace((unsigned char)p[-1]))
+			continue;
+		if (!strncmp(v, "HP", 2) && (!v[2] || isspace((unsigned char)v[2])))
+			return "HP";
+		if (!strncmp(v, "SPK", 3) && (!v[3] || isspace((unsigned char)v[3])))
+			return "SPK";
+	}
+	return NULL;
+}
+
 /* Picks the mux item by name, so it doesn't depend on the order */
 static int set_output(snd_ctl_t *ctl, const char *output)
 {
@@ -87,8 +123,28 @@ static int set_output(snd_ctl_t *ctl, const char *output)
 
 int main(void)
 {
-	int fd = open_headphone_jack();
+	const char *fixed = fixed_in("/proc/cmdline", "zyaudio=");
 	snd_ctl_t *ctl = NULL;
+	int fd;
+
+	if (!fixed)
+		fixed = fixed_in("/etc/default/jackswitch", "OUTPUT=");
+	if (fixed) {
+		char line[64];
+
+		if (snd_ctl_open(&ctl, "hw:0", 0) < 0 || set_output(ctl, fixed) < 0) {
+			log_to_kernel("jackswitch: can't set Playback Mux\n");
+			sleep(10);
+			return 1;
+		}
+		snprintf(line, sizeof(line), "jackswitch: Playback Mux %s for good\n", fixed);
+		log_to_kernel(line);
+		/* init respawns us if we end */
+		for (;;)
+			pause();
+	}
+
+	fd = open_headphone_jack();
 
 	if (fd < 0 || snd_ctl_open(&ctl, "hw:0", 0) < 0) {
 		log_to_kernel("jackswitch: no headphone jack or no sound card\n");

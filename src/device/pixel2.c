@@ -55,6 +55,15 @@
 #ifndef RK_STICKS
 #define RK_STICKS        0
 #endif
+/* Whether the headphone jack's switch is read (the codec's
+ * SW_HEADPHONE_INSERT): for the volume's window, the status bar's headphones
+ * and Audio Output. The R36S's is not (RK_JACK 0): its line read "plugged"
+ * whatever was in the jack, so it plays on the speaker's window with no
+ * headphones shown, and the system holds its output where both play
+ * (plastron's board/r36s/rootfs-overlay/etc/default/jackswitch). */
+#ifndef RK_JACK
+#define RK_JACK          1
+#endif
 
 #include <dirent.h>
 #include <errno.h>
@@ -789,7 +798,7 @@ static void input_scan(void)
 		if      (fd_pad < 0   && BIT_IS_SET(keys, BTN_SOUTH))           { fd_pad = fd; pad_node = i; stick_probe(); }
 		else if (fd_keys < 0  && BIT_IS_SET(keys, KEY_VOLUMEUP))        fd_keys = fd;
 		else if (fd_power < 0 && BIT_IS_SET(keys, KEY_POWER))           fd_power = fd;
-		else if (jack_fd < 0  && BIT_IS_SET(sw, SW_HEADPHONE_INSERT))   jack_fd = fd;
+		else if (RK_JACK && jack_fd < 0 && BIT_IS_SET(sw, SW_HEADPHONE_INSERT)) jack_fd = fd;
 		else kept = false;
 		if (!kept) close(fd);
 	}
@@ -1163,6 +1172,7 @@ static int read_int(const char *path)
 /* Found by input_scan with the buttons, which plat_input_init runs first. */
 static void jack_open(void)
 {
+	if (!RK_JACK) return;
 	if (jack_fd < 0) input_scan();
 	if (jack_fd < 0) fprintf(stderr, "settings: no headphone jack input node\n");
 }
