@@ -364,6 +364,9 @@ static void keys_from_launcher(void)
 	   !memcmp(key, def, sizeof key), "a bad spec, SELECT, MENU or a button twice: refused, untouched");
 	ck(chord_keys_parse("none", key) && key[CHORD_SAVE] == -1 && key[CHORD_SLOWER] == -1,
 	   "none: no hotkey at all");
+	ck(def[CHORD_FFWD] == -1 && chord_keys_parse("faster:r2,ffwd:y", key) &&
+	   key[CHORD_FFWD] == DIATOM_BTN_Y && key[CHORD_FASTER] == DIATOM_BTN_R2,
+	   "Fast Forward: none from the start, ffwd:y a launcher's key");
 
 	/* SELECT+Y with Y the screenshot's, and R1 no hotkey: SELECT then R1 is
 	 * the game's, R1 and SELECT both */

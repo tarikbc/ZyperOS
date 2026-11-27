@@ -27,6 +27,28 @@ de = Schnell laden
 ja = クイックロード
 it = Caricamento rapido
 
+[hotkeys.ffwd]
+note = A row of the Hotkeys list: SELECT and a button turn fast forward on (to hotkeys.ff_speed's speed) and, pressed again, back to the normal speed, one press each way. None until the player sets it. A row's name, beside its keys or hotkeys.none; also a row of the Controls pages. Title Case where English writes one.
+en = Fast Forward
+zh-Hans = 快进
+es = Avance rápido
+pt-BR = Avanço rápido
+fr = Avance rapide
+de = Vorspulen
+ja = 早送り
+it = Avanti veloce
+
+[hotkeys.ff_speed]
+note = A row of the Hotkeys list, under hotkeys.ffwd: the speed Fast Forward turns on, round on Left and Right, its value 1.5x, 2x, 3x or popup.speed_max. As controls.faster's speeds. Title Case where English writes one.
+en = Fast Forward Speed
+zh-Hans = 快进速度
+es = Velocidad de avance
+pt-BR = Velocidade do avanço
+fr = Vitesse d'avance
+de = Vorspultempo
+ja = 早送りの速度
+it = Velocità avanti
+
 [hotkeys.shot]
 note = A row of the Hotkeys list: SELECT and a button save a picture of the game (a screenshot) to the card, in Screenshots/. None until the player sets it. A row's name, beside its keys or hotkeys.none.
 en = Screenshot

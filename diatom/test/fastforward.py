@@ -114,7 +114,7 @@ def run(tag, frame_us, presses, seconds=4.0, skippable=False):
     try: p.wait(5)
     except subprocess.TimeoutExpired: p.kill()
     text = open(out, errors="replace").read()
-    reps = re.findall(r"diatom: speed ([\d.]+)x held ([\d.]+)s, reached ([\d.]+)x "
+    reps = re.findall(r"diatom: speed ([\d.]+x|max) held ([\d.]+)s, reached ([\d.]+)x "
                       r"\(([\d.]+)x of the clock\), (\d+) audio frame\(s\) dropped, "
                       r"slept [\d.]+s \(([\d.]+)s after (\d+) of (\d+) turns short of the step\), "
                       r"lost ([\d.]+)s", text)
@@ -124,7 +124,9 @@ def run(tag, frame_us, presses, seconds=4.0, skippable=False):
     costs += [float(c) for c in re.findall(r"diatom: and ([\d.]+) ms a frame run undrawn", text)]
     if not reps or not costs: return None
     step, held, turn_speed, clock, dropped, short_s, short_n, turns, lost = reps[-1]
-    return (float(step), float(clock), int(dropped), sum(costs) / len(costs),
+    # Max has no step: said "max", kept here as SPEED_MAX_HALVES' ceiling
+    step = 32.0 if step == "max" else float(step[:-1])
+    return (step, float(clock), int(dropped), sum(costs) / len(costs),
             float(held), float(short_s), int(short_n), int(turns), float(turn_speed), float(lost))
 
 # What the core's own cost allows, flat out, as this run measured it: said
@@ -176,6 +178,19 @@ for presses, want in ((1, 1.5), (3, 3.0)):
           r and (r, short_of(r)))
     judged(f"a 1 ms core at {want}x reaches it", r, want)
     if r: print(f"       {r[1]:.2f}x, {short_of(r)}")
+
+# Max (2026-11-23): no step, so every turn is short of the ceiling and the
+# loop never sleeps after one, on any machine; and past 3x, judged where the
+# 3x run above kept up, since a busy machine can hold a 1 ms core under 3x
+kept3 = kept_up(r)
+r = run("max", 1000, 4)
+check("a 1 ms core at Max never sleeps", r is not None and r[0] == 32.0 and flat_out(r),
+      r and (r, short_of(r)))
+if kept3:
+    check("a 1 ms core at Max runs past 3x", r is not None and r[1] > 3.3, r)
+elif r is not None:
+    print("  --   a 1 ms core at Max runs past 3x: not judged, this machine could not keep 3x")
+if r: print(f"       {r[1]:.2f}x at Max, {short_of(r)}")
 
 # A slow core, flat out short of the step. The old pacing ran whole frames in
 # a two-refresh turn and slept the rest, so its speed came in steps: at 9 ms

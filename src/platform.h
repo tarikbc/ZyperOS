@@ -279,9 +279,9 @@ bool plat_resident_start_error(plat_start_error *out);
 void plat_resident_on_unlock(void (*fn)(int id));
 
 /* Called from inside plat_resident_wait when Diatom reports its speed step,
- * in halves (2 is 1x, 3 is 1.5x, up to 6, 3x): on every SELECT+R2 and
- * SELECT+L2, and again when a game resumes fast. A callback for the unlock's
- * reason. NULL to stop. */
+ * in halves (2 is 1x, 3 is 1.5x, up to 6, 3x, and 0 for Max): on every
+ * SELECT+R2, SELECT+L2 and Fast Forward, and again when a game resumes fast.
+ * A callback for the unlock's reason. NULL to stop. */
 void plat_resident_on_speed(void (*fn)(int half));
 
 /* Called from inside plat_resident_wait when R2 turned a PSP game's d-pad

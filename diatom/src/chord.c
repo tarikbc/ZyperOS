@@ -48,7 +48,7 @@ void chord_set_keys(chord *c, const int key[CHORD_ACTS])
 }
 
 static const char *const ACT_NAME[CHORD_ACTS] = {
-	"save", "load", "faster", "slower", "shot", "shader", "display", "reset", "quit"
+	"save", "load", "faster", "slower", "shot", "shader", "display", "reset", "quit", "ffwd"
 };
 
 /* The buttons a hotkey can be held with: never SELECT, its holder, nor

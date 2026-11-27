@@ -123,7 +123,7 @@ typedef struct {
 
 /* The line for these numbers and these items, in UTF-8: the middle dot
  * between items, the battery as a private code point (U+E000 + its tenth,
- * drawn) before its level. Clamped to what it holds: 999.9 fps, 9.9x. An
+ * drawn) before its level. Clamped to what it holds: 999.9 fps, 99.9x. An
  * empty string when nothing is known of what was picked. */
 void hud_text(char *out, size_t n, const hud_values *v, uint8_t items);
 

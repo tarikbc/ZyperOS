@@ -306,6 +306,8 @@ static void parse_line(char *line, diatom_msg *out)
 		/* RUN's hotkeys= and SETHOTKEYS' keys=, one slot */
 		else if (!strcmp(field, "hotkeys") || !strcmp(field, "keys"))
 			snprintf(out->hotkeys, sizeof out->hotkeys, "%s", v);
+		else if (!strcmp(field, "ffspeed"))
+			snprintf(out->ffspeed, sizeof out->ffspeed, "%s", v);
 		else if (!strcmp(field, "shots"))
 			snprintf(out->shots, sizeof out->shots, "%s", v);
 		else if (!strcmp(field, "menukeys"))
@@ -505,6 +507,14 @@ diatom_msg_kind diatom_proto_poll(diatom_msg *out, int timeout_ms, bool running)
 		 * the game's while it is MENU's, and MENU then opens nothing.
 		 * Additive: an old Diatom ignores it and MENU's buttons stay the
 		 * game's; an old launcher sends none, and nothing changes. */
+		/* Later still, Fast Forward: a tenth hotkey, ffwd, turns 1x into
+		 * the speed RUN ffspeed= or SETHOTKEYS ffspeed= gives it (1.5, 2,
+		 * 3 or max; 2 without one) and any fast step back into 1x; and a
+		 * fifth step past 3x, Max, as many frames as a turn holds, said
+		 * SPEED x=max. Additive for the hotkey: an old launcher sends no
+		 * ffwd key. Not for Max: SELECT+R2 past 3x reaches it under any
+		 * launcher, and one that reads x as a number says 0x; the two
+		 * ship together. */
 		/* proto=13 moves the speed and adds the quick slot: SELECT+R2 and
 		 * SELECT+L2 step it in halves, so SPEED's x may be "1.5", and MENU+R1
 		 * does nothing; SELECT+R1 and SELECT+L1 send HOTKEY key=save|load,

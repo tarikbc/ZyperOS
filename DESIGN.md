@@ -6178,7 +6178,8 @@ without a compare, which a frame does not pay for.
 **Speed is the emulation.** The frames the core emulated a second, against the
 frame rate it announces (`retro_get_system_av_info`): 1.00x at the game's own
 speed, 0.67x for a core that gets two thirds of it done, the step in fast
-forward (1.5x, 2x, 3x). It does not move with how often the game draws, so a
+forward (1.5x, 2x, 3x), and at Max what the handheld reached (12.6x; 99.9x at
+most, where it held 9.9x before Max). It does not move with how often the game draws, so a
 game at 30 fps at full speed is 30 fps and 1.00x, and shows no speed at all
 (the line says Speed only when it is off 0.98x to 1.02x, or is the only item).
 
@@ -7218,7 +7219,8 @@ before. An action has one chord and a chord does one action.
 | Action | From the start | What it does |
 |---|---|---|
 | Quick Save, Quick Load | SELECT+R1, SELECT+L1 | the quick slot, as they always did |
-| Faster, Slower | SELECT+R2, SELECT+L2 | the speed's steps |
+| Faster, Slower | SELECT+R2, SELECT+L2 | the speed's steps: 1x, 1.5x, 2x, 3x, Max |
+| Fast Forward | None | one press from 1x to its speed, one from any fast step back to 1x (below) |
 | Screenshot | None | the game's frame to `Screenshots/<System>/<Game> 2026-11-18 21.40.05.png` |
 | Next Shader, Next Display | None | the system's next shader or display mode, kept as the menu's rows keep them; a pop-up names it ("Shader / CRT Curved") |
 | Reset Game | None | asks first (below) |
@@ -7227,6 +7229,28 @@ before. An action has one chord and a chord does one action.
 A player who sets none sends what was always sent: RUN carries `hotkeys=`
 only when the hotkeys in force differ from ZyperOS's own. Home (MENU+START
 held a second) and POWER are no hotkeys and never change.
+
+**Fast Forward and Max** *(2026-11-23, both asked for on the Discord: a
+toggle "like RetroArch does it by default", for Pokemon fast in battles and
+at 1x between them; and a speed past 3x, as a Game Boy Pokemon game ran faster
+under RetroArch on an RK3326)*. **Max** is a fifth step past 3x: no step to
+hold to, so a turn runs frames until the next would not fit its two
+refreshes, the panel still drawn 30 times a second, and the loop never
+sleeps; as fast as the handheld can run the game (12.6x for the stub's 1 ms
+frames), with 32x as a turn's ceiling that no handheld game comes near.
+Muted, as every fast step is. SELECT+R2 reaches it after 3x, SELECT+L2 steps
+back to 3x, and the pop-up says **Max**; On-Screen Stats' Speed says what
+it reached. **Fast Forward** is one press each way: from 1x to **Fast
+Forward Speed**, from any fast step, one SELECT+R2 reached too, to 1x; the
+same Speed pop-up says each. Its speed is the row under it in the list,
+round on Left and Right, **1.5x, 2x, 3x, Max**, 2x from the start *(my pick:
+a fixed speed is the same every press and every game, where "the last one
+used" would change with each SELECT+R2 and start over with every game, as
+the speed does; 2x is the middle step)*, kept with the keys in each scope
+(`ffspeed:max`) and sent as RUN and SETHOTKEYS `ffspeed=`. Nothing else
+changes with the speed: achievements count every frame at any speed
+(softcore only), there is no rewind, MP4 over a game plays on in its own
+player, and a core that asks (GET_FASTFORWARDING) is told it is fast.
 
 **A quick press counts in a slow game** *(the 1.1.0-rc.8 device test,
 2026-11-20: an 80 ms MENU in a Saturn game at 10 fps never opened the menu)*.
@@ -7306,7 +7330,8 @@ stops the game as the menu's Quit does.
 
 **Over your PICO-8** the same hotkeys, judged in portkeys by the same chord
 rule (11.55): Screenshot, Reset Game (asked first), Quit, Next Shader and Next
-Display, the first four doing nothing, as PICO-8 has no states and no speed.
+Display, the first four and Fast Forward doing nothing, as PICO-8 has no
+states and no speed.
 
 **The screenshot** is the game's own frame at its own size, as a save's
 picture is, not the screen with its shader and border: Diatom keeps that

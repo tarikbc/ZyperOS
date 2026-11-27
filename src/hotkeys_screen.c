@@ -35,6 +35,9 @@ enum { HKR_SCOPE = 100, HKR_HOME, HKR_FOOT_RULE, HKR_RESET, HKR_ALL,
 /* ...and the room for them, a glyph and the grid's eight above and below */
 #define HK_CAPTURE_H     (HK_CAPTURE_GLYPH + DS_GRID * 8)
 
+/* Fast Forward's speed, the row under it (HKR_MAX had a row spare for it) */
+enum { HKR_FF_SPEED = 120 };
+
 typedef struct {
 	app              *a;
 	const system_cfg *s;          /* NULL: MENU > System's, Every Game */
@@ -49,6 +52,7 @@ typedef struct {
 	int               n;
 	unsigned          vcol[HKR_MAX];
 	unsigned char     sound[HKR_MAX];
+	char              ff_val[16];
 	char              val[HK_ACTS][CTL_KEYS_MAX];
 	char              home[CTL_KEYS_MAX];
 	char              scope_val[CFG_STR];
@@ -60,7 +64,8 @@ typedef struct {
 
 static const str_id ACT_LABEL[HK_ACTS] = {
 	S_HOTKEYS_QUICK_SAVE, S_HOTKEYS_QUICK_LOAD, S_CONTROLS_FASTER, S_CONTROLS_SLOWER,
-	S_HOTKEYS_SHOT, S_HOTKEYS_SHADER, S_HOTKEYS_DISPLAY, S_HOTKEYS_RESET, S_GAMEMENU_QUIT
+	S_HOTKEYS_SHOT, S_HOTKEYS_SHADER, S_HOTKEYS_DISPLAY, S_HOTKEYS_RESET, S_GAMEMENU_QUIT,
+	S_HOTKEYS_FFWD
 };
 
 /* The handheld's buttons a key is, as the capture screen reads them */
@@ -69,6 +74,13 @@ static const in_button KEY_IN[HK_KEYS] = {
 };
 
 /* ---- what is shown --------------------------------------------------------- */
+
+void speed_said(int half, char *out, size_t n)
+{
+	if (half <= 0)    snprintf(out, n, "%s", T(S_POPUP_SPEED_MAX));
+	else if (half % 2) snprintf(out, n, T(S_POPUP_SPEED_HALF), half / 2);
+	else              snprintf(out, n, T(S_POPUP_SPEED_WHOLE), half / 2);
+}
 
 static void shown(const hk_page *p, hk_table *t, hk_table *back, bool *own)
 {
@@ -90,8 +102,8 @@ static void send(const hk_page *p)
 	if (!p->running || !p->s) return;
 	hks_get(HKS_GAME, p->s->tag, p->file, &t);
 	hk_run(&t, run, sizeof run);
-	fprintf(stderr, "hotkeys: %s %s\n", p->s->tag, run);
-	plat_resident_line("SETHOTKEYS\tkeys=%s", run);
+	fprintf(stderr, "hotkeys: %s %s ffspeed=%s\n", p->s->tag, run, hk_ff_word(t.ff));
+	plat_resident_line("SETHOTKEYS\tkeys=%s\tffspeed=%s", run, hk_ff_word(t.ff));
 }
 
 static const char *scope_said(hk_page *p)
@@ -156,7 +168,7 @@ static int build(void *ctx, menu_row *rows, int max, const char **heading)
 	hk_table t, back;
 	const char *home = dev_role_keys(&plat_profile()->chords, DEV_ROLE_HOME);
 	bool own;
-	int n = 0, i;
+	int n = 0, j;
 
 #define ROW(id_, r_, c_, snd_) do { if (n < max && n < HKR_MAX) { p->ids[n] = (id_); rows[n] = (r_); \
 	p->vcol[n] = (c_); p->sound[n] = (snd_); n++; } } while (0)
@@ -167,14 +179,22 @@ static int build(void *ctx, menu_row *rows, int max, const char **heading)
 	if (p->s)
 		ROW(HKR_SCOPE, ((menu_row){ T(S_GAMEMENU_APPLIES_TO), scope_said(p), true }),
 		    own && p->scope != HKS_EVERY ? 1u : 0u, MENU_SND_RING);
-	for (i = 0; i < HK_ACTS; i++) {
+	for (j = 0; j < HK_ACTS; j++) {
+		const hk_act i = hk_order[j];
 		char chord[24];
 
-		hk_chord(&t, (hk_act)i, chord, sizeof chord);
+		hk_chord(&t, i, chord, sizeof chord);
 		if (chord[0]) snprintf(p->val[i], sizeof p->val[i], "%s%s", MENU_KEYS_MARK, chord);
 		else snprintf(p->val[i], sizeof p->val[i], "%s", T(S_HOTKEYS_NONE));
 		ROW(i, ((menu_row){ T(ACT_LABEL[i]), p->val[i], true }),
 		    t.key[i] != back.key[i] ? 1u : 0u, 0);
+		/* Fast Forward's speed under it, round on Left and Right as
+		 * Applies To: 1.5x, 2x, 3x, Max, as the speed pop-up says them */
+		if (i == HK_FFWD) {
+			speed_said(hk_ff_half(t.ff), p->ff_val, sizeof p->ff_val);
+			ROW(HKR_FF_SPEED, ((menu_row){ T(S_HOTKEYS_FF_SPEED), p->ff_val, true }),
+			    t.ff != back.ff ? 1u : 0u, MENU_SND_RING);
+		}
 	}
 	/* Home, the way out of anything, the same on every card: fixed, a quiet
 	 * row the cursor passes */
@@ -507,6 +527,15 @@ static menu_result key(app *a, void *ctx, in_button k, int sel)
 		const int d = k == IN_LEFT ? -1 : 1;
 
 		p->scope = (hks_scope)((p->scope + 3 + d) % 3);
+		return MENU_STAY;
+	}
+	if (id == HKR_FF_SPEED) {
+		hk_table t, back;
+
+		shown(p, &t, &back, NULL);
+		t.ff = (signed char)((t.ff + HK_FF_STEPS + (k == IN_LEFT ? -1 : 1)) % HK_FF_STEPS);
+		hks_put(p->scope, p->s ? p->s->tag : NULL, p->file, &t);
+		send(p);
 		return MENU_STAY;
 	}
 	if (side) return MENU_STAY;

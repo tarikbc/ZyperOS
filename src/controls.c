@@ -232,15 +232,18 @@ static int hotkey_rows(menu_row *out, bool states, bool select_note)
 {
 	static const str_id SAID[HK_ACTS] = {
 		S_CONTROLS_QUICK_SAVE, S_CONTROLS_QUICK_LOAD, S_CONTROLS_FASTER, S_CONTROLS_SLOWER,
-		S_HOTKEYS_SHOT, S_HOTKEYS_SHADER, S_HOTKEYS_DISPLAY, S_HOTKEYS_RESET, S_GAMEMENU_QUIT
+		S_HOTKEYS_SHOT, S_HOTKEYS_SHADER, S_HOTKEYS_DISPLAY, S_HOTKEYS_RESET, S_GAMEMENU_QUIT,
+		S_HOTKEYS_FFWD
 	};
 	static char keys[HK_ACTS][24];
-	int n = 0, i;
+	int n = 0, j;
 
 	if (!g_hotkeys_set) ctl_set_hotkeys(NULL);
-	for (i = 0; i < HK_ACTS && n < 6; i++) {
+	for (j = 0; j < HK_ACTS && n < 6; j++) {
+		const hk_act i = hk_order[j];
+
 		if (!states && (i == HK_SAVE || i == HK_LOAD)) continue;
-		hk_chord(&g_hotkeys, (hk_act)i, keys[i], sizeof keys[i]);
+		hk_chord(&g_hotkeys, i, keys[i], sizeof keys[i]);
 		if (!keys[i][0]) continue;
 		out[n++] = (menu_row){ keys[i], T(SAID[i]), false };
 	}

@@ -64,6 +64,7 @@
 #include "hare.h"
 #include "xfer.h"
 #include "home.h"
+#include "hotkeys_screen.h"
 #include "homesys_screen.h"
 #include "games.h"
 #include "hareart.h"
@@ -3502,15 +3503,15 @@ void popup_say(const char *head, const char *body)
 }
 
 /* Called from inside plat_resident_wait when Diatom says the speed step
- * changed (SELECT+R2, SELECT+L2), or that a game resumed fast: in halves, 3
- * is 1.5x. The step, not the speed reached: on a heavy SNES or GBA game the
- * top step runs about 2.5x, and that figure moves from scene to scene. */
+ * changed (SELECT+R2, SELECT+L2, Fast Forward), or that a game resumed fast:
+ * in halves, 3 is 1.5x, and 0 is Max. The step, not the speed reached: on a
+ * heavy SNES or GBA game the top step runs about 2.5x, and that figure moves
+ * from scene to scene; what Max reaches, On-Screen Stats' Speed says. */
 static void on_speed(int half)
 {
 	char body[24];
 
-	if (half % 2) snprintf(body, sizeof body, T(S_POPUP_SPEED_HALF), half / 2);
-	else          snprintf(body, sizeof body, T(S_POPUP_SPEED_WHOLE), half / 2);
+	speed_said(half, body, sizeof body);
 	popup_now(T(S_POPUP_SPEED), body);
 }
 
