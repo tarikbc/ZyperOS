@@ -987,9 +987,19 @@ check-launch-start:
 	@sh tools/launch-start-check.sh
 
 # The Pixel 2's crash report (plastron's /usr/sbin/crashlog): what pstore kept
-# of a panic or a reset, said once, onto the card for Download logs
+# of a panic or a reset, and the launcher's own crash, said once, onto the
+# card for Download logs
 check-crashlog:
 	@sh tools/crashlog-check.sh
+
+# The launcher's own crash (src/crashrec.h): children that crash on purpose
+# say where, in the log and the record, and still die of it
+check-crashrec: build-native/crashrec-check
+	@./build-native/crashrec-check
+
+build-native/crashrec-check: tools/crashrec-check.c src/crashrec.c src/crashrec.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -D_GNU_SOURCE -O1 -g -Wall -Wextra -o $@ tools/crashrec-check.c src/crashrec.c -lpthread
 
 # The display's gamma table, emptied (src/panelgamma.h): the launcher's and
 # Diatom's code against a stand-in display, with Linux's request numbers
