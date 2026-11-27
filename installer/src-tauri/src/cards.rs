@@ -26,11 +26,17 @@ pub enum Device {
     /// The TrimUI Smart Pro, which runs the Brick's system: its card is the
     /// Brick's layout, with the same closed files
     SmartPro,
+    /// The R36S, on the Pixel 2's system and card layout with its own boot
+    /// partition (plastron's board/r36s): a test device, offered as the
+    /// Smart Pro is, only for an image file that is for it, until a release
+    /// carries its image (config/devices). Its board's panel is picked on
+    /// the page (r36s.rs)
+    R36s,
 }
 
 impl Device {
     /// Every device this installer knows, in the order the page shows them
-    pub const ALL: [Device; 3] = [Device::Pixel2, Device::Brick, Device::SmartPro];
+    pub const ALL: [Device; 4] = [Device::Pixel2, Device::Brick, Device::SmartPro, Device::R36s];
 
     /// Its id, as ZyperOS names it (config/devices, the release's
     /// ZyperOS-v<version>-<id>.img.xz, the page's data-value)
@@ -39,6 +45,7 @@ impl Device {
             Device::Pixel2 => "pixel2",
             Device::Brick => "brick",
             Device::SmartPro => "smartpro",
+            Device::R36s => "r36s",
         }
     }
 
@@ -89,13 +96,14 @@ pub struct Card {
 }
 
 /// The device whose system a boot partition's label names: PX2BOOT the GKD
-/// Pixel 2's, BRICKBOOT the Brick's, SMARTBOOT the Smart Pro's. None for any
-/// other label.
+/// Pixel 2's, BRICKBOOT the Brick's, SMARTBOOT the Smart Pro's, R36SBOOT the
+/// R36S's. None for any other label.
 pub fn system_of(label: &str) -> Option<Device> {
     match label {
         "PX2BOOT" => Some(Device::Pixel2),
         "BRICKBOOT" => Some(Device::Brick),
         "SMARTBOOT" => Some(Device::SmartPro),
+        "R36SBOOT" => Some(Device::R36s),
         _ => None,
     }
 }
@@ -942,6 +950,7 @@ mod tests {
         assert_eq!(system_of("PX2BOOT"), Some(Device::Pixel2));
         assert_eq!(system_of("BRICKBOOT"), Some(Device::Brick));
         assert_eq!(system_of("SMARTBOOT"), Some(Device::SmartPro));
+        assert_eq!(system_of("R36SBOOT"), Some(Device::R36s));
         assert_eq!(system_of("EMUELEC"), None);
     }
 
@@ -951,6 +960,9 @@ mod tests {
         // Its closed files and its update are the Brick's; the Pixel 2's are not
         assert!(Device::SmartPro.on_brick_system() && Device::Brick.on_brick_system());
         assert!(!Device::Pixel2.on_brick_system());
+        // The R36S's card is the Pixel 2's layout: the Pixel 2's update
+        assert!(!Device::R36s.on_brick_system());
+        assert_eq!(Device::from_id("r36s"), Some(Device::R36s));
     }
 
     #[test]

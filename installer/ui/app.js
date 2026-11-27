@@ -22,8 +22,12 @@ const listen = TAURI ? TAURI.event.listen : demo().listen;
 
 // Every device the page knows, in its order; which of them it offers is
 // offered()'s
-const DEVICE = { pixel2: "GKD Pixel 2", brick: "TrimUI Brick", smartpro: "TrimUI Smart Pro" };
-const THE = { pixel2: "the GKD Pixel 2", brick: "the TrimUI Brick", smartpro: "the TrimUI Smart Pro" };
+const DEVICE = { pixel2: "GKD Pixel 2", brick: "TrimUI Brick", smartpro: "TrimUI Smart Pro", r36s: "R36S" };
+const THE = { pixel2: "the GKD Pixel 2", brick: "the TrimUI Brick", smartpro: "the TrimUI Smart Pro", r36s: "the R36S" };
+// The R36S's boards' groups, in the page's order (r36s.rs's BOARDS)
+const BOARD_GROUPS = { common: "Most common", other: "Other boards", panel: "By panel" };
+// The card's own panel, when no board is picked (r36s.rs's DEFAULT_PANEL)
+const DEFAULT_PANEL = "4";
 // A card this big is likely a drive, not a card: said on its row
 const LARGE = 256e9;
 
@@ -50,6 +54,10 @@ const state = {
 	pico8Checking: null,
 	action: null,
 	job: null,
+	// The R36S's boards (r36s_boards), and the one picked: "not-sure", the
+	// card's own panel 4, until another is
+	boards: null,
+	board: "not-sure",
 };
 
 // ---- words ---------------------------------------------------------------
@@ -114,6 +122,20 @@ function describe(c) {
 
 function selected() {
 	return state.cards.find((c) => c.id === state.cardId) || null;
+}
+
+// The R36S's board picked, while it is the device and a system is written:
+// null for every other device and for Add PICO-8
+function boardFor(device, action) {
+	if (device !== "r36s" || action === "pico8" || !state.boards) return null;
+	return state.boards.find((b) => b.id === state.board) || state.boards[0];
+}
+
+// What the card's r36s-boot.txt gets for that board, in a sentence
+function boardLine(b) {
+	if (!b) return "";
+	return b.panel ? " Its r36s-boot.txt gets zy_panel=" + b.panel + (b.group === "panel" ? "." : ", for " + b.name + ".")
+		: " It drives panel " + DEFAULT_PANEL + ", the card's own.";
 }
 
 // The devices to choose from: those the newest release has a card image for
@@ -268,6 +290,7 @@ function render() {
 	if (!state.action || (state.action === "update" && blocked)) state.action = card && !blocked ? "update" : "fresh";
 	setOn("action", state.action);
 	renderPico8(card);
+	renderBoard();
 
 	// The button, and what it is about to do
 	const stop = blocker(card);
@@ -293,6 +316,7 @@ function intent(card) {
 	return zyperos() + " for " + THE[state.device] + " onto " + where
 		+ (withP8 ? ", with your " + p8(state.pico8.version) : "") + ". "
 		+ (fresh ? "Everything on the card is erased." : "Nothing on the card is erased.")
+		+ boardLine(boardFor(state.device, state.action))
 		+ (withP8 ? " Only this card gets PICO-8."
 			: pico8Ok() ? " Your PICO-8 is left out: " + NOT_MOUNTED.charAt(0).toLowerCase() + NOT_MOUNTED.slice(1) : "");
 }
@@ -338,6 +362,38 @@ function renderPico8(card) {
 	const x = !!z && !state.pico8Checking;
 	row.classList.toggle("with-x", x);
 	$("pico8-clear").hidden = !x;
+}
+
+// The R36S's board: a choice of the names printed on its boards, the most
+// common first, then the rest, then each panel by its own name; "Not sure"
+// is the card's own panel 4 and writes nothing. Shown for the R36S only,
+// when a system is written
+function renderBoard() {
+	const b = boardFor(state.device, state.action);
+	$("board-group").hidden = !b;
+	if (!b) return;
+	const select = $("board");
+	if (!select.options.length) {
+		const groups = {};
+		for (const one of state.boards) {
+			if (!groups[one.group]) {
+				groups[one.group] = document.createElement("optgroup");
+				groups[one.group].label = BOARD_GROUPS[one.group] || one.group;
+				select.append(groups[one.group]);
+			}
+			const o = document.createElement("option");
+			o.value = one.id;
+			// Its panel beside its name, where the name doesn't say it
+			const panel = one.panel || DEFAULT_PANEL;
+			o.textContent = /panel/i.test(one.name) ? one.name : one.name + " · panel " + panel;
+			groups[one.group].append(o);
+		}
+	}
+	select.value = b.id;
+	$("board-hint").textContent = (b.panel
+		? "Panel " + b.panel + ": the installer writes zy_panel=" + b.panel + " in r36s-boot.txt, on the card's R36SBOOT partition, and reads it back."
+		: "Panel " + DEFAULT_PANEL + ", the panel most R36S boards have. r36s-boot.txt stays as it comes.")
+		+ " A black screen? Edit r36s-boot.txt on a computer, as the file says.";
 }
 
 // A card chosen: its device, unless the device was chosen by hand or isn't
@@ -448,6 +504,10 @@ $("pico8-clear").addEventListener("click", () => {
 	if (state.action === "pico8") state.action = null;
 	render();
 });
+$("board").addEventListener("change", (e) => {
+	state.board = e.target.value;
+	render();
+});
 document.querySelector("[data-group=action]").addEventListener("click", (e) => {
 	const b = e.target.closest("[data-value]");
 	if (!b || b.disabled) return;
@@ -472,8 +532,9 @@ function confirmWrite() {
 	const fresh = state.action === "fresh";
 	const add = state.action === "pico8";
 	const withP8 = add || carries(card, state.action);
+	const board = boardFor(add ? card.device : state.device, state.action);
 	state.confirming = { card, device: add ? card.device : state.device, action: state.action,
-		pico8: withP8 ? state.pico8 : null, rides: withP8 && !add && rides(card, state.action) };
+		pico8: withP8 ? state.pico8 : null, rides: withP8 && !add && rides(card, state.action), board };
 	const yours = withP8 ? "Your " + p8(state.pico8.version) : "";
 	$("confirm-title").textContent = add ? "Add PICO-8 to this card?" : fresh ? "Erase this card?" : "Update this card?";
 	$("confirm-name").textContent = cardName(card);
@@ -488,6 +549,7 @@ function confirmWrite() {
 				+ ". Then " + zyperos() + " for " + THE[state.device] + " goes on." + (withP8 ? " " + yours + " goes with it." : "")
 			: zyperos() + " replaces the system on it. The games, music and saves stay."
 				+ (withP8 ? " " + yours + (state.confirming.rides ? " goes with it." : " goes in Bios/PICO-8.") : "");
+	what.textContent += boardLine(board);
 	$("confirm-check-row").hidden = !fresh;
 	$("confirm-check").checked = false;
 	$("confirm-check-text").textContent = "Erase " + cardName(card) + ", " + size(card.size_bytes);
@@ -562,7 +624,8 @@ async function begin() {
 	show("working");
 	try {
 		await invoke("start", { card: c.card.id, size: c.card.size_bytes, device: c.device, action: c.action,
-			image: local ? state.image.path : null, pico8: c.pico8 ? c.pico8.path : null });
+			image: local ? state.image.path : null, pico8: c.pico8 ? c.pico8.path : null,
+			board: c.board ? c.board.id : null });
 	} catch (e) {
 		finish({ ok: false, cancelled: false, message: String(e) });
 	}
@@ -665,7 +728,9 @@ function finish(f) {
 						+ (job.pico8 ? " It moves your PICO-8 there too." : "")
 					: " The games, music and saves are as they were."
 						+ (!job.pico8 ? "" : job.rides ? " Its first start moves " + yours + " to Bios/PICO-8."
-							: " Your " + p8(job.pico8.version) + " is in Bios/PICO-8."));
+							: " Your " + p8(job.pico8.version) + " is in Bios/PICO-8."))
+				+ (job.board ? " It drives panel " + (job.board.panel || DEFAULT_PANEL)
+					+ ". If the screen stays black, edit r36s-boot.txt on its R36SBOOT partition, as the file says." : "");
 		}
 		// This card has it now: the next card gets PICO-8 only if it is
 		// chosen again
@@ -857,6 +922,7 @@ listen("finished", (e) => finish(e.payload));
 if (TAURI) TAURI.app.getVersion().then((v) => { $("ver").textContent = v; });
 findUpdate();
 findRelease();
+invoke("r36s_boards").then((boards) => { state.boards = boards; render(); }, () => {});
 render();
 refresh();
 setInterval(refresh, 2000);
@@ -875,6 +941,27 @@ function demo() {
 			os: null, version: null, games: 0, songs: 0, books: 0, volume: "/Volumes/ROMS", started: true },
 	];
 	let stop = false;
+	// The R36S's boards for the demo: r36s.rs's BOARDS, as JSON
+	const boards = /* r36s-boards */[
+		{"id": "not-sure", "name": "Not sure", "group": "common", "panel": null},
+		{"id": "v12-panel4", "name": "R36S-V12, panel 4", "group": "common", "panel": "4"},
+		{"id": "v12-panel0", "name": "R36S-V12, panel 0", "group": "common", "panel": "0"},
+		{"id": "v21", "name": "R36S-V21", "group": "common", "panel": "4v22"},
+		{"id": "v21-2537", "name": "R36S-V21 2537 or 2547", "group": "common", "panel": "4"},
+		{"id": "v22", "name": "R36S-V22", "group": "common", "panel": "4v22"},
+		{"id": "v30", "name": "R36S-V30", "group": "common", "panel": "4v22"},
+		{"id": "hl-r36h-v20", "name": "HL-R36H-V20", "group": "other", "panel": "4"},
+		{"id": "hl-r36h-v21", "name": "HL-R36H-V21", "group": "other", "panel": "4v22"},
+		{"id": "y02", "name": "R36S-Y02", "group": "other", "panel": "0"},
+		{"id": "r36xx-v21", "name": "R36XX-V21", "group": "other", "panel": "4v22"},
+		{"id": "rk3326-d3", "name": "RK3326-D3", "group": "other", "panel": "4"},
+		{"id": "panel-0", "name": "Panel 0", "group": "panel", "panel": "0"},
+		{"id": "panel-1", "name": "Panel 1", "group": "panel", "panel": "1"},
+		{"id": "panel-2", "name": "Panel 2", "group": "panel", "panel": "2"},
+		{"id": "panel-3", "name": "Panel 3", "group": "panel", "panel": "3"},
+		{"id": "panel-4", "name": "Panel 4", "group": "panel", "panel": "4"},
+		{"id": "panel-4v22", "name": "Panel 4v22", "group": "panel", "panel": "4v22"}
+	]/* /r36s-boards */;
 	$("ver").textContent = q.get("ver") || "1.0.6";
 	demo.api = {
 		listen: (name, h) => { (handlers[name] = handlers[name] || []).push(h); return Promise.resolve(); },
@@ -924,9 +1011,16 @@ function demo() {
 					? { path: args.path, name, version: "", refused: "This is PICO-8 for Windows. Choose the Raspberry Pi zip: only it has pico8_64, the build the handheld runs." }
 					: { path: args.path, name, version: "0.2.7", refused: null }), 600));
 			}
+			// ?r36s: the image file is the R36S's test card
 			case "pick_image": case "check_image":
-				return Promise.resolve({ path: "/tmp/ZyperOS-v0.1.0-pixel2.img.xz", name: "ZyperOS-v0.1.0-pixel2.img.xz",
-					file_bytes: 74e6, image_bytes: 352321536, device: "pixel2", checksum: true });
+				return Promise.resolve(q.has("r36s")
+					? { path: "/tmp/ZyperOS-v0.1.0-r36s.img.xz", name: "ZyperOS-v0.1.0-r36s.img.xz",
+						file_bytes: 71e6, image_bytes: 1090519040, device: "r36s", checksum: true }
+					: { path: "/tmp/ZyperOS-v0.1.0-pixel2.img.xz", name: "ZyperOS-v0.1.0-pixel2.img.xz",
+						file_bytes: 74e6, image_bytes: 352321536, device: "pixel2", checksum: true });
+			// r36s.rs's BOARDS, as the app gives them (its test
+			// the_pages_demo_has_the_same_boards keeps the two the same)
+			case "r36s_boards": return Promise.resolve(boards);
 			case "cancel": stop = true; return Promise.resolve();
 			case "start": {
 				stop = false;

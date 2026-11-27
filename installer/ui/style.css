@@ -396,6 +396,46 @@ picture { display: contents; }
 .row.on + .x { color: var(--on-accent); }
 .row.on + .x:hover { background: rgba(var(--on-accent-rgb), 0.12); color: var(--on-accent); }
 
+/* The R36S's board: a row with the system's own drop-down at its right end,
+ * dressed as a raised key with a chevron in the row's ink, and what it
+ * writes in a line under the list */
+.row.pick { cursor: default; }
+.row.pick:hover { background: transparent; }
+.select { position: relative; flex: none; }
+.select select {
+	-webkit-appearance: none;
+	appearance: none;
+	font: inherit;
+	font-size: var(--menu);
+	color: var(--text);
+	background: var(--raised);
+	border: var(--frame) solid var(--edge);
+	border-radius: var(--radius-row);
+	padding: 7px 34px 7px 12px;
+	max-width: 290px;
+	cursor: pointer;
+	transition: border-color var(--quick) var(--out), background var(--quick) var(--out);
+}
+.select select:hover { border-color: var(--text-dim); }
+.select select:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
+.select::after {
+	content: "";
+	position: absolute;
+	right: 14px;
+	top: calc(50% - 5px);
+	width: 6px;
+	height: 6px;
+	border-right: 1.8px solid var(--text-soft);
+	border-bottom: 1.8px solid var(--text-soft);
+	transform: rotate(45deg);
+	pointer-events: none;
+}
+.hint {
+	margin: 8px 2px 0;
+	font-size: var(--meta);
+	color: var(--text-dim);
+}
+
 .empty {
 	display: flex;
 	align-items: center;

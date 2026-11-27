@@ -12,6 +12,7 @@ mod device;
 mod image;
 mod install;
 mod pico8;
+mod r36s;
 mod release;
 mod selfupdate;
 mod writer;
@@ -371,13 +372,15 @@ async fn pick_pico8(app: AppHandle) -> Result<Option<String>, String> {
 
 /// A card image to use instead of downloading one, for trying out a build
 /// before it is published: ZYPEROS_BRICK_IMAGE for the Brick,
-/// ZYPEROS_SMARTPRO_IMAGE for the Smart Pro, ZYPEROS_IMAGE for the Pixel. Its
-/// device is offered even when the release has no image for it.
+/// ZYPEROS_SMARTPRO_IMAGE for the Smart Pro, ZYPEROS_R36S_IMAGE for the R36S,
+/// ZYPEROS_IMAGE for the Pixel. Its device is offered even when the release
+/// has no image for it.
 fn local_release(device: cards::Device) -> Option<PathBuf> {
     let var = match device {
         cards::Device::Pixel2 => "ZYPEROS_IMAGE",
         cards::Device::Brick => "ZYPEROS_BRICK_IMAGE",
         cards::Device::SmartPro => "ZYPEROS_SMARTPRO_IMAGE",
+        cards::Device::R36s => "ZYPEROS_R36S_IMAGE",
     };
     std::env::var_os(var).map(PathBuf::from)
 }
@@ -464,6 +467,7 @@ fn device_name(d: cards::Device) -> &'static str {
         cards::Device::Pixel2 => "the GKD Pixel 2",
         cards::Device::Brick => "the TrimUI Brick",
         cards::Device::SmartPro => "the TrimUI Smart Pro",
+        cards::Device::R36s => "the R36S",
     }
 }
 
@@ -484,7 +488,8 @@ fn games_volume(card: &cards::Card) -> Result<PathBuf, String> {
 /// PICO-8 copied to a started card's games partition just before it (the
 /// system write unmounts it), or riding along in the image's boot partition
 /// for a card that never started, as every fresh install is; a download is
-/// removed after, with its folder.
+/// removed after, with its folder. `panel` is the R36S's, for its
+/// r36s-boot.txt (r36s.rs), None for every other device.
 #[allow(clippy::too_many_arguments)]
 fn write(
     card_id: &str,
@@ -493,6 +498,7 @@ fn write(
     action: install::Action,
     local: Option<PathBuf>,
     zip: Option<PathBuf>,
+    panel: Option<&str>,
     cache: Option<&Path>,
     progress: &mut dyn FnMut(writer::Progress),
     cancel: &AtomicBool,
@@ -539,7 +545,7 @@ fn write(
             Some(_) => zip.as_deref(),
             None => None,
         };
-        install::run(card_id, action, &path, card_size, &closed, rides, progress, cancel)
+        install::run(card_id, action, &path, card_size, &closed, rides, panel, progress, cancel)
     });
     if let Some(dir) = folder {
         let _ = std::fs::remove_dir_all(dir);
@@ -577,13 +583,16 @@ enum Job {
 /// events. `action` is update, fresh or pico8 (Add PICO-8); `size` is the
 /// card's size as the player confirmed it; `image` a local card image, or
 /// none to download the latest release; `pico8` the player's PICO-8 zip, to
-/// go on the card too (Add PICO-8's own).
+/// go on the card too (Add PICO-8's own); `board` the R36S's board
+/// (r36s::BOARDS), whose panel goes in its r36s-boot.txt, and nothing for
+/// any other device.
 #[allow(clippy::too_many_arguments)]
 #[tauri::command]
 fn start(app: AppHandle, running: State<Running>, card: String, size: u64, device: String, action: String,
-         image: Option<String>, pico8: Option<String>) -> Result<(), String> {
+         image: Option<String>, pico8: Option<String>, board: Option<String>) -> Result<(), String> {
     let zip = pico8;
     let device = cards::Device::from_id(&device).ok_or("Unknown device")?;
+    let panel = panel_for(device, board.as_deref())?;
     let job = match (action.as_str(), install::Action::parse(&action)) {
         ("pico8", _) => Job::AddPico8,
         (_, Some(a @ (install::Action::Update | install::Action::Fresh))) => Job::Write(a),
@@ -635,7 +644,9 @@ fn start(app: AppHandle, running: State<Running>, card: String, size: u64, devic
         let cache = app.path().app_cache_dir().ok();
         let result = match (job, &zip) {
             (Job::AddPico8, Some(zip)) => add_pico8(&card, size, zip, &mut progress, &cancel),
-            (Job::Write(action), _) => write(&card, size, device, action, local, zip, cache.as_deref(), &mut progress, &cancel),
+            (Job::Write(action), _) => {
+                write(&card, size, device, action, local, zip, panel, cache.as_deref(), &mut progress, &cancel)
+            }
             (Job::AddPico8, None) => Err("Choose your PICO-8 zip first.".into()),
         };
         // A card that finished well is ejected, ready to take out; one that
@@ -659,6 +670,25 @@ fn start(app: AppHandle, running: State<Running>, card: String, size: u64, devic
         let _ = app.emit("finished", FinishedEvent { ok, cancelled, message, ejected, eject_error });
     });
     Ok(())
+}
+
+/// The R36S's boards, for the page's board choice (r36s.rs)
+#[tauri::command]
+fn r36s_boards() -> Vec<r36s::Board> {
+    r36s::BOARDS.to_vec()
+}
+
+/// The panel a write puts in r36s-boot.txt: the R36S board's, None for its
+/// default (the card's own panel 4) and for every other device, whatever the
+/// page sends
+fn panel_for(device: cards::Device, board: Option<&str>) -> Result<Option<&'static str>, String> {
+    if device != cards::Device::R36s {
+        return Ok(None);
+    }
+    match board {
+        None | Some("") => Ok(None),
+        Some(id) => Ok(r36s::find(id).ok_or("Unknown R36S board")?.panel),
+    }
 }
 
 /// Stops the job at the next chunk.
@@ -704,7 +734,7 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![list_cards, latest_zyperos, installer_update, download_update,
                                                  restart_to_update, open_installer_releases, check_image, pick_image,
-                                                 check_pico8, pick_pico8, start, cancel])
+                                                 check_pico8, pick_pico8, r36s_boards, start, cancel])
         .run(tauri::generate_context!())
         .expect("ZyperOS Installer could not start");
 }
@@ -723,6 +753,21 @@ mod tests {
         assert_eq!(with_local(&[Device::Pixel2], &[Device::Brick]), vec![Device::Pixel2, Device::Brick]);
         assert_eq!(with_local(&[], &[Device::Brick]), vec![Device::Brick], "GitHub not answering");
         assert_eq!(with_local(&[Device::Brick, Device::Pixel2], &[Device::Pixel2]), vec![Device::Pixel2, Device::Brick]);
+    }
+
+    /// Only the R36S gets a panel, and only from a board it knows
+    #[test]
+    fn only_the_r36s_gets_a_panel() {
+        use super::panel_for;
+        assert_eq!(panel_for(Device::R36s, Some("v22")), Ok(Some("4v22")));
+        assert_eq!(panel_for(Device::R36s, Some("v12-panel0")), Ok(Some("0")));
+        assert_eq!(panel_for(Device::R36s, Some("not-sure")), Ok(None), "the card's own default");
+        assert_eq!(panel_for(Device::R36s, None), Ok(None));
+        assert!(panel_for(Device::R36s, Some("panel-9")).is_err());
+        for d in [Device::Pixel2, Device::Brick, Device::SmartPro] {
+            assert_eq!(panel_for(d, Some("v22")), Ok(None), "{d:?}");
+            assert_eq!(panel_for(d, None), Ok(None), "{d:?}");
+        }
     }
 
     #[test]
