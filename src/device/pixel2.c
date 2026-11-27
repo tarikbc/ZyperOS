@@ -318,6 +318,8 @@ static void draw_picture(const SDL_Rect *dest, bool fx)
  * it (a shot) is read from screen_tex, which has none */
 void plat_screen_finish(void) { }
 bool plat_screen_shader_in_frame(void) { return false; }
+/* ZyperOS draws on screen_tex, which show_screen copies to the panel */
+bool plat_screen_kept(void) { return true; }
 
 /* Black around the picture, then the picture: 1024x768 down to 640x480 and a
  * quarter turn counter-clockwise, which on this panel ("Left Side Up") is the

@@ -4509,7 +4509,7 @@ drawn by every screen's frame, under the
 volume bar (plat_set_overlay), and last on a frame that skipped the bar
 (plat_overlay_present); the home's focus frames, which redraw the machine
 alone, stop while it is up (it was drawn under the animated machine on the
-device, 2026-11-10; tools/home-shot-check.py holds it, `--replug`). USB File Transfer's Cable step says
+device, 2026-11-10; tools/home-shot-check.py holds it, `--replug`), and never come on the Brick, whose screen is its window: after a swap the window holds an older page of fb0, and a focus frame over it showed a menu closed a moment ago, flickering (a tester, 2026-11-21; plat_screen_kept). USB File Transfer's Cable step says
 it shorter after 5 seconds (11.35), under its "waiting" row, in the
 hint's three lines: "Unplug the cable and plug it back in, or use a USB-A
 to USB-C cable: it connects every time." The user-facing words never say "power".

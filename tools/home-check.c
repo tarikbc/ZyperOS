@@ -6,6 +6,7 @@
 #include "config.h"
 #include "texload.h"
 #include "systemart_data.h"
+#include "platform.h"
 #include <SDL_image.h>
 #include <assert.h>
 #include <math.h>
@@ -329,7 +330,13 @@ int main(void)
     assert(!h.atlas.tex);
     assert(home_draw(&h,r,HOME_GALLERY,&missing,1,0,"No games","Open games",0,true)==UINT32_MAX);
     assert(home_draw(&h,r,HOME_GALLERY,NULL,0,0,"","",0,true)==UINT32_MAX);
+    /* The Brick's screen is the window (src/device/brick.c, the file this
+     * host build runs): no frame of the home is drawn over the last one's
+     * picture there, as a swap leaves an older page of fb0 under it, so the
+     * still home draws whole frames, not focus frames (a Brick tester's
+     * flickering menu, 2026-11-21). Only desk mode's screen texture keeps it. */
+    assert(!plat_screen_kept());
     home_free(&h); page_fonts_quit(); ui_quit(); SDL_DestroyRenderer(r); SDL_FreeSurface(surface); IMG_Quit(); SDL_Quit();
-    puts("ok: home choice, labels, motion, cached music, renderer state, bounded assets, worker isolation, and missing art");
+    puts("ok: home choice, labels, motion, cached music, renderer state, bounded assets, worker isolation, missing art, and no focus frame on a screen that is not kept");
     return 0;
 }
