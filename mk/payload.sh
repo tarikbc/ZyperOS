@@ -99,6 +99,7 @@ cp "$ROOT/res/fonts/zh-menu.otf" "$P/"    # 简体中文's faces and 日本語's
 cp "$ROOT/res/fonts/zh-title.otf" "$P/"   # them (tools/cjkfont.py), opened only
 cp "$ROOT/res/fonts/ja-menu.otf" "$P/"    # when Chinese or Japanese is drawn
 cp "$ROOT/res/fonts/ja-title.otf" "$P/"
+cp "$ROOT/res/fonts/hand.ttf" "$P/"       # MP4's tape labels' handwriting, Caveat
 cp "$ROOT/res/singles.png" "$P/"          # MP4's cover for Singles, the loose songs
 cp "$ROOT/res/zyper.png" "$P/"            # Zyper's photo, on About's The name page
 # The interface sounds, every voice (src/uisound.h): the launcher reads them
@@ -156,6 +157,9 @@ cp "$ROOT/LICENSE" "$OUT/Licenses/ZyperOS-LICENSE.md"
 cp "$ROOT/NOTICE" "$OUT/Licenses/ZyperOS-NOTICE.txt"
 cp "$ROOT/TRADEMARK.md" "$OUT/Licenses/ZyperOS-TRADEMARK.md"
 cp "$ROOT/LICENSES/MIT-TortOS.txt" "$OUT/Licenses/"
+# ...and the Open Font License of the font that is on the card for itself,
+# Caveat, which its license says goes with it
+cp "$ROOT/LICENSES/OFL-Caveat.txt" "$OUT/Licenses/"
 # ...and the licenses of the menu music's tracks, which it names
 for f in "$ROOT"/res/bgm/LICENSE-*.txt; do
 	cp "$f" "$OUT/Licenses/menu-music-${f##*/LICENSE-}"

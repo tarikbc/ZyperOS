@@ -296,6 +296,7 @@ int sys_menu_mp4_rows(int kind, bool both, bool no_wifi, sm_mp4_row *out)
 	out[n++] = SMM_VIEW;
 	if (kind == 0 || kind == 3) out[n++] = SMM_SHUFFLE;
 	if (kind == 0 || kind == 3) out[n++] = SMM_LOOK;
+	if (kind == 0 || kind == 3) out[n++] = SMM_TAPE;
 	if (kind == 2 || kind == 3) out[n++] = SMM_REPEAT;
 	out[n++] = SMM_EQ;
 	out[n++] = SMM_LOCK;
@@ -352,7 +353,8 @@ static const unsigned char SM_SOUND[SM_ROWS] = {
 };
 static unsigned char smm_sound(sm_mp4_row r)
 {
-	return r == SMM_SHOW || r == SMM_VIEW || r == SMM_LOOK || r == SMM_REPEAT || r == SMM_EQ ? MENU_SND_RING
+	return r == SMM_SHOW || r == SMM_VIEW || r == SMM_LOOK || r == SMM_TAPE || r == SMM_REPEAT || r == SMM_EQ
+	       ? MENU_SND_RING
 	     : r == SMM_SORT ? MENU_SND_RING | MENU_SND_NO_A : 0;
 }
 
@@ -503,6 +505,10 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 				case SMM_LOOK:
 					out[k] = (menu_row){ T(S_SYSMENU_MP4_LOOK), u->mp4_look ? u->mp4_look
 					                     : T(S_SYSMENU_LOOK_COVER), true };
+					break;
+				case SMM_TAPE:
+					out[k] = (menu_row){ T(S_SYSMENU_MP4_TAPE), u->mp4_tape ? u->mp4_tape
+					                     : T(S_SYSMENU_TAPE_PINSTRIPE), u->mp4_tape_live };
 					break;
 				case SMM_REPEAT:
 					out[k] = (menu_row){ T(S_SYSMENU_MP4_REPEAT),

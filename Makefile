@@ -3035,10 +3035,10 @@ build-native/mp4resume-check: tools/mp4resume-check.c src/mp4resume.c src/mp4res
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Isrc \
 	      -o $@ tools/mp4resume-check.c src/mp4resume.c -lm
 
-build-native/mp4look-check: tools/mp4look-check.c src/mp4look.c src/mp4look.h src/design.h FORCE
+build-native/mp4look-check: tools/mp4look-check.c src/mp4look.c src/mp4look.h src/design.h $(DEVICE_PROFILES) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/mp4look-check.c src/mp4look.c -lm
+	      -o $@ tools/mp4look-check.c src/mp4look.c $(DEVICE_PROFILES) -lm
 
 # An album cover's main color (src/covercolor.h), the cassette's stripe and
 # the vinyl's: one color, a title on white, the larger of two, grey.
@@ -3321,6 +3321,20 @@ check-cjkface:
 		ZYPEROS_HEADLESS=1 SDL_VIDEODRIVER=dummy SDL_RENDER_DRIVER=software \
 		  ./build-native/cjkface-check; \
 	else echo "skipped: no SDL2 for the CJK face check"; fi
+
+# MP4's tape labels' handwriting: what Caveat has not, in Lexend or Noto,
+# run by run (ui_hand_face), never boxes
+check-handface:
+	@if pkg-config --exists sdl2 SDL2_ttf SDL2_image; then \
+		mkdir -p build-native; \
+		$(CC) -std=gnu11 -D_GNU_SOURCE -O1 -g -Wall -Wextra \
+		  $$(pkg-config --cflags sdl2 SDL2_ttf SDL2_image) -Isrc \
+		  -o build-native/handface-check tools/handface-check.c src/ui.c src/ds/glyph.c src/ds/button.c src/folderart.c src/roundrect.c src/theme.c src/look.c \
+		  src/themefile.c src/linebreak.c src/blur.c src/cardgen.c src/cardart.c src/cardart_draw.c src/sysmark.c $(I18N_SRC) \
+		  $$(pkg-config --libs sdl2 SDL2_ttf SDL2_image) -lm && \
+		ZYPEROS_HEADLESS=1 SDL_VIDEODRIVER=dummy SDL_RENDER_DRIVER=software \
+		  ./build-native/handface-check; \
+	else echo "skipped: no SDL2 for the handwriting face check"; fi
 
 # The design system's rules the compiler cannot hold (DESIGN.md section 15):
 # src/ds/ stands alone, and no page foot, page Zyper or tile mark is typed

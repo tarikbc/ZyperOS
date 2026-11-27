@@ -385,8 +385,20 @@ EXTRA = {
     **{"mp4-look-list-%s" % _l: ("media", "MUSE", ["--screen", "games", "--menu", "Player Look", "--press",
                                                    "a", "--pick-at", str(_k)])
        for _k, _l in enumerate(("cover", "cassette", "vinyl", "classic", "spectrum"))},
+    # MP4's Tape Styles (DESIGN.md 11.64): the Clear card, Worn paused (its
+    # pause's word where the time left was), a style's name in its pill as
+    # Up or Down leaves it, and MENU's Tape Style list on each style, its
+    # note in the picture's narrow column
+    "np-tape-clear": ("demo", "MUSE", ["--nowplaying", "0", "0", "83", "--np-look", "cassette", "--np-tape", "clear"]),
+    "np-tape-worn-paused": ("demo", "MUSE", ["--nowplaying", "0", "0", "83", "--np-look", "cassette",
+                                             "--np-tape", "worn", "--paused"]),
+    "np-tape-said": ("demo", "MUSE", ["--nowplaying", "0", "0", "83", "--np-look", "cassette",
+                                      "--np-tape", "band", "--np-tape-said"]),
+    **{"mp4-tape-list-%s" % _l: ("media", "MUSE", ["--screen", "games", "--np-look", "cassette", "--menu",
+                                                   "Tape Style", "--press", "a", "--pick-at", str(_k)])
+       for _k, _l in enumerate(("pinstripe", "band", "ferric", "metal", "clear", "red", "worn"))},
     # its Repeat row on One, the value no other shot has
-    "mp4-menu-repeat-one": ("media", "MUSE", ["--screen", "games", "--menu", "--mode", "repeat one"]),
+    "mp4-menu-repeat-one": ("media", "MUSE", ["--screen", "games", "--menu", "Repeat", "--mode", "repeat one"]),
     # MP4's menu with its cursor on the Equalizer row, the same as MENU's
     "mp4-menu-eq": ("media", "MUSE", ["--screen", "games", "--menu", "Equalizer"]),
     # its Album Art row, under the fold since Repeat and Equalizer (opened, it

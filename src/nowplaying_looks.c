@@ -34,6 +34,7 @@
 #include "mp4lib.h"
 #include "nowplaying_screen.h"
 #include "panel.h"
+#include "pixtape.h"
 #include "platform.h"
 #include "shots.h"
 #include "theme.h"
@@ -193,6 +194,7 @@ typedef struct {
 	SDL_Rect bar;            /* the song's time */
 	SDL_Rect times;          /* the row under it: the time played, the time left */
 	int keys_cy;             /* the keys' last row's middle */
+	int keys_top;            /* their box's top */
 } npl_frame;
 
 /* From the foot up: the keys, as many rows as their words take, their box
@@ -220,6 +222,7 @@ static void frame_layout(npl_frame *F, const key_hint *h, int nh)
 	F->bar = ds_flex_rect(&L, bar);
 	F->times = ds_flex_rect(&L, times);
 	F->keys_cy = ds_flex_rect(&L, keys).y + ds_flex_rect(&L, keys).h - DS_HINT_GLYPH / 2;
+	F->keys_top = ds_flex_rect(&L, keys).y;
 }
 
 /* The ground, the light along its foot, as Cover has them */
@@ -587,7 +590,6 @@ static float song_frac(const mu_now *mn)
 static mp4l_spin g_spin;
 static mp4l_tape g_tape;
 static mp4l_disc g_disc;
-static cas_tex   g_cas;
 static vin_tex   g_vin;
 
 /* The label's words, and the last song's leaving as a new one's arrive:
@@ -674,101 +676,421 @@ static void cas_words_of(const mu_now *mn, cas_words *w)
 		snprintf(w->under, sizeof w->under, "%s", mn->artist[0] ? mn->artist : mn->album);
 	w->place[0] = '\0';
 	if (n > 1) snprintf(w->place, sizeof w->place, "%d / %d", place + 1, n);
-	w->side = place < (n + 1) / 2 ? 'A' : 'B';
+	w->side = mp4t_side(place, n);
 }
 
-/* One set of the label's words at `alpha`, `dy` off their places */
-static void cas_words_draw(SDL_Renderer *r, const cas_words *w, int x, int y, float alpha, int dy,
-                           unsigned phase, unsigned *wait)
+/* ---- the tape's style --------------------------------------------------------------- */
+
+static int g_style = -1;                  /* -1: not read yet */
+static int g_tape_shot = MP4T_COUNT;     /* --np-tape's, never saved */
+static int g_tape_view = MP4T_COUNT;     /* Tape Style's list's picture's, while it draws */
+
+mp4t_id np_tape(void)
 {
-	const ds_theme *th = theme();
-	TTF_Font *ft = page_font(PAGE_GAME_TITLE), *fs = page_font(PAGE_CHROME), *fl = ui_face_at(DS_TYPE_SUPPORT, true);
-	SDL_Color text = ui_col(th->text, (Uint8)(255 * alpha)), dim = ui_col(th->text_dim, (Uint8)(255 * alpha));
-	int mid = y + CAS_ROW_MID + dy, pw = 0, tx = x + CAS_TITLE_X0, tw;
-	char side[2] = { w->side, 0 }, fit[260];
+	char k[16];
+
+	if (g_tape_view < MP4T_COUNT) return (mp4t_id)g_tape_view;
+	if (g_tape_shot < MP4T_COUNT) return (mp4t_id)g_tape_shot;
+	if (g_style < 0) {
+		db_get_str(db_dev(), "mp4.tape", k, sizeof k, mp4t_key(MP4T_DEFAULT));
+		g_style = mp4t_from_key(k);
+	}
+	return (mp4t_id)g_style;
+}
+
+void np_tape_set(mp4t_id id)
+{
+	if (id < 0 || id >= MP4T_COUNT) return;
+	g_style = id;
+	g_tape_shot = MP4T_COUNT;
+	db_set_str(db_dev(), "mp4.tape", mp4t_key(id));
+}
+
+void np_tape_shot(mp4t_id id) { g_tape_shot = id; }
+
+/* Each style's name and what it is, in the language that is on */
+static const str_id TAPE_NAME[MP4T_COUNT] = {
+	[MP4T_PINSTRIPE] = S_SYSMENU_TAPE_PINSTRIPE, [MP4T_BAND] = S_SYSMENU_TAPE_BAND, [MP4T_FERRIC] = S_SYSMENU_TAPE_FERRIC, [MP4T_METAL] = S_SYSMENU_TAPE_METAL,
+	[MP4T_CLEAR] = S_SYSMENU_TAPE_CLEAR, [MP4T_RED] = S_SYSMENU_TAPE_RED, [MP4T_WORN] = S_SYSMENU_TAPE_WORN,
+};
+static const str_id TAPE_NOTE[MP4T_COUNT] = {
+	[MP4T_PINSTRIPE] = S_SYSMENU_TAPE_PINSTRIPE_NOTE, [MP4T_BAND] = S_SYSMENU_TAPE_BAND_NOTE, [MP4T_FERRIC] = S_SYSMENU_TAPE_FERRIC_NOTE,
+	[MP4T_METAL] = S_SYSMENU_TAPE_METAL_NOTE, [MP4T_CLEAR] = S_SYSMENU_TAPE_CLEAR_NOTE,
+	[MP4T_RED] = S_SYSMENU_TAPE_RED_NOTE, [MP4T_WORN] = S_SYSMENU_TAPE_WORN_NOTE,
+};
+
+const char *tape_style_name(mp4t_id id) { return T(TAPE_NAME[id >= 0 && id < MP4T_COUNT ? id : MP4T_DEFAULT]); }
+const char *tape_style_note(mp4t_id id) { return T(TAPE_NOTE[id >= 0 && id < MP4T_COUNT ? id : MP4T_DEFAULT]); }
+
+/* The style's name over Now Playing as Up or Down steps it: in a pill at
+ * the top for **hold-short**, in over **quick** from a grid step up, out
+ * over **fade-out** (the lab's) */
+static struct { unsigned t0; bool on; } g_said;
+
+void npl_tape_said(void)
+{
+	g_said.t0 = clock_ms();
+	g_said.on = true;
+}
+
+/* ---- the tape's place and size ------------------------------------------------------- */
+
+/* The tape fills the screen (my pick in the Tape Styles lab): from a related
+ * step under the header to the keys' box (whose glyphs sit a section
+ * under its top), the C-cassette's proportions,
+ * every edge on the 16-unit grid, so it is whole cells at 8 units and 16
+ * alike: 960 x 608 under one row of keys, 864 x 544 over two. In the
+ * canvas's middle, on the grid; a wide canvas has ground either side. */
+typedef struct {
+	int x, y, w, h;
+	float kx, ky;            /* units a unit of the drawing (src/cassette.h's) */
+	pt_grid g;
+} tape_box;
+
+#define TAPE_STEP (2 * DS_GRID)
+
+static void tape_place(const npl_frame *F, tape_box *t)
+{
+	const device_profile *p = plat_profile();
+	int top = DS_HEADER + DS_RELATED, bottom = F->keys_top, room = bottom - top, u;
+
+	t->h = (room < DS_LOOK_TAPE_H ? room : DS_LOOK_TAPE_H) / TAPE_STEP * TAPE_STEP;
+	t->w = (int)lroundf((float)t->h * CAS_W / CAS_H / TAPE_STEP) * TAPE_STEP;
+	t->x = (int)lroundf((float)(ZYPEROS_SCREEN_W - t->w) / 2 / TAPE_STEP) * TAPE_STEP;
+	t->y = (top + (room - t->h) / 2) / TAPE_STEP * TAPE_STEP;
+	if (t->y < top) t->y += TAPE_STEP;
+	t->kx = (float)t->w / CAS_W;
+	t->ky = (float)t->h / CAS_H;
+	/* The cell whole pixels on this panel: 8 units, or 16 on the Smart Pro */
+	u = mp4t_cell(mp4t_px_per_unit(p->screen.panel_w, p->screen.panel_h, p->screen.turn));
+	pt_grid_make(&t->g, t->w, t->h, u ? u : 8);
+}
+
+/* ---- the album's length, for the tape's number ---------------------------------------- */
+
+/* Asked of the daemon once an album (mp4c_length_ask: its tracks' lengths
+ * from their headers, summed) and kept; until it answers, and for a shot
+ * with no daemon, the song's length times the album's songs */
+#define ALEN_N 16
+static struct { char dir[256]; double s; } g_alen[ALEN_N];
+static int g_alen_next;
+
+void npl_album_length(const char *dir, double s)
+{
+	int i;
+
+	for (i = 0; i < ALEN_N; i++)
+		if (!strcmp(g_alen[i].dir, dir)) { g_alen[i].s = s; return; }
+	snprintf(g_alen[g_alen_next].dir, sizeof g_alen[0].dir, "%s", dir);
+	g_alen[g_alen_next].s = s;
+	g_alen_next = (g_alen_next + 1) % ALEN_N;
+}
+
+static double album_seconds(const mu_now *mn)
+{
+	int place, al = song_album(mn, &place), i;
+	char dir[256];
+	const char *slash;
+
+	if (al < 0 || g_mp4.albums[al].n <= 0) return mn->len * (mn->count > 0 ? mn->count : 1);
+	slash = strrchr(g_mp4.tracks[g_mp4.albums[al].first].path, '/');
+	snprintf(dir, sizeof dir, "%.*s", slash ? (int)(slash - g_mp4.tracks[g_mp4.albums[al].first].path) : 0,
+	         g_mp4.tracks[g_mp4.albums[al].first].path);
+	for (i = 0; i < ALEN_N; i++)
+		if (g_alen[i].dir[0] && !strcmp(g_alen[i].dir, dir)) return g_alen[i].s;
+	/* Asked once; a shot has no daemon and shows the estimate */
+	if (!shot_path && mp4c_length_ask(dir)) npl_album_length(dir, -1);
+	return mn->len * g_mp4.albums[al].n;
+}
+
+/* ---- the label ---------------------------------------------------------------------------- */
+
+/* The words' colors: the style's print; the Worn
+ * tape's ink faded toward brown (Medium: 84%) and the words at 90% */
+typedef struct { SDL_Color ink, dim, mark, paper, print; float fade; } tape_inks;
+
+static SDL_Color rgb_col(unsigned rgb, Uint8 a)
+{
+	return (SDL_Color){ (Uint8)(rgb >> 16), (Uint8)(rgb >> 8), (Uint8)rgb, a };
+}
+
+static SDL_Color faded(SDL_Color c, float k)
+{
+	const SDL_Color brown = { 0x8a, 0x62, 0x36, 255 };
+
+	return (SDL_Color){ (Uint8)lroundf(c.r * k + brown.r * (1 - k)), (Uint8)lroundf(c.g * k + brown.g * (1 - k)),
+	                    (Uint8)lroundf(c.b * k + brown.b * (1 - k)), c.a };
+}
+
+static void tape_inks_of(mp4t_id st, tape_inks *k)
+{
+	const pt_mat *m = pt_material(st);
+
+	*k = (tape_inks){ rgb_col(m->ink, 255), rgb_col(m->dim, 255), rgb_col(m->mark, 255), rgb_col(m->paper, 255),
+	                  rgb_col(m->print, 255), 1.0f };
+	if (m->worn) {
+		k->ink = faded(k->ink, 0.84f);
+		k->dim = faded(k->dim, 0.84f);
+		k->fade = 0.9f;
+	}
+}
+
+/* Where the label's words go, in units from the tape's corner */
+typedef struct {
+	SDL_Rect cover, side;
+	int row_mid, under_mid, x0, x1;
+	int number_x, number_y;     /* the tape's number's middle; x < 0 none */
+	int metal_x, metal_y;       /* Metal's print; x < 0 none */
+} tape_label;
+
+static void tape_label_of(const tape_box *t, mp4t_id st, tape_label *L)
+{
+	pt_boxes b;
+	float print_y = st == MP4T_PINSTRIPE || st == MP4T_RED || st == MP4T_WORN ? 134 : CAS_REEL_Y;
+
+	pt_boxes_of(&t->g, st, &b);
+	L->cover = b.cover;
+	L->side = b.side;
+	L->row_mid = (int)lroundf(b.row_mid);
+	L->under_mid = (int)lroundf(b.under_mid);
+	L->x0 = (int)lroundf((CAS_LABEL_X0 + CAS_LABEL_PAD) * t->kx);
+	L->x1 = (int)lroundf((CAS_LABEL_X1 - CAS_LABEL_PAD) * t->kx);
+	if (st == MP4T_CLEAR) {
+		/* Its card is the shell's width less its wall */
+		L->x0 = b.paper.x + (int)lroundf(CAS_LABEL_PAD * 2 * t->kx);
+		L->x1 = b.paper.x + b.paper.w - (int)lroundf(CAS_LABEL_PAD * 2 * t->kx);
+	}
+	if (st == MP4T_CLEAR) {
+		L->number_x = t->w / 2;
+		L->number_y = (int)lroundf(300 * t->ky);
+	} else {
+		L->number_x = (int)lroundf((CAS_WIN_X1 + CAS_LABEL_X1) / 2.0f * t->kx);
+		L->number_y = (int)lroundf(print_y * t->ky);
+	}
+	L->metal_x = st == MP4T_METAL ? (int)lroundf((CAS_LABEL_X0 + CAS_WIN_X0) / 2.0f * t->kx) : -1;
+	L->metal_y = (int)lroundf(CAS_REEL_Y * t->ky);
+}
+
+/* The label's handwriting: the song in a hand the title's size (and its
+ * weight's Lexend for what Caveat has not), the line under the window in
+ * one meta's, both 1.3 times Lexend's so their small letters meet it (the
+ * lab's); NULL without the file, and Lexend then */
+#define HAND_K 1.3f
+
+static TTF_Font *hand_title(void)
+{
+	TTF_Font *f = ui_hand_face((int)lroundf(DS_TYPE_TITLE * HAND_K), true);
+
+	return f ? f : page_font(PAGE_GAME_TITLE);
+}
+
+static TTF_Font *hand_meta(void)
+{
+	TTF_Font *f = ui_hand_face((int)lroundf(DS_TYPE_META * HAND_K), false);
+
+	return f ? f : ui_font(UI_F_META);
+}
+
+/* One set of the label's words at `alpha`, `dy` off their places: the side's
+ * letter, the song (sliding when longer than its room), its place and the
+ * mode's mark at the label's right, and under the window who and what album
+ * between the times (sliding when long; nothing is cut) */
+static void cas_words_draw(SDL_Renderer *r, const cas_words *w, const tape_box *t, const tape_label *L,
+                           const tape_inks *ink, float alpha, int dy, unsigned phase,
+                           int room_l, int room_r, unsigned *wait)
+{
+	TTF_Font *ft = hand_title(), *fu = hand_meta(), *fs = ui_font(UI_F_META);
+	TTF_Font *fl = ui_hand_face((int)lroundf(L->side.h * 0.9f), true);
+	const float a = alpha * ink->fade;
+	SDL_Color text = ui_fade(ink->ink, a), dim = ui_fade(ink->dim, a);
+	int mid = t->y + L->row_mid + dy, right = t->x + L->x1, tx, tw, pw = 0;
+	char side[2] = { w->side, 0 };
 
 	if (alpha <= 0) return;
-	/* The side's letter in its box: text's ink, the paper's letter */
-	ui_round_rect(r, &(SDL_Rect){ x + CAS_SIDE_X0, y + CAS_SIDE_Y0 + dy, CAS_SIDE, CAS_SIDE }, DS_RADIUS_CHIP,
-	              text);
-	if (fl) ui_text(r, fl, side, x + CAS_SIDE_X0 + CAS_SIDE / 2, ui_cap_y(fl, mid), 0,
-	                ui_col(th->surface, (Uint8)(255 * alpha)));
+	if (!fl) fl = ui_face_at(DS_TYPE_SUPPORT, true);
+	/* The side's letter in its box, the box in the tape's cells already */
+	if (fl)
+		ui_text(r, fl, side, t->x + L->side.x + L->side.w / 2, ui_cap_y(fl, t->y + L->side.y + L->side.h / 2 + dy),
+		        0, ui_fade(ink->paper, alpha));
 	/* Its place and the play mode's mark, at the label's right */
 	if (w->place[0]) {
-		int g = MP4_MODES[mp4c_mode()].glyph, gs = DS_HINT_GLYPH * 3 / 4;
-		int right = x + CAS_LABEL_X1 - CAS_LABEL_PAD;
+		int g = MP4_MODES[mp4c_mode()].glyph, gs = DS_HINT_GLYPH;
 
 		if (g >= 0) {
-			ui_glyph_draw(r, (ui_glyph)g, right - gs / 2, mid, gs, ui_col(th->accent_ink, (Uint8)(255 * alpha)));
+			ui_glyph_draw(r, (ui_glyph)g, right - gs / 2, mid, gs, ui_fade(ink->mark, a));
 			right -= gs + DS_RELATED;
 		}
-		pw = x + CAS_LABEL_X1 - CAS_LABEL_PAD - right + ui_text(r, fs, w->place, right, ui_cap_y(fs, mid), 1, dim);
+		pw = t->x + L->x1 - right + ui_text(r, fs, w->place, right, ui_cap_y(fs, mid), 1, dim);
 	}
-	/* The song, sliding when it is longer than the label */
-	tw = x + CAS_LABEL_X1 - CAS_LABEL_PAD - pw - DS_SECTION - tx;
+	/* The song */
+	tx = t->x + L->side.x + L->side.w + (int)lroundf(16 * t->kx);
+	tw = t->x + L->x1 - pw - DS_SECTION - tx;
 	{
 		unsigned wt = ui_pingpong_wait(ui_text_width(ft, w->title) - tw, phase);
 
 		ui_text_marquee(r, ft, w->title, tx, ui_cap_y(ft, mid), tw, phase, text);
 		if (wt < *wait) *wait = wt;
 	}
-	/* Who and the album, under the window */
-	ui_fit_text(fs, w->under, fit, sizeof fit, CAS_LABEL_X1 - CAS_LABEL_X0 - 2 * CAS_LABEL_PAD);
-	ui_text(r, fs, fit, x + CAS_W / 2, ui_cap_y(fs, y + CAS_UNDER_MID + dy), 0, dim);
+	/* Who and the album, between the times */
+	{
+		int x0 = t->x + L->x0 + room_l, x1 = t->x + L->x1 - room_r, um = t->y + L->under_mid + dy;
+		int uw = ui_text_width(fu, w->under);
+		unsigned wt = ui_pingpong_wait(uw - (x1 - x0), phase);
+
+		if (uw <= x1 - x0) ui_text(r, fu, w->under, (x0 + x1) / 2, ui_cap_y(fu, um), 0, dim);
+		else ui_text_marquee(r, fu, w->under, x0, ui_cap_y(fu, um), x1 - x0, phase, dim);
+		if (wt < *wait) *wait = wt;
+	}
 }
 
-/* A C-cassette at its real proportions in a clear smoke-grey shell (the
- * lab's, my pick), its reels turning through the window, the label saying
- * the side, the song and its place, the cover's stripe across it; the bars
- * under it, as wide as it. */
+/* The time on the label: played at the left end of the line under the
+ * window, left at its right, tabular; a pause's word where the time left
+ * was, in the style's mark (the lab's) */
+static void tape_times(SDL_Renderer *r, const tape_box *t, const tape_label *L, const mu_now *mn,
+                       const tape_inks *ink, bool worn)
+{
+	TTF_Font *fs = ui_font(UI_F_META);
+	SDL_Color c = worn ? ui_fade(faded(ink->dim, 0.8f), ink->fade) : ink->dim;
+	int y = ui_cap_y(fs, t->y + L->under_mid);
+	char t0[16], t1[16], line[20];
+
+	mmss(t0, sizeof t0, mn->at);
+	ui_text_tabular(r, fs, t0, t->x + L->x0, y, -1, c);
+	if (mn->state != MU_PLAYING) {
+		ui_text(r, fs, mn->state == MU_PAUSED ? T(S_MP4_PAUSED) : T(S_MP4_STOPPED), t->x + L->x1, y, 1,
+		        ui_fade(ink->mark, ink->fade));
+	} else if (mn->len > 0) {
+		mmss(t1, sizeof t1, mn->len > mn->at ? mn->len - mn->at : 0);
+		snprintf(line, sizeof line, "-%s", t1);
+		ui_text_tabular(r, fs, line, t->x + L->x1, y, 1, c);
+	}
+}
+
+/* The room the times take at each end of the line under the window. While
+ * playing, what tape_times draws there, the played time at the left and the
+ * time left at the right, each and a section: room for the widest time and
+ * the pause's words, kept while playing too, made the line slide in every
+ * language whose words are longer than a time ("Angehalten", on the Smart
+ * Pro), where English's fit. Paused or stopped, the widest of a time and
+ * both words at both ends, the line's place the same in the two. */
+static void times_room(const mu_now *mn, int *left, int *right)
+{
+	TTF_Font *fs = ui_font(UI_F_META);
+	char t0[16], t1[16], line[20];
+	int w, p;
+
+	if (mn->state != MU_PLAYING) {
+		w = ui_text_tabular_width(fs, "-00:00");
+		p = ui_text_width(fs, T(S_MP4_PAUSED));
+		if (p > w) w = p;
+		p = ui_text_width(fs, T(S_MP4_STOPPED));
+		if (p > w) w = p;
+		*left = *right = w + DS_SECTION;
+		return;
+	}
+	mmss(t0, sizeof t0, mn->at);
+	*left = ui_text_tabular_width(fs, t0) + DS_SECTION;
+	*right = DS_SECTION;
+	if (mn->len > 0) {
+		mmss(t1, sizeof t1, mn->len > mn->at ? mn->len - mn->at : 0);
+		snprintf(line, sizeof line, "-%s", t1);
+		*right += ui_text_tabular_width(fs, line);
+	}
+}
+
+/* The pill that says the style a moment after Up or Down */
+static unsigned tape_said_draw(SDL_Renderer *r, mp4t_id st, unsigned now)
+{
+	const ds_theme *th = theme();
+	TTF_Font *fs = ui_font(UI_F_META);
+	unsigned t = now - g_said.t0;
+	const char *name = tape_style_name(st);
+	float k, rise;
+	int w, h = 64, x, y;
+
+	if (!g_said.on) return (unsigned)-1;
+	if (t >= DS_MS_QUICK + DS_MS_HOLD_SHORT + DS_MS_FADE_OUT) { g_said.on = false; return (unsigned)-1; }
+	rise = t < DS_MS_QUICK ? (1.0f - ds_out((float)t / DS_MS_QUICK)) * 24.0f : 0.0f;
+	k = t < DS_MS_QUICK ? ds_out((float)t / DS_MS_QUICK)
+	  : t < DS_MS_QUICK + DS_MS_HOLD_SHORT ? 1.0f
+	  : 1.0f - (float)(t - DS_MS_QUICK - DS_MS_HOLD_SHORT) / DS_MS_FADE_OUT;
+	w = ui_text_width(fs, name) + 2 * 32;
+	x = (ZYPEROS_SCREEN_W - w) / 2;
+	/* Over the clock and the battery, clear of the tape's top */
+	y = DS_HEADER + DS_RELATED - h - 2 - (int)lroundf(rise);
+	ui_round_rect(r, &(SDL_Rect){ x, y, w, h }, h / 2, ui_col(th->edge, (Uint8)lroundf(255 * k)));
+	ui_round_rect(r, &(SDL_Rect){ x + 2, y + 2, w - 4, h - 4 }, h / 2 - 2,
+	              ui_col(th->surface, (Uint8)lroundf(237 * k)));
+	ui_text(r, fs, name, ZYPEROS_SCREEN_W / 2, ui_cap_y(fs, y + h / 2), 0, ui_col(th->text, (Uint8)lroundf(255 * k)));
+	return 0;
+}
+
+static pt_tex g_pt;
+
+/* The tape filling the screen in its style (the labs, my picks), its reels
+ * turning through the window, the label saying the cover, the side, the
+ * song and its place, and under the window who and what album between the
+ * time played and the time left. */
 static unsigned cassette(SDL_Renderer *r, const npl_frame *F, const mu_now *mn, unsigned phase)
 {
-	static ds_flex L;
 	const ds_theme *th = theme();
-	unsigned wait = (unsigned)-1, now = clock_ms();
-	int root, cas, area, x, y, k;
-	SDL_Rect cr, ar, win;
-	unsigned stripe = g_np.rgb != CFG_NO_COLOR ? g_np.rgb : ui_rgb(th->accent);
+	const mp4t_id st = np_tape();
+	unsigned wait = (unsigned)-1, now = clock_ms(), cover = g_np.rgb != CFG_NO_COLOR ? g_np.rgb : ui_rgb(th->accent);
+	tape_box t;
+	tape_label L;
+	tape_inks ink;
+	int place, al = song_album(mn, &place);
+	const char *album = al >= 0 ? g_mp4.albums[al].name : mn->album;
 
-	root = ds_flex_begin(&L, F->content.w, F->content.h,
-	                     &(ds_box){ .dir = DS_COL, .gap = DS_SECTION, .align = DS_A_CENTER });
-	cas = ds_flex_add(&L, root, &(ds_box){ .w = DS_LOOK_CASSETTE_W, .h = CAS_H });
-	area = ds_flex_add(&L, root, &(ds_box){ .w = DS_LOOK_CASSETTE_W, .grow = 1 });
-	ds_flex_solve(&L);
-	cr = at(&L, cas, F->content.x, F->content.y);
-	ar = at(&L, area, F->content.x, F->content.y);
-	/* On the grid, whatever the column's middle came to */
-	cr.x = cr.x / DS_GRID * DS_GRID;
-	ar.x = cr.x;
-	x = cr.x;
-	y = cr.y;
-	if (!cas_ready(r, &g_cas, th, theme_index() == DS_DARK)) return wait;
+	{
+		/* The daemon's answers: each album's length, once */
+		char d[256];
+		double sec;
 
-	SDL_RenderCopy(r, g_cas.shell, NULL, &(SDL_Rect){ x, y, CAS_W, CAS_H });
-	/* The cover's stripe across the label */
-	SDL_SetRenderDrawColor(r, (Uint8)(stripe >> 16), (Uint8)(stripe >> 8), (Uint8)stripe, 255);
-	SDL_RenderFillRect(r, &(SDL_Rect){ x + CAS_LABEL_X0, y + CAS_STRIPE_Y0, CAS_LABEL_X1 - CAS_LABEL_X0,
-	                                   CAS_STRIPE_Y1 - CAS_STRIPE_Y0 });
-	/* The reels through the window: each pack its radius, each hub its
-	 * angle, the window's box their clip and its glass over them */
-	win = (SDL_Rect){ x + CAS_WIN_X0, y + CAS_WIN_Y0, CAS_WIN_X1 - CAS_WIN_X0, CAS_WIN_Y1 - CAS_WIN_Y0 };
-	SDL_RenderSetClipRect(r, &win);
-	for (k = 0; k < 2; k++) {
-		float cx = (float)x + CAS_W / 2.0f + (k ? CAS_REEL_DX : -CAS_REEL_DX), cy = (float)y + CAS_REEL_Y;
-		float pr = mp4l_tape_r(g_tape.f, k, CAS_HUB_R, CAS_PACK_R);
-		float hr = (float)((int)ceilf(CAS_HUB_R));
-
-		SDL_RenderCopyF(r, g_cas.pack, NULL, &(SDL_FRect){ cx - pr, cy - pr, 2 * pr, 2 * pr });
-		SDL_RenderCopyExF(r, g_cas.hub, NULL, &(SDL_FRect){ cx - hr, cy - hr, 2 * hr, 2 * hr },
-		                  (double)g_tape.ang[k], NULL, SDL_FLIP_NONE);
+		while (mp4c_length_take(d, sizeof d, &sec)) npl_album_length(d, sec);
 	}
-	SDL_RenderSetClipRect(r, NULL);
-	SDL_RenderCopy(r, g_cas.glass, NULL, &win);
+	tape_place(F, &t);
+	tape_label_of(&t, st, &L);
+	tape_inks_of(st, &ink);
+	/* Cover Band's number is printed on its band: white on a dark cover's
+	 * color, the label's ink on a light one, so it always reads */
+	if (st == MP4T_BAND) {
+		float lum = (0.2126f * (float)(cover >> 16 & 255) + 0.7152f * (float)(cover >> 8 & 255) +
+		             0.0722f * (float)(cover & 255)) / 255.0f;
+
+		if (lum > 0.55f) ink.print = ink.ink;
+	}
+	if (!pt_ready(r, &g_pt, st, &t.g, album, cover)) return wait;
+	pt_draw(r, &g_pt, &t.g, t.x, t.y, g_tape.f, g_tape.ang);
+
+	/* The cover, small, first on the song's row, its frame the tape's cells */
+	if (g_np.tex)
+		SDL_RenderCopy(r, g_np.tex, NULL, &(SDL_Rect){ t.x + L.cover.x, t.y + L.cover.y, L.cover.w, L.cover.h });
+	/* The tape's number, the album's length's (46, 60, 90), printed where
+	 * the style prints it; Metal's name on its label */
+	{
+		int no = mp4t_tape_no(album_seconds(mn));
+		TTF_Font *fp = ui_face_at((int)lroundf(30 * t.kx), true);
+
+		if (no > 0 && fp) {
+			char n[8];
+
+			snprintf(n, sizeof n, "%d", no);
+			ui_text(r, fp, n, t.x + L.number_x, ui_cap_y(fp, t.y + L.number_y), 0, ui_fade(ink.print, ink.fade));
+		}
+		/* The print a Metal tape carries, as its 46 or 90: a mark on the
+		 * thing, not a word of the interface, so in every language */
+		if (L.metal_x >= 0 && (fp = ui_face_at((int)lroundf(18 * t.kx), true)))
+			ui_text(r, fp, "METAL", t.x + L.metal_x, ui_cap_y(fp, t.y + L.metal_y), 0, ink.ink);
+	}
 
 	/* The label's words: a new song's coming in after the last's left */
 	{
 		cas_words w;
-		unsigned t;
+		unsigned tt;
+		int room_l, room_r, step = (int)lroundf(DS_GRID * t.kx);
+
+		times_room(mn, &room_l, &room_r);
 
 		cas_words_of(mn, &w);
 		if (!g_lab.known || M.shot) {
@@ -783,23 +1105,26 @@ static unsigned cassette(SDL_Renderer *r, const npl_frame *F, const mu_now *mn, 
 			g_lab.moving = true;
 		}
 		g_lab.now = w;
-		t = g_lab.moving ? now - g_lab.t0 : DS_MS_EXIT + DS_MS_MOVE;
-		if (t >= DS_MS_EXIT + DS_MS_MOVE) {
+		tt = g_lab.moving ? now - g_lab.t0 : DS_MS_EXIT + DS_MS_MOVE;
+		if (tt >= DS_MS_EXIT + DS_MS_MOVE) {
 			g_lab.moving = false;
-			cas_words_draw(r, &g_lab.now, x, y, 1.0f, 0, phase, &wait);
-		} else if (t < DS_MS_EXIT) {
-			float k = ds_in((float)t / DS_MS_EXIT);
+			cas_words_draw(r, &g_lab.now, &t, &L, &ink, 1.0f, 0, phase, room_l, room_r, &wait);
+		} else if (tt < DS_MS_EXIT) {
+			float kk = ds_in((float)tt / DS_MS_EXIT);
 
-			cas_words_draw(r, &g_lab.was, x, y, 1.0f - k, -(int)(DS_GRID * k + 0.5f), phase, &wait);
+			cas_words_draw(r, &g_lab.was, &t, &L, &ink, 1.0f - kk, -(int)lroundf(step * kk), phase, room_l, room_r, &wait);
 		} else {
-			float k = ds_out((float)(t - DS_MS_EXIT) / DS_MS_MOVE);
+			float kk = ds_out((float)(tt - DS_MS_EXIT) / DS_MS_MOVE);
 
-			cas_words_draw(r, &g_lab.now, x, y, k, (int)(DS_GRID * (1.0f - k) + 0.5f), phase, &wait);
+			cas_words_draw(r, &g_lab.now, &t, &L, &ink, kk, (int)lroundf(step * (1.0f - kk)), phase, room_l, room_r, &wait);
 		}
 	}
+	tape_times(r, &t, &L, mn, &ink, pt_material(st)->worn);
+	{
+		unsigned ws = tape_said_draw(r, st, now);
 
-	/* The bars under it, as wide as it, their room theirs */
-	bars(r, &M.bars, ar.x, ar.y + ar.h, ar.h, 0);
+		if (ws < wait) wait = ws;
+	}
 	return wait;
 }
 
@@ -940,7 +1265,8 @@ static unsigned look_draw(app *a, mp4l_id look, const mu_now *mn, const uint8_t 
 	     : look == MP4L_VINYL ? vinyl(r, &F, mn, phase)
 	     : look == MP4L_CLASSIC ? classic(r, &F, mn, phase)
 	     : look == MP4L_SPECTRUM ? spectrum(r, &F, mn, phase) : (unsigned)-1;
-	frame_time(r, &F, mn, look == MP4L_CLASSIC);
+	/* The tape says its time on its label */
+	if (look != MP4L_CASSETTE) frame_time(r, &F, mn, look == MP4L_CLASSIC);
 	keyhints_draw(r, h, nh, DS_MARGIN, ZYPEROS_SCREEN_W - DS_MARGIN, F.keys_cy, KEYHINTS_SPREAD,
 	              true, 255);
 	/* Music playing moves every frame; paused, until the bars are down */
@@ -1128,4 +1454,11 @@ void npl_preview(app *a, mp4l_id look, int x, int y, int w, int h)
 	SDL_RenderCopy(r, half, NULL, &(SDL_Rect){ x, y, w, h });
 	/* It moves while it is up: the next frame soon */
 	if (!shot_path) redraw_at(now + 16);
+}
+
+void npl_preview_tape(app *a, mp4t_id style, int x, int y, int w, int h)
+{
+	g_tape_view = style;
+	npl_preview(a, MP4L_CASSETTE, x, y, w, h);
+	g_tape_view = MP4T_COUNT;
 }

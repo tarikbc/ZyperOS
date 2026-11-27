@@ -93,6 +93,7 @@ typedef struct {
 	float from;              /* a rewind's start */
 	float t;                 /* ms into a rewind; < 0 none */
 	float ang[2];            /* the reels' angles, degrees clockwise */
+	float up;                /* ms of spin-up the playing turn has still to come, after a wind */
 	int   song;              /* the song the tape is on (its place in the queue) */
 	bool  known;
 } mp4l_tape;
@@ -139,5 +140,61 @@ float mp4l_arm_angle(float r, float d, float pivot_deg, float len);
 void mp4l_disc_step(mp4l_disc *d, float dt, float spin, float arm);
 /* The needle not yet where it goes */
 bool mp4l_disc_moving(const mp4l_disc *d, float arm);
+
+/* ---- the cassette's styles (DESIGN.md 11.64, my picks in the Tape Styles
+ * labs, 2026-11-23) ------------------------------------------------------------
+ *
+ * The tape fills the screen, in one of seven styles, each pixel art drawn
+ * by code on a grid of cells (src/pixtape.h); Pinstripe, the first, the
+ * default. MENU's Tape Style row and Up and Down on Now Playing step round
+ * the kept ones. Kept as `mp4.tape`, a word, as the look is. */
+typedef enum {
+	MP4T_PINSTRIPE,
+	MP4T_BAND,               /* Cover Band: its band the cover's main color */
+	MP4T_FERRIC,
+	MP4T_METAL,
+	MP4T_CLEAR,
+	MP4T_RED,
+	MP4T_WORN,
+	MP4T_COUNT
+} mp4t_id;
+
+/* The style a card has until it says another, and for a word no longer
+ * known (the smooth "smoke" there was) */
+#define MP4T_DEFAULT MP4T_PINSTRIPE
+
+const char *mp4t_key(mp4t_id id);
+/* MP4T_DEFAULT for a word it does not know */
+mp4t_id     mp4t_from_key(const char *key);
+/* Whether a style is offered (all seven are); and the next kept one from
+ * `id`, `d` +1 or -1, round. A style no longer kept steps from the first. */
+bool        mp4t_kept(mp4t_id id);
+mp4t_id     mp4t_step(mp4t_id id, int d);
+
+/* The tape's number, as a C-cassette's: the shortest of 46, 60 and 90
+ * minutes that holds the album, a side each half; 120 past 90. 0 when the
+ * album's length is not known yet. */
+int  mp4t_tape_no(double album_s);
+/* The song's side: the album's first half A, the rest B, as an album went
+ * onto a tape (`place` 0-based of `n`) */
+char mp4t_side(int place, int n);
+
+/* The pixel tape's turning parts are sprites made once (src/pixtape.h):
+ * a hub for every MP4T_HUB_STEP degrees, MP4T_HUB_FRAMES of them, and a
+ * pack for every half cell of radius. Each frame shows the one nearest the
+ * model's angle (mp4l_tape's, degrees clockwise) and radius. */
+#define MP4T_HUB_STEP   7.5f
+#define MP4T_HUB_FRAMES 48
+int   mp4t_hub_frame(float ang);
+/* A pack's radius `r`, in cells, to the nearest half cell, as twice it */
+int   mp4t_pack_half(float r_cells);
+
+/* A cell in units: 8 where 8 units are whole pixels on the panel (the
+ * Pixel 2's 5, the Brick's 8), else 16 (the Smart Pro's 15): `px_per_unit`
+ * the panel's pixels a canvas unit. 0 when neither is whole. */
+int   mp4t_cell(float px_per_unit);
+/* The panel's pixels a canvas unit: its height as the picture is seen
+ * (a panel turned a quarter shows its width) over the canvas's 768 */
+float mp4t_px_per_unit(int panel_w, int panel_h, int turn);
 
 #endif

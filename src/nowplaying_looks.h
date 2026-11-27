@@ -20,6 +20,20 @@ void    np_look_set(mp4l_id id);
 /* A shot's look, never saved (--np-look); MP4L_COUNT for none */
 void    np_look_shot(mp4l_id id);
 
+/* The Cassette look's tape style (the setting mp4.tape, MP4T_DEFAULT until
+ * it is changed), and setting it; a shot's, never saved (--np-tape) */
+mp4t_id np_tape(void);
+void    np_tape_set(mp4t_id id);
+void    np_tape_shot(mp4t_id id);
+/* A style's name, and what it is for MENU's list, in the language on */
+const char *tape_style_name(mp4t_id id);
+const char *tape_style_note(mp4t_id id);
+/* Up or Down stepped the style on Now Playing: its name said a moment */
+void    npl_tape_said(void);
+/* The daemon's answer to mp4c_length_ask: the album in `dir`, its tracks'
+ * lengths summed (s), for the tape's number */
+void    npl_album_length(const char *dir, double s);
+
 /* The look for what plays: the one that is on for music, Cover for a book
  * and a video, which have their own screens */
 mp4l_id np_look_for(void);
@@ -37,6 +51,10 @@ void npl_still(bool still);
  * Playing in small, playing - the song that plays, or the shelf's album's
  * first played in show, with bars to match */
 void npl_preview(app *a, mp4l_id look, int x, int y, int w, int h);
+
+/* MENU > Tape Style's picture of `style`: the Cassette look's, as
+ * npl_preview draws it, in that style */
+void npl_preview_tape(app *a, mp4t_id style, int x, int y, int w, int h);
 
 /* For --np-bench N: N frames of the look that is on with a song's bars
  * moving, each frame's drawing timed; the mean, the 95th percentile and the
