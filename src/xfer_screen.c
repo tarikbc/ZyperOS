@@ -76,21 +76,23 @@
  * it contains a newline, which is exactly two things worth copying.
  *
  * Everything else is status and belongs below the rule. */
-/* With the handheld's name (zyperos.local, mdns.h). Over the cable the name
- * first, as http:// so a browser opens it rather than searching for it, and
- * the address beside the PIN under it: only the computer is on that link, so
- * only the handheld can answer for the name. Over Wi-Fi the address first,
- * as it was, and the name beside the PIN: anybody on the network could
- * answer for a name, and what a person types should come from the
- * handheld's own screen. With no name (mDNS could not start, gave the name
- * up, or the link is down and `addr` says so), the address over the PIN. */
+/* With the handheld's name (zyperos.local, mdns.h): the address first, over
+ * the cable as over Wi-Fi, and the name beside the PIN. Over the cable the
+ * name went first until 2026-11-23, but Windows does not resolve it there
+ * (Discord: Edge, Chrome and Firefox could not open http://zyperos.local
+ * over the cable, the address could), and the address works on every
+ * computer. The name is written bare here, as Wi-Fi's is: with http:// it
+ * no longer fit beside the PIN in a heading's line, and slid; the way in,
+ * which has the room, writes it with http:// over the cable (xs_way_set).
+ * With no name (mDNS could not start, gave the name up, or the link is down
+ * and `addr` says so), the address over the PIN. */
 void hare_head(char *out, size_t n, bool cable, const char *name, const char *addr,
                const char *pin)
 {
 	/* A fixture's "http://192.168.1.42" is the address the screen shows */
 	if (name && name[0] && !strncmp(addr, "http://", 7)) addr += 7;
-	if (name && name[0] && cable) snprintf(out, n, "http://%s\n%s · PIN %s", name, addr, pin);
-	else if (name && name[0]) snprintf(out, n, "%s\nPIN %s · %s", addr, pin, name);
+	(void)cable;
+	if (name && name[0]) snprintf(out, n, "%s\nPIN %s · %s", addr, pin, name);
 	else snprintf(out, n, "%s\nPIN %s", addr, pin);
 }
 
@@ -149,24 +151,19 @@ static void xs_way_header(app *a, const SDL_Rect *q)
 	}
 }
 
-/* What the way in shows: over the cable the name with http:// first and the
- * address under it; over Wi-Fi the address first and the name under it, as
- * the heading orders them (hare_head) */
+/* What the way in shows: the address first and the name under it, over the
+ * cable as over Wi-Fi and a phone's tethering, as the heading orders them
+ * (hare_head); over the cable the name with http:// */
 void xs_way_set(bool cable, bool phone, const char *name, const char *addr, const char *pin)
 {
 	if (name && name[0] && !strncmp(addr, "http://", 7)) addr += 7;
-	/* a phone's tethering is the USB cable too, its address the phone's to
-	 * give, so it is shown as Wi-Fi's is: first, the name (if any) under it */
 	g_way.title = cable || phone ? XFER_NAME_CABLE : XFER_NAME_WIFI;
-	if (name && name[0] && cable) {
-		snprintf(g_way.first, sizeof g_way.first, "http://%s", name);
-		snprintf(g_way.second, sizeof g_way.second, "%s", addr);
-	} else {
-		snprintf(g_way.first, sizeof g_way.first, "%s", addr);
-		/* a phone's: where to type it, as no name is shown there */
-		snprintf(g_way.second, sizeof g_way.second, "%s",
-		         name && name[0] ? name : phone ? T(S_XFER_PHONE_WHERE) : "");
-	}
+	snprintf(g_way.first, sizeof g_way.first, "%s", addr);
+	/* a phone's: where to type it, as no name is shown there */
+	if (name && name[0])
+		snprintf(g_way.second, sizeof g_way.second, "%s%s", cable ? "http://" : "", name);
+	else
+		snprintf(g_way.second, sizeof g_way.second, "%s", phone ? T(S_XFER_PHONE_WHERE) : "");
 	snprintf(g_way.pin, sizeof g_way.pin, "%s", pin);
 }
 
