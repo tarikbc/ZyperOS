@@ -1114,11 +1114,12 @@ for _name, _flags in (("shelf-recents-screen", ["--screen", "games"]),
 
 
 # The Video view (DESIGN.md 11.57): a game with no snap, its card whole
-# above the band; its snap playing (the test picture), the band up; the band
-# down to its strip, and halfway there; MENU's View on Video and its list
+# above the band; its snap playing (the test picture), the band up; at rest,
+# the band and the name's card away, and halfway there; MENU's View on Video
+# and its list
 for _name, _flags in (("shelf-video", ["--screen", "games", "--view", "video"]),
                       ("shelf-video-snap", ["--screen", "games", "--view", "video", "--snap", "1"]),
-                      ("shelf-video-strip", ["--screen", "games", "--view", "video", "--snap", "1", "--band", "1"]),
+                      ("shelf-video-rest", ["--screen", "games", "--view", "video", "--snap", "1", "--band", "1"]),
                       ("shelf-video-half", ["--screen", "games", "--view", "video", "--snap", "1", "--band", ".5"]),
                       ("system-menu-view-video", ["--screen", "games", "--view", "video", "--menu", "View"]),
                       ("system-menu-view-video-list", ["--screen", "games", "--view", "video", "--menu", "View",
@@ -1130,7 +1131,7 @@ for _name, _flags in (("shelf-video", ["--screen", "games", "--view", "video"]),
 # pictures on the card, each a PNG made up here as Diatom names them, at its
 # game's own size, and one of a game no longer on the card. The home on the
 # group, its shelf in Covers, Grid and List, a shot opened with A (the Video
-# view) and its band down to the strip, Delete Screenshot's question and its
+# view) and at rest, its band and card away, Delete Screenshot's question and its
 # message, MENU's Sort By list, and Home Systems with the group's row Off
 _SHOTS = {}
 for (_folder, _game, _when, _wh, _sky, _ground, _hue) in (
@@ -1147,7 +1148,7 @@ for _name, _flags in (("home-screenshots", []),
                       ("shelf-screenshots-grid", ["--screen", "games", "--view", "grid"]),
                       ("shelf-screenshots-list", ["--screen", "games", "--view", "list"]),
                       ("screenshots-viewer", ["--screen", "games", "--shelf-press", "a"]),
-                      ("screenshots-viewer-strip", ["--screen", "games", "--shelf-press", "a", "--band", "1"]),
+                      ("screenshots-viewer-rest", ["--screen", "games", "--shelf-press", "a", "--band", "1"]),
                       ("screenshots-delete", ["--screen", "games", "--shots-delete"]),
                       ("screenshots-said", ["--screen", "games", "--shots-said"]),
                       ("screenshots-menu", ["--screen", "games", "--menu", "Sort By"]),

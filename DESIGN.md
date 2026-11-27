@@ -6783,15 +6783,17 @@ Y From the Start when there is a resume point, X Details, spread from B to
 X. Left and Right step, Up and Down jump a letter, L1 and R1 a screenful,
 as on the cover row.
 
-**The strip.** After **hold-band** (2 s) with no press on a game whose snap
+**At rest.** After **hold-band** (2 s) with no press on a game whose snap
 plays, counted from the later of the last press and the snap's start (so a
-shelf come back to from a game keeps its band up as long), the band goes down in **move** (out) to a strip 48 high at the foot,
-and the covers and keys fade out as it goes, so the snap has the screen but
-for the strip. The strip holds the rail (11.2): a **track** from margin to
-margin, DS_BAR high, centered in the strip, with the focus's place on it in
-**accent-ink**, as wide as a share of the shelf (at least DS_RAIL_MIN), so
-where the game is in the shelf still shows. Any press brings the band back
-up in **quick** and does what it does: Right steps on as the band comes up.
+shelf come back to from a game keeps its band up as long), nothing covers
+the snap, as in the Screenshots viewer (11.68): the band goes down off the
+screen in **move** (out), its covers and keys fading out as it goes, the
+name's card goes up off the top with it, and the ground's fade under the
+header goes with them *(2026-11-22: "make title disappear in video mode like
+in screenshots and remove the bottom bar"; until then the band went down to
+a strip 48 high that held the rail, and the card stayed)*. Any press brings
+them back in **quick** and does what it does: Right steps on as the band
+comes up.
 A game with no snap never goes down; the band comes back up by itself when
 the snap stops (the dark screen). The covers glide to their places drawn
 frame by frame to the end, as the cover row's do, whether or not the snap
@@ -6813,7 +6815,7 @@ rest; to measure on the Pixel 2 before it ships (a shelf of games with
 snaps, Left held then let go, Right pressed once a second).
 
 Host shots: `shelf-video` (no snap), `shelf-video-snap` (the test picture),
-`shelf-video-half` and `shelf-video-strip` (`--band F`, the band F of the
+`shelf-video-half` and `shelf-video-rest` (`--band F`, the band F of the
 way down), `system-menu-view-video` and `system-menu-view-video-list`
 (tools/i18n-shots.py).
 
@@ -7705,8 +7707,8 @@ screen at its own shape, as large as the screen holds it (on the Pixel 2 a
 SNES shot is 549 x 480 pixels), on ink; the name's card at the top left
 ("Screenshots · 3 / 13", the game, its line); the band of shots at the foot.
 After **hold-band** with no press nothing covers the shot: the band goes
-down off the screen with no strip, and the name's card goes up off the top
-with it, in **move** *(my ask, 2026-11-20: "the top card that contains the
+down off the screen, and the name's card goes up off the top with it, in
+**move**, as on every Video view (11.57) *(my ask, 2026-11-20: "the top card that contains the
 name and etc should animate and disappear as well. so we can see the whole
 image. also the collapsed footer can be nothing")*. **A** puts them away at
 once, without the rest, and A held keeps them away *("it goes straight to
