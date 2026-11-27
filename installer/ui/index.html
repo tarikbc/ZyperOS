@@ -27,7 +27,24 @@
 			<button class="opt" data-value="pixel2" role="radio"><b>GKD Pixel 2</b><span>The system ZyperOS is made for</span></button>
 			<button class="opt" data-value="brick" role="radio" hidden><b>TrimUI Brick</b><span>Brick and Brick Hammer</span></button>
 			<button class="opt" data-value="smartpro" role="radio" hidden><b>TrimUI Smart Pro</b><span>TG5040, not the Smart Pro S</span></button>
+			<button class="opt" data-value="r36s" role="radio" hidden><b>R36S</b><span>A test card</span></button>
 		</div>
+	</section>
+
+	<!-- The R36S only: its board, for the panel its card drives (app.js,
+	     renderBoard(); the list is r36s.rs's). The button opens #board-menu,
+	     which floats over the page -->
+	<section class="group" id="board-group" hidden>
+		<h2>Board</h2>
+		<div class="list board">
+			<div class="row pick">
+				<span class="mark-glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 5.5h14v13H5z M8.5 9h3v3h-3z M14 9h1.5 M14 12h1.5 M8.5 15h7 M9 3v2.5 M15 3v2.5 M9 18.5V21 M15 18.5V21"/></svg></span>
+				<span class="text"><b id="board-title">Which board?</b><span id="board-what">The name printed on the board, under the back cover</span></span>
+				<button class="picker" id="board" type="button" aria-haspopup="listbox" aria-expanded="false"
+					aria-controls="board-menu" aria-labelledby="board-title board-value"><span id="board-value"></span><i aria-hidden="true"></i></button>
+			</div>
+		</div>
+		<p class="hint" id="board-hint">If the screen stays black, pick another board and install again.</p>
 	</section>
 
 	<section class="group">
@@ -128,6 +145,9 @@
 		</div>
 	</div>
 </div>
+
+<!-- The board menu, over everything on the main screen (app.js, openBoardMenu()) -->
+<div class="menu" id="board-menu" role="listbox" tabindex="-1" aria-labelledby="board-title" hidden></div>
 
 <div class="drop" id="drop" hidden><span id="drop-what">Drop the card image to use it</span></div>
 

@@ -53,7 +53,10 @@ const ROOT: usize = 2;
 /// the Brick's closed files (closed.rs), fetched and checked already, which
 /// go into the image's boot partition on its way to the card (none for the
 /// Pixel 2); `pico8` the player's PICO-8 zip, for a card that never started,
-/// whose PICO-8 rides along in the same boot partition (pico8.rs).
+/// whose PICO-8 rides along in the same boot partition (pico8.rs); `panel`
+/// the R36S's panel, picked by its board, which goes in that partition's
+/// r36s-boot.txt (r36s.rs; None for every other device, and for an R36S
+/// left to the card's own default).
 #[allow(clippy::too_many_arguments)]
 pub fn write_here(
     card_id: &str,
@@ -62,6 +65,7 @@ pub fn write_here(
     card_bytes: u64,
     closed: &[PathBuf],
     pico8: Option<&Path>,
+    panel: Option<&str>,
     progress: &mut dyn FnMut(Progress),
     cancel: &AtomicBool,
 ) -> Result<(), String> {
@@ -82,15 +86,24 @@ pub fn write_here(
     if let Some(p) = &p8 {
         folders.push((crate::pico8::FOLDER, &p.files));
     }
-    let over = if folders.is_empty() {
+    let over = if folders.is_empty() && panel.is_none() {
         None
     } else {
         if p8.is_some() {
             progress(Progress::Pico8 { done: 0, total: 2 });
         }
-        let (at, boot) = crate::closed::boot_with(&plain, &folders)?;
+        let (at, mut boot) = crate::closed::boot_of(&plain)?;
+        if !folders.is_empty() {
+            boot = crate::closed::into_boot(boot, &folders)?;
+        }
         if p8.is_some() {
             progress(Progress::Pico8 { done: 2, total: 2 });
+        }
+        // The R36S's panel in its r36s-boot.txt, read back from the FAT
+        // before the card is opened; the writer then compares the card with
+        // these bytes, as with every other
+        if let Some(panel) = panel {
+            boot = crate::r36s::into_boot(boot, panel)?;
         }
         Some((at, std::sync::Arc::new(boot)))
     };
@@ -120,18 +133,21 @@ pub fn run(
     card_bytes: u64,
     closed: &[PathBuf],
     pico8: Option<&Path>,
+    panel: Option<&str>,
     progress: &mut dyn FnMut(Progress),
     cancel: &AtomicBool,
 ) -> Result<(), String> {
     #[cfg(target_os = "linux")]
-    return run_helper(card_id, action, source, card_bytes, closed, pico8, progress, cancel);
+    return run_helper(card_id, action, source, card_bytes, closed, pico8, panel, progress, cancel);
     #[cfg(not(target_os = "linux"))]
-    return write_here(card_id, action, source, card_bytes, closed, pico8, progress, cancel);
+    return write_here(card_id, action, source, card_bytes, closed, pico8, panel, progress, cancel);
 }
 
-/// No PICO-8 zip, in the helper's arguments
+/// No PICO-8 zip, in the helper's arguments; and no panel
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 const NO_PICO8: &str = "-";
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+const NO_PANEL: &str = "-";
 
 /// Linux: pkexec runs this program again as root with `--write`, which asks
 /// for the password through the desktop's own prompt.
@@ -144,6 +160,7 @@ fn run_helper(
     card_bytes: u64,
     closed: &[PathBuf],
     pico8: Option<&Path>,
+    panel: Option<&str>,
     progress: &mut dyn FnMut(Progress),
     cancel: &AtomicBool,
 ) -> Result<(), String> {
@@ -156,6 +173,7 @@ fn run_helper(
         .arg(source)
         .arg(card_bytes.to_string())
         .arg(pico8.map_or_else(|| std::ffi::OsString::from(NO_PICO8), |p| p.as_os_str().to_owned()))
+        .arg(panel.unwrap_or(NO_PANEL))
         .args(closed)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -216,23 +234,31 @@ fn parse_line(line: &str) -> Option<Line> {
 }
 
 /// The helper: `--write update|brick-update|fresh CARD SOURCE CARD_BYTES
-/// PICO8 [CLOSED...]`, run as root on Linux; PICO8 the player's PICO-8 zip
-/// for a card that never started, or `-`, and CLOSED the Brick's closed files
-/// the window fetched and checked. It checks both again itself.
+/// PICO8 PANEL [CLOSED...]`, run as root on Linux; PICO8 the player's PICO-8
+/// zip for a card that never started, or `-`, PANEL the R36S's panel for its
+/// r36s-boot.txt (one of r36s::PANELS), or `-`, and CLOSED the Brick's closed
+/// files the window fetched and checked. It checks them again itself.
 /// Prints progress at most every few hundred milliseconds.
 pub fn helper(args: &[String]) -> i32 {
-    let (Some(action), Some(card), Some(source), Some(card_bytes), Some(pico8)) = (
+    let usage = "usage: zyperos-installer --write update|brick-update|fresh CARD SOURCE CARD_BYTES PICO8|- PANEL|- [CLOSED...]";
+    let (Some(action), Some(card), Some(source), Some(card_bytes), Some(pico8), Some(panel)) = (
         args.first().and_then(|a| Action::parse(a)),
         args.get(1),
         args.get(2).map(PathBuf::from),
         args.get(3).and_then(|n| n.parse::<u64>().ok()),
         args.get(4),
+        args.get(5).map(String::as_str),
     ) else {
-        eprintln!("usage: zyperos-installer --write update|brick-update|fresh CARD SOURCE CARD_BYTES PICO8|- [CLOSED...]");
+        eprintln!("{usage}");
         return 2;
     };
     let pico8 = (pico8 != NO_PICO8).then(|| PathBuf::from(pico8));
-    let closed: Vec<PathBuf> = args.iter().skip(5).map(PathBuf::from).collect();
+    let panel = (panel != NO_PANEL).then_some(panel);
+    if panel.is_some_and(|p| !crate::r36s::PANELS.contains(&p)) {
+        eprintln!("{usage}");
+        return 2;
+    }
+    let closed: Vec<PathBuf> = args.iter().skip(6).map(PathBuf::from).collect();
     let mut last = std::time::Instant::now();
     let mut last_word = "";
     let mut progress = |p: Progress| {
@@ -254,7 +280,7 @@ pub fn helper(args: &[String]) -> i32 {
         }
     };
     let never = AtomicBool::new(false);
-    match write_here(card, action, &source, card_bytes, &closed, pico8.as_deref(), &mut progress, &never) {
+    match write_here(card, action, &source, card_bytes, &closed, pico8.as_deref(), panel, &mut progress, &never) {
         Ok(()) => {
             println!("ok");
             0

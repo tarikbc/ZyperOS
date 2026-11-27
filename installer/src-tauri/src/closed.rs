@@ -302,17 +302,24 @@ pub fn boot_span(image: &mut dyn Read) -> Result<(u64, u64), String> {
     Ok((boot.start * SECTOR, boot.sectors * SECTOR))
 }
 
-/// The image's boot partition, read from its start, with each folder's files
-/// in (into_boot): what goes over the image's own at its offset (Overlay)
-pub fn boot_with(
-    open: &dyn Fn() -> io::Result<Box<dyn Read + Send>>,
-    folders: &[(&str, &Files)],
-) -> Result<(u64, Vec<u8>), String> {
+/// The image's boot partition, read from its start: where it starts and its
+/// whole bytes, for what goes over the image's own at its offset (Overlay)
+pub fn boot_of(open: &dyn Fn() -> io::Result<Box<dyn Read + Send>>) -> Result<(u64, Vec<u8>), String> {
     let (at, len) = boot_span(&mut *open().map_err(|e| format!("Opening the image: {e}"))?)?;
     let mut image = open().map_err(|e| format!("Opening the image: {e}"))?;
     io::copy(&mut (&mut image).take(at), &mut io::sink()).map_err(|e| format!("Reading the image: {e}"))?;
     let mut boot = vec![0u8; len as usize];
     image.read_exact(&mut boot).map_err(|e| format!("Reading the image's boot partition: {e}"))?;
+    Ok((at, boot))
+}
+
+/// The image's boot partition with each folder's files in (into_boot)
+#[cfg(test)]
+pub fn boot_with(
+    open: &dyn Fn() -> io::Result<Box<dyn Read + Send>>,
+    folders: &[(&str, &Files)],
+) -> Result<(u64, Vec<u8>), String> {
+    let (at, boot) = boot_of(open)?;
     Ok((at, into_boot(boot, folders)?))
 }
 

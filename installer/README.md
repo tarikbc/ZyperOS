@@ -46,6 +46,20 @@ The first time it opens:
    Brick once a release has its image. A device with no image there is not
    offered, unless an image file you choose is for it. A card that already
    has ZyperOS picks its device by itself, when that device is offered.
+   The R36S is a test device: it is offered only for an image file that is
+   for it (boot partition `R36SBOOT`), as the TrimUI Smart Pro is.
+   - **Board** (the R36S only): the name printed on the board, under the
+     back cover, for the panel its card drives: the most common boards
+     first (R36S-V12, V21, V22, V30), then the others, then each panel by
+     its own name. Each board's panel is the one its stock device tree has
+     (dArkOSen-R36S's trees, `src-tauri/src/r36s.rs` says how each was
+     read). The installer puts `zy_panel=<panel>` in `r36s-boot.txt` on the
+     image's boot partition on its way to the card, reads it back there, and
+     the card is read back whole after the write, as always. *Not sure*
+     writes nothing: the card drives panel 4, its own default. If the
+     screen stays black, pick another board and install again (or edit
+     `r36s-boot.txt` on a computer, as the file says). The choice is a menu
+     of the installer's own, over the page, not the system's drop-down.
 2. **ZyperOS:** the latest release, downloaded from GitHub and checked
    against the release's `SHA256SUMS`; or an image file on your computer
    (`ZyperOS-v<version>-<device>.img.xz`, or a plain `.img`). Choose one, or
@@ -181,11 +195,13 @@ cd src-tauri && cargo test
 cd src-tauri && npx --yes @tauri-apps/cli@2 dev
 ```
 
-`ZYPEROS_IMAGE` (Pixel 2) and `ZYPEROS_BRICK_IMAGE` (Brick) name a local
+`ZYPEROS_IMAGE` (Pixel 2), `ZYPEROS_BRICK_IMAGE` (Brick),
+`ZYPEROS_SMARTPRO_IMAGE` (Smart Pro) and `ZYPEROS_R36S_IMAGE` (R36S) name a local
 image the release row uses in place of a download, for trying a build before
 it is published; its device is offered even when the release has no image
 for it. The page also opens in a plain browser, on made-up cards and a
 made-up write, to look at the design: serve `ui/` and open it (add
+`?r36s` for an image file that is the R36S's, which shows its board choice,
 `?release` for a release to download, the Pixel 2's only, `&brick` for the
 Brick's too, `?nocard` for no card, and
 `?update=available` for a newer installer to update to; `downloading`,

@@ -396,6 +396,95 @@ picture { display: contents; }
 .row.on + .x { color: var(--on-accent); }
 .row.on + .x:hover { background: rgba(var(--on-accent-rgb), 0.12); color: var(--on-accent); }
 
+/* The R36S's board: a row with a key at its right end that opens the board
+ * menu, and a plain line under the list */
+.row.pick { cursor: default; }
+/* Not a choice itself: only its key answers the mouse */
+.row.pick:hover { background: transparent; }
+.picker {
+	flex: none;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	max-width: 300px;
+	padding: 7px 12px 7px 14px;
+	color: var(--text);
+}
+.picker span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picker:hover, .picker[aria-expanded="true"] { border-color: var(--text-dim); }
+/* A chevron in the key's own ink, turned up while the menu is open */
+.picker i {
+	flex: none;
+	width: 7px;
+	height: 7px;
+	margin: -3px 2px 0;
+	border-right: 1.8px solid var(--text-soft);
+	border-bottom: 1.8px solid var(--text-soft);
+	transform: rotate(45deg);
+	transition: transform var(--quick) var(--out), margin var(--quick) var(--out);
+}
+.picker[aria-expanded="true"] i { transform: rotate(-135deg); margin-top: 3px; }
+
+/* The board menu: a raised panel over the page, never in its flow, placed
+ * under the key (above it when there is no room below) and as tall as the
+ * window allows, with its own scroll. Its groups' names as headers, the
+ * board under the cursor on raised, the chosen one marked */
+.menu {
+	position: fixed;
+	z-index: 20;
+	min-width: 260px;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	padding: 6px;
+	background: var(--surface);
+	border: var(--frame) solid var(--edge);
+	border-radius: var(--radius-panel);
+	box-shadow: var(--panel-lift);
+	opacity: 0;
+	transform: translateY(-4px) scale(0.98);
+	transform-origin: top right;
+	transition: opacity var(--quick) var(--out), transform var(--quick) var(--out);
+}
+.menu.up { transform-origin: bottom right; transform: translateY(4px) scale(0.98); }
+.menu.open { opacity: 1; transform: none; }
+.menu.closing { transition-duration: var(--exit); transition-timing-function: var(--in); }
+.menu:focus { outline: none; }
+.menu .head {
+	padding: 10px 12px 4px;
+	font-size: var(--meta);
+	color: var(--text-dim);
+}
+.menu .head:first-child { padding-top: 4px; }
+.menu [role="option"] {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 7px 12px 7px 10px;
+	border-radius: var(--radius-row);
+	color: var(--text-soft);
+	cursor: pointer;
+	white-space: nowrap;
+}
+.menu [role="option"]::before {
+	content: "";
+	flex: none;
+	width: 10px;
+	height: 5px;
+	margin-top: -3px;
+	border-left: 1.8px solid transparent;
+	border-bottom: 1.8px solid transparent;
+	transform: rotate(-45deg);
+}
+.menu [role="option"].active { background: var(--raised); color: var(--text); }
+.menu [role="option"][aria-selected="true"] { color: var(--text); font-weight: 600; }
+.menu [role="option"][aria-selected="true"]::before { border-color: var(--accent-ink); }
+
+.hint {
+	margin: 8px 2px 0;
+	font-size: var(--meta);
+	color: var(--text-dim);
+}
+
 .empty {
 	display: flex;
 	align-items: center;
