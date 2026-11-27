@@ -131,11 +131,9 @@ function boardFor(device, action) {
 	return state.boards.find((b) => b.id === state.board) || state.boards[0];
 }
 
-// What the card's r36s-boot.txt gets for that board, in a sentence
+// The board, in a sentence for the note and the confirm sheet
 function boardLine(b) {
-	if (!b) return "";
-	return b.panel ? " Its r36s-boot.txt gets zy_panel=" + b.panel + (b.group === "panel" ? "." : ", for " + b.name + ".")
-		: " It drives panel " + DEFAULT_PANEL + ", the card's own.";
+	return b ? " Board: " + boardLabel(b) + "." : "";
 }
 
 // The devices to choose from: those the newest release has a card image for
@@ -364,37 +362,174 @@ function renderPico8(card) {
 	$("pico8-clear").hidden = !x;
 }
 
-// The R36S's board: a choice of the names printed on its boards, the most
-// common first, then the rest, then each panel by its own name; "Not sure"
-// is the card's own panel 4 and writes nothing. Shown for the R36S only,
-// when a system is written
+// The R36S's board: the names printed on its boards, the most common first,
+// then the rest, then each panel by its own name; "Not sure" is the card's
+// own panel 4 and writes nothing. Shown for the R36S only, when a system is
+// written. The key opens the board menu (below), never a drop-down of the
+// system's own
+function boardLabel(b) {
+	// Its panel beside its name, where the name doesn't say it
+	return /panel/i.test(b.name) ? b.name : b.name + " · panel " + (b.panel || DEFAULT_PANEL);
+}
+
 function renderBoard() {
 	const b = boardFor(state.device, state.action);
 	$("board-group").hidden = !b;
-	if (!b) return;
-	const select = $("board");
-	if (!select.options.length) {
-		const groups = {};
-		for (const one of state.boards) {
-			if (!groups[one.group]) {
-				groups[one.group] = document.createElement("optgroup");
-				groups[one.group].label = BOARD_GROUPS[one.group] || one.group;
-				select.append(groups[one.group]);
-			}
-			const o = document.createElement("option");
-			o.value = one.id;
-			// Its panel beside its name, where the name doesn't say it
-			const panel = one.panel || DEFAULT_PANEL;
-			o.textContent = /panel/i.test(one.name) ? one.name : one.name + " · panel " + panel;
-			groups[one.group].append(o);
-		}
+	if (!b) {
+		closeBoardMenu(false);
+		return;
 	}
-	select.value = b.id;
-	$("board-hint").textContent = (b.panel
-		? "Panel " + b.panel + ": the installer writes zy_panel=" + b.panel + " in r36s-boot.txt, on the card's R36SBOOT partition, and reads it back."
-		: "Panel " + DEFAULT_PANEL + ", the panel most R36S boards have. r36s-boot.txt stays as it comes.")
-		+ " A black screen? Edit r36s-boot.txt on a computer, as the file says.";
+	$("board-value").textContent = boardLabel(b);
 }
+
+// ---- the board menu --------------------------------------------------------
+//
+// A list that floats over the page from the board's key (#board-menu, fixed,
+// outside the screen's flow, so it never moves or resizes anything): under
+// the key, or above it when the window has more room there, as tall as the
+// window allows with its own scroll. A listbox: Enter, Space or the arrows
+// on the key open it on the chosen board; the arrows, Home and End move,
+// Enter or Space picks, Escape or Tab closes, focus back on the key; a click
+// outside it, the window losing focus, a resize or the page scrolling
+// closes it too.
+
+const boardMenu = { open: false, active: -1, closing: null };
+
+function menuOptions() {
+	return [...$("board-menu").querySelectorAll("[role=option]")];
+}
+
+function buildBoardMenu() {
+	const menu = $("board-menu");
+	if (menu.childElementCount || !state.boards) return;
+	let group = null;
+	for (const b of state.boards) {
+		if (b.group !== group) {
+			group = b.group;
+			const g = document.createElement("div");
+			g.setAttribute("role", "group");
+			const head = document.createElement("div");
+			head.className = "head";
+			head.id = "board-group-" + b.group;
+			head.textContent = BOARD_GROUPS[b.group] || b.group;
+			g.setAttribute("aria-labelledby", head.id);
+			g.append(head);
+			menu.append(g);
+		}
+		const o = document.createElement("div");
+		o.setAttribute("role", "option");
+		o.id = "board-option-" + b.id;
+		o.dataset.id = b.id;
+		o.textContent = boardLabel(b);
+		menu.lastChild.append(o);
+	}
+}
+
+function setActive(i) {
+	const opts = menuOptions();
+	if (!opts.length) return;
+	boardMenu.active = Math.max(0, Math.min(opts.length - 1, i));
+	opts.forEach((o, k) => o.classList.toggle("active", k === boardMenu.active));
+	const o = opts[boardMenu.active];
+	$("board-menu").setAttribute("aria-activedescendant", o.id);
+	o.scrollIntoView({ block: "nearest" });
+}
+
+// Under the key, its right edges in line, or above it when there is more
+// room there; never past the window's edges
+function placeBoardMenu() {
+	const menu = $("board-menu");
+	const key = $("board").getBoundingClientRect();
+	const gap = 6, margin = 12;
+	const below = window.innerHeight - key.bottom - gap - margin;
+	const above = key.top - gap - margin;
+	const up = below < Math.min(menu.scrollHeight, 320) && above > below;
+	menu.classList.toggle("up", up);
+	menu.style.maxHeight = Math.max(120, up ? above : below) + "px";
+	menu.style.top = up ? "" : key.bottom + gap + "px";
+	menu.style.bottom = up ? window.innerHeight - key.top + gap + "px" : "";
+	const width = Math.max(menu.offsetWidth, key.width);
+	menu.style.left = Math.max(margin, Math.min(key.right - width, window.innerWidth - margin - width)) + "px";
+}
+
+function openBoardMenu() {
+	if (boardMenu.open || $("board-group").hidden) return;
+	buildBoardMenu();
+	const menu = $("board-menu");
+	clearTimeout(boardMenu.closing);
+	menu.classList.remove("closing", "open");
+	menu.style.left = "0px";
+	menu.style.top = "0px";
+	menu.hidden = false;
+	for (const o of menuOptions()) o.setAttribute("aria-selected", o.dataset.id === state.board);
+	placeBoardMenu();
+	boardMenu.open = true;
+	$("board").setAttribute("aria-expanded", "true");
+	setActive(menuOptions().findIndex((o) => o.dataset.id === state.board));
+	menu.focus({ preventScroll: true });
+	void menu.offsetWidth;
+	menu.classList.add("open");
+}
+
+function closeBoardMenu(refocus) {
+	if (!boardMenu.open) return;
+	boardMenu.open = false;
+	const menu = $("board-menu");
+	$("board").setAttribute("aria-expanded", "false");
+	menu.removeAttribute("aria-activedescendant");
+	menu.classList.add("closing");
+	menu.classList.remove("open");
+	boardMenu.closing = setTimeout(() => { menu.hidden = true; menu.classList.remove("closing"); }, 140);
+	if (refocus) $("board").focus();
+}
+
+function pickBoard(i) {
+	const o = menuOptions()[i];
+	if (o) state.board = o.dataset.id;
+	closeBoardMenu(true);
+	render();
+}
+
+$("board").addEventListener("click", () => (boardMenu.open ? closeBoardMenu(true) : openBoardMenu()));
+$("board").addEventListener("keydown", (e) => {
+	if (["Enter", " ", "ArrowDown", "ArrowUp"].includes(e.key)) {
+		e.preventDefault();
+		openBoardMenu();
+	}
+});
+$("board-menu").addEventListener("keydown", (e) => {
+	const n = menuOptions().length;
+	const move = { ArrowDown: boardMenu.active + 1, ArrowUp: boardMenu.active - 1, Home: 0, End: n - 1,
+		PageDown: boardMenu.active + 8, PageUp: boardMenu.active - 8 }[e.key];
+	if (move !== undefined) {
+		e.preventDefault();
+		setActive(move);
+	} else if (e.key === "Enter" || e.key === " ") {
+		e.preventDefault();
+		pickBoard(boardMenu.active);
+	} else if (e.key === "Escape") {
+		e.preventDefault();
+		e.stopPropagation();
+		closeBoardMenu(true);
+	} else if (e.key === "Tab") {
+		e.preventDefault();
+		closeBoardMenu(true);
+	}
+});
+$("board-menu").addEventListener("mousemove", (e) => {
+	const o = e.target.closest("[role=option]");
+	if (o) setActive(menuOptions().indexOf(o));
+});
+$("board-menu").addEventListener("click", (e) => {
+	const o = e.target.closest("[role=option]");
+	if (o) pickBoard(menuOptions().indexOf(o));
+});
+document.addEventListener("pointerdown", (e) => {
+	if (boardMenu.open && !$("board-menu").contains(e.target) && !$("board").contains(e.target)) closeBoardMenu(false);
+}, true);
+window.addEventListener("blur", () => closeBoardMenu(false));
+window.addEventListener("resize", () => closeBoardMenu(false));
+$("main").addEventListener("scroll", () => closeBoardMenu(false));
 
 // A card chosen: its device, unless the device was chosen by hand or isn't
 // offered
@@ -502,10 +637,6 @@ $("pico8-row").addEventListener("click", async () => {
 $("pico8-clear").addEventListener("click", () => {
 	state.pico8 = null;
 	if (state.action === "pico8") state.action = null;
-	render();
-});
-$("board").addEventListener("change", (e) => {
-	state.board = e.target.value;
 	render();
 });
 document.querySelector("[data-group=action]").addEventListener("click", (e) => {
@@ -729,8 +860,7 @@ function finish(f) {
 					: " The games, music and saves are as they were."
 						+ (!job.pico8 ? "" : job.rides ? " Its first start moves " + yours + " to Bios/PICO-8."
 							: " Your " + p8(job.pico8.version) + " is in Bios/PICO-8."))
-				+ (job.board ? " It drives panel " + (job.board.panel || DEFAULT_PANEL)
-					+ ". If the screen stays black, edit r36s-boot.txt on its R36SBOOT partition, as the file says." : "");
+				+ (job.board ? " If the screen stays black, pick another board and install again." : "");
 		}
 		// This card has it now: the next card gets PICO-8 only if it is
 		// chosen again
@@ -944,8 +1074,8 @@ function demo() {
 	// The R36S's boards for the demo: r36s.rs's BOARDS, as JSON
 	const boards = /* r36s-boards */[
 		{"id": "not-sure", "name": "Not sure", "group": "common", "panel": null},
-		{"id": "v12-panel4", "name": "R36S-V12, panel 4", "group": "common", "panel": "4"},
-		{"id": "v12-panel0", "name": "R36S-V12, panel 0", "group": "common", "panel": "0"},
+		{"id": "v12-panel4", "name": "R36S-V12 · panel 4", "group": "common", "panel": "4"},
+		{"id": "v12-panel0", "name": "R36S-V12 · panel 0", "group": "common", "panel": "0"},
 		{"id": "v21", "name": "R36S-V21", "group": "common", "panel": "4v22"},
 		{"id": "v21-2537", "name": "R36S-V21 2537 or 2547", "group": "common", "panel": "4"},
 		{"id": "v22", "name": "R36S-V22", "group": "common", "panel": "4v22"},

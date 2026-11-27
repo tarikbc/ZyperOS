@@ -69,9 +69,9 @@ pub const BOARDS: [Board; 18] = [
     Board { id: NOT_SURE, name: "Not sure", group: "common", panel: None },
     // R36S-V12 2023-08-18 Panel 4: panel 4, as on Sylver's unit, the board
     // ZyperOS's R36S card was first started on (docs/devices/r36s.md)
-    board("v12-panel4", "R36S-V12, panel 4", "common", "4"),
+    board("v12-panel4", "R36S-V12 · panel 4", "common", "4"),
     // R36S-V12 2023-08-18 Panel 0: panel 0, the ST7703
-    board("v12-panel0", "R36S-V12, panel 0", "common", "0"),
+    board("v12-panel0", "R36S-V12 · panel 0", "common", "0"),
     // R36S-V21 2024-12-18 2503, 2529, 2544, 2550, 2551, 2552, 2602 and 2604:
     // panel 4v22 (8 of its 10 trees)
     board("v21", "R36S-V21", "common", "4v22"),

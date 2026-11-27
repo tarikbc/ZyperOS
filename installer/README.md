@@ -56,8 +56,10 @@ The first time it opens:
      read). The installer puts `zy_panel=<panel>` in `r36s-boot.txt` on the
      image's boot partition on its way to the card, reads it back there, and
      the card is read back whole after the write, as always. *Not sure*
-     writes nothing: the card drives panel 4, its own default. On a black
-     screen, edit `r36s-boot.txt` on a computer, as the file says.
+     writes nothing: the card drives panel 4, its own default. If the
+     screen stays black, pick another board and install again (or edit
+     `r36s-boot.txt` on a computer, as the file says). The choice is a menu
+     of the installer's own, over the page, not the system's drop-down.
 2. **ZyperOS:** the latest release, downloaded from GitHub and checked
    against the release's `SHA256SUMS`; or an image file on your computer
    (`ZyperOS-v<version>-<device>.img.xz`, or a plain `.img`). Choose one, or
