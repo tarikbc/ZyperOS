@@ -214,6 +214,8 @@ static const char *const DS_TONE_ID[DS_THEMES][DS_TONES] = {
 #define DS_MS_ARM_GLIDE 180
 #define DS_MS_HOLD_SNAP 1000
 #define DS_MS_HOLD_BAND 2000
+#define DS_MS_SLIDE_HOLD 1400
+#define DS_MS_SLIDE_END 900
 #define DS_MS_SHEEN 480
 #define DS_MS_SHARPEN 200
 #define DS_MS_HOLD_LOW_BATTERY 6000

@@ -40,11 +40,15 @@ float gg_shape(const float *art, int n, int cutouts);
 typedef struct { int x, y, cols, rows, cw, ch, gap; } gg_geom;
 gg_geom gg_layout(int left, int top, int w, int h, float shape, int gap, int least);
 
-/* L1 (dir < 0) and R1 (dir > 0) on a grid of `n`: a screenful (`page`) on,
- * the same column, or to the end where less than a screenful is left; from
- * the end itself, round to the other end. So a grid that fits on one screen
- * gets first and last, never a jump of the page modulo its length. Pure. */
-int gg_page(int cursor, int n, int page, int dir);
+/* L1 (dir < 0) and R1 (dir > 0) on a list or a grid of `n`, every list
+ * page's one rule (DESIGN.md 11.3): a screenful (`page`) on, the same
+ * column on a grid, or to the end where less than a screenful is left; from
+ * the end itself, a press (`fresh`) goes round to the other end and a held
+ * one stays (the caller's step sound plays edge once), as a held direction
+ * stops at a list's end. So a list that fits on one screen gets first and
+ * last, never a jump of the page modulo its length. The shelf's list and
+ * grid, the home's Grid and a menu list that pages. Pure. */
+int gg_page(int cursor, int n, int page, int dir, bool fresh);
 
 /* The rows whose covers the grid keeps decoded: its window (GG_ROWS rows
  * from `top`) and GG_AHEAD rows either side, counted round the ends, since

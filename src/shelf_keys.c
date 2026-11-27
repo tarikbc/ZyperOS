@@ -157,7 +157,8 @@ void update_systems(app *a)
 	/* The Grid home (DESIGN.md 11.1): Up and Down a row, to the system
 	 * nearest where the column started (Down then Up comes back), stopping
 	 * at the top and the foot (the edge sound); L1 and R1 a screenful, or to
-	 * the end, then round (gg_page, as the shelf grid's) */
+	 * the end, then a press round and a held one stopping there (gg_page,
+	 * every list page's rule, as the shelf grid's) */
 	if (grid) {
 		gh_geom g = home_grid_geom(n);
 		int page = g.cols * g.win, to = a->sys_cursor;
@@ -180,8 +181,8 @@ void update_systems(app *a)
 			if (step >= 0) to = step;
 			sb = d > 0 ? IN_DOWN : IN_UP;
 		}
-		if (in_repeat(&a->in, IN_L1)) { to = gg_page(to, n, page, -1); sb = IN_L1; a->home.grid_ax = -1; }
-		if (in_repeat(&a->in, IN_R1)) { to = gg_page(to, n, page, +1); sb = IN_R1; a->home.grid_ax = -1; }
+		if (in_repeat(&a->in, IN_L1)) { to = gg_page(to, n, page, -1, a->in.pressed[IN_L1]); sb = IN_L1; a->home.grid_ax = -1; }
+		if (in_repeat(&a->in, IN_R1)) { to = gg_page(to, n, page, +1, a->in.pressed[IN_R1]); sb = IN_R1; a->home.grid_ax = -1; }
 		if (to != a->sys_cursor) dir = to > a->sys_cursor ? 1 : -1;
 		a->sys_cursor = to;
 		if (a->sys_cursor == was) dir = 0;
@@ -346,22 +347,51 @@ int shelf_move(app *a, sysview *v)
 		v->cursor = to;
 	}
 
-	if (in_repeat(&a->in, back)) { v->cursor = (v->cursor - 1 + n) % n; dir = -1; sb = back; }
-	if (in_repeat(&a->in, fwd))  { v->cursor = (v->cursor + 1) % n; dir = +1; sb = fwd; }
+	/* A step: on the list (Up and Down) and along the grid's rows (Left and
+	 * Right) as every list steps (DESIGN.md 11.3, menu_step_index): a press
+	 * goes round past the ends, a held direction stops at the end with the
+	 * edge sound once, and the next press goes round (my pick in the List
+	 * View lab, 2026-11-23, as the home's Grid has it). The cover row and
+	 * the Video view's band go round held or not, as the home's row does. */
+	{
+		const bool stops = v->listed || v->grid;
+
+		if (in_repeat(&a->in, back)) {
+			int to = stops ? menu_step_index(n, v->cursor, -1, a->in.pressed[back]) : (v->cursor - 1 + n) % n;
+
+			if (to != v->cursor) dir = -1;
+			v->cursor = to;
+			sb = back;
+		}
+		if (in_repeat(&a->in, fwd)) {
+			int to = stops ? menu_step_index(n, v->cursor, +1, a->in.pressed[fwd]) : (v->cursor + 1) % n;
+
+			if (to != v->cursor) dir = +1;
+			v->cursor = to;
+			sb = fwd;
+		}
+	}
 	if (jdn != IN_NONE && in_repeat(&a->in, jdn))  { v->cursor = shelf_letter_jump(v, +1); sb = jdn; }
 	if (jup != IN_NONE && in_repeat(&a->in, jup))  { v->cursor = shelf_letter_jump(v, -1); sb = jup; }
-	/* L1/R1 jump a screenful, so a long shelf is crossable. Wrapped the long
-	 * way round on purpose: C's % truncates toward zero, so on a shelf of
-	 * three games the obvious `(cursor - CF_WINDOW + n*2) % n` lands on -1 and
-	 * the draw walks off the front of the list.
-	 * The grid's is a page's: on to the end, then round (gg_page). */
-	if (in_repeat(&a->in, IN_L1)) {
-		v->cursor = v->grid ? gg_page(v->cursor, n, page, -1) : ((v->cursor - page) % n + n) % n;
-		sb = IN_L1;
-	}
-	if (in_repeat(&a->in, IN_R1)) {
-		v->cursor = v->grid ? gg_page(v->cursor, n, page, +1) : (v->cursor + page) % n;
-		sb = IN_R1;
+	/* L1/R1 jump a screenful, so a long shelf is crossable. On the list and
+	 * the grid they page as every list does (gg_page, DESIGN.md 11.3): on
+	 * to the end, then a press round and a held one stopping there. The
+	 * cover row and the Video view's band go round, as the home's row does;
+	 * wrapped the long way round on purpose: C's % truncates toward zero,
+	 * so on a shelf of three games the obvious `(cursor - CF_WINDOW + n*2) %
+	 * n` lands on -1 and the draw walks off the front of the list. */
+	{
+		const bool pages = v->listed || v->grid;
+
+		if (in_repeat(&a->in, IN_L1)) {
+			v->cursor = pages ? gg_page(v->cursor, n, page, -1, a->in.pressed[IN_L1])
+			                  : ((v->cursor - page) % n + n) % n;
+			sb = IN_L1;
+		}
+		if (in_repeat(&a->in, IN_R1)) {
+			v->cursor = pages ? gg_page(v->cursor, n, page, +1, a->in.pressed[IN_R1]) : (v->cursor + page) % n;
+			sb = IN_R1;
+		}
 	}
 	if (sb != IN_NONE)
 		step_sound(a, sb, was, v->cursor);
@@ -397,7 +427,15 @@ void update_games(app *a)
 
 		for (int b = 0; b < IN_COUNT && !any; b++)
 			any = b != (int)skip && (a->in.pressed[b] || a->in.down[b]);
-		if (any) vv_touch(&v->vm, plat_now_ms());
+		if (any) snaprest_touch(&v->vm, plat_now_ms());
+	}
+	/* The List view's details over the media (src/snaprest.h): any press,
+	 * or a button held, brings them back up and starts their rest again */
+	if (v->listed) {
+		bool any = false;
+
+		for (int b = 0; b < IN_COUNT && !any; b++) any = a->in.pressed[b] || a->in.down[b];
+		if (any) snaprest_touch(&v->lm.details, plat_now_ms());
 	}
 	/* The Screenshots shelf (DESIGN.md 11.68, src/shots_screen.h): in its
 	 * viewer L1 and R1 go to the next or the last game's shots, read before
