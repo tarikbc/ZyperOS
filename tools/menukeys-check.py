@@ -468,8 +468,10 @@ def main():
         names = [r[1] for r in rows]
         check(names[:2] == ['Quick Save', 'Quick Load'] and names[-3:] == ['Screenshot', 'Lock Screen', 'Hold to Unlock'],
               f'the Hotkeys list from Quick Save to Hold to Unlock ({names})')
-        check(all(r[2] == game for r in rows[:-3]),
-              f'each of the game\'s hotkeys: "{game}" ({[(r[1], r[2]) for r in rows[:-3]]})')
+        # Fast Forward Speed (#474) is Fast Forward's speed, no hotkey: no line
+        keys = [r for r in rows[:-3] if r[1] != 'Fast Forward Speed']
+        check(all(r[2] == game for r in keys),
+              f'each of the game\'s hotkeys: "{game}" ({[(r[1], r[2]) for r in keys]})')
         check([r[2] for r in rows[-3:]] == ['On every screen, in a game too.'] * 2 + ['How long to hold SELECT+START.'],
               f'MENU\'s chords and Hold to Unlock say theirs ({[(r[1], r[2]) for r in rows[-3:]]})')
         check(not any(r[2] and 'Home' in r[2] for r in rows), 'and no row says the Home row\'s line')
