@@ -20,6 +20,8 @@ typedef struct { game_list list; game_list *all; int *owner; int sort, cursor, d
 typedef struct { struct { int count; system_cfg systems[4]; } sys; sysview view[4]; int parked; int sys_cursor; bool running; } app;
 /* src/app.h's: the home's shelves and the systems turned off it (app.parked) */
 static inline int sys_kept(const app *a) { return a->sys.count + a->parked; }
+/* src/app.h's: every game of a system, its folders' too */
+static inline game_list *sys_games(sysview *v) { return v->all ? v->all : &v->list; }
 typedef enum { MENU_STAY, MENU_CHANGED, MENU_FAILED } menu_result;
 static int failures;
 #define CHECK(c) do { if (!(c)) { fprintf(stderr, "FAIL %d: %s\n", __LINE__, #c); failures++; } } while (0)
@@ -104,6 +106,48 @@ int main(void)
 		CHECK(a.view[2].dropped == 0 && a.view[3].dropped == 0);
 		refresh_game_titles(&a);
 		CHECK(a.view[0].dropped == outcome + 1); /* unchanged labels do not churn textures */
+	}
+	/* Two dumps of one game named alike by a download (2026-11-23, drmoze's
+	 * TurboGrafx-16: "Bonk's Adventure" twice): told apart by their regions
+	 * on their shelf, and Favorites shows each as its shelf does */
+	{
+		game_entry pce[3], pfav[2];
+		int pown[2] = {1, 1};
+		app b = {0};
+		game_meta bonk = {0};
+
+		strcpy(bonk.title, "Bonk's Adventure");
+		CHECK(db_game_set(db_lib(), "PCE", "Bonk's Adventure (USA).pce", &bonk));
+		CHECK(db_game_set(db_lib(), "PCE", "PC Genjin (Japan).pce", &bonk));
+		b.sys.count = 2;
+		strcpy(b.sys.systems[0].tag, "FAV");
+		strcpy(b.sys.systems[1].tag, "PCE"); strcpy(b.sys.systems[1].folder, "PCE");
+		put(&pce[0], "Bonk's Adventure (USA)", "Bonk's Adventure (USA).pce");
+		put(&pce[1], "Boxyboy (USA)", "Boxyboy (USA).pce");
+		put(&pce[2], "PC Genjin (Japan)", "PC Genjin (Japan).pce");
+		b.view[1].list = (game_list){.items = pce, .count = 3};
+		pfav[0] = pce[2]; pfav[1] = pce[0];
+		b.view[0].list = (game_list){.items = pfav, .count = 2}; b.view[0].owner = pown;
+		refresh_game_titles(&b);
+		CHECK(!strcmp(pce[0].title, "Bonk's Adventure (Japan)") && !strcmp(pce[0].file, "PC Genjin (Japan).pce"));
+		CHECK(!strcmp(pce[1].title, "Bonk's Adventure (USA)") && !strcmp(pce[1].file, "Bonk's Adventure (USA).pce"));
+		CHECK(!strcmp(pce[2].title, "Boxyboy"));
+		CHECK(!strcmp(pfav[0].title, "Bonk's Adventure (Japan)") || !strcmp(pfav[0].title, "Bonk's Adventure (USA)"));
+		CHECK(!strcmp(pfav[1].title, "Bonk's Adventure (Japan)") || !strcmp(pfav[1].title, "Bonk's Adventure (USA)"));
+		CHECK(strcmp(pfav[0].title, pfav[1].title) != 0);
+		/* Again, nothing new: nothing changes, no texture dropped */
+		{
+			int dropped = b.view[1].dropped;
+
+			refresh_game_titles(&b);
+			CHECK(b.view[1].dropped == dropped && !strcmp(pce[0].title, "Bonk's Adventure (Japan)"));
+		}
+		/* The Japanese one named its own: the US one is "Bonk's Adventure" again */
+		strcpy(bonk.title, "PC Genjin");
+		CHECK(db_game_set(db_lib(), "PCE", "PC Genjin (Japan).pce", &bonk));
+		refresh_game_titles(&b);
+		CHECK(!strcmp(pce[0].title, "Bonk's Adventure") && !strcmp(pce[1].title, "Boxyboy") &&
+		      !strcmp(pce[2].title, "PC Genjin"));
 	}
 	/* The selected SNES copy must stay selected when NES gets a new title. */
 	a.view[0].cursor = lib_find_entry(&a.view[0].list, owners, 2, "same.zip");

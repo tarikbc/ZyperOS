@@ -441,9 +441,244 @@ bool lib_refresh_title(db *d, const char *folder, game_entry *entry)
 	char title[LIB_NAME] = { 0 };
 
 	lib_display_title(d, folder, entry->file, entry->name, title, sizeof title);
-	if (!strcmp(entry->title, title)) return false;
+	/* The title under lib_titles_apart's mark, if it has one */
+	if (entry->apart && entry->apart < sizeof entry->title &&
+	    strlen(title) == entry->apart && !strncmp(entry->title, title, entry->apart))
+		return false;
+	if (!entry->apart && !strcmp(entry->title, title)) return false;
 	memcpy(entry->title, title, sizeof entry->title);
+	entry->apart = 0;
 	return true;
+}
+
+/* ---- games of one title told apart (library.h) ---------------------------- */
+
+/* A bracket's words that are a region: No-Intro's and Redump's names, and
+ * GoodTools' letters. "USA, Europe" is a region too, every part of it one. */
+static bool region_word(const char *w, size_t n)
+{
+	static const char *const REGIONS[] = {
+		"USA", "Japan", "Europe", "World", "Korea", "China", "Taiwan", "Hong Kong",
+		"Asia", "Brazil", "Australia", "Canada", "France", "Germany", "Spain",
+		"Italy", "Netherlands", "Sweden", "Scandinavia", "UK", "Russia",
+		"Latin America", "Mexico", "Portugal", "Greece", "Denmark", "Norway",
+		"Finland", "Poland", "Belgium", "Switzerland", "Austria", "India",
+		"New Zealand", "Unknown",
+		"U", "J", "E", "W", "K", "B", "A", "F", "G", "S", "I", "C",
+		"JU", "UE", "JE", "JUE", NULL
+	};
+
+	for (int i = 0; REGIONS[i]; i++)
+		if (strlen(REGIONS[i]) == n && !strncasecmp(REGIONS[i], w, n)) return true;
+	return false;
+}
+
+/* Whether the bracket `b` (its brackets included) names a region */
+static bool region_bracket(const char *b)
+{
+	size_t n = strlen(b);
+	const char *p, *end;
+
+	if (n < 3 || b[0] != '(' || b[n - 1] != ')') return false;
+	p = b + 1;
+	end = b + n - 1;
+	while (p < end) {
+		const char *w = p;
+		size_t wn;
+
+		while (p < end && *p != ',') p++;
+		wn = (size_t)(p - w);
+		while (wn && w[0] == ' ') { w++; wn--; }
+		while (wn && w[wn - 1] == ' ') wn--;
+		if (!wn || !region_word(w, wn)) return false;
+		if (p < end) p++;
+	}
+	return true;
+}
+
+#define APART_BRACKETS 12
+typedef struct {
+	int  at;                                  /* the entry in the list */
+	int  n;                                   /* its file's brackets */
+	char b[APART_BRACKETS][LIB_NAME];
+	int  region;                              /* which of them, -1 none */
+	char tag[LIB_PATH + 8];
+} apart_one;
+
+/* The brackets of an entry's file as its details show it (lib_file_shown):
+ * every "(...)" and "[...]" after its first character, in order */
+static void apart_read(const game_entry *g, apart_one *o)
+{
+	char shown[LIB_PATH + 1];
+	const char *p;
+
+	lib_file_shown(g->file, g->dir, false, shown, sizeof shown);
+	o->n = 0;
+	o->region = -1;
+	for (p = shown; *p && o->n < APART_BRACKETS; p++) {
+		char close = *p == '(' ? ')' : *p == '[' ? ']' : 0;
+		const char *q;
+
+		if (!close || p == shown) continue;
+		if (!(q = strchr(p, close))) break;
+		snprintf(o->b[o->n], sizeof o->b[0], "%.*s", (int)(q - p + 1), p);
+		if (o->region < 0 && region_bracket(o->b[o->n])) o->region = o->n;
+		o->n++;
+		p = q;
+	}
+}
+
+static bool has_bracket(const apart_one *o, const char *b)
+{
+	for (int i = 0; i < o->n; i++)
+		if (!strcmp(o->b[i], b)) return true;
+	return false;
+}
+
+/* Whether every tag of the group is different from every other */
+static bool tags_differ(const apart_one *g, int n)
+{
+	for (int i = 0; i < n; i++)
+		for (int k = i + 1; k < n; k++)
+			if (!strcasecmp(g[i].tag, g[k].tag)) return false;
+	return true;
+}
+
+/* One group of the same title: each one's tag, by the rules in library.h */
+static void apart_tags(const game_list *l, apart_one *g, int n)
+{
+	bool regions = true;
+	int i, k;
+
+	for (i = 0; i < n; i++) apart_read(&l->items[g[i].at], &g[i]);
+	/* Its region, when each has one */
+	for (i = 0; i < n && regions; i++) {
+		regions = g[i].region >= 0;
+		if (regions) snprintf(g[i].tag, sizeof g[i].tag, "%s", g[i].b[g[i].region]);
+	}
+	if (regions && tags_differ(g, n)) return;
+	/* Its region and the brackets the others do not all have */
+	for (i = 0; i < n; i++) {
+		size_t at = 0;
+
+		g[i].tag[0] = '\0';
+		for (int b = 0; b < g[i].n; b++) {
+			bool everyone = true;
+
+			if (b != g[i].region) {
+				for (k = 0; k < n && everyone; k++)
+					everyone = k == i || has_bracket(&g[k], g[i].b[b]);
+				if (everyone) continue;
+			}
+			at += (size_t)snprintf(g[i].tag + at, sizeof g[i].tag - at, "%s%s",
+			                       at ? " " : "", g[i].b[b]);
+			if (at >= sizeof g[i].tag) break;
+		}
+	}
+	if (tags_differ(g, n)) return;
+	/* Its file, as the shelf keeps it; its extension alone when the title is
+	 * the file's name already ("Bonk (USA) · pce", never "Bonk (USA) · Bonk
+	 * (USA).pce"), as it is where the shelf names games by their files */
+	for (i = 0; i < n; i++) {
+		const game_entry *e = &l->items[g[i].at];
+		const char *own = e->dir && e->dir < strlen(e->file) && e->file[e->dir] == '/'
+		                ? e->file + e->dir + 1 : e->file;
+		const char *base = strrchr(own, '/'), *dot;
+		char shown[LIB_PATH + 1];
+
+		base = base ? base + 1 : own;
+		dot = strrchr(base, '.');
+		lib_file_shown(e->file, e->dir, false, shown, sizeof shown);
+		if (dot && dot != base && dot[1] && !strcmp(e->title, shown))
+			snprintf(g[i].tag, sizeof g[i].tag, "\xc2\xb7 %s", dot + 1);
+		else
+			snprintf(g[i].tag, sizeof g[i].tag, "\xc2\xb7 %s", own);
+	}
+	if (tags_differ(g, n)) return;
+	/* Two of one file name in two folders: the whole path */
+	for (i = 0; i < n; i++)
+		snprintf(g[i].tag, sizeof g[i].tag, "\xc2\xb7 %s", l->items[g[i].at].file);
+}
+
+static const game_list *g_apart_list;
+static int apart_cmp(const void *a, const void *b)
+{
+	const game_entry *x = &g_apart_list->items[*(const int *)a];
+	const game_entry *y = &g_apart_list->items[*(const int *)b];
+	int c = strcasecmp(x->title, y->title);
+
+	return c ? c : strcmp(x->file, y->file);
+}
+
+void lib_titles_apart(game_list *l)
+{
+	int *idx, n = 0, i, k;
+
+	if (!l || !l->items || l->count < 2) return;
+	/* Each one's marks off first: its title as the shelf named it */
+	for (i = 0; i < l->count; i++) {
+		game_entry *e = &l->items[i];
+
+		if (e->apart && e->apart < sizeof e->title) e->title[e->apart] = '\0';
+		e->apart = 0;
+	}
+	if (!(idx = malloc(sizeof *idx * (size_t)l->count))) return;
+	for (i = 0; i < l->count; i++)
+		if (!l->items[i].folder && l->items[i].title[0]) idx[n++] = i;
+	g_apart_list = l;
+	qsort(idx, (size_t)n, sizeof *idx, apart_cmp);
+	for (i = 0; i < n; i = k) {
+		apart_one *g;
+		int m;
+
+		for (k = i + 1; k < n && !strcasecmp(l->items[idx[k]].title, l->items[idx[i]].title); k++)
+			;
+		if ((m = k - i) < 2 || !(g = calloc((size_t)m, sizeof *g))) continue;
+		for (int j = 0; j < m; j++) g[j].at = idx[i + j];
+		apart_tags(l, g, m);
+		for (int j = 0; j < m; j++) {
+			game_entry *e = &l->items[g[j].at];
+			char both[LIB_NAME + LIB_PATH + 16], shown[LIB_NAME];
+			size_t bare = strlen(e->title);
+
+			if (!g[j].tag[0]) continue;
+			snprintf(both, sizeof both, "%s %s", e->title, g[j].tag);
+			title_text(both, shown, sizeof shown);
+			if (!shown[0] || strlen(shown) <= bare) continue;
+			memcpy(e->title, shown, sizeof e->title);
+			e->apart = (unsigned short)bare;
+		}
+		free(g);
+	}
+	free(idx);
+}
+
+bool lib_titles_copy(game_list *list, const game_list *all)
+{
+	bool changed = false;
+
+	for (int i = 0; list && all && list != all && i < list->count; i++) {
+		game_entry *e = &list->items[i];
+		int at;
+
+		if (e->folder || (at = lib_find_entry(all, NULL, 0, e->file)) < 0) continue;
+		if (strcmp(e->title, all->items[at].title)) changed = true;
+		memcpy(e->title, all->items[at].title, sizeof e->title);
+		e->apart = all->items[at].apart;
+	}
+	return changed;
+}
+
+uint64_t lib_titles_digest(const game_list *l)
+{
+	uint64_t h = 1469598103934665603ull;
+
+	for (int i = 0; l && i < l->count; i++) {
+		for (const unsigned char *p = (const unsigned char *)l->items[i].title; *p; p++)
+			h = (h ^ *p) * 1099511628211ull;
+		h = (h ^ 0xff) * 1099511628211ull;
+	}
+	return h;
 }
 
 int lib_find_entry(const game_list *list, const int *owners, int owner, const char *file)
@@ -650,6 +885,7 @@ void lib_scan_finish(const char *folder, game_list *l)
 	for (i = 0; i < l->count; i++) scan_title(&users, &titles, &l->items[i]);
 	db_titles_free(&users);
 	db_titles_free(&titles);
+	lib_titles_apart(l);
 	qsort(l->items, (size_t)l->count, sizeof *l->items, game_cmp);
 }
 

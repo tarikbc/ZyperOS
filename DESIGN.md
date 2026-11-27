@@ -7898,3 +7898,26 @@ its cursor on Buttons (`--info-on-buttons`), which File put below the first
 screenful. `check-titles` holds
 the names and the counts of discs on real folders, `check-menus` the rows'
 order.
+
+**Two games of one title** *(drmoze on the Discord, 2026-11-23: on his
+TurboGrafx-16 "2 copies of each game appear in the menu"; my pick, (b))*.
+His USA and Japanese dumps, "Bonk's Adventure (USA)" and "PC Genjin
+(Japan)", got one name from MENU > Downloads (ScreenScraper's for the game,
+the US one first), and stood on the shelf as one game twice; two dumps the
+shelf names from their files ("Neutopia (USA)", "Neutopia (Japan)") did the
+same. Each keeps its name, and where two games of a system show the same
+title, in any case, each gets what tells it from the other, from its file
+(src/library.c's `lib_titles_apart`), on every view and wherever the title
+shows (Search, Favorites, Recents, Collections):
+
+- **its region**, when each has one and no two the same: "Bonk's Adventure
+  (USA)", "Bonk's Adventure (Japan)";
+- else **its region and the brackets the others do not all have**, a
+  revision, a translation, a disc: "Zelda (USA)", "Zelda (USA) (Rev 1)";
+- else **its file**, after a dot: "Bonk · Bonk (USA).pce", "Bonk · Bonk
+  (USA).zip", and its folders too when only they differ; its extension
+  alone where the title is the file's name already, "Bonk (USA) · pce".
+
+A game with nothing to tell it by keeps its bare title, and a title that
+stops being shared loses its brackets again. Worked out when the shelf is
+read and again whenever a title changes (a download, Rename, Delete Game).
