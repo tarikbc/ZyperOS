@@ -31,6 +31,8 @@ first start forgets the tutorial. So this shoots the host build headless
     it is on, turned round to its back (no glass showing) for the lessons
     that light its shoulders on the back ledge, inside its own kept box in
     every frame of every turn, and the block moved as the Pixel 2's;
+  - on the R36S (--device r36s) its own handheld the same way, its volume
+    rocker on the right and POWER on the left;
   - the choices after the lessons (Theme, Home Screen, Sounds, Menu Music)
     ring and name the focused choice alone and nothing else, put the
     reward's check on the kept one, show the home screen previews (Light at
@@ -306,6 +308,29 @@ BRICK_BACK_MS = "4000"
 GLASS = (17, 19, 16)            # **ink**, Beard's glass
 
 
+def smartpro():
+    print("on the Smart Pro: its own handheld in the column a 16:9 canvas widens, every pose in "
+          "its kept box, the lit key on its side")
+    handheld_box("--device", "smartpro")
+    # The canvas is 1368 wide: the column from 0 to the lesson block's 620
+    col_l, col_r = (0, 82, 310, 442), (310, 82, 620, 442)
+    for th in ("light", "dark"):
+        for step, side in SMARTPRO_LIT_SIDE.items():
+            img = shot("sp-%s-%s" % (step, th), "--theme", th, "--device", "smartpro", "--tour", step, "2000")
+            if img is None:
+                continue
+            left, right = count(img, ACCENT, col_l), count(img, ACCENT, col_r)
+            ck(("l" in side) == (left > 30) and ("r" in side) == (right > 30),
+               "smartpro %s %s: the lit key is on the %s of the handheld (lit pixels left %d, right %d)"
+               % (th, step, {"l": "left", "r": "right", "lr": "both sides"}[side], left, right))
+
+
+# Where each lesson's lit keys are on the Smart Pro: the d-pad and L/R both
+# ends, A B X Y and START's lesson's SELECT at the right, MENU at the left,
+# the volume keys right of the middle, POWER left of it
+SMARTPRO_LIT_SIDE = {"move": "lr", "a": "r", "y": "r", "menu": "l", "vol": "r", "power": "l"}
+
+
 def brick():
     print("on the Brick: its own handheld beside each lesson, its key lit where it is, "
           "the front first and the shoulders from the back where a lesson has both, the block "
@@ -356,6 +381,47 @@ def brick():
             else:
                 ck(off == 0, "brick %s %s: the lesson block is the host's moved %d right (%d pixels "
                    "differ)" % (th, step, SHIFT, off))
+
+
+# The R36S (--device r36s), its own handheld: the Brick's kind of body, the
+# volume rocker on the right and POWER on the left (the Brick's the other way
+# round), FN (its MENU) in the middle of the front, the shoulders on its back
+# ledge. Brightness lights FN and the rocker: the right half at least. The
+# d-pad's lesson lights L1 and R1 too, whose paddles stand out past the
+# back, so R1's edge shows on the right: the left half is judged alone.
+R36S_LIT_SIDE = {"move": "L", "a": "r", "b": "r", "y": "r", "x": "r", "menu": "c",
+                 "select": "c", "vol": "r", "bright": "cr", "power": "l"}
+
+
+def r36s():
+    print("on the R36S: its own handheld beside each lesson, its key lit where it is, "
+          "the shoulders from the back")
+    handheld_box("--device", "r36s")
+    for th in ("light", "dark"):
+        for step, side in R36S_LIT_SIDE.items():
+            img = shot("r36s-own-%s-%s" % (step, th), "--theme", th, "--device", "r36s",
+                       "--tour", step, "2000")
+            if img is None:
+                continue
+            left, right = count(img, ACCENT, COLUMN_L), count(img, ACCENT, COLUMN_R)
+            ck(left + right > 30 if side == "c" else right > 30 if side == "cr" else left > 30 if side == "L" else
+               ("l" in side) == (left > 30) and ("r" in side) == (right > 30),
+               "r36s %s %s: the lit key is on the %s of the handheld (lit pixels left %d, right %d)"
+               % (th, step, {"l": "left", "r": "right", "c": "middle", "cr": "middle and right",
+                             "L": "left"}[side],
+                  left, right))
+            if th == "light":
+                glass = count(img, GLASS, (0, 82, 276, 442))
+                ck(glass >= 400, "r36s %s: facing front or a side, the glass showing (%d glass "
+                   "pixels)" % (step, glass))
+        for step in BRICK_SPIN:
+            img = shot("r36s-back-%s-%s" % (step, th), "--theme", th, "--device", "r36s",
+                       "--tour", step, BRICK_BACK_MS)
+            if img is None:
+                continue
+            left, right = count(img, ACCENT, COLUMN_L), count(img, ACCENT, COLUMN_R)
+            ck(left > 30 and right > 30, "r36s %s %s at %s ms: turned to its back, both shoulders "
+               "lit (lit pixels left %d, right %d)" % (th, step, BRICK_BACK_MS, left, right))
 
 
 # The choices, as src/tourdraw.c lays them out: two 380 x 285 at y 96, 56
@@ -512,6 +578,8 @@ def main():
     pixel2()
     devices()
     brick()
+    smartpro()
+    r36s()
     choices()
 
     if fails:

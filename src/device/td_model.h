@@ -28,8 +28,10 @@
  * the top edge (the Brick's shoulders), which no front view shows */
 typedef enum { TD_FACE_FRONT, TD_FACE_LEFT, TD_FACE_RIGHT, TD_FACE_TOP, TD_FACE_LEDGE } td_face;
 
-/* Which art draws the body and its keys (src/tourdevice.c) */
-typedef enum { TD_ART_PIXEL2, TD_ART_BRICK } td_art;
+/* Which art draws the body and its keys (src/tourdevice.c): the Brick's
+ * and the R36S's are one art of a thin part and a grip below a back ledge,
+ * each with its own measures and marks; the Smart Pro's is its own */
+typedef enum { TD_ART_PIXEL2, TD_ART_BRICK, TD_ART_SMARTPRO, TD_ART_R36S } td_art;
 
 /* A key: where on which face, and how big - a round key's radius, an
  * elongated one's half length, a shoulder's half width */
@@ -94,6 +96,10 @@ typedef struct { float y; signed char green, red; } td_flat_light;
 /* A box: its middle and its size */
 typedef struct { float x, y, w, h; } td_rect;
 
+/* A stick, no key of the launcher's: its middle, the well it stands in and
+ * its cap, their radii */
+typedef struct { float x, y, well, cap; } td_flat_stick;
+
 typedef struct td_flat {
 	float   corner;                                /* the body's corners */
 	/* Room round the body for what stands out of it */
@@ -122,6 +128,9 @@ typedef struct td_flat {
 	int     n_keys;
 	const td_flat_label *labels;
 	int     n_labels;
+	/* The sticks, drawn and never pressed (the R36S's); NULL none */
+	const td_flat_stick *sticks;
+	int     n_sticks;
 } td_flat;
 
 /* One of the model's keys as the flat drawing has it: where, how big, how
@@ -182,5 +191,7 @@ td_view td_view_mix(td_view a, td_view b, float k);
 
 extern const td_model td_model_pixel2;
 extern const td_model td_model_brick;
+extern const td_model td_model_smartpro;
+extern const td_model td_model_r36s;
 
 #endif

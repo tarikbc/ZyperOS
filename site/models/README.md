@@ -126,3 +126,32 @@ The poster uses the Pixel 2 poster's pose, studio and scale (8.807 px a
 millimetre), 800 x 1100 for the taller Brick, with `res/readme/brick/systems.png`
 on its screen. Its `Screen` mesh has the same 4:3 UVs; `site/pixel2.js` draws
 the Brick's own captures on it.
+
+## R36S
+
+`r36s.glb`, `r36s-poster.png` and `r36s-thumb.png` are the R36S, built by
+`tools/build-r36s-model.py` from the maker's product sheet (80 x 119 x 35 mm,
+the sticks included) and the key places measured on straight-on photos of a
+real one for `src/device/r36s_model.c` (`docs/devices/r36s.md` names them).
+The photos are reference only: nothing is traced from them, and no maker's
+mark is on the model. It is a visual reconstruction, not CAD: every number
+the script marks GUESS was not measured, and a caliper's number replaces it.
+It is the white R36S of the maker's product photos: a white shell, glossy
+black keys and d-pad, A B X Y's letters in their four colours, the sticks'
+black caps in light grey rings, the seam under the glass, the grille's dot
+and the microphone's hole, one volume rocker, the ribs down the sides' lower
+part, the panel and the ribbed grip on the back, and the shoulders as black
+paddles angled out past it. The R36S is on no page of the site yet
+(`site/devices.json` has no entry for it).
+
+```sh
+R36S_SCREEN=SHOT.png blender -t 4 --background --python-exit-code 1 --python tools/build-r36s-model.py -- --render
+```
+
+The poster's screen is `res/readme/r36s/systems.png`, the Pixel 2 poster's
+home as the R36S draws it (`tools/readme-shots.py`'s `systems` shot with its
+DEVICE set to `r36s`); `R36S_SCREEN` puts another 1024x768 shot there. The video's
+straight-on render: `blender --background build/r36s-model/r36s.blend
+--python video/device/render-device.py -- OUT_DIR 2000`, which writes
+`r36s-front.png` and its `.json` at the Pixel 2's and the Brick's 22 px a
+millimetre.

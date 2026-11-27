@@ -122,7 +122,7 @@ def run(cc, B):
     # renderer, which is the Brick's
     exe = B / "bend"
     build = ("%s -std=gnu11 -O2 -Wall -Wextra -D_GNU_SOURCE -Isrc $(pkg-config --cflags sdl2) -o %s "
-             "tools/gpu-upright-bend.c src/screenfx.c src/screenfx_draw.c $(pkg-config --libs sdl2) -lm"
+             "tools/gpu-upright-bend.c src/screenfx.c src/screenfx_draw.c src/canvas.c $(pkg-config --libs sdl2) -lm"
              % (cc, exe))
     r = sh(build, cwd=ROOT)
     if r.returncode:

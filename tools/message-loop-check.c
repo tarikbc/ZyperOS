@@ -42,7 +42,8 @@ static bool g_menu_pin_foot;
 static bool g_snap_drawing;
 static mm_frame g_pframe;
 #define PANEL_REST ((mm_frame){ {1,0}, {1,1}, 1, false })
-enum { PANEL_MENU, PANEL_HOT, PANEL_TILES, PANEL_P2, PANEL_MOVE, PANEL_TILES_GRID, PANEL_LIST, VCOL_MESSAGE };
+enum { PANEL_MENU, PANEL_HOT, PANEL_TILES, PANEL_P2, PANEL_MOVE, PANEL_TILES_GRID, PANEL_LIST, PANEL_CONFIRM,
+       VCOL_MESSAGE };
 /* A tiles panel's marks (src/ds/glyph.h's ui_glyph): none here */
 #define UI_GLYPH_COUNT 0
 static const int *g_tile_marks;
@@ -116,6 +117,9 @@ static void p2_panel(app *a, const char *heading, const menu_row *rows, int n,
 { (void)a; (void)heading; (void)rows; (void)n; (void)accent; (void)pose; assert(0); }
 static void move_page(app *a, const char *heading, const menu_row *rows, int n, mm_pose pose)
 { (void)a; (void)heading; (void)rows; (void)n; (void)pose; assert(0); }
+static void confirm_panel_draw(app *a, const char *heading, const menu_row *rows, const int *marks,
+                               int sel, int width, bool live, mm_pose pose)
+{ (void)a; (void)heading; (void)rows; (void)marks; (void)sel; (void)width; (void)live; (void)pose; assert(0); }
 #include "message-loop.inc"
 
 static void game_backdrop(app *a, void *ctx, float k)

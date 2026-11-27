@@ -147,15 +147,26 @@ ja = 連携済み
 it = Collegato
 
 [scraper.unlink_account_ask]
-note = A yes/no question on ScreenScraper's page.
-en = Unlink the account?
-zh-Hans = 要取消关联此账号吗？
-es = ¿Desvincular la cuenta?
-pt-BR = Desvincular a conta?
-fr = Dissocier le compte\u00a0?
-de = Konto entfernen?
-ja = アカウントの連携を解除しますか？
-it = Scollegare l'account?
+note = A yes/no question on ScreenScraper's page, under scraper.unlink_account_heading.
+en = Unlink the ScreenScraper account?
+zh-Hans = 要取消关联 ScreenScraper 账号吗？
+es = ¿Desvincular la cuenta de ScreenScraper?
+pt-BR = Desvincular a conta do ScreenScraper?
+fr = Dissocier le compte ScreenScraper\u00a0?
+de = ScreenScraper-Konto entfernen?
+ja = ScreenScraper のアカウントの連携を解除しますか？
+it = Scollegare l'account ScreenScraper?
+
+[scraper.unlink_account_heading]
+note = The heading of the question on ScreenScraper's page. A heading, the action.
+en = Unlink Account
+zh-Hans = 取消关联账号
+es = Desvincular cuenta
+pt-BR = Desvincular conta
+fr = Dissocier le compte
+de = Konto entfernen
+ja = アカウントの連携を解除
+it = Scollega account
 
 [scraper.unlink]
 note = The yes answer to scraper.unlink_account_ask and scraper.unlink_key_ask.
@@ -224,15 +235,26 @@ ja = 未確認
 it = Non verificata
 
 [scraper.unlink_key_ask]
-note = A yes/no question on SteamGridDB's page.
-en = Unlink the key?
-zh-Hans = 要取消关联此密钥吗？
-es = ¿Desvincular la clave?
-pt-BR = Desvincular a chave?
-fr = Dissocier la clé\u00a0?
-de = Schlüssel entfernen?
-ja = キーの連携を解除しますか？
-it = Scollegare la chiave?
+note = A yes/no question on SteamGridDB's page, under scraper.unlink_key_heading.
+en = Unlink the SteamGridDB key?
+zh-Hans = 要取消关联 SteamGridDB 密钥吗？
+es = ¿Desvincular la clave de SteamGridDB?
+pt-BR = Desvincular a chave do SteamGridDB?
+fr = Dissocier la clé SteamGridDB\u00a0?
+de = SteamGridDB-Schlüssel entfernen?
+ja = SteamGridDB のキーの連携を解除しますか？
+it = Scollegare la chiave di SteamGridDB?
+
+[scraper.unlink_key_heading]
+note = The heading of the question on SteamGridDB's page. A heading, the action.
+en = Unlink Key
+zh-Hans = 取消关联密钥
+es = Desvincular clave
+pt-BR = Desvincular chave
+fr = Dissocier la clé
+de = Schlüssel entfernen
+ja = キーの連携を解除
+it = Scollega chiave
 
 # ---- MENU > Scraper's page (exploration, 2026-11-13): the plan before a
 # run, the Systems grid with a cover mark and a video mark a system, and

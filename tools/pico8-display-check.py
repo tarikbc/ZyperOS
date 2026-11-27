@@ -400,7 +400,7 @@ def launcher(tmp):
         return dw.Walk(dsock, p, tmp / f'{name}.log')
 
     cart = f'{card}/Roms/PICO-8/celeste.p8'
-    ASK = 'Start the cart again?'
+    ASK = 'Start Cart Again'
     try:
         print('the in-game menu over your PICO-8:')
         m = start('menu', ['--port-menu', 'PICO8', cart])
@@ -428,7 +428,7 @@ def launcher(tmp):
         m.step('a', 'Display', 'Sharp Pixels')
         m.to('down', 'Actual Size', 'Display')
         m.step('a', ASK, 'Cancel')
-        m.step('up', ASK, 'Start Again')
+        m.step('right', ASK, 'Start Again')
         rc = m.ends('a')
         check(rc == RESTART, f'Start Again ends the menu with PORT_MENU_RESTART ({rc})')
         check(display() == 'native', f'display.PICO8 kept ({display()})')
@@ -483,7 +483,7 @@ def launcher(tmp):
               f'Cancel: 10, nothing kept, no file ({rc})')
         m = start('next-yes', ['--port-menu', 'PICO8', cart, '--display'])
         m.up(ASK, 'Cancel')
-        m.step('up', ASK, 'Start Again')
+        m.step('right', ASK, 'Start Again')
         rc = m.ends('a')
         check(rc == RESTART and display() == 'stretch' and restart.exists() and restart.read_text() == 'stretch\n',
               f'Start Again: 14, Full Screen kept and in the file ({rc}, {display()})')

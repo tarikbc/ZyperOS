@@ -115,9 +115,7 @@ emptyhome.cheer.one
 emptyhome.cheer.other
 
 # gamemenu: no shot draws it yet
-gamemenu.delete_ask_this
 gamemenu.delete_ask_port
-gamemenu.delete_ask_port_this
 gamemenu.deleting
 gamemenu.delete_partly
 gamemenu.delete_failed

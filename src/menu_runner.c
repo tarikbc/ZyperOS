@@ -788,12 +788,8 @@ static menu_result wifi_key(app *a, void *ctx, in_button key, int sel)
 		bool joined = wifi_status(cur, sizeof cur, NULL, 0) == WIFI_CONNECTED
 		              && !strcmp(cur, w->nets[k].ssid);
 
-		if (joined)
-			snprintf(msg, sizeof msg, T(S_WIFI_FORGET_JOINED), w->nets[k].ssid);
-		else
-			snprintf(msg, sizeof msg, T(S_WIFI_FORGET_ASK), w->nets[k].ssid);
-
-		if (confirm_panel(a, T(S_MENU_WIFI), msg, T(S_WIFI_FORGET))) {
+		cq_text(joined ? CQ_WIFI_FORGET_JOINED : CQ_WIFI_FORGET, msg, sizeof msg, w->nets[k].ssid);
+		if (confirm_ask(a, joined ? CQ_WIFI_FORGET_JOINED : CQ_WIFI_FORGET, msg)) {
 			snprintf(status, sizeof status,
 			         wifi_forget(w->nets[k].ssid) ? T(S_WIFI_FORGOT)
 			                                      : T(S_WIFI_FORGET_FAILED),

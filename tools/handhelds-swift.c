@@ -105,6 +105,12 @@ static void handheld(const device_profile *p)
 	if (!inside(f->screen, f->glass)) fail(p->id, "the screen is not inside its glass");
 	if (!inside(f->glass, body)) fail(p->id, "the glass is not inside the body");
 	if (f->recess.w > 0 && !inside(f->recess, body)) fail(p->id, "the well is not inside the body");
+	for (i = 0; i < f->n_sticks; i++) {
+		const td_flat_stick *k = &f->sticks[i];
+		td_rect w = { k->x, k->y, 2 * k->well, 2 * k->well };
+
+		if (!inside(w, body) || k->cap <= 0 || k->cap >= k->well) fail(p->id, "a stick not inside the body, or its cap not in its well");
+	}
 
 	printf("        Handheld(\n");
 	printf("            id: ");
@@ -139,6 +145,11 @@ static void handheld(const device_profile *p)
 	       "                           cap: 0x%06X, capDown: 0x%06X, marking: 0x%06X, glass: 0x%06X,\n"
 	       "                           lightOff: 0x%06X),\n",
 	       f->body_hi, f->body, f->body_lo, f->recess_c, f->cap, f->cap_down, f->marking, f->glass_c, f->light_off);
+	printf("            sticks: [");
+	for (i = 0; i < f->n_sticks; i++)
+		printf("%sStick(x: %s, y: %s, well: %s, cap: %s)", i ? ", " : "", num(f->sticks[i].x),
+		       num(f->sticks[i].y), num(f->sticks[i].well), num(f->sticks[i].cap));
+	printf("],\n");
 	printf("            keys: [\n");
 	for (i = 0; i < n; i++) {
 		const td_flat_part *k = &parts[i];

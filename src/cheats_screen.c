@@ -276,9 +276,10 @@ static bool ask_first(app *a)
 	char key[CFG_STR + LIB_PATH + 24];
 
 	if (!first_asks()) return true;
-	if (!ask_panel(a, &g_st, NULL, T(S_CHEATS_ASK_TITLE), T(S_CHEATS_ASK_BODY),
-	               T(S_CHEATS_ASK_YES)))
-		return false;
+	char q[512];
+
+	cq_text(CQ_CHEATS_FIRST, q, sizeof q);
+	if (!confirm_ask_over(a, CQ_CHEATS_FIRST, q, &g_st, NULL)) return false;
 	cheats_asked_key(g_cg.tag, g_cg.file, key, sizeof key);
 	db_set_int(db_lib(), key, 1);
 	return true;
@@ -542,16 +543,13 @@ void cheats_page_shot(app *a, SDL_Texture *bg, const cheats_shot *o)
 	}
 	menu_draw_styled(a, &g_st, h, rows, n, sel);
 	if (ask) {
-		/* The first cheat's question over the list, as ask_panel draws it:
+		/* The first cheat's question over the list, as confirm_ask draws it:
 		 * the cursor on Cancel */
-		static char lines[DEL_ASK_LINES][CHV_WRAP_COLS];
-		menu_row q[DEL_ASK_LINES + 2];
-		int nq = store_ask_rows(a, T(S_CHEATS_ASK_BODY), lines, q);
+		char q[512];
 
-		q[nq] = (menu_row){ T(S_CHEATS_ASK_YES), NULL, true };
-		q[nq + 1] = (menu_row){ T(S_PANEL_CANCEL), NULL, true };
+		cq_text(CQ_CHEATS_FIRST, q, sizeof q);
 		backdrop(a, NULL, 1.0f);
-		menu_draw(a, T(S_CHEATS_ASK_TITLE), q, nq + 2, nq + 1, menu_std_width(a), a->tint);
+		confirm_preview(a, CQ_CHEATS_FIRST, q);
 	}
 	cheats_free(&g_L);
 	g_bg = NULL;
@@ -561,16 +559,11 @@ void cheats_page_shot(app *a, SDL_Texture *bg, const cheats_shot *o)
 
 void cheats_crash_shot(app *a)
 {
-	char q[480], lines[ASK_TWO_LINES][CHV_WRAP_COLS];
-	menu_row rows[ASK_TWO_LINES + 2];
-	int n;
+	char q[480];
 
-	snprintf(q, sizeof q, "%s %s", T(S_CHEATS_CRASH_TITLE), T(S_CHEATS_CRASH_BODY));
-	ui_fit_drawn(T(S_CHEATS_CRASH_TITLE));
-	ui_fit_drawn(T(S_CHEATS_CRASH_BODY));
-	n = ask_two_rows(a, q, T(S_CHEATS_CRASH_WITHOUT), T(S_CHEATS_CRASH_WITH), lines, rows);
-	/* over the shelf's scrim, the cursor on the first answer, Without
-	 * Cheats, as ask_two_panel starts */
+	cq_text(CQ_CHEATS_CRASH, q, sizeof q);
+	/* over the shelf's scrim, the cursor on the left answer, Without
+	 * Cheats, as confirm_ask starts */
 	ui_scrim(a->r, 0);
-	menu_draw(a, T(S_CHEATS_ROW), rows, n + 2, n, menu_std_width(a), a->tint);
+	confirm_preview(a, CQ_CHEATS_CRASH, q);
 }

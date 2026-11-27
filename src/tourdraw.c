@@ -34,8 +34,15 @@
 #include "tourdraw.h"
 #include "ui.h"
 
+/* The tutorial's composition: 1024 x 768 units, the 4:3 canvas. On a wider
+ * canvas (src/canvas.h) it stands in the middle, TOUR_MID in from the left,
+ * and a lesson's handheld column takes the whole difference (lesson); the
+ * skip key's hint and Zyper's corner keep to the canvas's own edges, as a
+ * page's keys do. */
 #define SCR_W 1024
 #define SCR_H 768
+#define CANVAS_W ((float)ZYPEROS_SCREEN_W)
+#define TOUR_MID ((CANVAS_W - SCR_W) / 2.0f)
 
 /* The stage, 11.10: 680 x 340 at (172, 84). */
 #define STAGE_X 172
@@ -335,7 +342,7 @@ static void lesson_words(SDL_Renderer *r, ui_font_role role, const char *s, floa
 	float cx = 512.0f;
 
 	if (!s) return;
-	cx = fminf(cx, SCR_W - DS_INSET - g_ox - words_w(role, s) / 2.0f);
+	cx = fminf(cx, CANVAS_W - DS_INSET - g_ox - words_w(role, s) / 2.0f);
 	words(r, role, s, cx, cy, 0, c, 1.0f);
 }
 
@@ -1101,22 +1108,26 @@ static float legend_w(void)
 	                : (float)(ui_button_width("START", 32) + 12) + words_w(UI_F_META, T(S_KEYHINT_SKIP));
 }
 
+/* The skip key's hint's left, by the canvas's right edge */
 static float legend_left(void)
 {
-	return SCR_W - DS_INSET - legend_w();
+	return CANVAS_W - DS_INSET - legend_w();
 }
 
 static void legend(SDL_Renderer *r)
 {
 	/* at a page's foot (src/ds/page.h; 724, the screen less 44, until 1.0.6) */
 	int x = (int)legend_left(), cy = DS_FOOT_Y, bw = ui_button_width("START", DS_HINT_GLYPH);
+	const float ox = g_ox;
 
 	if (g_hint) {
 		g_hint(r, "START", T(S_KEYHINT_SKIP), x, cy);
 		return;
 	}
+	g_ox = 0.0f;
 	ui_button(r, "START", x + bw / 2, cy, DS_HINT_GLYPH, UI_BUTTON_PLAIN);
-	words(r, UI_F_META, T(S_KEYHINT_SKIP), SCR_W - DS_INSET, cy, 1, theme()->text_soft, 1.0f);
+	words(r, UI_F_META, T(S_KEYHINT_SKIP), CANVAS_W - DS_INSET, cy, 1, theme()->text_soft, 1.0f);
+	g_ox = ox;
 }
 
 /* The handheld's opacity: on through the lessons, it fades in with the
@@ -1193,8 +1204,9 @@ static void lesson(SDL_Renderer *r, const tour *t, uint32_t now, const tour_hook
 	const char *note;
 	/* The handheld's column at the left, on the Pixel 2, and the lesson
 	 * block moved right for it: everything to Zyper's corner is drawn from
-	 * g_ox = lx (src/tourdevice.h). */
-	const float lx = tourdev_shown(t) ? TOURDEV_SHIFT : 0.0f;
+	 * g_ox = lx (src/tourdevice.h). On a wider canvas the column takes the
+	 * difference; with no handheld the block stands in the middle. */
+	const float lx = tourdev_shown(t) ? TOURDEV_SHIFT + 2.0f * TOUR_MID : TOUR_MID;
 
 	g_ox = lx;
 	progress(r, tour_segments(t), tour_segment(t), t->done);
@@ -1295,8 +1307,13 @@ static void welcome(SDL_Renderer *r, const tour *t, uint32_t now, const tour_hoo
 	if (l2) l2++;
 
 	if (finish) {
+		const float ox = g_ox;
+
 		progress(r, tour_segments(t), tour_segments(t), false);
-		confetti(r, now, SCR_W, SCR_H, 40);
+		/* over the whole canvas */
+		g_ox = 0.0f;
+		confetti(r, now, (int)CANVAS_W, SCR_H, 40);
+		g_ox = ox;
 	}
 	{
 		const tour_zyper_at z = tour_zyper_now(t, now);
@@ -1622,7 +1639,8 @@ static void choice(SDL_Renderer *r, const tour *t, uint32_t now, const tour_hook
 	const SDL_Color soft = col(rgb(th->text_soft), 1.0f);
 	int i;
 
-	g_ox = g_oy = 0.0f;
+	g_ox = TOUR_MID;
+	g_oy = 0.0f;
 	g_op = 1.0f;
 	progress(r, tour_segments(t), tour_segment(t), t->done);
 
@@ -1730,7 +1748,9 @@ void tour_draw(SDL_Renderer *r, const tour *t, uint32_t now, const tour_hooks *h
 	nclips = 0;
 	SDL_RenderSetClipRect(r, NULL);
 	g_op = 1.0f;
-	g_ox = g_oy = 0.0f;
+	/* The composition in the canvas's middle (0 on a 4:3 one) */
+	g_ox = TOUR_MID;
+	g_oy = 0.0f;
 	SDL_SetRenderDrawColor(r, g.r, g.g, g.b, 255);
 	SDL_RenderClear(r);
 	if (t->step == TOUR_LANG) lang_step(r, t, now, hk);
@@ -1743,17 +1763,17 @@ void tour_message(SDL_Renderer *r, const char *s, float op)
 {
 	const ds_theme *t = theme();
 	const float k = 0.96f + 0.04f * op, w = words_w(UI_F_MENU, s) + 112.0f, h = 108.0f;
-	const float x = SCR_W / 2.0f - w * k / 2.0f, y = SCR_H / 2.0f - h * k / 2.0f;
+	const float x = CANVAS_W / 2.0f - w * k / 2.0f, y = SCR_H / 2.0f - h * k / 2.0f;
 
 	if (op <= 0.0f) return;
 	g_op = 1.0f;
 	g_ox = g_oy = 0.0f;
-	rr(r, 0, 0, SCR_W, SCR_H, 0, col(rgb(t->ink), t->scrim_menu / 255.0f * op));
+	rr(r, 0, 0, CANVAS_W, SCR_H, 0, col(rgb(t->ink), t->scrim_menu / 255.0f * op));
 	ui_lift_k(r, &(SDL_Rect){ (int)lroundf(x), (int)lroundf(y), (int)lroundf(w * k),
 	                          (int)lroundf(h * k) }, CFG_NO_COLOR, UI_LIFT_PANEL, op);
 	rr(r, x, y, w * k, h * k, DS_RADIUS_PANEL * k, col(rgb(t->surface), op));
 	ring(r, x, y, w * k, h * k, DS_RADIUS_PANEL * k, DS_FRAME * k, col(rgb(t->edge), op));
-	words(r, UI_F_MENU, s, SCR_W / 2.0f, SCR_H / 2.0f, 0, t->text_soft, op);
+	words(r, UI_F_MENU, s, CANVAS_W / 2.0f, SCR_H / 2.0f, 0, t->text_soft, op);
 }
 
 void tour_draw_free(void)

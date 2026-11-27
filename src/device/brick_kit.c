@@ -33,10 +33,12 @@
  *     mounted read-only for the read and unmounted after when it was not
  *     there before. Nothing in debugfs or the PMIC is written. Beside them
  *     the LEDs' facts (hc_led_facts), read only too.
- *   - Diatom's present times in its log (diatom/port/brick.c,
- *     BRICK_PRESENT_FILE): the file seeded with "auto" at the launcher's
- *     start where there is none. "auto" forces no path; any file turns the
- *     times on.
+ *   - Diatom's present times in its log (diatom/port/brick.c's gl_init):
+ *     the file seeded with "auto" at the launcher's start where there is
+ *     none, in this handheld's own settings folder (.userdata/brick, or
+ *     .userdata/smartpro on a Smart Pro, which runs this kit too;
+ *     diatom/port/present_file.h). "auto" forces no path; any file turns
+ *     the times on.
  *
  * The GPU path's shaders and consoles are on in a kit too, in the Brick's
  * profile (src/device/brick_profile.c).
@@ -581,20 +583,22 @@ void kit_hw_facts(hw_facts *f)
 }
 
 #ifdef __linux__
-/* Diatom's present-time file (diatom/port/brick.c, BRICK_PRESENT_FILE) */
-#define KIT_PRESENT_DIR  "/mnt/SDCARD/.userdata/brick"
-#define KIT_PRESENT_FILE KIT_PRESENT_DIR "/diatom-present"
+/* Diatom's present-time file, where its Brick port reads it: this
+ * handheld's settings folder (diatom/port/present_file.h) */
+#include "../../diatom/port/present_file.h"
 
 /* At the launcher's start, before main: a card whose userdata folder is
  * there and has no such file gets one, once */
 __attribute__((constructor)) static void kit_present_seed(void)
 {
+	char dir[512], file[600];
 	FILE *f;
 
-	if (access(KIT_PRESENT_DIR, F_OK) != 0 || access(KIT_PRESENT_FILE, F_OK) == 0) return;
-	if (!(f = fopen(KIT_PRESENT_FILE, "w"))) return;
+	present_file_paths(dir, sizeof dir, file, sizeof file);
+	if (access(dir, F_OK) != 0 || access(file, F_OK) == 0) return;
+	if (!(f = fopen(file, "w"))) return;
 	fputs("auto\n", f);
 	if (fclose(f) == 0)
-		fprintf(stderr, "kit: %s seeded with \"auto\": Diatom's present times on\n", KIT_PRESENT_FILE);
+		fprintf(stderr, "kit: %s seeded with \"auto\": Diatom's present times on\n", file);
 }
 #endif

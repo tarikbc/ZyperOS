@@ -209,40 +209,16 @@ void collect_remove_game(app *a)
 	cursor_after(a, name);
 }
 
-/* Delete Collection's question, wrapped to the panel as Delete Game's is
- * (src/gamedel_screen.c), its lines quiet, a rule under them where there
- * is room; `rows` holds DEL_ASK_LINES + 2, for the answers after them */
-static int delete_rows(app *a, const char *name, char (*lines)[CHV_WRAP_COLS], menu_row *rows)
-{
-	char q[COLL_NAME + 256];
-	bool rule;
-	int n, i, fit = delete_ask_fit(&rule);
-
-	snprintf(q, sizeof q, T(S_COLLECT_DELETE_ASK), name);
-	n = wrap_text(ui_font(UI_F_MENU), q, menu_std_width(a), lines, DEL_ASK_LINES);
-	if (n > fit) n = fit;
-	ui_fit_drawn(q);
-	for (i = 0; i < n; i++)
-		rows[i] = (menu_row){ lines[i], MENU_NOTE_MARK, false };
-	if (n < fit || rule) rows[n++] = MENU_HR;
-	return n;
-}
-
 bool collect_delete_screen(app *a)
 {
 	sysview *v = NULL;
-	int c = shelf_collection(a, &v), nq, lv;
-	char lines[DEL_ASK_LINES][CHV_WRAP_COLS], name[COLL_NAME];
-	menu_row rows[DEL_ASK_LINES + 2];
-	bool yes;
+	int c = shelf_collection(a, &v);
+	char q[COLL_NAME + 512], name[COLL_NAME];
 
 	if (c < 0) return false;
 	snprintf(name, sizeof name, "%s", coll_name(c));
-	nq = delete_rows(a, name, lines, rows);
-	lv = panel_open();
-	yes = confirm_rows(a, T(S_COLLECT_DELETE), rows, nq, T(S_GAMEMENU_DELETE_YES), menu_std_width(a), lv);
-	panel_close(a, lv, !a->running);
-	if (!yes || !a->running) return false;
+	cq_text(CQ_COLLECT_DELETE, q, sizeof q, name);
+	if (!confirm_ask(a, CQ_COLLECT_DELETE, q) || !a->running) return false;
 	if (!coll_delete(c)) {
 		fprintf(stderr, "coll: could not delete %s\n", name);
 		result_message(a, T(S_COLLECT_DELETE), T(S_COLLECT_FAILED));
@@ -279,15 +255,12 @@ void collect_page_preview(app *a, int sel)
 
 void collect_delete_preview(app *a)
 {
-	int c = shelf_collection(a, NULL), nq;
-	char lines[DEL_ASK_LINES][CHV_WRAP_COLS];
-	menu_row rows[DEL_ASK_LINES + 2];
+	int c = shelf_collection(a, NULL);
+	char q[COLL_NAME + 512];
 
 	if (c < 0) return;
-	nq = delete_rows(a, coll_name(c), lines, rows);
-	rows[nq]     = (menu_row){ T(S_GAMEMENU_DELETE_YES), NULL, true };
-	rows[nq + 1] = (menu_row){ T(S_PANEL_CANCEL), NULL, true };
+	cq_text(CQ_COLLECT_DELETE, q, sizeof q, coll_name(c));
 	draw_shelf(a);
 	ui_scrim(a->r, 0);
-	menu_draw(a, T(S_COLLECT_DELETE), rows, nq + 2, nq + 1, menu_std_width(a), MENU_ZYPEROS);
+	confirm_preview(a, CQ_COLLECT_DELETE, q);
 }

@@ -1281,16 +1281,23 @@ static int16_t cb_input_state(unsigned port, unsigned device,
 	if (!g_polled) cb_input_poll();
 
 	/* The left stick, from the d-pad (RUN stick=dpad), with the same buttons
-	 * hidden and given as the joypad's below. Centered while the SELECT rule
-	 * gives the d-pad to the game's D-pad, and always for any other stick.
-	 * Under stick=plain the joypad keeps the d-pad as well (below). */
+	 * hidden and given as the joypad's below; centered while the SELECT rule
+	 * gives the d-pad to the game's D-pad. Under stick=plain the joypad keeps
+	 * the d-pad as well (below). And the handheld's own sticks, where it has
+	 * them (diatom_port_input_axes): its left one whenever the d-pad is not
+	 * pushing the stick, its right one always. Without them, centered. */
 	if (port == 0 && device == RETRO_DEVICE_ANALOG) {
-		int16_t x, y;
+		int16_t x = 0, y = 0, axes[4];
+		bool own = index <= RETRO_DEVICE_INDEX_ANALOG_RIGHT && diatom_port_input_axes(axes);
 
-		if (!g_stick_on || stick_dpad_now() || index != RETRO_DEVICE_INDEX_ANALOG_LEFT)
-			return 0;
-		state = (diatom_port_input_state() & ~(g_suppress | g_hook_hide)) | g_hook_give;
-		stick_axes(state, &x, &y);
+		if (g_stick_on && !stick_dpad_now() && index == RETRO_DEVICE_INDEX_ANALOG_LEFT) {
+			state = (diatom_port_input_state() & ~(g_suppress | g_hook_hide)) | g_hook_give;
+			stick_axes(state, &x, &y);
+		}
+		if (!x && !y && own) {
+			x = axes[index * 2];
+			y = axes[index * 2 + 1];
+		}
 		return id == RETRO_DEVICE_ID_ANALOG_X ? x : id == RETRO_DEVICE_ID_ANALOG_Y ? y : 0;
 	}
 	/* Ports 1 to 3 are the guests' joypads, as p2d wrote them: no map, no

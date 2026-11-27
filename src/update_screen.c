@@ -414,8 +414,8 @@ static void update_screen_body(app *a)
 			char *argv[] = { prog, "rollback", "--card", (char *)P_CARD, "--device", dev, NULL };
 
 			uisound_play(DS_SOUND_ACCEPT);
-			snprintf(msg, sizeof msg, T(S_UPDATEPAGE_ROLLBACK_ASK), v->prev);
-			if (confirm_panel(a, T(S_UPDATEPAGE_ROLLBACK), msg, T(S_UPDATEPAGE_ROLLBACK))) {
+			cq_text(CQ_ROLLBACK, msg, sizeof msg, v->prev);
+			if (confirm_ask(a, CQ_ROLLBACK, msg)) {
 				snprintf(prog, sizeof prog, "%s/zyperos-update", P_ROOT);
 				snprintf(dev, sizeof dev, "%s", slash ? slash + 1 : P_USERDATA);
 				plat_run(argv, NULL, P_ROOT);

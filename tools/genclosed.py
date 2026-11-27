@@ -24,6 +24,10 @@ splash lays over its frames: "TSPG", u16 height, u16 baseline, u16 first
 letter, u16 count, then each letter's u8 advance and its advance x height
 bytes.
 
+The Smart Pro's (its splash is the Brick's, on its 1280x720 framebuffer) are
+drawn on the launcher's 16:9 canvas, 1368x768 (src/canvas.h), and scaled to
+its framebuffer as the launcher's are, into the package's smartpro/.
+
 One picture a language, at the Brick's 1024x768, on the boot screen's ground
 (tools/zyperdef.BG), written as the Brick's splash reads its frames (plastron's
 scripts/make-splash-frames.py, "TSPZ"): one frame, every row, each byte less
@@ -48,6 +52,7 @@ import zyperdef as Z    # noqa: E402
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "plastron", "buildroot", "package", "splash")
 W, H = 1024, 768                 # the Brick's panel
+SMARTPRO = (1368, 768, 1280, 720)  # the Smart Pro's canvas, and its framebuffer
 WIDTH = 900                      # the widest a line may be
 HEADING, BODY = 40, 30           # DESIGN.md 5's title and body, at the Brick's 1:1
 GAP = 14                         # between the heading and what to do
@@ -61,11 +66,13 @@ def _rgb(h):
 COLORS = {name: _rgb(dark) for name, _, dark in D.COLORS}
 
 
-def words(code):
-    """boot.closed_missing and boot.closed_missing_do in a language"""
+def words(code, device=""):
+    """boot.closed_missing and boot.closed_missing_do in a language, or a
+    device's own pair (boot.closed_missing_smartpro)"""
     errors = []
     by_id = {x.id: x for x in i18n.parse(errors)}
-    return (i18n.get(by_id["boot.closed_missing"], code), i18n.get(by_id["boot.closed_missing_do"], code))
+    key = "boot.closed_missing" + ("_" + device if device else "")
+    return (i18n.get(by_id[key], code), i18n.get(by_id[key + "_do"], code))
 
 
 def font_for(code, size):
@@ -91,10 +98,10 @@ def wrap(text, font, cjk):
     return lines
 
 
-def draw(code):
+def draw(code, w=W, h=H, device=""):
     """The picture in a language: the heading, then what to do, centered on
-    the ground"""
-    heading, todo = words(code)
+    the ground, on a w x h canvas, in a device's own words"""
+    heading, todo = words(code, device)
     cjk = code in ("zh-Hans", "ja")
     hf, bf = font_for(code, HEADING), font_for(code, BODY)
     # What to do a sentence at a time: the Update, then what POWER does
@@ -104,18 +111,24 @@ def draw(code):
              [(line, bf, COLORS["text-soft"]) for s in sentences for line in wrap(s, bf, cjk)]
     heights = [int(f.size * 1.4) for _, f, _ in blocks]
     total = sum(heights) + GAP
-    im = Image.new("RGBA", (W, H), Z.BG + (255,))
+    im = Image.new("RGBA", (w, h), Z.BG + (255,))
     d = ImageDraw.Draw(im)
-    y = (H - total) // 2
+    y = (h - total) // 2
     n_heading = len(wrap(heading, hf, cjk))
-    for i, ((line, font, color), h) in enumerate(zip(blocks, heights)):
+    for i, ((line, font, color), lh) in enumerate(zip(blocks, heights)):
         if i == n_heading:
             y += GAP
         if font.getlength(line) > WIDTH:
             sys.exit("genclosed: %s's line is %d wide, past %d: %s" % (code, font.getlength(line), WIDTH, line))
-        d.text((W / 2, y + h * 0.75), line, font=font, fill=color + (255,), anchor="ms")
-        y += h
+        d.text((w / 2, y + lh * 0.75), line, font=font, fill=color + (255,), anchor="ms")
+        y += lh
     return im
+
+
+def draw_smartpro(code):
+    """The Smart Pro's: drawn on its 1368x768 canvas, scaled to 1280x720"""
+    cw, ch, fw, fh = SMARTPRO
+    return draw(code, cw, ch, "smartpro").resize((fw, fh), Image.LANCZOS)
 
 
 def sub_filter(band, stride):
@@ -131,10 +144,11 @@ def sub_filter(band, stride):
 
 def encode(im):
     """One "TSPZ" frame, every row: the Brick's splash's own format"""
+    w, h = im.size
     px = im.convert("RGBA").tobytes("raw", "BGRA")
-    data = zlib.compress(sub_filter(px, W * 4), 9)
-    band = struct.pack("<HHI", 0, H, len(data)) + data
-    header = struct.pack("<4sHHHH", b"TSPZ", W, H, 1, 1)
+    data = zlib.compress(sub_filter(px, w * 4), 9)
+    band = struct.pack("<HHI", 0, h, len(data)) + data
+    header = struct.pack("<4sHHHH", b"TSPZ", w, h, 1, 1)
     return header + struct.pack("<I", len(header) + 4) + band
 
 
@@ -162,11 +176,19 @@ def glyphs():
 
 
 def write(out):
+    os.makedirs(os.path.join(out, "smartpro"), exist_ok=True)
     for code in i18n.CODES:
         with open(os.path.join(out, name_of(code)), "wb") as f:
             f.write(encode(draw(code)))
+        with open(os.path.join(out, "smartpro", name_of(code)), "wb") as f:
+            f.write(encode(draw_smartpro(code)))
     with open(os.path.join(out, "glyphs.bin"), "wb") as f:
         f.write(glyphs())
+
+
+def names():
+    """Every file write() makes, relative to its folder"""
+    return [n for c in i18n.CODES for n in (name_of(c), os.path.join("smartpro", name_of(c)))] + ["glyphs.bin"]
 
 
 def main():
@@ -176,16 +198,16 @@ def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--check":
         with tempfile.TemporaryDirectory() as tmp:
             write(tmp)
-            bad = [n for n in [name_of(c) for c in i18n.CODES] + ["glyphs.bin"]
+            bad = [n for n in names()
                    if not os.path.isfile(os.path.join(OUT, n)) or
                    open(os.path.join(tmp, n), "rb").read() != open(os.path.join(OUT, n), "rb").read()]
         if bad:
             print("check-genclosed: not what tools/genclosed.py draws: %s (run it)" % ", ".join(bad))
             return 1
-        print("check-genclosed: the Brick's missing-files screen in %d languages and its start's letters, as drawn" % len(i18n.CODES))
+        print("check-genclosed: the missing-files screen in %d languages on the Brick and the Smart Pro, and its start's letters, as drawn" % len(i18n.CODES))
         return 0
     write(OUT)
-    print("genclosed: %d pictures and glyphs.bin in %s" % (len(i18n.CODES), os.path.relpath(OUT, ROOT)))
+    print("genclosed: %d pictures a handheld and glyphs.bin in %s" % (len(i18n.CODES), os.path.relpath(OUT, ROOT)))
     return 0
 
 

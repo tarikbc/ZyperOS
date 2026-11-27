@@ -22,6 +22,17 @@
  *
  * This file does not include libretro.h and must never need to.
  */
+/* What tells this port's RK3326 handhelds apart, for the ones that build it
+ * with their own (port/r36s.c): the name its log lines start with, the
+ * card's folder, and the codes the A and B caps and the MENU key send. The
+ * Pixel 2's here. */
+#ifndef RK_PORT
+#define RK_PORT          "pixel2"
+#define RK_CODE_A        BTN_SOUTH
+#define RK_CODE_B        BTN_EAST
+#define RK_CODE_FUNCTION BTN_TRIGGER_HAPPY1
+#endif
+
 #include <SDL.h>
 
 #include <EGL/egl.h>
@@ -110,7 +121,7 @@ static int                 g_gamma_lift;
 
 /* The port's name, as the shared GL code's log lines start with it
  * (port/gles_state.h, port/gles_draw.h) */
-#define PORT_NAME "pixel2"
+#define PORT_NAME RK_PORT
 
 #include "gles_state.h"
 
@@ -278,12 +289,12 @@ static bool     g_input_debug;
 static const struct { int code; int btn; } keymap[] = {
 	{ BTN_DPAD_UP,    DIATOM_BTN_UP },    { BTN_DPAD_DOWN,  DIATOM_BTN_DOWN },
 	{ BTN_DPAD_LEFT,  DIATOM_BTN_LEFT },  { BTN_DPAD_RIGHT, DIATOM_BTN_RIGHT },
-	{ BTN_SOUTH,      DIATOM_BTN_A },     { BTN_EAST,       DIATOM_BTN_B },
+	{ RK_CODE_A,      DIATOM_BTN_A },     { RK_CODE_B,      DIATOM_BTN_B },
 	{ BTN_NORTH,      DIATOM_BTN_X },     { BTN_WEST,       DIATOM_BTN_Y },
 	{ BTN_TL,         DIATOM_BTN_L1 },    { BTN_TR,         DIATOM_BTN_R1 },
 	{ BTN_TL2,        DIATOM_BTN_L2 },    { BTN_TR2,        DIATOM_BTN_R2 },
 	{ BTN_SELECT,     DIATOM_BTN_SELECT },{ BTN_START,      DIATOM_BTN_START },
-	{ BTN_TRIGGER_HAPPY1, DIATOM_BTN_MENU },
+	{ RK_CODE_FUNCTION, DIATOM_BTN_MENU },
 };
 
 /* ---------- audio ----------------------------------------------------------- */
@@ -1225,6 +1236,9 @@ void diatom_port_input_poll(void)
 uint32_t diatom_port_input_state(void) { return g_buttons; }
 uint32_t diatom_port_input_pressed(void) { return g_pressed; }
 
+/* No sticks on the GKD Pixel 2 */
+bool diatom_port_input_axes(int16_t axes[4]) { (void)axes; return false; }
+
 /* The force feedback's strength is the motor's: the scale multiplies it,
  * rounded, so Full (1) is the core's own number as it always was */
 static uint16_t rumble_times(uint16_t v, float scale)
@@ -1423,7 +1437,7 @@ static const diatom_power_profile PX2_POWER = {
  * lifts from it (the in-game menu, Fast Forward, a late frame) each switched
  * the DDR while the display read it, at any moment of its scan. ZyperOS's
  * src/device/pixel2.c (plat_ram_idle) says why it is there, and off. */
-#define PX2_STEADY_MEMORY "/mnt/SDCARD/.userdata/pixel2/steady-memory"
+#define PX2_STEADY_MEMORY "/mnt/SDCARD/.userdata/" RK_PORT "/steady-memory"
 #define PX2_STEADY_MEMORY_BOOT "/run/zyperos-steady-memory"
 static const diatom_power_profile PX2_POWER_STEADY = {
 	.clock = {

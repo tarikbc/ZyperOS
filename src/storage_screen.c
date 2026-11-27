@@ -922,39 +922,6 @@ static void store_base(app *a, void *ctx)
 	store_draw(a, ctx);
 }
 
-/* A question as Delete Game asks it (delete_ask_rows): its lines wrapped
- * to the panel, a rule, then the answer and Cancel. `rows` holds
- * DEL_ASK_LINES + 2. */
-int store_ask_rows(app *a, const char *q, char (*lines)[CHV_WRAP_COLS], menu_row *rows)
-{
-	bool rule;
-	int fit = delete_ask_fit(&rule), n, i;
-
-	n = wrap_text(ui_font(UI_F_MENU), q, menu_std_width(a), lines, DEL_ASK_LINES);
-	ui_fit_drawn(q);    /* drawn in lines, so said whole to the host's check */
-	if (n > fit) n = fit;
-	for (i = 0; i < n; i++) rows[i] = (menu_row){ lines[i], MENU_NOTE_MARK, false };
-	if (n < fit || rule) rows[n++] = MENU_HR;
-	return n;
-}
-
-bool store_ask(app *a, const char *heading, const char *q, const char *yes_label)
-{
-	return ask_panel(a, NULL, NULL, heading, q, yes_label);
-}
-
-bool ask_panel(app *a, const menu_style *over, void *ctx, const char *heading,
-               const char *q, const char *yes_label)
-{
-	char lines[DEL_ASK_LINES][CHV_WRAP_COLS];
-	menu_row rows[DEL_ASK_LINES + 2];
-	int nq = store_ask_rows(a, q, lines, rows), lv = panel_open();
-	bool yes = confirm_rows_over(a, heading, rows, nq, yes_label, menu_std_width(a), lv,
-	                             over, ctx);
-
-	panel_close(a, lv, !a->running || (over && plat_run_power_pressed()));
-	return yes && a->running;
-}
 
 /* After a delete: the shelves may have changed, so the walk is told again */
 static void store_after(store_view *v)
@@ -997,8 +964,8 @@ static void store_act(store_view *v)
 
 		uisound_play(DS_SOUND_ACCEPT);
 		store_bytes(v->c.unused_art, sz, sizeof sz);
-		snprintf(q, sizeof q, T(S_STORAGE_UNUSED_ASK), sz);
-		if (!store_ask(a, T(S_STORAGE_UNUSED_ART), q, T(S_GAMEMENU_DELETE_YES))) break;
+		cq_text(CQ_STORE_UNUSED_ART, q, sizeof q, sz);
+		if (!confirm_ask(a, CQ_STORE_UNUSED_ART, q)) break;
 		st_stop();
 		wait_panel(a, T(S_STORAGE_UNUSED_ART), T(S_GAMEMENU_DELETING));
 		b = st_delete_unused_art(&v->paths, &v->sys, v->games, v->ngames, &files);
@@ -1013,8 +980,8 @@ static void store_act(store_view *v)
 
 		uisound_play(DS_SOUND_ACCEPT);
 		store_bytes(v->c.old_states, sz, sizeof sz);
-		snprintf(q, sizeof q, TN(S_STORAGE_OLD_ASK, v->c.old_state_games), v->c.old_state_games, sz);
-		if (!store_ask(a, T(S_STORAGE_OLD_STATES), q, T(S_GAMEMENU_DELETE_YES))) break;
+		cq_text(CQ_STORE_OLD_STATES, q, sizeof q, v->c.old_state_games, sz);
+		if (!confirm_ask(a, CQ_STORE_OLD_STATES, q)) break;
 		st_stop();
 		wait_panel(a, T(S_STORAGE_OLD_STATES), T(S_GAMEMENU_DELETING));
 		b = st_delete_old_states(&v->paths, &v->sys, v->games, v->ngames, (long)time(NULL), &games);
@@ -1025,12 +992,14 @@ static void store_act(store_view *v)
 	}
 	case SR_SNAPS: {
 		const char *folder = v->c.sys[v->page].folder;
+		const system_cfg *sc = store_cfg(v, folder);
 		unsigned long long b;
 
 		uisound_play(DS_SOUND_ACCEPT);
 		store_bytes(v->c.sys[v->page].snaps, sz, sizeof sz);
-		snprintf(q, sizeof q, T(S_SNAPS_DELETE_ASK), sz);
-		if (!store_ask(a, T(S_STORAGE_DELETE_SNAPS), q, T(S_SNAPS_DELETE))) break;
+		/* This system's, not every one's: Downloads' own question for it */
+		cq_text(CQ_STORE_SYS_SNAPS, q, sizeof q, sc ? sc->name : folder, sz);
+		if (!confirm_ask(a, CQ_STORE_SYS_SNAPS, q)) break;
 		st_stop();
 		snap_off();
 		b = snaps_delete(P_ROMS, folder);
@@ -1063,8 +1032,8 @@ static void store_act(store_view *v)
 		uisound_play(DS_SOUND_ACCEPT);
 		snprintf(rel, sizeof rel, "%s", m->rel);
 		store_bytes(m->bytes, sz, sizeof sz);
-		snprintf(q, sizeof q, T(m->folder ? S_STORAGE_MEDIA_ASK_FOLDER : S_STORAGE_MEDIA_ASK_FILE), m->name, sz);
-		if (!store_ask(a, head, q, T(S_GAMEMENU_DELETE_YES))) break;
+		cq_text(m->folder ? CQ_STORE_MEDIA_FOLDER : CQ_STORE_MEDIA_FILE, q, sizeof q, m->name, sz);
+		if (!confirm_ask(a, m->folder ? CQ_STORE_MEDIA_FOLDER : CQ_STORE_MEDIA_FILE, q)) break;
 		st_stop();
 		wait_panel(a, head, T(S_GAMEMENU_DELETING));
 		/* MP4 lets go of it first, if it plays or holds it (File Transfer's
@@ -1091,8 +1060,8 @@ static void store_act(store_view *v)
 		uisound_play(DS_SOUND_ACCEPT);
 		snprintf(folder, sizeof folder, "%s", o->folder);
 		store_bytes(o->bytes, sz, sizeof sz);
-		snprintf(q, sizeof q, T(S_STORAGE_ORPHAN_ASK), o->title[0] ? o->title : o->folder, sz);
-		if (!store_ask(a, T(S_GAMEMENU_DELETE), q, T(S_GAMEMENU_DELETE_YES))) break;
+		cq_text(CQ_STORE_ORPHAN_PORT, q, sizeof q, o->title[0] ? o->title : o->folder, sz);
+		if (!confirm_ask(a, CQ_STORE_ORPHAN_PORT, q)) break;
 		st_stop();
 		wait_panel(a, T(S_GAMEMENU_DELETE), T(S_GAMEMENU_DELETING));
 		b = st_delete_port_folder(&v->paths, &v->sys, v->games, v->ngames, folder);
@@ -1340,9 +1309,8 @@ void storage_shot(app *a)
 	static store_view v;
 	static bool made;
 	const char *name = shot_storage;
-	char lines[DEL_ASK_LINES][CHV_WRAP_COLS], q[640], sz[24];
-	menu_row rows[DEL_ASK_LINES + 2];
-	int nq, i;
+	char q[640], sz[24];
+	int i;
 
 	if (!made) {
 		made = true;
@@ -1418,25 +1386,17 @@ void storage_shot(app *a)
 		bool art = !strcmp(name, "art");
 
 		store_bytes(art ? v.c.unused_art : v.c.old_states, sz, sizeof sz);
-		if (art) snprintf(q, sizeof q, T(S_STORAGE_UNUSED_ASK), sz);
-		else snprintf(q, sizeof q, TN(S_STORAGE_OLD_ASK, v.c.old_state_games), v.c.old_state_games, sz);
-		nq = store_ask_rows(a, q, lines, rows);
-		rows[nq] = (menu_row){ T(S_GAMEMENU_DELETE_YES), NULL, true };
-		rows[nq + 1] = (menu_row){ T(S_PANEL_CANCEL), NULL, true };
+		if (art) cq_text(CQ_STORE_UNUSED_ART, q, sizeof q, sz);
+		else cq_text(CQ_STORE_OLD_STATES, q, sizeof q, v.c.old_state_games, sz);
 		ui_scrim(a->r, 0);
-		menu_draw(a, T(art ? S_STORAGE_UNUSED_ART : S_STORAGE_OLD_STATES), rows, nq + 2, nq + 1,
-		          menu_std_width(a), MENU_ZYPEROS);
+		confirm_preview(a, art ? CQ_STORE_UNUSED_ART : CQ_STORE_OLD_STATES, q);
 	} else if ((!strcmp(name, "delete") || !strcmp(name, "delete-open")) &&
 	           v.nrows > 0 && v.rows[v.pg.sel].kind == SR_GAME) {
 		int sh = store_shelf(a, "PlayStation");
-		const char *heading;
-
 		if (sh >= 0) {
 			float k = 1.0f;
 
-			nq = delete_ask_rows(a, sys_games(&a->view[sh])->items[v.rows[v.pg.sel].index].title, lines, rows, &heading);
-			rows[nq] = (menu_row){ T(S_GAMEMENU_DELETE_YES), NULL, true };
-			rows[nq + 1] = (menu_row){ T(S_PANEL_CANCEL), NULL, true };
+			cq_text(CQ_GAME_DELETE, q, sizeof q, sys_games(&a->view[sh])->items[v.rows[v.pg.sel].index].title);
 			/* delete-open: where the question is in its open (shot_motion);
 			 * another menu than MENU's, drawn before it here, as on the
 			 * handheld Storage's own list is drawn between them: a MENU tab
@@ -1447,19 +1407,16 @@ void storage_shot(app *a)
 				g_menu_epoch++;
 			}
 			ui_scrim_k(a->r, 0, k);
-			menu_draw(a, heading, rows, nq + 2, nq + 1, menu_std_width(a), MENU_ZYPEROS);
+			confirm_preview(a, CQ_GAME_DELETE, q);
 		}
 	} else if ((!strcmp(name, "media-delete") || !strcmp(name, "videos-delete")) &&
 	           v.nrows > 0 && v.rows[v.pg.sel].kind == SR_MEDIA) {
 		const st_media *m = &v.med[v.rows[v.pg.sel].index];
 
 		store_bytes(m->bytes, sz, sizeof sz);
-		snprintf(q, sizeof q, T(m->folder ? S_STORAGE_MEDIA_ASK_FOLDER : S_STORAGE_MEDIA_ASK_FILE), m->name, sz);
-		nq = store_ask_rows(a, q, lines, rows);
-		rows[nq] = (menu_row){ T(S_GAMEMENU_DELETE_YES), NULL, true };
-		rows[nq + 1] = (menu_row){ T(S_PANEL_CANCEL), NULL, true };
+		cq_text(m->folder ? CQ_STORE_MEDIA_FOLDER : CQ_STORE_MEDIA_FILE, q, sizeof q, m->name, sz);
 		ui_scrim(a->r, 0);
-		menu_draw(a, store_media_name(v.media), rows, nq + 2, nq + 1, menu_std_width(a), MENU_ZYPEROS);
+		confirm_preview(a, m->folder ? CQ_STORE_MEDIA_FOLDER : CQ_STORE_MEDIA_FILE, q);
 	} else if (!strcmp(name, "done")) {
 		char said[96];
 		menu_row row;

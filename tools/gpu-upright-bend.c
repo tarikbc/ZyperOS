@@ -25,7 +25,9 @@ bool plat_gpu_shaders(void) { return true; }
 #define W ZYPEROS_SCREEN_W
 #define H ZYPEROS_SCREEN_H
 
-static uint8_t g_px[W * H * 4];
+/* The canvas's width is the run's (src/canvas.h), so the read-back is
+ * sized for the widest */
+static uint8_t g_px[CANVAS_W_MAX * CANVAS_H * 4];
 
 /* The mean light of a box of the window */
 static double light(int x0, int y0, int x1, int y1)

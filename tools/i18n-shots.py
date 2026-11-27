@@ -15,10 +15,11 @@
                                                 macOS job, one part a runner)
 
 Every screen is shot as each handheld ZyperOS runs on (DEVICES: the Pixel 2,
-the README's, first, then the Brick), with its own keys, rows and words: the
-Brick's MENU is the word on its key, wider than the Pixel 2's three dots, and
-it has rows the Pixel 2 has not (Bluetooth) and the other way round (Side
-Lights). A string must fit on each, and is drawn if either draws it.
+the README's, first, then the Brick and the Smart Pro), with its own keys,
+rows and words: the Brick's MENU is the word on its key, wider than the
+Pixel 2's three dots, and it has rows the Pixel 2 has not (Bluetooth) and
+the other way round (Side Lights); the Smart Pro's canvas is 1368 units wide
+(src/canvas.h). A string must fit on each, and is drawn if any draws it.
 
 A layout drawn for English meets words up to half again as long in French or
 Portuguese, and Chinese's taller face. The launcher, built for the host, says
@@ -66,8 +67,9 @@ _spec.loader.exec_module(R)
 
 # The handhelds every screen is shot as: the README's first, whose every row
 # a shot finds (a missing one is a renamed row), then the rest, which may lack
-# one (the Brick's Strength row, with no GPU shaders)
-DEVICES = ["pixel2", "brick"]
+# one (the Brick's Strength row, with no GPU shaders); the Smart Pro for its
+# wide canvas
+DEVICES = ["pixel2", "brick", "smartpro"]
 
 # The string IDs of a text the launcher drew: src/ui.c says the text, not the
 # ID (a label is copied into a row's buffer, or formatted around a name, and
@@ -637,6 +639,21 @@ EXTRA.setdefault("usb-menu-said", ("demo", "PS1", ["--usb-menu", "said"]))
 # Zyper's one-time offer of Automatic, after a second USB Accessory
 EXTRA.setdefault("usb-offer", ("demo", "PS1", ["--usb-offer"]))
 EXTRA.setdefault("usb-mark", ("demo", "PS1", _USB_WAIT))
+# Every question with two answers (src/confirmq.h, DESIGN.md 11.3), each
+# over the shelf with the inventory's own words (src/shots.c's
+# shot_ask_text): Delete Game and Delete Screenshot with "Castlevania -
+# Symphony of the Night", the longest name the confirm panels lab found hard
+CONFIRM_QUESTIONS = (
+    "wifi-forget", "wifi-forget-joined", "pico8-restart-display", "pico8-restart-buttons",
+    "pico8-reset", "game-reset", "splore-wifi", "cheats-crash", "cheats-first", "hotkeys-swap",
+    "hotkeys-reset-game", "hotkeys-reset-system", "hotkeys-reset-every", "storage-unused-art",
+    "storage-old-states", "storage-system-snaps", "storage-media-folder", "storage-media-file",
+    "storage-orphan-port", "game-delete", "port-delete", "update-rollback", "collection-delete",
+    "screenshot-delete", "media-video-delete", "sgdb-unlink", "ss-unlink", "snaps-delete-all",
+    "reset-buttons-game", "reset-buttons-all", "usb-offer", "dl-sign-out", "dl-delete-videos",
+    "dl-delete-cheats", "dl-delete-sets", "dl-sys-videos", "dl-sys-sets", "dl-sys-cheats", "bt-forget")
+for _q in CONFIRM_QUESTIONS:
+    EXTRA.setdefault("ask-" + _q, ("demo", "PS1", ["--ask", _q]))
 # System Update (DESIGN.md 11.17, 2026-11-11): What's New scrolled to its
 # end, the corner's mark of a download behind the shelf, and Zyper's news
 EXTRA.setdefault("update-notes-end", ("demo", "PS1", ["--update", "--update-scroll", "99"]))

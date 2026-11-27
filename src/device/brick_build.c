@@ -13,6 +13,7 @@ const dev_build device_build_brick = {
 	.arch = "aarch64",
 	.mcpu = "cortex-a53",
 	.cpu = "cortex-a53",
+	.backend = "brick",
 	.diatom_port = "brick",
 	.table = "gpt",
 	.part_boot = 1,

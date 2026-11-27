@@ -1,0 +1,32 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * ZyperOS's R36S device tree: ROCKNIX's (rk3326-gameconsole-r36s.dts,
+ * unchanged beside it) with the card the R36S boots from first among the
+ * SD cards, and the display's gamma table (below). The RK3326's boot ROM starts from the sdmmc controller alone,
+ * so the card that holds this system is always there; ROCKNIX's tree names
+ * the sdio controller mmc0, which made the boot card mmcblk1. plastron's
+ * scripts, the boot script's root= and ZyperOS find the system's card as
+ * mmcblk0, as on the Pixel 2, so the two are swapped here. The other slot,
+ * on sdio, is mmcblk1. (docs/devices/r36s.md, "The card")
+ */
+#include "rk3326-gameconsole-r36s.dts"
+
+/ {
+	aliases {
+		mmc0 = &sdmmc;
+		mmc1 = &sdio;
+	};
+};
+
+/*
+ * The VOP's gamma LUT as its second range, as on the Pixel 2
+ * (rk3326s-gkd-pixel2.dts, kernel patch 7): without it the driver gives the
+ * display no GAMMA_LUT, and ZyperOS's Screen Colors, Night Mode, the two
+ * dimmest brightness rungs and the brightness boost past the top, all made
+ * by that table, did nothing on the first R36S that ran ZyperOS (Sylver,
+ * 2026-11-23: "the 3 additional high levels are not changing brightness").
+ */
+&vopb {
+	reg = <0x0 0xff460000 0x0 0x260>, <0x0 0xff460a00 0x0 0x400>;
+	reg-names = "regs", "gamma_lut";
+};

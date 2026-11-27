@@ -7,6 +7,8 @@
  * what a screen with a panel calls every frame. Each is described in
  * main.c. */
 #include "app.h"
+#include "confirmq.h"
+#include "ds/confirm.h"
 #include "dslang.h"
 #include "pacing.h"
 #include "sgbmode.h"
@@ -215,12 +217,22 @@ bool menu_closing(void);
  * time (--shot-at) */
 unsigned anim_now(void);
 
-/* A question asked as Delete Game asks it: wrapped to the panel a line a
- * row, a rule, then `yes_label` and Cancel, the cursor on Cancel. Over
- * `over`'s backdrop with its power rule (NULL: over the shelf, POWER the
- * device's). True for the yes. */
-bool ask_panel(app *a, const menu_style *over, void *ctx, const char *heading,
-               const char *q, const char *yes_label);
+/* A question with two answers, src/confirmq.h's `q`, its words `text`
+ * (cq_text), on src/ds/confirm.h's panel (DESIGN.md 11.3): over the shelf,
+ * or over `over`'s backdrop with its power rule (the in-game menu's paused
+ * game); with a `guard`, a question that came by itself (ask_settle). The
+ * answer: CQ_LEFT, CQ_RIGHT, or CQ_NONE when it was left with nothing done
+ * (B where no answer is B's, MENU, POWER). */
+int  confirm_ask_ex(app *a, cq_id q, const char *text, const menu_style *over, void *ctx,
+                    usbpower_guard *guard);
+/* True for the right answer, the action: a question whose left is Cancel */
+bool confirm_ask(app *a, cq_id q, const char *text);
+bool confirm_ask_over(app *a, cq_id q, const char *text, const menu_style *over, void *ctx);
+/* One frame of it, the cursor where it starts, for a shot: over whatever
+ * the caller drew */
+void confirm_preview(app *a, cq_id q, const char *text);
+/* Where it would be laid out now (check-confirm's --confirm-fit) */
+void confirm_lay(app *a, cq_id q, const char *text, ds_confirm_lay *l);
 
 /* The in-game menu's read-only Controls pages over `over`'s backdrop with
  * its power rule, at their own width: the Controls tab's Hotkeys row, which
@@ -258,16 +270,6 @@ int  menu_std_width(app *a);
 int  menu_list_fit(int fixed, int rules, int notes);
 /* One line on a panel over the shelf, before something that blocks */
 void wait_panel(app *a, const char *heading, const char *msg);
-/* A question on a panel over the shelf with two answers that both go on: 1
- * the first, 2 the second, 0 left with B */
-int ask_two_panel(app *a, const char *heading, const char *msg, const char *first,
-                  const char *second);
-/* Its rows: `msg` in lines (at most ASK_TWO_LINES), then the two answers;
- * how many lines */
-#define ASK_TWO_LINES 6
-/* A question on a panel over the shelf, Yes on `yes_label`: true on Yes */
-bool confirm_panel(app *a, const char *heading, const char *msg,
-                   const char *yes_label);
 /* What a screen with its own page draws first: the theme's ground */
 void draw_background(app *a);
 /* A move on a page heard: `b`'s step sound */
@@ -298,17 +300,10 @@ int menu_most_w(void);
 #define MENU_TOP    96
 /* The height a panel can have between the two. */
 #define MENU_AVAIL_H (ZYPEROS_SCREEN_H - MENU_TOP - MENU_MARGIN)
-/* A question on a panel already open at `lv`, its rows `rows`, Yes on
- * `yes_label`: true on Yes */
-bool confirm_rows(app *a, const char *heading, menu_row *rows, int nq,
-                  const char *yes_label, int fixed_w, int lv);
 /* `src` wrapped to `w` in `f`, a line a row of `out`; how many lines */
 #define CHV_WRAP_COLS  96
 int wrap_text(TTF_Font *f, const char *src, int w,
               char out[][CHV_WRAP_COLS], int max);
-/* ask_two_panel's rows (ASK_TWO_LINES above) */
-int ask_two_rows(app *a, const char *msg, const char *first, const char *second,
-                 char (*lines)[CHV_WRAP_COLS], menu_row *rows);
 /* The roles a row of menu_draw_ex's `vcolors` names. VCOL_EARNED is
  * the value in **accent-ink**, lime as a mark: an earned achievement. On the
  * focus fill it is **on-accent**, like every other value. */
@@ -323,10 +318,6 @@ int ask_two_rows(app *a, const char *msg, const char *first, const char *second,
 void menu_draw_ex(app *a, const char *heading, const menu_row *rows,
                   int n, int sel, int fixed_w, unsigned accent,
                   const unsigned *vcolors, bool visits_all, int loop_at);
-/* confirm_rows over a screen's own backdrop (`over`, `ctx`) */
-bool confirm_rows_over(app *a, const char *heading, menu_row *rows, int nq,
-                       const char *yes_label, int fixed_w, int lv,
-                       const menu_style *over, void *ctx);
 /* A screen that is a base for panels (MP4's shelf, Storage): its level,
  * and its own context while it is up */
 int  panel_base(void);
@@ -465,9 +456,6 @@ extern bool g_tiles_hints;
 void usb_offer_count(void);
 void tiles_show(app *a, int kind, const char *heading, const menu_row *rows, int n,
                 const int *marks, int nmarks, int sel);
-bool confirm_rows_as(app *a, const char *heading, menu_row *rows, int nq,
-                     const char *yes_label, const char *no_label, int fixed_w, int lv,
-                     usbpower_guard *guard);
 const char *list_hints(const char *b_word);
 void ask_settle(app *a, usbpower_guard *g);
 void ask_guard_start(app *a, usbpower_guard *g);
@@ -490,7 +478,10 @@ void language_apply(app *a, lang l, bool keep);
  * (Computer Connected), PANEL_LIST rows the panel's width with a line under
  * each name (What did you plug in?, the Scraper's Settings). They were read
  * off the first tile's name before (tile_glyph), which cut "ScreenScraper". */
-enum { PANEL_MENU, PANEL_HOT, PANEL_TILES, PANEL_P2, PANEL_MOVE, PANEL_TILES_GRID, PANEL_LIST };
+/* PANEL_CONFIRM a question with two answers (src/ds/confirm.h): its rows the
+ * question, the left answer and the right, its marks theirs (confirm_show). */
+enum { PANEL_MENU, PANEL_HOT, PANEL_TILES, PANEL_P2, PANEL_MOVE, PANEL_TILES_GRID, PANEL_LIST,
+       PANEL_CONFIRM };
 typedef struct {
 	bool     run;            /* ours runs now, as `mode`, and has the name (mdns) */
 	bool     up;             /* sshlink_start or sshlink_start_net said yes */

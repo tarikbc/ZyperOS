@@ -72,17 +72,6 @@ de = Füge das gekaufte Raspberry-Pi-Zip mit dem ZyperOS Installer hinzu oder ko
 ja = 購入した Raspberry Pi 版の zip を ZyperOS Installer で追加するか、Bios/PICO-8 にコピーしてください。
 it = Aggiungi lo zip per Raspberry Pi che hai comprato con ZyperOS Installer, o copialo in Bios/PICO-8.
 
-[pico8.wifi_title]
-note = The question's heading before Splore opens with no network: Splore lists and downloads carts online
-en = Splore needs Wi-Fi
-zh-Hans = Splore 需要 Wi-Fi
-es = Splore requiere Wi-Fi
-pt-BR = O Splore requer Wi-Fi
-fr = Splore a besoin du Wi-Fi
-de = Splore braucht WLAN
-ja = Splore には Wi-Fi が必要です
-it = Splore richiede il Wi-Fi
-
 [pico8.wifi_body]
 note = The question's sentence: with no network, Splore opens with the carts it downloaded on earlier visits only
 en = Wi-Fi is off. Offline, Splore has only the carts it downloaded before.
@@ -115,6 +104,17 @@ fr = Ouvrir hors ligne
 de = Offline öffnen
 ja = オフラインで開く
 it = Apri offline
+
+[pico8.wifi_heading]
+note = The heading of the question before Splore opens with no network (pico8.wifi_body under it). A heading, the action.
+en = Open Splore
+zh-Hans = 打开 Splore
+es = Abrir Splore
+pt-BR = Abrir o Splore
+fr = Ouvrir Splore
+de = Splore öffnen
+ja = Splore を開く
+it = Apri Splore
 
 [pico8.no_network]
 note = A message when Wi-Fi was turned on for Splore but no saved network was joined in time; Splore then opens offline on the next A
@@ -183,7 +183,7 @@ ja = Splore は PICO-8 の一部なので、残ります。
 it = Splore fa parte del tuo PICO-8. Resta.
 
 [pico8.restart_ask]
-note = The in-game menu over the player's own PICO-8: PICO-8 can change its picture (the Display row) only as it starts, so a new Display mode starts the cart again. A heading, in the yes/cancel panel, the cursor on Cancel; the yes is pico8.restart_yes. "Cart" as in pico8.point_what
+note = The in-game menu over the player's own PICO-8: PICO-8 can change its picture (the Display row) and read its buttons only as it starts, so a new Display mode or new buttons start the cart again. The first sentence of the question under pico8.restart_heading; pico8.restart_display or pico8.restart_buttons follows it (panel.join). "Cart" as in pico8.point_what
 en = Start the cart again?
 zh-Hans = 重新启动卡带？
 es = ¿Reiniciar el cartucho?
@@ -194,7 +194,7 @@ ja = カートを再起動しますか？
 it = Riavviare la cartuccia?
 
 [pico8.restart_display]
-note = Under pico8.restart_ask: %s is the new Display mode's name (gamemenu.dmode_*, "Actual Size"), and what a start again loses: play since the cart's own last save (PICO-8 has no save states). Wrapped to the panel
+note = After pico8.restart_ask: %s is the new Display mode's name (gamemenu.dmode_*, "Actual Size"), and what a start again loses: play since the cart's own last save (PICO-8 has no save states). Cancel and pico8.restart_yes under it, the cursor on Cancel. Wrapped to the panel
 en = PICO-8 starts again in %s. Play since the cart last saved is lost.
 zh-Hans = PICO-8 将以“%s”重新启动。卡带上次存档后的进度将会丢失。
 es = PICO-8 se reinicia en %s. Se pierde lo jugado desde el último guardado del cartucho.
@@ -205,7 +205,7 @@ ja = PICO-8 は「%s」で再起動します。カートの最後のセーブ以
 it = PICO-8 si riavvia in %s. Si perde quanto giocato dall'ultimo salvataggio della cartuccia.
 
 [pico8.restart_buttons]
-note = Under pico8.restart_ask, after the player changed a button in the Controls list over their own PICO-8: PICO-8 reads its buttons only as it starts, so the new ones need a start again, which loses play since the cart's own last save (PICO-8 has no save states). Cancel keeps the new buttons for PICO-8's next start. Wrapped to the panel
+note = After pico8.restart_ask, as the menu closes after the player changed a button in the Controls list over their own PICO-8: PICO-8 reads its buttons only as it starts, so the new ones need a start again, which loses play since the cart's own last save (PICO-8 has no save states). pico8.restart_later and pico8.restart_yes under it; Later keeps the new buttons for PICO-8's next start, B goes back to the menu. Wrapped to the panel
 en = PICO-8 takes the new buttons as it starts again. Play since the cart last saved is lost.
 zh-Hans = PICO-8 重新启动后才会使用新的按键。卡带上次存档后的进度将会丢失。
 es = PICO-8 usa los botones nuevos al reiniciarse. Se pierde lo jugado desde el último guardado del cartucho.
@@ -225,3 +225,25 @@ fr = Relancer
 de = Neu starten
 ja = 再起動
 it = Riavvia
+
+[pico8.restart_heading]
+note = The heading of the question before PICO-8 starts again (pico8.restart_ask is its first sentence). A heading, the action. "Cart" as in pico8.point_what
+en = Start Cart Again
+zh-Hans = 重新启动卡带
+es = Reiniciar cartucho
+pt-BR = Reiniciar cartucho
+fr = Relancer la cartouche
+de = Cart neu starten
+ja = カートを再起動
+it = Riavvia cartuccia
+
+[pico8.restart_later]
+note = The left answer of the start-again question after new buttons (pico8.restart_buttons), where the cursor starts: the cart goes on as it is, and PICO-8 takes the new buttons at its next start. B goes back to the menu instead. A button, short
+en = Later
+zh-Hans = 稍后
+es = Más tarde
+pt-BR = Depois
+fr = Plus tard
+de = Später
+ja = あとで
+it = Più tardi

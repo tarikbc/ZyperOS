@@ -52,13 +52,12 @@ enum { UP_ACCESSORY, UP_COMPUTER, UP_PHONE, UP_TILES, UP_GONE = UP_TILES };
 
 /* Zyper's offer of Automatic (usbpower_offer_after, DESIGN.md 11.36), on
  * the shelf after the USB Accessory answer that made it due, the accessory
- * powered by then: the confirm panel, its words in up to four balanced
- * lines over the heading's rule, then Automatic and Keep Asking, the cursor
- * on Keep Asking. It comes by itself, so it takes a press as the question
- * does (usbpower_guard). Automatic is MENU > USB Accessories' own, told to
- * usbrole; either answer, B too, is kept, and it is never offered again.
- * POWER, Auto Off or a quit answer nothing. */
-#define USB_OFFER_LINES 4
+ * powered by then: the two-answer panel (CQ_USB_OFFER), Keep Asking on the
+ * left with the cursor on it and Automatic on the right. It comes by
+ * itself, so it takes a press as the question does (usbpower_guard).
+ * Automatic is MENU > USB Accessories' own, told to usbrole; either answer
+ * is kept, and then it is never offered again. B, MENU, POWER, Auto Off or a
+ * quit answer nothing and keep nothing. */
 
 typedef struct {
 	bool     on;                        /* the message is up */
@@ -85,7 +84,6 @@ void usb_drive_draw(app *a, int which);
 bool usb_drive_atlas(app *a, const char *raw, const char *txt, FILE *shot);
 void usb_ask(app *a);
 int usb_power_rows(menu_row rows[UP_TILES + 1]);
-int usb_offer_rows(app *a, char lines[USB_OFFER_LINES][LB_LINE], menu_row *rows);
 void usb_offer_show(app *a);
 bool phone_link_due(bool xfer_on);
 void power_follow(void);

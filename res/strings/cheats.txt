@@ -201,7 +201,7 @@ ja = ゲームと同じ名前にします：%s.cht。
 it = con il nome del gioco: %s.cht.
 
 [cheats.ask_title]
-note = The heading of the question the first cheat of a game asks while signed in to RetroAchievements; the cursor starts on Cancel.
+note = The first sentence of the question the first cheat of a game asks while signed in to RetroAchievements, under cheats.ask_heading; cheats.ask_body follows it (panel.join). The cursor starts on Cancel.
 en = Turn on a cheat?
 zh-Hans = 要开启作弊码吗？
 es = ¿Activar un truco?
@@ -212,7 +212,7 @@ ja = チートをオンにしますか？
 it = Attivare un trucco?
 
 [cheats.ask_body]
-note = The question's text under cheats.ask_title: what a cheat does to the game's achievements.
+note = The question's second sentence, after cheats.ask_title: what a cheat does to the game's achievements.
 en = Achievements stop for this game until it starts again with every cheat off.
 zh-Hans = 这个游戏的成就会停止，直到关闭所有作弊码后重新开始游戏。
 es = Los logros se detienen en este juego hasta que vuelva a empezar con todos los trucos desactivados.
@@ -232,6 +232,17 @@ fr = Activer
 de = Einschalten
 ja = オンにする
 it = Attiva
+
+[cheats.ask_heading]
+note = The heading of the question the first cheat of a game asks while signed in to RetroAchievements (cheats.ask_title is its first sentence). A heading, the action.
+en = Turn On Cheat
+zh-Hans = 开启作弊码
+es = Activar truco
+pt-BR = Ativar trapaça
+fr = Activer une triche
+de = Cheat einschalten
+ja = チートをオン
+it = Attiva trucco
 
 [cheats.popup]
 note = The pop-up at the top as a game starts with cheats on, so nobody forgets one: %d of them.
@@ -295,7 +306,7 @@ ja = このゲームでチートがオンになりました。すべてのチー
 it = In questo gioco è stato attivo un trucco: i suoi obiettivi aspettano finché non riparte con tutti i trucchi disattivati.
 
 [cheats.crash_title]
-note = The heading of the question as a game starts that stopped by itself last time while cheats were on. Two lines in English.
+note = The first sentence of the question as a game starts that stopped by itself last time while cheats were on, under cheats.crash_heading; cheats.crash_body follows it (panel.join).
 en = This game stopped last time with cheats on.
 zh-Hans = 这个游戏上次在开启作弊码时停止了。
 es = Este juego se detuvo la última vez con trucos activados.
@@ -306,7 +317,7 @@ ja = このゲームは前回、チートがオンのまま止まりました。
 it = Questo gioco si è fermato l'ultima volta con trucchi attivi.
 
 [cheats.crash_body]
-note = The same question's text under cheats.crash_title.
+note = The same question's second sentence, after cheats.crash_title.
 en = Start it without them?
 zh-Hans = 不使用作弊码开始吗？
 es = ¿Empezarlo sin ellos?
@@ -337,3 +348,14 @@ fr = Avec triches
 de = Mit Cheats
 ja = チートあり
 it = Con trucchi
+
+[cheats.crash_heading]
+note = The heading of the question as a game starts that stopped by itself last time while cheats were on (cheats.crash_title and cheats.crash_body under it). A heading, the action.
+en = Start Game
+zh-Hans = 开始游戏
+es = Empezar juego
+pt-BR = Começar jogo
+fr = Lancer le jeu
+de = Spiel starten
+ja = ゲームを始める
+it = Avvia gioco

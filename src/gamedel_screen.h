@@ -13,15 +13,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-/* The most lines the question can take */
-#define DEL_ASK_LINES 12
-
-/* How many of the question's lines fit over its two answers before the
- * panel windows; *rule whether a rule goes under them */
-int delete_ask_fit(bool *rule);
-/* The question's rows for `title`, wrapped into `lines`, its heading */
-int delete_ask_rows(app *a, const char *title, char (*lines)[CHV_WRAP_COLS],
-                    menu_row *rows, const char **heading);
 /* One frame of the question over the shelf, Cancel focused, for a shot */
 void delete_ask_preview(app *a);
 /* The yes: true when the game went; `said` the message either way, empty

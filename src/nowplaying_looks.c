@@ -844,17 +844,21 @@ static unsigned vinyl(SDL_Renderer *r, const npl_frame *F, const mu_now *mn, uns
 	int root, rec, col, names, count, title, artist, area, place, al, n;
 	SDL_Rect rr, cr, ct, tt, wr, ar;
 	float cx, cy, px, py, a = VIN_PIVOT_A * (float)M_PI / 180.0f;
-	int col_x;
+	int col_x, ox, room;
 	const int plate = (int)ceilf(VIN_PLATTER_R) * 2 + 4, face = (int)ceilf(VIN_R) * 2 + 4;
 
 	al = song_album(mn, &place);
 	n = al >= 0 ? g_mp4.albums[al].n : mn->count;
 	/* The record left in the room and on its middle; the column from a
-	 * section past the tonearm's base, on the grid */
-	root = ds_flex_begin(&L, F->content.w, F->content.h, &(ds_box){ .dir = DS_ROW, .align = DS_A_CENTER });
+	 * section past the tonearm's base, on the grid. The room is a 4:3
+	 * canvas's, in the middle of a wider one (src/canvas.h), so the record
+	 * and its words stand together as the cassette's do. */
+	ox = (ZYPEROS_SCREEN_W - canvas_panel_room()) / 2;
+	room = F->content.w - 2 * ox;
+	root = ds_flex_begin(&L, room, F->content.h, &(ds_box){ .dir = DS_ROW, .align = DS_A_CENTER });
 	rec = ds_flex_add(&L, root, &(ds_box){ .w = DS_LOOK_RECORD, .h = DS_LOOK_RECORD });
 	ds_flex_solve(&L);
-	rr = at(&L, rec, F->content.x, F->content.y);
+	rr = at(&L, rec, F->content.x + ox, F->content.y);
 	rr.y = rr.y / DS_GRID * DS_GRID;
 	cx = (float)rr.x + DS_LOOK_RECORD / 2.0f;
 	cy = (float)rr.y + DS_LOOK_RECORD / 2.0f;
@@ -862,7 +866,7 @@ static unsigned vinyl(SDL_Renderer *r, const npl_frame *F, const mu_now *mn, uns
 	py = cy + VIN_PIVOT_D * sinf(a);
 	col_x = ((int)ceilf(px) + 38 + DS_SECTION + DS_GRID - 1) / DS_GRID * DS_GRID;
 
-	root = ds_flex_begin(&L, F->content.x + F->content.w - col_x, DS_LOOK_RECORD,
+	root = ds_flex_begin(&L, F->content.x + ox + room - col_x, DS_LOOK_RECORD,
 	                     &(ds_box){ .dir = DS_COL, .justify = DS_J_BETWEEN,
 	                                .pad = { 0, DS_SECTION, 0, DS_SECTION } });
 	names = ds_flex_add(&L, root, &(ds_box){ .dir = DS_COL });

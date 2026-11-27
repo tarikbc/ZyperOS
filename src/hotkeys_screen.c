@@ -261,22 +261,19 @@ static bool ask_swap(app *a, hk_page *p, const hk_table *t, hk_act act, int key,
 
 	snprintf(chord, sizeof chord, "SELECT+%s", hk_key_name(key));
 	hk_chord(t, act, was, sizeof was);
-	snprintf(q, sizeof q, T(S_HOTKEYS_SWAP_Q), chord, T(ACT_LABEL[other]), T(ACT_LABEL[other]),
-	         was[0] ? was : T(S_HOTKEYS_NONE));
-	return ask_panel(a, &p->st, p, T(ACT_LABEL[act]), q, T(S_HOTKEYS_SWAP));
+	cq_text(CQ_HOTKEYS_SWAP, q, sizeof q, chord, T(ACT_LABEL[act]), T(ACT_LABEL[other]),
+	        was[0] ? was : T(S_HOTKEYS_NONE));
+	return confirm_ask_over(a, CQ_HOTKEYS_SWAP, q, &p->st, p);
 }
 
 static void reset_ask(app *a, hk_page *p)
 {
 	char q[CFG_STR * 3];
+	cq_id which = p->scope == HKS_GAME && p->s ? CQ_HOTKEYS_RESET_GAME
+	            : p->scope == HKS_SYSTEM && p->s ? CQ_HOTKEYS_RESET_SYSTEM : CQ_HOTKEYS_RESET_EVERY;
 
-	if (p->scope == HKS_GAME && p->s)
-		snprintf(q, sizeof q, T(S_HOTKEYS_RESET_GAME), p->s->name, p->title ? p->title : "");
-	else if (p->scope == HKS_SYSTEM && p->s)
-		snprintf(q, sizeof q, T(S_HOTKEYS_RESET_SYSTEM), p->s->name);
-	else
-		snprintf(q, sizeof q, "%s", T(S_HOTKEYS_RESET_EVERY));
-	if (!ask_panel(a, &p->st, p, T(S_HOTKEYS_RESET_ALL), q, T(S_GAMEMENU_RESET))) return;
+	cq_text(which, q, sizeof q, p->s ? p->s->name : "", p->title ? p->title : "");
+	if (!confirm_ask_over(a, which, q, &p->st, p)) return;
 	hks_reset(p->scope, p->s ? p->s->tag : NULL, p->file);
 	send(p);
 }
@@ -389,20 +386,14 @@ void hotkeys_shot(app *a, const system_cfg *s, const char *file, int sel, int ca
 	if (ask == 2 || ask == 3) {
 		/* Reset Hotkeys' question for the scope shown (2), or Reset
 		 * Game's over the game (3) */
-		char q[CFG_STR * 3], lines[DEL_ASK_LINES][CHV_WRAP_COLS];
-		menu_row ask_rows[DEL_ASK_LINES + 2];
-		int nq;
+		char q[CFG_STR * 3];
+		cq_id which = ask == 3 ? CQ_GAME_RESET
+		            : p.scope == HKS_GAME && s ? CQ_HOTKEYS_RESET_GAME
+		            : p.scope == HKS_SYSTEM && s ? CQ_HOTKEYS_RESET_SYSTEM : CQ_HOTKEYS_RESET_EVERY;
 
-		if (ask == 3) snprintf(q, sizeof q, "%s", T(S_HOTKEYS_RESET_LOST));
-		else if (p.scope == HKS_GAME && s) snprintf(q, sizeof q, T(S_HOTKEYS_RESET_GAME), s->name, file ? file : "");
-		else if (p.scope == HKS_SYSTEM && s) snprintf(q, sizeof q, T(S_HOTKEYS_RESET_SYSTEM), s->name);
-		else snprintf(q, sizeof q, "%s", T(S_HOTKEYS_RESET_EVERY));
-		nq = store_ask_rows(a, q, lines, ask_rows);
-		ask_rows[nq] = (menu_row){ T(S_GAMEMENU_RESET), NULL, true };
-		ask_rows[nq + 1] = (menu_row){ T(S_PANEL_CANCEL), NULL, true };
+		cq_text(which, q, sizeof q, s ? s->name : "", file ? file : "");
 		backdrop(a, &p, 1.0f);
-		menu_draw(a, T(ask == 3 ? S_HOTKEYS_RESET_ASK : S_HOTKEYS_RESET_ALL), ask_rows, nq + 2, nq + 1,
-		          menu_std_width(a), p.st.accent);
+		confirm_preview(a, which, q);
 		return;
 	}
 	if (ask) {
@@ -410,22 +401,15 @@ void hotkeys_shot(app *a, const system_cfg *s, const char *file, int sel, int ca
 		char q[320], chord[24], was[24];
 		int other;
 		const hk_act act = sel >= 0 && sel < HK_ACTS ? (hk_act)sel : HK_SHOT;
-		char lines[DEL_ASK_LINES][CHV_WRAP_COLS];
-		menu_row ask_rows[DEL_ASK_LINES + 2];
-		int nq;
-
 		shown(&p, &t, &back, NULL);
 		other = hk_act_on(&t, k, act);
 		if (other < 0) other = HK_FASTER;
 		snprintf(chord, sizeof chord, "SELECT+%s", hk_key_name(k));
 		hk_chord(&t, act, was, sizeof was);
-		snprintf(q, sizeof q, T(S_HOTKEYS_SWAP_Q), chord, T(ACT_LABEL[other]), T(ACT_LABEL[other]),
-		         was[0] ? was : T(S_HOTKEYS_NONE));
-		nq = store_ask_rows(a, q, lines, ask_rows);
-		ask_rows[nq] = (menu_row){ T(S_HOTKEYS_SWAP), NULL, true };
-		ask_rows[nq + 1] = (menu_row){ T(S_PANEL_CANCEL), NULL, true };
+		cq_text(CQ_HOTKEYS_SWAP, q, sizeof q, chord, T(ACT_LABEL[act]), T(ACT_LABEL[other]),
+		        was[0] ? was : T(S_HOTKEYS_NONE));
 		backdrop(a, &p, 1.0f);
-		menu_draw(a, T(ACT_LABEL[act]), ask_rows, nq + 2, nq + 1, menu_std_width(a), p.st.accent);
+		confirm_preview(a, CQ_HOTKEYS_SWAP, q);
 		return;
 	}
 	{

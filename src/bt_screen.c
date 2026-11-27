@@ -56,6 +56,15 @@ static void bt_await_route(const char *mac)
 	}
 }
 
+/* The question before a paired headset is forgotten: true for Forget */
+static bool bt_forget_asked(app *a, const bt_device *d)
+{
+	char q[256];
+
+	cq_text(CQ_BT_FORGET, q, sizeof q, d->name[0] ? d->name : d->mac);
+	return confirm_ask(a, CQ_BT_FORGET, q);
+}
+
 void bt_screen(app *a)
 {
 	bt_ui u = { 0 };
@@ -218,12 +227,14 @@ void bt_screen(app *a)
 			}
 		}
 
-		/* X forgets a paired headset, and only that. */
+		/* X forgets a paired headset, and only that, after asking as Wi-Fi's
+		 * Forget asks (CQ_BT_FORGET; Tarik's, 2026-11-23): it has to be
+		 * paired again to be used */
 		if (a->in.pressed[IN_X])
 			uisound_play(u.cursor >= 0 && u.cursor < u.n && u.dev[u.cursor].bonded
 			             ? DS_SOUND_ACCEPT : DS_SOUND_DENY);
 		if (a->in.pressed[IN_X] && u.cursor >= 0 && u.cursor < u.n &&
-		    u.dev[u.cursor].bonded) {
+		    u.dev[u.cursor].bonded && bt_forget_asked(a, &u.dev[u.cursor])) {
 			wait_panel(a, "Bluetooth", T(S_BT_FORGETTING));
 			if (bt_forget(u.dev[u.cursor].mac)) {
 				bt_asoundrc(P_ROOT, P_USERDATA);

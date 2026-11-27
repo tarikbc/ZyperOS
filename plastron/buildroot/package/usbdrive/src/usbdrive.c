@@ -144,8 +144,17 @@ static void show(const char *name)
 	if (still > 0) { kill(still, SIGTERM); waitpid(still, NULL, 0); still = 0; }
 	snprintf(path, sizeof path, "%s/%s", frames, name);
 #ifdef USBDRIVE_BRICK
-	/* The Brick's splash holds no picture: its panel does (panel_fb.c) */
-	if (!panel_show(path, 640, 480, DEV_TURNED)) say("usbdrive: %s not shown\n", name);
+	/* The Brick's splash holds no picture: its panel does (panel_fb.c). A
+	 * picture is 480 rows of ZyperOS's canvas at 0.625: 640 wide on a 4:3
+	 * one, wider on the Smart Pro's 16:9, so its width is its file's size */
+	{
+		struct stat st;
+		int w = stat(path, &st) == 0 && st.st_size > 0 && st.st_size % (480 * 4) == 0
+		        ? (int)(st.st_size / (480 * 4)) : 640;
+
+		if (w < 320 || w > 1280) w = 640;
+		if (!panel_show(path, w, 480, DEV_TURNED)) say("usbdrive: %s not shown\n", name);
+	}
 	return;
 #endif
 	if (access(path, R_OK) || access("/usr/bin/splash", X_OK)) return;

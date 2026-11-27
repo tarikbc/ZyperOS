@@ -77,7 +77,9 @@ if [ -d "$SEED_CARD" ]; then
 	L=$SEED_CARD/Licenses
 	mkdir -p "$L"
 	cp "$BR2_EXTERNAL_PX2_PATH/../THIRD-PARTY.md" "$L/plastron.md"
-	cp "$BR2_EXTERNAL_PX2_PATH/board/brick/third-party-packages.md" "$L/plastron-packages.md"
+	# The board's own list (the defconfig's BR2_ROOTFS_POST_SCRIPT_ARGS, as
+	# post-image.sh: brick when none)
+	cp "$BR2_EXTERNAL_PX2_PATH/board/${2:-brick}/third-party-packages.md" "$L/plastron-packages.md"
 	[ -f /zyperos/diatom/THIRD-PARTY.md ] && cp /zyperos/diatom/THIRD-PARTY.md "$L/Diatom.md"
 	[ -f "$SEED_CARD/ZyperOS/THIRD-PARTY-LICENSES.md" ] && cp "$SEED_CARD/ZyperOS/THIRD-PARTY-LICENSES.md" "$L/ZyperOS.md"
 	ls "$L"

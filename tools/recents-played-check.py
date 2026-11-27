@@ -38,6 +38,7 @@ Shots of Recents in both themes and each View go to
 build-native/recents-played-shots/ (ZYPEROS_RECENTS_SHOTS=DIR for another
 folder)."""
 import os
+import re
 import shutil
 import sqlite3
 import subprocess
@@ -406,8 +407,12 @@ def launcher(tmp):
         log = shot(env, OUT / f'recents-{name.lower().replace(" ", "-")}-light.png', 'Recents', 'covers', 'light',
                    '--game', file)
         got = drawn(log)
-        check(name in got and any(l.startswith(f'{sysname}{SEP}today ') for l in got) and 'Played 10m 0s' in got,
-              f'{name}: on Recents, "{sysname} · today ..." and "Played 10m 0s"')
+        # 10m and the seconds between the note and --port-played: on a
+        # loaded runner a launcher's start takes more than one (CI,
+        # 2026-11-25: "Played 10m 1s"), as the cart's 1h 2m allows above
+        played = [l for l in got if re.fullmatch(r'Played 10m ([0-9]|[1-4][0-9])s', l)]
+        check(name in got and any(l.startswith(f'{sysname}{SEP}today ') for l in got) and played,
+              f'{name}: on Recents, "{sysname} · today ..." and "Played 10m 0s" or a few seconds more ({played})')
     before = len(sessions(base))
     autolaunch(env, 'PRT', 'PortMaster.sh')
     req = (flags / 'zyperos_port').read_text() if (flags / 'zyperos_port').exists() else ''

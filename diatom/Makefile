@@ -7,6 +7,7 @@
 #   make                 desktop build (SDL2), the development target
 #   make PORT=brick      device build for the TrimUI Brick
 #   make PORT=pixel2     device build for the GKD Pixel 2
+#   make PORT=r36s       device build for the R36S (the Pixel 2's, its keys)
 #                        Both built by plastron's Buildroot, which supplies CC
 #                        and the libraries
 
@@ -117,8 +118,9 @@ ifeq ($(PORT),brick)
   LDFLAGS += $(shell $(PKG_CONFIG) --libs $(BRICK_PKGS)) -lm -ldl -lpthread
 endif
 
-ifeq ($(PORT),pixel2)
-  # GKD Pixel 2. Built inside plastron's Buildroot, which sets CC and puts a
+ifneq ($(filter pixel2 r36s,$(PORT)),)
+  # GKD Pixel 2, and the R36S, whose port is the Pixel 2's with its keys
+  # (port/r36s.c). Built inside plastron's Buildroot, which sets CC and puts a
   # pkg-config on PATH that answers for the device system's own
   # libraries: its SDL2 (audio and the clock), and Mesa's EGL, GLES and GBM
   # with libdrm for the display.

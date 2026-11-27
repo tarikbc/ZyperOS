@@ -1,0 +1,5 @@
+# The card's games partition (board/px2/rootfs-overlay/etc/init.d/datapart):
+# ZyperOS's, as on the Pixel 2, the repair's report in the R36S's folder
+DATA_LABEL=ZYPEROS
+CHECK_CPU_MAX=1008000
+CHECK_LOG=.userdata/r36s/logs/card-check.txt

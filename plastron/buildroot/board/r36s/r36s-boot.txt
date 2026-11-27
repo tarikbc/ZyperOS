@@ -1,0 +1,23 @@
+# The R36S test card's boot settings, read by its boot script before it
+# starts Linux. Edit on any computer; a line starting with # is off.
+#
+# The device tree: ZyperOS's (the boot card first among the SD cards), or
+# ROCKNIX's own, unchanged (its card is then mmcblk1, and the system will
+# not find its root).
+#zy_dtb=rk3326-gameconsole-r36s.dtb
+#
+# A panel that is not the R36S's first (nothing on the screen, or a wrong
+# picture): its overlay at overlays/mipi-panel.dtbo on this partition, which
+# is used when it is there. plastron/scripts/r36s-panel.py makes it on a
+# computer from the device tree on the card the R36S came with (ZyperOS's
+# docs/devices/r36s.md, "Panels"). This card holds the known panels'
+# overlays, overlays/panel-0.dtbo ... panel-4.dtbo and panel-4v22.dtbo, and
+# one is picked by its name here (4 lit board R36S-V12's panel). Take the #
+# off and put the panel's name after the =, then try the next one if the
+# screen stays black:
+#zy_panel=4
+# Or any other name:
+#zy_overlay=overlays/my-panel.dtbo
+#
+# The kernel's line, for debugging (the serial port is ttyS2 at 1500000):
+#zy_args=rootfstype=squashfs ro rootwait console=ttyS2,1500000 console=tty1 panic=0 loglevel=8

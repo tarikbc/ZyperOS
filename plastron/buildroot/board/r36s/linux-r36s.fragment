@@ -1,0 +1,25 @@
+# The R36S's kernel config: the GKD Pixel 2's (board/px2/linux.config, from
+# ROCKNIX's RK3326 config cut down to what the Pixel 2 uses) with what the
+# R36S needs and the Pixel 2 does not. scripts/build-r36s-kernel.sh merges it
+# in (the kernel's merge_config.sh) and says if a line here did not hold.
+# The same chip (RK3326, which Linux calls PX30), the same RK817 for power
+# and sound, the same Panfrost, the same ROCKNIX joypad driver (its
+# singleadc one, here with the sticks' analog mux) and generic-dsi panel
+# driver: all already in the Pixel 2's.
+
+# The panel its device tree names (rk3326-gameconsole-r3xs.dtsi):
+# "gameconsole,r36s-panel", an ST7703 whose mode and init sequence ROCKNIX's
+# panel patch adds (board/px2/patches/linux/2-rk3326-001-panel-updates.patch,
+# r36s_desc). The Pixel 2's config leaves the ST7703 driver out. The other
+# panels R36S units ship with go through generic-dsi and a device tree
+# overlay instead (docs/devices/r36s.md, "Panels").
+CONFIG_DRM_PANEL_SITRONIX_ST7703=y
+
+# A test card: the kernel's messages on the screen as it starts, so a tester
+# with no serial cable sees how far it got (and on the serial port, ttyS2,
+# board/r36s/boot-prelude.cmd), by DRM's log client, which needs no VT (the
+# Pixel 2's config has none). The Pixel 2 starts dark and fast instead
+# (board/px2/linux-px2.config); a release for the R36S would too.
+CONFIG_DRM_CLIENT_LOG=y
+CONFIG_DRM_CLIENT_DEFAULT_LOG=y
+CONFIG_DRM_CLIENT_DEFAULT="log"

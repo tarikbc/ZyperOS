@@ -194,25 +194,6 @@ bool shots_jump(app *a, sysview *v)
 	return true;
 }
 
-/* Delete Screenshot's question, wrapped to the panel as Delete Game's is
- * (src/gamedel_screen.c), its lines quiet, a rule under them where there is
- * room; `rows` holds DEL_ASK_LINES + 2, for the answers after them */
-static int delete_rows(app *a, const char *title, char (*lines)[CHV_WRAP_COLS], menu_row *rows)
-{
-	char q[LIB_NAME + 256];
-	bool rule;
-	int n, i, fit = delete_ask_fit(&rule);
-
-	snprintf(q, sizeof q, T(S_SHOTS_DELETE_ASK), title);
-	n = wrap_text(ui_font(UI_F_MENU), q, menu_std_width(a), lines, DEL_ASK_LINES);
-	if (n > fit) n = fit;
-	ui_fit_drawn(q);
-	for (i = 0; i < n; i++)
-		rows[i] = (menu_row){ lines[i], MENU_NOTE_MARK, false };
-	if (n < fit || rule) rows[n++] = MENU_HR;
-	return n;
-}
-
 bool shots_delete_now(app *a, sysview *v)
 {
 	char png[LIB_PATH * 2];
@@ -234,16 +215,10 @@ bool shots_delete_now(app *a, sysview *v)
  * that took its place, or the home when it was the last. */
 static void delete_shot(app *a, sysview *v)
 {
-	char lines[DEL_ASK_LINES][CHV_WRAP_COLS];
-	menu_row rows[DEL_ASK_LINES + 2];
-	int nq, lv;
-	bool yes;
+	char q[LIB_NAME + 512];
 
-	nq = delete_rows(a, v->list.items[v->cursor].title, lines, rows);
-	lv = panel_open();
-	yes = confirm_rows(a, T(S_SHOTS_DELETE), rows, nq, T(S_GAMEMENU_DELETE_YES), menu_std_width(a), lv);
-	panel_close(a, lv, !a->running);
-	if (!yes || !a->running) return;
+	cq_text(CQ_SHOT_DELETE, q, sizeof q, v->list.items[v->cursor].title);
+	if (!confirm_ask(a, CQ_SHOT_DELETE, q) || !a->running) return;
 	if (!shots_delete_now(a, v)) result_message(a, T(S_SHOTS_DELETE), T(S_SHOTS_FAILED));
 }
 
@@ -324,17 +299,13 @@ bool shots_take_new(void)
 void shots_delete_preview(app *a)
 {
 	sysview *v = &a->view[a->sys_cursor];
-	char lines[DEL_ASK_LINES][CHV_WRAP_COLS];
-	menu_row rows[DEL_ASK_LINES + 2];
-	int nq;
+	char q[LIB_NAME + 512];
 
 	if (!shots_shelf(a, a->sys_cursor) || v->list.count == 0) return;
-	nq = delete_rows(a, v->list.items[v->cursor].title, lines, rows);
-	rows[nq]     = (menu_row){ T(S_GAMEMENU_DELETE_YES), NULL, true };
-	rows[nq + 1] = (menu_row){ T(S_PANEL_CANCEL), NULL, true };
+	cq_text(CQ_SHOT_DELETE, q, sizeof q, v->list.items[v->cursor].title);
 	draw_shelf(a);
 	ui_scrim(a->r, 0);
-	menu_draw(a, T(S_SHOTS_DELETE), rows, nq + 2, nq + 1, menu_std_width(a), MENU_ZYPEROS);
+	confirm_preview(a, CQ_SHOT_DELETE, q);
 }
 
 /* MENU > Sort By's three on this shelf (sort.h's SORT_SHOTS_ORDERS), each

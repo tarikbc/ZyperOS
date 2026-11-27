@@ -25,7 +25,7 @@ frame's colors as they are, as the stock firmware does), sound with
 headphone switching and USB-C headphone adapters, every button, the
 rumble motor (force feedback on the joypad's own input device), power,
 brightness and battery. It has no radio of its own; a USB Wi-Fi adapter on
-Linux's rtl8xxxu driver gives it Wi-Fi while it's plugged in. In the ZyperOS
+Linux's rtl8xxxu/rtw88 driver gives it Wi-Fi while it's plugged in. In the ZyperOS
 image the RTL8188EU adapters (the TL-WN725N v2/v3 among them) go to Realtek's
 own driver, rtl8188eu, instead (`buildroot/board/zyperos/rootfs-overlay/etc/modprobe.d/rtl8188eu.conf`):
 rtl8xxxu drives that chip as a client only, and ZyperOS's Wi-Fi File Transfer
@@ -34,7 +34,8 @@ network, for a phone to join by a QR code. Buildroot's rtl8188eu predates
 kernel 7.1; upstream's fix for it is `buildroot/board/zyperos/patches/rtl8188eu`.
 The kernel exports only the symbols its own modules use
 (`CONFIG_TRIM_UNUSED_KSYMS`), so the ones rtl8188eu takes are kept by name in
-`buildroot/board/px2/linux-ksyms.txt`.
+`buildroot/board/px2/linux-ksyms.txt`. rtw88 stays on the kernel's own modules
+and firmware (`BR2_PACKAGE_LINUX_FIRMWARE_RTL_RTW88`).
 
 The Brick's does too: the display (Imagination's PowerVR GE8300, through its
 closed libraries), sound with headphone switching, every button, power,

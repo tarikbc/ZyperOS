@@ -38,5 +38,11 @@ final class HandheldTests: XCTestCase {
             XCTAssertTrue(brick.has(.brightdown) && brick.has(.brightup), "the Brick's F1 and F2")
             XCTAssertEqual(brick.panel.w, 1024)
         }
+        if let r36s = Handheld.named("r36s") {
+            XCTAssertFalse(r36s.has(.brightup), "the R36S has no brightness keys: FN with a volume key")
+            XCTAssertEqual(r36s.panel.w, 640)
+            XCTAssertEqual(r36s.sticks.count, 2, "its two sticks, drawn")
+        }
+        XCTAssertTrue(pixel2.sticks.isEmpty, "the Pixel 2 has no sticks")
     }
 }

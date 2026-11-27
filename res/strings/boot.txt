@@ -53,3 +53,28 @@ de = Führe das Update im ZyperOS-Installer an einem Computer aus. POWER schalte
 ja = パソコンで ZyperOS インストーラーの「アップデート」を実行してください。POWER で Brick の電源が切れます。
 it = Esegui Aggiorna dell'Installer di ZyperOS su un computer. POWER spegne il Brick.
 
+
+# The same on the TrimUI Smart Pro, whose start is the Brick's and needs the
+# same closed files: its own name in both lines (tools/genclosed.py, the
+# package's smartpro/), drawn on its 1368-unit canvas
+[boot.closed_missing_smartpro]
+note = The heading on the Smart Pro: as boot.closed_missing, with its name. At most 900 of the canvas's 1368 units.
+en = This card is missing the Smart Pro's graphics and Wi-Fi files
+zh-Hans = 此存储卡缺少 Smart Pro 的图形和 Wi-Fi 文件
+es = A esta tarjeta le faltan los archivos de gráficos y Wi-Fi del Smart Pro
+pt-BR = Faltam neste cartão os arquivos de gráficos e Wi-Fi do Smart Pro
+fr = Il manque sur cette carte les fichiers graphiques et Wi-Fi du Smart Pro
+de = Auf dieser Karte fehlen die Grafik- und WLAN-Dateien des Smart Pro
+ja = このカードには Smart Pro のグラフィックと Wi-Fi のファイルがありません
+it = In questa scheda mancano i file grafici e Wi-Fi dello Smart Pro
+
+[boot.closed_missing_smartpro_do]
+note = Under the heading on the Smart Pro: what to do, as boot.closed_missing_do, with its name. POWER is the button.
+en = Run the ZyperOS Installer's Update on a computer. POWER turns the Smart Pro off.
+zh-Hans = 请在电脑上运行 ZyperOS 安装程序的“更新”。按 POWER 关闭 Smart Pro。
+es = Ejecuta Actualizar del Instalador de ZyperOS en un ordenador. POWER apaga el Smart Pro.
+pt-BR = Use Atualizar do Instalador do ZyperOS em um computador. POWER desliga o Smart Pro.
+fr = Lancez la mise à jour de l'Installateur ZyperOS sur un ordinateur. POWER éteint le Smart Pro.
+de = Führe das Update im ZyperOS-Installer an einem Computer aus. POWER schaltet den Smart Pro aus.
+ja = パソコンで ZyperOS インストーラーの「アップデート」を実行してください。POWER で Smart Pro の電源が切れます。
+it = Esegui Aggiorna dell'Installer di ZyperOS su un computer. POWER spegne lo Smart Pro.

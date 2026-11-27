@@ -693,6 +693,9 @@ void diatom_port_input_poll(void)
 uint32_t diatom_port_input_state(void) { return g_buttons; }
 uint32_t diatom_port_input_pressed(void) { return g_pressed; }
 
+/* No sticks: the keyboard is a d-pad */
+bool diatom_port_input_axes(int16_t axes[4]) { (void)axes; return false; }
+
 /* The pretend motor writes down what a motor of the Pixel 2's kind would
  * run at: each strength times the scale, rounded (test/rumble.py) */
 static unsigned rumble_times(uint16_t v, float scale)

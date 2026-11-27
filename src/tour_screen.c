@@ -165,6 +165,7 @@ void tour_run(app *a, bool first)
 
 	bool lang_kept = false;
 
+	tour_menu_word(dev_menu_word(plat_profile()));
 	tour_start(&t, plat_now_ms(), &plat_profile()->chords,
 	           dev_tutorial_model(plat_profile(), &plat_profile()->chords));
 	tour_lang_from(&t, (int)i18n_lang());

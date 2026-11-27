@@ -44,6 +44,10 @@ public struct Handheld: Equatable, Identifiable {
 
     /// 0xRRGGBB: the body lit from above to below, the well, a key's cap up
     /// and pressed, what is printed, the glass, a light off
+    /// A stick, no key of the launcher's: its middle, the radii of the
+    /// well it stands in and of its cap
+    public struct Stick: Equatable { public let x, y, well, cap: Double }
+
     public struct Colors: Equatable {
         public let bodyHi, body, bodyLo, recess, cap, capDown, marking, glass, lightOff: UInt32
     }
@@ -72,6 +76,8 @@ public struct Handheld: Equatable, Identifiable {
     public let light: Size
     public let lights: [Light]
     public let colors: Colors
+    /// The sticks, drawn and never pressed (the R36S's)
+    public let sticks: [Stick]
     public let keys: [Key]
     public let labels: [Label]
 

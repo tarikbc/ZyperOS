@@ -56,8 +56,10 @@ int menu_row_h(void) { return DS_MENU_ROW; }   /* 72: on the grid, 45 px on the 
  * means nothing unless both use the same number. */
 int menu_pad(void)   { return DS_MENU_PAD; }   /* 56: on the grid, 35 px on the Pixel 2 */
 /* 864: a measured panel never grows past it, and the in-game menu is this
- * wide on every tab, so its panel stands MENU_MARGIN from the sides */
-int menu_most_w(void) { return ZYPEROS_SCREEN_W - MENU_MARGIN * 2 - menu_pad() * 2; }
+ * wide on every tab, so its panel stands MENU_MARGIN from the sides of a
+ * 4:3 canvas; on a wider one it keeps that width, in the middle, over the
+ * game's 4:3 picture (src/canvas.h, canvas_panel_room) */
+int menu_most_w(void) { return canvas_panel_room() - MENU_MARGIN * 2 - menu_pad() * 2; }
 
 /* The menus' panel pass as src/ds/panel.h asks for it */
 static bool menu_pass_begin(void *ctx) { return panel_pass_begin(ctx); }

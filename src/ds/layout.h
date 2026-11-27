@@ -64,6 +64,12 @@
 #define DS_LIST_MARK            64
 #define DS_LIST_ROW_GAP         12
 #define DS_LIST_PAD_Y           14
+#define DS_CONFIRM_INSET        26
+#define DS_CONFIRM_GAP          24
+#define DS_CONFIRM_WORD_PAD     24
+#define DS_CONFIRM_GLYPH        40
+#define DS_CONFIRM_GLYPH_GAP    14
+#define DS_CONFIRM_PRESS        94
 #define DS_BADGE                40
 #define DS_BADGE_SMALL          30
 #define DS_BADGE_RING           2

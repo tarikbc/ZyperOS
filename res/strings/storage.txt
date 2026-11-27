@@ -205,6 +205,17 @@ de = Cover und Videovorschauen von Spielen löschen, die nicht mehr auf der Kart
 ja = カードにもうないゲームのパッケージ画像と動画プレビューを削除しますか？%s。もう一度取得できます。
 it = Eliminare copertine e anteprime video dei giochi non più sulla scheda? %s. Si possono scaricare di nuovo.
 
+[storage.unused_heading]
+note = The heading of the question for Unused Art. A heading, the action.
+en = Delete Unused Art
+zh-Hans = 删除闲置的封面与预览
+es = Borrar arte sin usar
+pt-BR = Apagar arte sem uso
+fr = Supprimer les visuels inutilisés
+de = Ungenutzte Grafiken löschen
+ja = 使われていないアートを削除
+it = Elimina grafica inutilizzata
+
 [storage.old_ask]
 note = The yes/no question for Old Save States; %d is how many games' states, %s the room it gives back ("940 MB"). Saves stay.
 en.one = Delete the save states of %d game not played for a year? %s. Its saves stay.
@@ -221,6 +232,17 @@ de.other = Speicherstände von %d Spielen löschen, die ein Jahr nicht gespielt 
 ja = 1 年遊んでいない %d 本のゲームのステートセーブを削除しますか？%s。セーブデータは残ります。
 it.one = Eliminare gli stati salvati di %d gioco non giocato da un anno? %s. I suoi salvataggi restano.
 it.other = Eliminare gli stati salvati di %d giochi non giocati da un anno? %s. I loro salvataggi restano.
+
+[storage.old_heading]
+note = The heading of the question for Old Save States. A heading, the action.
+en = Delete Old Save States
+zh-Hans = 删除旧的即时存档
+es = Borrar estados antiguos
+pt-BR = Apagar save states antigos
+fr = Supprimer les anciens états
+de = Alte Speicherstände löschen
+ja = 古いステートセーブを削除
+it = Elimina stati salvati vecchi
 
 [storage.saves_part]
 note = A part of a system's line under the list: its saves and save states take %s ("1.3 GB"). Lowercase: it follows a dot in the line.
@@ -297,7 +319,7 @@ ja = 設定、ライブラリ、その他すべて
 it = Impostazioni, libreria e tutto il resto
 
 [storage.delete_snaps]
-note = A row on a system's page: deletes all of that system's video snaps (the glossary's Video Snaps). tight
+note = A row on a system's page: deletes all of that system's video snaps (the glossary's Video Snaps). Also the heading of every question that deletes video snaps. tight
 en = Delete Video Snaps
 zh-Hans = 删除视频预览
 es = Borrar avances en video
@@ -477,6 +499,28 @@ fr = Supprimer %s\u00a0? %s. Impossible d'annuler.
 de = %s löschen? %s. Das lässt sich nicht rückgängig machen.
 ja = %s を削除しますか？%s。元に戻せません。
 it = Eliminare %s? %s. Non si può annullare.
+
+[storage.media_heading_folder]
+note = The heading of the question for an album, a book or a folder of videos on a media page (storage.media_ask_folder). A heading, the action.
+en = Delete Folder
+zh-Hans = 删除文件夹
+es = Borrar carpeta
+pt-BR = Apagar pasta
+fr = Supprimer le dossier
+de = Ordner löschen
+ja = フォルダを削除
+it = Elimina cartella
+
+[storage.media_heading_file]
+note = The heading of the question for a single song, book or video on a media page (storage.media_ask_file). A heading, the action.
+en = Delete File
+zh-Hans = 删除文件
+es = Borrar archivo
+pt-BR = Apagar arquivo
+fr = Supprimer le fichier
+de = Datei löschen
+ja = ファイルを削除
+it = Elimina file
 
 [storage.media_rest_caption]
 note = The line under the list for the last row on a Music, Videos or Audiobooks page: the files in its folders that no row above holds, so the rows add up.

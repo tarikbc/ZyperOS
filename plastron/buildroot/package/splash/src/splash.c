@@ -338,7 +338,11 @@ static int copy_start(void)
 static void copy_draw(uint32_t *pixels)
 {
 	unsigned long long written = copy_written(), done = written > copy.written0 ? written - copy.written0 : 0;
-	unsigned len = copy.by1 - copy.by0;
+	/* The Pixel's bar is tall: the landscape picture was turned, so left to
+	 * right became bottom to top. The R36S's is wide: its picture is not
+	 * turned, and the bar fills left to right. */
+	int across = (copy.bx1 - copy.bx0) > (copy.by1 - copy.by0);
+	unsigned len = across ? copy.bx1 - copy.bx0 : copy.by1 - copy.by0;
 	unsigned rows = done >= copy.total ? len : (unsigned)(done * len / copy.total);
 
 	if (rows > copy.filled) {
@@ -349,9 +353,15 @@ static void copy_draw(uint32_t *pixels)
 		uint32_t *dst = pixels + (size_t)(copy.y + r) * frame_w + copy.x;
 
 		memcpy(dst, copy.line + (size_t)r * copy.w, copy.w * 4);
-		if (r >= copy.by1 - copy.filled && r < copy.by1)
+		if (across) {
+			if (copy.filled && r >= copy.by0 && r < copy.by1)
+				memcpy(dst + copy.bx0,
+				       copy.bar + (size_t)r * copy.w + copy.bx0,
+				       copy.filled * 4);
+		} else if (r >= copy.by1 - copy.filled && r < copy.by1) {
 			memcpy(dst + copy.bx0, copy.bar + (size_t)r * copy.w + copy.bx0,
 			       (copy.bx1 - copy.bx0) * 4);
+		}
 	}
 }
 
@@ -642,7 +652,8 @@ int main(int argc, char **argv)
 	log_to_kernel(line);
 	if (copy.ready) {
 		snprintf(line, sizeof(line), "splash: the copy's bar was at %u%%\n",
-			 copy.filled * 100 / (copy.by1 - copy.by0));
+			 copy.filled * 100 / ((copy.bx1 - copy.bx0) > (copy.by1 - copy.by0)
+					      ? copy.bx1 - copy.bx0 : copy.by1 - copy.by0));
 		log_to_kernel(line);
 	}
 

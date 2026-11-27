@@ -37,6 +37,8 @@
 #include "storage_screen.h"
 #include "media_screen.h"
 #include "menu_panel.h"
+#include "confirmq.h"
+#include "ds/confirm.h"
 #include "nowplaying_looks.h"
 #include "nowplaying_screen.h"
 #include "bt.h"
@@ -4234,13 +4236,16 @@ void snap_record(menu_snap *s, int kind, const char *heading,
 	s->side = (void *)g_menu_side;
 	s->side_w = g_menu_side_w;
 	s->pin_foot = g_menu_pin_foot;
-	if (panel_is_tiles(kind)) {
+	if (panel_is_tiles(kind) || kind == PANEL_CONFIRM) {
 		int i;
 
 		for (i = 0; i < n && i < MENUSNAP_ROWS; i++)
 			s->marks[i] = g_tile_marks && i < g_tile_marks_n ? g_tile_marks[i] : UI_GLYPH_COUNT;
 	}
 }
+
+static void confirm_panel_draw(app *a, const char *heading, const menu_row *rows, const int *marks,
+                               int sel, int width, bool live, mm_pose pose);
 
 /* The panel on screen again, at `pose`, Zyper going on from where he was:
  * on screen in this frame too. */
@@ -4266,6 +4271,10 @@ void snap_draw(app *a, mm_pose pose)
 	}
 	if (s->kind == PANEL_MOVE) {
 		move_page(a, s->heading, s->rows, s->n, pose);
+		return;
+	}
+	if (s->kind == PANEL_CONFIRM) {
+		confirm_panel_draw(a, s->heading, s->rows, s->marks, s->sel, s->fixed_w, false, pose);
 		return;
 	}
 	static menu_tabs rest;
@@ -4356,6 +4365,7 @@ void panel_show(app *a, int kind, const char *heading,
 	else if (kind == PANEL_HOT) hot_panel(a, heading, rows, n, f.panel);
 	else if (kind == PANEL_P2) p2_panel(a, heading, rows, n, accent, f.panel);
 	else if (kind == PANEL_MOVE) move_page(a, heading, rows, n, f.panel);
+	else if (kind == PANEL_CONFIRM) confirm_panel_draw(a, heading, rows, g_snap->marks, sel, fixed_w, true, f.panel);
 	else menu_panel(a, heading, rows, n, sel, fixed_w, accent, vcolors,
 	                visits_all, loop_at, heading_note, f.panel);
 }
@@ -5123,66 +5133,232 @@ leave_end panel_leave_run(app *a, void (*backdrop)(app *, void *, float),
 	return how;
 }
 
-/* A yes/no panel, drawn like wait_panel but answerable.
+/* ---- a question with two answers (DESIGN.md 11.3, src/confirmq.h) --------
  *
- * Defaults to "no": the selection starts on the safe row, so a stray press of
- * the button that opened the panel cannot also confirm it. Returns false for
- * BACK, for MENU, and for a power-off, because everything except a deliberate
- * press on the destructive row means "not that".
+ * Every question the launcher asks with two answers is one of src/confirmq.h's
+ * and is asked here, on src/ds/confirm.h's panel: the heading (the action),
+ * the question wrapped to the panel, the two answers side by side, the safe
+ * one on the left with the cursor on it, so a stray press of the button that
+ * opened the panel cannot also confirm it. Left and Right move between them
+ * and go round; a held direction stops at the end. A takes the answer under
+ * the cursor and B the safe one, each pressing (**press**) before the panel
+ * closes (**exit**); a press during it ends it at once. MENU, POWER and quit
+ * leave with nothing done.
  *
  * Power is handled here rather than left to the caller. A confirm can sit on
- * screen indefinitely, which makes it exactly the kind of place the device gets
- * put down and the power button pressed. */
-/* The question is `nq` rows - one dead row, or a paragraph's lines (Delete
- * Game's, DESIGN.md 11.31) - and the two answers go after it in `rows`,
- * which holds nq + 2. `fixed_w` is the panel's content width, 0 to size it
- * to the rows. `no_label` names the safe answer where Cancel goes, and with
- * a `guard` it is a question that came by itself (ask_settle): a button down
- * as it opened, or pressed in its first half second, counts only once let
- * go. Over the shelf, or over `over`'s backdrop with its power rule: the
- * in-game menu's paused game, where POWER stops the game. confirm_rows_as
- * and confirm_rows_over below are this with the parts they need. */
-/* The question's answer: 1 the first (`yes_label`), 2 the second, 0 left
- * with B, MENU or POWER. The cursor starts on the second, the safe one,
- * unless `first` */
-static int confirm_rows_pick(app *a, const char *heading, menu_row *rows, int nq,
-                             const char *yes_label, const char *no_label, int fixed_w, int lv,
-                             usbpower_guard *guard, const menu_style *over, void *ctx,
-                             bool first)
+ * screen indefinitely, which makes it exactly the kind of place the device
+ * gets put down and the power button pressed. Over `over`'s backdrop, POWER
+ * is its rule (the in-game menu's paused game, where POWER stops the game);
+ * with a `guard` it is a question that came by itself (ask_settle): a button
+ * down as it opened, or pressed in its first half second, counts only once
+ * let go. */
+
+/* The panel being drawn now: where its fill is, which answer presses and how
+ * far, and when it opened (its question's scroll, the last resort). A copy of
+ * the panel (snap_draw) is drawn at rest, its press kept in its marks. */
+static float g_cq_fill;
+static int g_cq_pressed = -1;
+static float g_cq_press;
+static unsigned g_cq_t0;
+
+/* The press kept in a copy's first mark: the answer + 1 in the low bits, how
+ * far in thousandths above them */
+#define CQ_MARK_PRESS(i, k) ((i) < 0 ? 0 : ((i) + 1) | ((int)((k) * 1000.0f + 0.5f) << 4))
+
+static bool confirm_pass_begin(void *ctx) { return panel_pass_begin(ctx); }
+static void confirm_pass_end(void *ctx, const SDL_Rect *panel, mm_pose pose) { panel_pass_end(ctx, panel, pose); }
+
+static ds_confirm confirm_of(const char *heading, const menu_row *rows, const int *marks, int sel,
+                             int width)
 {
-	int sel = first ? nq : nq + 1;
+	ds_confirm c = { heading, rows[0].label, { rows[1].label, rows[2].label },
+	                 { (unsigned)marks[1], (unsigned)marks[2] }, width, sel, (float)sel, -1, 0.0f,
+	                 anim_now() - g_cq_t0 };
+
+	if (marks[0] & 15) {
+		c.pressed = (marks[0] & 15) - 1;
+		c.press = (float)(marks[0] >> 4) / 1000.0f;
+	}
+	return c;
+}
+
+static void confirm_panel_draw(app *a, const char *heading, const menu_row *rows, const int *marks,
+                               int sel, int width, bool live, mm_pose pose)
+{
+	const ds_pass pass = { panel_scaled, confirm_pass_begin, confirm_pass_end, a };
+	ds_confirm c = confirm_of(heading, rows, marks, sel, width);
+
+	if (live) {
+		c.fill = g_cq_fill;
+		c.pressed = g_cq_pressed;
+		c.press = g_cq_press;
+	}
+	ds_confirm_draw(a->r, &c, ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H, MENU_TOP, MENU_AVAIL_H, pose, &pass);
+}
+
+/* The question's rows and marks, as panel_show keeps them: the question, the
+ * left answer, the right; B's glyph on the answer B gives, warning on the one
+ * that loses something */
+static void confirm_rows_of(cq_id q, const char *text, menu_row rows[3], int marks[3])
+{
+	const cq_def *d = cq_of(q);
+
+	rows[0] = (menu_row){ text ? text : "", NULL, false };
+	rows[1] = (menu_row){ T(d->left), NULL, true };
+	rows[2] = (menu_row){ T(d->right), NULL, true };
+	marks[0] = 0;
+	marks[1] = d->flags & CQ_B_NONE ? 0 : DS_CONFIRM_B;
+	marks[2] = d->flags & CQ_LOSES ? DS_CONFIRM_WARN : 0;
+}
+
+void confirm_show(app *a, cq_id q, const char *text, int sel)
+{
+	menu_row rows[3];
+	int marks[3];
+
+	confirm_rows_of(q, text, rows, marks);
+	marks[0] = CQ_MARK_PRESS(g_cq_pressed, g_cq_press);
+	{
+		/* A question of two sentences is drawn as one; each said drawn to
+		 * the host's check, which knows them apart */
+		const char *one, *two;
+
+		if (cq_parts(text, &one, &two)) {
+			ui_fit_drawn(one);
+			ui_fit_drawn(two);
+		}
+	}
+	g_tile_marks = marks;
+	g_tile_marks_n = 3;
+	panel_show(a, PANEL_CONFIRM, T(cq_of(q)->heading), rows, 3, sel, menu_std_width(a), MENU_ZYPEROS,
+	           NULL, false, 0, NULL);
+	g_tile_marks = NULL;
+	g_tile_marks_n = 0;
+}
+
+void confirm_lay(app *a, cq_id q, const char *text, ds_confirm_lay *l)
+{
+	menu_row rows[3];
+	int marks[3];
+	ds_confirm c;
+
+	confirm_rows_of(q, text, rows, marks);
+	c = confirm_of(T(cq_of(q)->heading), rows, marks, 0, menu_std_width(a));
+	ds_confirm_layout(&c, ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H, MENU_TOP, MENU_AVAIL_H, l);
+}
+
+void confirm_preview(app *a, cq_id q, const char *text)
+{
+	g_cq_fill = 0.0f;
+	g_cq_pressed = -1;
+	g_cq_t0 = anim_now();
+	confirm_show(a, q, text, 0);
+}
+
+/* The keys this pass, as src/confirmq.h's rule reads them: the strongest */
+static cq_key confirm_key(app *a, bool *fresh)
+{
+	static const struct { in_button b; cq_key k; } DIRS[] = {
+		{ IN_LEFT, CQK_LEFT }, { IN_RIGHT, CQK_RIGHT }, { IN_UP, CQK_UP }, { IN_DOWN, CQK_DOWN },
+	};
+	size_t i;
+
+	*fresh = true;
+	if (a->in.pressed[IN_POWER]) return CQK_POWER;
+	if (a->in.pressed[IN_MENU]) return CQK_MENU;
+	if (a->in.pressed[IN_BACK]) return CQK_B;
+	if (a->in.pressed[IN_ACCEPT]) return CQK_A;
+	for (i = 0; i < sizeof DIRS / sizeof DIRS[0]; i++)
+		if (in_repeat(&a->in, DIRS[i].b)) {
+			*fresh = a->in.pressed[DIRS[i].b];
+			return DIRS[i].k;
+		}
+	return CQK_NONE;
+}
+
+static in_button confirm_button(cq_key k)
+{
+	return k == CQK_LEFT ? IN_LEFT : k == CQK_RIGHT ? IN_RIGHT : k == CQK_UP ? IN_UP : IN_DOWN;
+}
+
+int confirm_ask_ex(app *a, cq_id q, const char *text, const menu_style *over, void *ctx,
+                   usbpower_guard *guard)
+{
+	const cq_def *d = cq_of(q);
+	ds_confirm_lay lay;
+	cq_state st;
+	tween fill;
+	int lv = panel_open(), answer = CQ_NONE;
+	unsigned press_t0 = 0;
+	bool pressing = false, cut = false;
 	float k;
 
-	rows[nq]     = (menu_row){ yes_label, NULL, true };
-	rows[nq + 1] = (menu_row){ no_label, NULL, true };
-
+	confirm_lay(a, q, text, &lay);
+	st = cq_start(lay.side);
+	tween_snap(&fill, 0.0f);
+	g_cq_fill = 0.0f;
+	g_cq_pressed = -1;
+	g_cq_press = 0.0f;
+	g_cq_t0 = anim_now();
 	for (;;) {
+		unsigned now;
+
 		plat_input_poll(&a->in);
 		if (guard) ask_settle(a, guard);
 		ui_sounds_follow();
-		if (a->in.quit_requested) { a->running = false; return 0; }
-		if (a->in.pressed[IN_POWER] || idle_due(a)) {
-			if (over && over->on_power) over->on_power(a, ctx);
-			else power_off(a);
-			return 0;
-		}
-		if (menu_leaving(a)) return 0;
+		if (a->in.quit_requested) { a->running = false; answer = CQ_NONE; cut = true; break; }
+		now = anim_now();
+		if (pressing) {
+			/* The answer pressing, then the panel goes: a press ends it at
+			 * once (8.2, every motion is interruptible); POWER is POWER */
+			bool any = false;
+			int b;
 
-		/* Only the two answerable rows are reachable; the rows above are the
-		 * question. */
-		{
-			in_button b = in_repeat(&a->in, IN_UP)   ? IN_UP
-			            : in_repeat(&a->in, IN_DOWN) ? IN_DOWN : IN_NONE;
-			/* The two answers are a list of two, which goes round as every
-			 * list does: a fresh press from either end lands on the other,
-			 * a held one stops (menu_step_index) */
-			if (b != IN_NONE)
-				sel = nq + list_step_heard(a, b, 2, sel - nq);
+			for (b = 0; b < IN_COUNT; b++) any |= a->in.pressed[b];
+			if (a->in.pressed[IN_POWER]) {
+				if (over && over->on_power) over->on_power(a, ctx);
+				else power_off(a);
+				answer = CQ_NONE;
+				cut = true;
+				break;
+			}
+			g_cq_press = ds_out((float)(now - press_t0) / (float)DS_MS_PRESS);
+			if (any || now - press_t0 >= DS_MS_PRESS) {
+				g_cq_press = 1.0f;
+				break;
+			}
+		} else {
+			bool fresh;
+			cq_key key = idle_due(a) ? CQK_POWER : confirm_key(a, &fresh);
+			cq_step s;
+
+			if (key == CQK_POWER) {
+				if (over && over->on_power) over->on_power(a, ctx);
+				else power_off(a);
+				cut = true;
+				break;
+			}
+			if (key == CQK_MENU) {
+				menu_leaving(a);   /* every screen closes, heard as a back */
+				break;
+			}
+			s = cq_press(d, st, key, fresh);
+			if (key >= CQK_LEFT && key <= CQK_DOWN && (s.moved || s.edge))
+				step_sound(a, confirm_button(key), st.sel, s.sel);
+			st.sel = s.sel;
+			if (s.done) {
+				answer = s.answer;
+				uisound_play(key == CQK_A ? DS_SOUND_ACCEPT : DS_SOUND_BACK);
+				if (s.press < 0) break;
+				pressing = true;
+				press_t0 = now;
+				g_cq_pressed = s.press;
+				g_cq_press = 0.0f;
+			}
 		}
-		if (a->in.pressed[IN_ACCEPT]) {
-			uisound_play(DS_SOUND_ACCEPT);
-			return sel == nq ? 1 : 2;
-		}
+		tween_to(&fill, (float)st.sel, DS_MS_QUICK, now);
+		g_cq_fill = tween_at(&fill, now);
+		if (tween_moving(&fill, now) || pressing) redraw_now();
 
 		if (!panel_frame(a, lv, &k)) continue;
 		tick_tint(a);
@@ -5193,98 +5369,32 @@ static int confirm_rows_pick(app *a, const char *heading, menu_row *rows, int nq
 			draw_shelf(a);
 			ui_scrim_k(a->r, 0, k);
 		}
-		menu_draw(a, heading, rows, nq + 2, sel, fixed_w, MENU_ZYPEROS);
+		confirm_show(a, q, text, st.sel);
 #ifdef ZYPEROS_DESK
 		/* tools/desk's `state`: the question and the answer under the cursor,
 		 * as the menu runner says its panels (src/menu_runner.c) */
-		desk_note_focus(heading ? heading : "", sel, sel >= 0 && rows[sel].label ? rows[sel].label : "");
+		desk_note_focus(T(d->heading), st.sel, T(st.sel ? d->right : d->left));
 #endif
 		plat_draw_osd(a->r);
 		plat_present();
 		ui_frame_rest(8);
 	}
+	/* The copy that leaves keeps the press where it got to */
+	if (pressing && g_snap->ok && g_snap->kind == PANEL_CONFIRM)
+		g_snap->marks[0] = CQ_MARK_PRESS(g_cq_pressed, g_cq_press);
+	g_cq_pressed = -1;
+	panel_close(a, lv, cut || !a->running || (over && plat_run_power_pressed()));
+	return a->running ? answer : CQ_NONE;
 }
 
-static bool confirm_rows_full(app *a, const char *heading, menu_row *rows, int nq,
-                              const char *yes_label, const char *no_label, int fixed_w, int lv,
-                              usbpower_guard *guard, const menu_style *over, void *ctx)
+bool confirm_ask(app *a, cq_id q, const char *text)
 {
-	return confirm_rows_pick(a, heading, rows, nq, yes_label, no_label, fixed_w, lv, guard,
-	                         over, ctx, false) == 1;
+	return confirm_ask_ex(a, q, text, NULL, NULL, NULL) == CQ_RIGHT;
 }
 
-/* ask_two_panel's rows: its question in lines the panel's width, as Delete
- * Game's is (in one row a long one slid as a marquee), then the two answers;
- * how many lines. A host shot draws the same rows (src/launch_screen.c's
- * p8_said_shot). */
-int ask_two_rows(app *a, const char *msg, const char *first, const char *second,
-                 char (*lines)[CHV_WRAP_COLS], menu_row *rows)
+bool confirm_ask_over(app *a, cq_id q, const char *text, const menu_style *over, void *ctx)
 {
-	int n = wrap_text(ui_font(UI_F_MENU), msg, menu_std_width(a), lines, ASK_TWO_LINES), i;
-
-	ui_fit_drawn(msg);    /* drawn in lines, said whole to the host's check */
-	for (i = 0; i < n; i++)
-		rows[i] = (menu_row){ lines[i], MENU_NOTE_MARK, false };
-	rows[n]     = (menu_row){ first, NULL, true };
-	rows[n + 1] = (menu_row){ second, NULL, true };
-	return n;
-}
-
-/* A question with two answers that both go on (Splore's Turn On Wi-Fi and
- * Open Offline), over the shelf: 1 the first, 2 the second, 0 left. The
- * cursor starts on the first. */
-int ask_two_panel(app *a, const char *heading, const char *msg, const char *first,
-                  const char *second)
-{
-	char lines[ASK_TWO_LINES][CHV_WRAP_COLS];
-	menu_row rows[ASK_TWO_LINES + 2];
-	int lv = panel_open(), r, n = ask_two_rows(a, msg, first, second, lines, rows);
-
-	r = confirm_rows_pick(a, heading, rows, n, first, second, menu_std_width(a), lv, NULL, NULL,
-	                      NULL, true);
-	panel_close(a, lv, !a->running);
-	return r;
-}
-
-bool confirm_rows_as(app *a, const char *heading, menu_row *rows, int nq,
-                     const char *yes_label, const char *no_label, int fixed_w, int lv,
-                     usbpower_guard *guard)
-{
-	return confirm_rows_full(a, heading, rows, nq, yes_label, no_label, fixed_w, lv, guard, NULL, NULL);
-}
-
-bool confirm_rows_over(app *a, const char *heading, menu_row *rows, int nq,
-                       const char *yes_label, int fixed_w, int lv,
-                       const menu_style *over, void *ctx)
-{
-	return confirm_rows_full(a, heading, rows, nq, yes_label, T(S_PANEL_CANCEL), fixed_w, lv,
-	                         NULL, over, ctx);
-}
-
-bool confirm_rows(app *a, const char *heading, menu_row *rows, int nq,
-                  const char *yes_label, int fixed_w, int lv)
-{
-	return confirm_rows_full(a, heading, rows, nq, yes_label, T(S_PANEL_CANCEL), fixed_w, lv,
-	                         NULL, NULL, NULL);
-}
-
-static bool confirm_body(app *a, const char *heading, const char *msg,
-                         const char *yes_label, int lv)
-{
-	menu_row rows[3];
-
-	rows[0] = (menu_row){ msg, NULL, false };
-	return confirm_rows(a, heading, rows, 1, yes_label, 0, lv);
-}
-
-bool confirm_panel(app *a, const char *heading, const char *msg,
-                   const char *yes_label)
-{
-	int lv = panel_open();
-	bool yes = confirm_body(a, heading, msg, yes_label, lv);
-
-	panel_close(a, lv, !a->running);
-	return yes;
+	return confirm_ask_ex(a, q, text, over, ctx, NULL) == CQ_RIGHT;
 }
 
 
@@ -6374,6 +6484,9 @@ int main(int argc, char *argv[])
 	char startup[CFG_STR];
 	bool hand_back = false;
 
+	/* The canvas of the handheld built for (src/canvas.h); --device below
+	 * makes it another's on the host */
+	canvas_init(plat_profile());
 	if (argc > 1 && !strcmp(argv[1], PORT_MENU_ARG)) return port_menu_main(argc, argv);
 	if (argc > 1 && !strcmp(argv[1], MP4_FOLLOW_ARG)) return mp4_follow_main();
 	if (argc > 1 && !strcmp(argv[1], STATS_PORT_PLAYED_ARG)) return port_played_main();
@@ -6627,6 +6740,11 @@ int main(int argc, char *argv[])
 			if (i + 1 < argc && (!strcmp(argv[i + 1], "tab") || !strcmp(argv[i + 1], "tour")))
 				shot_handheld_box = argv[++i];
 		}
+		else if (!strcmp(argv[i], "--ask") && i + 1 < argc) {
+			shot_ask = argv[++i];
+			if (i + 1 < argc && argv[i + 1][0] != '-') shot_ask_item = argv[++i];
+		}
+		else if (!strcmp(argv[i], "--confirm-fit")) shot_confirm_fit = true;
 		else if (!strcmp(argv[i], "--controls-fit")) {
 			shot_controls_fit = "all";
 			if (i + 1 < argc && (!strcmp(argv[i + 1], "game") || !strcmp(argv[i + 1], "home")))
@@ -6774,6 +6892,8 @@ int main(int argc, char *argv[])
 				fprintf(stderr, "--device: no profile \"%s\" (%s)\n", argv[i], ids);
 				return 2;
 			}
+			/* Its panel's shape is the canvas's (src/canvas.h) */
+			canvas_init(plat_profile());
 		}
 		else if (!strcmp(argv[i], "--tour-pick") && i + 1 < argc) {
 			shot_tour_pick = atoi(argv[++i]);

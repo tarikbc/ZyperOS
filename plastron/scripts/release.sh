@@ -27,9 +27,16 @@ DEVICE=$2
 case $DEVICE in
 pixel2) FLAVOR=zyperos ;;
 brick) FLAVOR=brick ;;
-*) echo "release: unknown device $DEVICE (pixel2 or brick)" >&2; exit 1 ;;
+smartpro) FLAVOR=smartpro ;;
+*) echo "release: unknown device $DEVICE (pixel2, brick or smartpro)" >&2; exit 1 ;;
 esac
 NAME=ZyperOS-v$VERSION-$DEVICE
+# For PROPRIETARY.txt
+case $DEVICE in
+brick) DEVICE_NAME="TrimUI Brick" ;;
+smartpro) DEVICE_NAME="TrimUI Smart Pro (on the Brick's system)" ;;
+*) DEVICE_NAME=$DEVICE ;;
+esac
 OUTPUT=/work/release-output-$DEVICE
 RELEASE=/work/release
 SOURCES=$OUTPUT/legal-info/sources
@@ -43,7 +50,7 @@ PLASTRON_RELEASE=1 FLAVOR=$FLAVOR PLASTRON_OUTPUT=$OUTPUT sh /src/scripts/build.
 # The package list on the card and in the repository is this build's: one
 # that no longer matches would credit what the image doesn't carry, or miss
 # what it does
-BOARD=$( [ "$DEVICE" = pixel2 ] && echo px2 || echo brick )
+BOARD=$( [ "$DEVICE" = pixel2 ] && echo px2 || echo "$DEVICE" )
 python3 /src/scripts/third-party.py "$OUTPUT/legal-info/manifest.csv" "$DEVICE" > /tmp/third-party-$DEVICE.md
 if ! cmp -s /tmp/third-party-$DEVICE.md "/src/buildroot/board/$BOARD/third-party-packages.md"; then
 	echo "release: buildroot/board/$BOARD/third-party-packages.md doesn't match this build's packages:" >&2
@@ -102,6 +109,13 @@ else
 	cp /work/dl/linux-4.9.191-a133.tar.xz "$KERNEL/"
 	cp -R /src/buildroot/board/brick/linux /src/buildroot/board/brick/dts "$KERNEL/plastron/"
 	cp /src/scripts/build-brick-kernel.sh /src/docker/brick-kernel/Dockerfile "$KERNEL/plastron/"
+	# The Smart Pro's is the Brick's with its own patches on top and its
+	# device tree (make smartpro-kernel)
+	if [ "$DEVICE" = smartpro ]; then
+		mkdir -p "$KERNEL/plastron/smartpro"
+		cp -R /src/buildroot/board/smartpro/linux /src/buildroot/board/smartpro/dts "$KERNEL/plastron/smartpro/"
+		cp /src/scripts/make-smartpro-dts.py "$KERNEL/plastron/smartpro/"
+	fi
 	# Its boot loader too (make brick-bootloader, committed): U-Boot and TF-A
 	# at their commits, with our patches
 	UBOOT_COMMIT=$(sed -n 's/^UBOOT_COMMIT=//p' /src/scripts/build-brick-bootloader.sh)
@@ -111,12 +125,16 @@ else
 	cp "/work/dl/u-boot-$UBOOT_COMMIT.tar.gz" "/work/dl/tf-a-$TFA_COMMIT.tar.gz" "$BOOT/"
 	cp -R /src/buildroot/board/brick/u-boot/. "$BOOT/plastron/"
 	cp /src/scripts/build-brick-bootloader.sh /src/docker/brick-boot/Dockerfile "$BOOT/plastron/"
+	if [ "$DEVICE" = smartpro ]; then
+		mkdir -p "$BOOT/plastron/smartpro"
+		cp -R /src/buildroot/board/smartpro/u-boot/. "$BOOT/plastron/smartpro/"
+	fi
 	# The closed parts are in neither the image nor these sources: the image
 	# links to them on the card's boot partition, where ZyperOS Installer
 	# puts each player's own copy. Their packages are marked not to be
 	# redistributed, so legal-info leaves their files out
 	cat > "$OUTPUT/legal-info/PROPRIETARY.txt" <<-EOF
-	The TrimUI Brick needs two closed parts that are not ours. They are in
+	The $DEVICE_NAME needs two closed parts that are not ours. They are in
 	neither its image nor these sources: the image only links to them in
 	the card's boot partition (closed/), where ZyperOS Installer puts each
 	player's own copy, fetched from where they are published:
@@ -198,8 +216,9 @@ if [ -f /zyperos/tools/update-pack.py ] && [ -f "$CARDDIR/ZyperOS/zyperos-update
 	cp "$OUTPUT/images/Image" "$SYS/boot/"
 	for dtb in "$OUTPUT/images/"*.dtb; do cp "$dtb" "$SYS/boot/"; done
 	# The Brick's boot.scr boots the LZ4 kernel and its initramfs, rootswitch
-	# (board/brick/boot-slot.cmd); Image stays for U-Boot's own fallback
-	if [ "$DEVICE" = brick ]; then
+	# (board/brick/boot-slot.cmd); Image stays for U-Boot's own fallback. The
+	# Smart Pro's is the Brick's
+	if [ "$DEVICE" = brick ] || [ "$DEVICE" = smartpro ]; then
 		cp "$OUTPUT/images/Image.lz4" "$OUTPUT/images/initramfs.cpio.gz" "$SYS/boot/"
 	fi
 	rm -f "$RELEASE/$NAME-system.zpk" "$RELEASE/ZyperOS-$DEVICE-system.txt.unsigned"

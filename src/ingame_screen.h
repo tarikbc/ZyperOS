@@ -6,6 +6,7 @@
  * its tabs (Game, Display, Controls, Achievements), the save slots' strip,
  * the Controls page, the achievement list and card, and a game's synopsis.
  * The screens are src/ingame_screen.c; the rows are src/game_menu.c's. */
+#include "confirmq.h"
 #include "achtab.h"
 #include "achtab_screen.h"
 #include "app.h"
@@ -121,9 +122,10 @@ int port_menu(app *a);
 /* Over your PICO-8 (src/portmenu.h's port_menu_display): the question before
  * it starts again, as Reset Game's hotkey asks, over `over`'s backdrop with
  * its power rule (NULL: the program's frame, POWER ending it), the cursor on
- * Cancel. "Start the cart again?", `line` under it (pico8.restart_display
- * for a Display mode), Start Again and Cancel. True for Start Again. */
-bool port_restart_ask(app *a, const menu_style *over, void *ctx, const char *line);
+ * the left answer: question `q` (CQ_P8_RESTART_DISPLAY or _BUTTONS), its
+ * words `line` (cq_text). The answer, as confirm_ask_ex says it: CQ_RIGHT is
+ * Start Again. */
+int port_restart_ask(app *a, const menu_style *over, void *ctx, cq_id q, const char *line);
 /* Display mode `k` kept for the program's system (display.<TAG>) and, with
  * it, written to PORT_RESTART_FILE for launch.sh to start it again in. The
  * mode on already for a start again for another reason (new buttons).

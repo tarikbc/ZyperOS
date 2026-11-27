@@ -632,7 +632,7 @@ static void media_row_act(media_view *v)
 		break;
 	case MR_DELETE:
 		uisound_play(DS_SOUND_ACCEPT);
-		if (!store_ask(a, T(S_MEDIA_VIDEO), T(S_MEDIA_DELETE_ASK), T(S_GAMEMENU_DELETE_YES))) break;
+		if (!confirm_ask(a, CQ_MEDIA_VIDEO_DELETE, T(S_MEDIA_DELETE_ASK))) break;
 		snap_off();
 		unlink(v->snap);
 		v->changed = true;
@@ -938,14 +938,8 @@ void media_shot(app *a)
 	media_draw(a, &v);
 	if (!strcmp(name, "delete")) {
 		/* Delete, the video row's question, over the page */
-		char lines[DEL_ASK_LINES][CHV_WRAP_COLS];
-		menu_row rows[DEL_ASK_LINES + 2];
-		int nq = store_ask_rows(a, T(S_MEDIA_DELETE_ASK), lines, rows);
-
-		rows[nq] = (menu_row){ T(S_GAMEMENU_DELETE_YES), NULL, true };
-		rows[nq + 1] = (menu_row){ T(S_PANEL_CANCEL), NULL, true };
 		ui_scrim(a->r, 0);
-		menu_draw(a, T(S_MEDIA_VIDEO), rows, nq + 2, nq + 1, menu_std_width(a), MENU_ZYPEROS);
+		confirm_preview(a, CQ_MEDIA_VIDEO_DELETE, T(S_MEDIA_DELETE_ASK));
 	} else if (!strcmp(name, "failed")) {
 		/* A picture or a video that did not come, as result_message says it */
 		const char *text = T(S_MEDIA_FAILED);

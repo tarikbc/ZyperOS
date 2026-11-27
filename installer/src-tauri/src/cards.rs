@@ -23,11 +23,14 @@ use std::path::Path;
 pub enum Device {
     Brick,
     Pixel2,
+    /// The TrimUI Smart Pro, which runs the Brick's system: its card is the
+    /// Brick's layout, with the same closed files
+    SmartPro,
 }
 
 impl Device {
     /// Every device this installer knows, in the order the page shows them
-    pub const ALL: [Device; 2] = [Device::Pixel2, Device::Brick];
+    pub const ALL: [Device; 3] = [Device::Pixel2, Device::Brick, Device::SmartPro];
 
     /// Its id, as ZyperOS names it (config/devices, the release's
     /// ZyperOS-v<version>-<id>.img.xz, the page's data-value)
@@ -35,7 +38,15 @@ impl Device {
         match self {
             Device::Pixel2 => "pixel2",
             Device::Brick => "brick",
+            Device::SmartPro => "smartpro",
         }
+    }
+
+    /// A handheld on the Brick's system (ZyperOS's plastron board/brick): its
+    /// card is the Brick's layout, its closed files the Brick's, and its
+    /// update the Brick's
+    pub fn on_brick_system(self) -> bool {
+        matches!(self, Device::Brick | Device::SmartPro)
     }
 
     pub fn from_id(id: &str) -> Option<Device> {
@@ -78,11 +89,13 @@ pub struct Card {
 }
 
 /// The device whose system a boot partition's label names: PX2BOOT the GKD
-/// Pixel 2's, BRICKBOOT the Brick's. None for any other label.
+/// Pixel 2's, BRICKBOOT the Brick's, SMARTBOOT the Smart Pro's. None for any
+/// other label.
 pub fn system_of(label: &str) -> Option<Device> {
     match label {
         "PX2BOOT" => Some(Device::Pixel2),
         "BRICKBOOT" => Some(Device::Brick),
+        "SMARTBOOT" => Some(Device::SmartPro),
         _ => None,
     }
 }
@@ -928,7 +941,16 @@ mod tests {
         assert!(!is_games("PX2BOOT") && !is_games("rootfs") && !is_games(""));
         assert_eq!(system_of("PX2BOOT"), Some(Device::Pixel2));
         assert_eq!(system_of("BRICKBOOT"), Some(Device::Brick));
+        assert_eq!(system_of("SMARTBOOT"), Some(Device::SmartPro));
         assert_eq!(system_of("EMUELEC"), None);
+    }
+
+    #[test]
+    fn the_smart_pro_is_on_the_bricks_system() {
+        assert_eq!(Device::from_id("smartpro"), Some(Device::SmartPro));
+        // Its closed files and its update are the Brick's; the Pixel 2's are not
+        assert!(Device::SmartPro.on_brick_system() && Device::Brick.on_brick_system());
+        assert!(!Device::Pixel2.on_brick_system());
     }
 
     #[test]

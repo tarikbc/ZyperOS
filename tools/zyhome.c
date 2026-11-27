@@ -36,6 +36,9 @@
 #define PORT_GRACE_MS     8000
 #define LAUNCHER_GRACE_MS 6000
 #define CODE_MENU         BTN_TRIGGER_HAPPY1      /* src/device/pixel2.c */
+/* The R36S's FN, its MENU (src/device/r36s.c); the Pixel 2's pad sends none */
+#define CODE_MENU_FN      BTN_MODE
+#define IS_MENU(code)     ((code) == CODE_MENU || (code) == CODE_MENU_FN)
 #define NLONGS(n)         (((n) + 8 * sizeof(long) - 1) / (8 * sizeof(long)))
 #define HAS(b, c)         (((b)[(c) / (8 * sizeof(long))] >> ((c) % (8 * sizeof(long)))) & 1)
 
@@ -171,7 +174,7 @@ int main(void)
 		snprintf(path, sizeof path, "/dev/input/%s", e->d_name);
 		if ((fd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC)) < 0) continue;
 		ioctl(fd, EVIOCGBIT(EV_KEY, sizeof keys), keys);
-		if (HAS(keys, CODE_MENU) || HAS(keys, BTN_START)) {
+		if (HAS(keys, CODE_MENU) || HAS(keys, CODE_MENU_FN) || HAS(keys, BTN_START)) {
 			fds[n].fd = fd;
 			fds[n++].events = POLLIN;
 		} else {
@@ -197,8 +200,8 @@ int main(void)
 			while ((r = read(fds[i].fd, ev, sizeof ev)) > 0)
 				for (size_t k = 0; k < (size_t)r / sizeof ev[0]; k++) {
 					if (ev[k].type != EV_KEY || ev[k].value == 2) continue;
-					if (ev[k].code != CODE_MENU && ev[k].code != BTN_START) continue;
-					zychord_key(&c, ev[k].code == CODE_MENU, ev[k].value != 0, now_ms());
+					if (!IS_MENU(ev[k].code) && ev[k].code != BTN_START) continue;
+					zychord_key(&c, IS_MENU(ev[k].code), ev[k].value != 0, now_ms());
 				}
 		}
 		if (zychord_due(&c, now_ms())) go_home();

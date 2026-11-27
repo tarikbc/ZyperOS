@@ -18,7 +18,7 @@
 
 static const device_profile *const linked[] = {
 #ifdef ZYPEROS_PROFILES_ALL
-	&device_profile_pixel2, &device_profile_brick, &device_profile_desktop,
+	&device_profile_pixel2, &device_profile_brick, &device_profile_smartpro, &device_profile_r36s, &device_profile_desktop,
 #else
 	&ZYPEROS_PROFILE,
 #endif

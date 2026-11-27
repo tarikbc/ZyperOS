@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* The handheld beside each lesson: DESIGN.md 11.10, "The handheld". See
- * src/tourdevice.h. Two arts: the GKD Pixel 2's, here, and the TrimUI
- * Brick's (brick_draw, below).
+ * src/tourdevice.h. Two arts: the GKD Pixel 2's, here, and the slab
+ * handhelds', the TrimUI Brick's and the R36S's (slab_draw, below).
  *
  * The GKD Pixel 2's art, in millimetres as tools/build-pixel2-model.py builds
  * the landing page's model from its dimensioned drawing, its keys where its
@@ -956,7 +956,8 @@ static void tourdev_pose(const tour *t, uint32_t now, float op, td_pose *out)
 	/* Cleared whole, padding too, so two poses compare as bytes */
 	memset(out, 0, sizeof *out);
 	out->model = m;
-	out->cx = TOURDEV_X;
+	/* in the column, which a wider canvas widens by its difference */
+	out->cx = TOURDEV_X + (ZYPEROS_SCREEN_W - 1024) / 2;
 	out->cy = TOURDEV_Y;
 	out->scale = p0.s + (p1.s - p0.s) * k;
 	out->deg = deg;
@@ -977,70 +978,140 @@ static void tourdev_pose(const tour *t, uint32_t now, float op, td_pose *out)
 	out->tabs = tabs;
 }
 
-/* ---- the TrimUI Brick ------------------------------------------------------------ */
+/* ---- the TrimUI Brick and the R36S ----------------------------------------------- */
 
-/* The TrimUI Brick's art (TD_ART_BRICK), its keys where its model has them
- * (src/device/brick_model.c), in its millimetres: x right, z up, y deep,
- * from the body's middle. Two blocks: the thin part, the whole outline 11.8
- * deep from the front, and behind it the thick part's back, below the ledge
- * (z 12.05), to 19.9 from the front. The ledge carries the shoulders and
- * the USB-C housing between them, which only the back view shows: that turn
- * goes all the way round, so each block draws the faces of it that face the
- * viewer, the farther block first, and each key shows only from where its
- * face does. Original art from the published outline and the measured key
- * places; no maker's mark (the MENU key and the d-pad's middle are plain). */
-#define BK_W        73.2f
-#define BK_TOP      (109.9f / 2.0f)
-#define BK_RT       0.5f                /* the outline's top corners */
-#define BK_RB       4.1f                /* and its bottom ones */
-#define BK_FRONT    -9.95f
-#define BK_THIN     (BK_FRONT + 11.8f)  /* the thin part's back, the ledge's front */
-#define BK_BACK     (BK_FRONT + 19.9f)  /* the thick part's back */
-#define BK_LEDGE    12.05f              /* the ledge: the thick part's top */
+/* The slab handhelds' art (TD_ART_BRICK, TD_ART_R36S): a body of two
+ * blocks, the thin part, the whole outline from the front, and behind it a
+ * thicker part below a ledge across the back, which carries the shoulders.
+ * Each one's measures and marks are its own `slab`, below; its keys are
+ * where its model has them (src/device/brick_model.c, r36s_model.c), in its
+ * millimetres: x right, z up, y deep, from the body's middle. The back view
+ * goes all the way round, so each block draws the faces of it that face
+ * the viewer, the farther block first, and each key shows only from where
+ * its face does. Original art from the published outlines and the measured
+ * key places; no maker's mark.
+ *
+ * The TrimUI Brick: the thin part 11.8 deep from the front, the thick part
+ * to 19.9 below the ledge (z 12.05), the USB-C housing on the ledge between
+ * the shoulders, F1 and F2, SELECT's square and START's triangle, two dot
+ * grilles, the FN slider over POWER, the light bar along the top edge.
+ *
+ * The R36S: the thin part 18.5 deep, the grip behind it to 30.0 below the
+ * ledge (z 9.5), the shoulders tall paddles on it with nothing between them;
+ * the glass from the top edge; the speaker's slots between the d-pad and
+ * A B X Y; the two sticks, which are no keys of the launcher's and never
+ * lit; POWER a pill and the reset hole under it. */
+typedef struct {
+	float w, top, rt, rb;              /* the body, its half height, its corners */
+	float front, thin, back, ledge;    /* depths from the middle; the ledge's z */
+	/* The glass, and the lit screen centred in it */
+	float glass_w, glass_h, glass_x, glass_z, glass_r, screen_w, screen_h;
+	float arm;                         /* the d-pad's arms, half as wide as they are */
+	float pill_h;                      /* F1 and F2, pills this tall */
+	/* SELECT's square and START's triangle, this big (0 none); in MENU's
+	 * dots' colors (on-accent lit, a soft text at rest) */
+	float icon;
+	/* Dot grilles: two rows of dots either side of the bottom keys (n 0 none) */
+	float grille_x[2], grille_z, dot_r;
+	int   grille_n;
+	/* A slot grille: each slot's middle and length, all slot_h tall
+	 * (n_slots 0 none) */
+	const float (*slots)[3];
+	int   n_slots;
+	float slot_h;
+	/* A microphone's hole at (0, mic_z), its radius (0 none) */
+	float mic_z, mic_r;
+	/* A seam across the face at seam_z, where its mouldings meet (0 none) */
+	float seam_z;
+	/* The sticks, at (+-stick_x, stick_z): the well and the cap (0 none) */
+	float stick_x, stick_z, stick_well, stick_cap;
+	/* The well a light ring standing out of the face, this wide, round the
+	 * cap's dark base (0: a plain dark well) */
+	float stick_ring;
+	float vol_w;                       /* the volume keys, pills this wide across the side */
+	bool  power_pill;                  /* POWER a pill as the volume keys, or round */
+	/* On POWER's side: the FN slider (its slot, its knob at the top; l 0
+	 * none), and the reset hole (r 0 none), drawn and never lit */
+	float fn_z, fn_l, fn_w, reset_z, reset_r;
+	float bar_w;                       /* the light bar along the top edge (0 none) */
+	/* The shoulders: blocks from just behind the thin part to the back,
+	 * from under the ledge (where the back shows their faces) up to their
+	 * tops; a press takes a top this far down */
+	float key_low, key_press;
+	/* How far the shoulders stand out past the back (0: flush) */
+	float key_out;
+	/* On the back: a panel on the thin part (w, h about z; w 0 none), and
+	 * ribs across the thick part's back from z rib_z down, rib_n of them
+	 * rib_gap apart, rib_w wide */
+	float panel_w, panel_h, panel_z, rib_z, rib_gap, rib_w;
+	int   rib_n;
+	/* The USB-C housing between L2 and R2, a little higher than the ledge,
+	 * and the port in its back (w 0 none) */
+	float usb_w, usb_rise, port_w, port_h;
+} slab;
+
+static const slab SLAB_BRICK = {
+	.w = 73.2f, .top = 109.9f / 2.0f, .rt = 0.5f, .rb = 4.1f,
+	.front = -9.95f, .thin = -9.95f + 11.8f, .back = -9.95f + 19.9f, .ledge = 12.05f,
+	/* The glass x 0.9 to 72.2, y 0.8 to 57.2 from the front's top left */
+	.glass_w = 71.3f, .glass_h = 56.4f, .glass_x = -0.05f, .glass_z = 25.95f, .glass_r = 0.6f,
+	.screen_w = 65.0f, .screen_h = 48.8f,
+	.arm = 3.5f, .pill_h = 2.6f, .icon = 1.6f,
+	/* 7.4 wide, either side of the bottom keys */
+	.grille_x = { -25.5f, 25.3f }, .grille_z = -44.65f, .dot_r = 0.4f, .grille_n = 6,
+	.vol_w = 2.8f,
+	.fn_z = 31.65f, .fn_l = 10.3f, .fn_w = 3.0f,
+	.bar_w = 37.9f,
+	.key_low = 7.95f, .key_press = 1.2f,
+	.usb_w = 13.0f, .usb_rise = 0.6f, .port_w = 7.0f, .port_h = 2.2f,
+};
+
+/* The R36S's grille, as the maker's straight-on photo has it: three rows
+ * 3.85 apart, the top one level with X, three slots a row in columns 5.63
+ * apart, long (5.4) and short (2.25): long, short, long; short, long,
+ * short; long, short, long */
+static const float R36S_SLOTS[9][3] = {
+	{ -5.63f, -5.6f, 5.4f },   { 0.0f, -5.6f, 2.25f },   { 5.63f, -5.6f, 5.4f },
+	{ -5.63f, -9.45f, 2.25f }, { 0.0f, -9.45f, 5.4f },   { 5.63f, -9.45f, 2.25f },
+	{ -5.63f, -13.3f, 5.4f },  { 0.0f, -13.3f, 2.25f },  { 5.63f, -13.3f, 5.4f },
+};
+
+/* Measured on photos of a real one (src/device/r36s_model.c) */
+static const slab SLAB_R36S = {
+	.w = 80.0f, .top = 119.0f / 2.0f, .rt = 3.0f, .rb = 6.0f,
+	.front = -15.0f, .thin = -15.0f + 18.5f, .back = 15.0f, .ledge = 9.5f,
+	.glass_w = 77.0f, .glass_h = 55.6f, .glass_x = 0.0f, .glass_z = 31.2f, .glass_r = 2.0f,
+	.screen_w = 70.0f, .screen_h = 52.5f,
+	.arm = 3.75f,
+	.slots = R36S_SLOTS, .n_slots = 9, .slot_h = 1.5f,
+	.mic_z = -30.4f, .mic_r = .45f,
+	/* Just under the glass (31.2 less half its 55.6) */
+	.seam_z = 1.8f,
+	.stick_x = 26.3f, .stick_z = -38.6f, .stick_well = 11.0f, .stick_cap = 7.5f, .stick_ring = 2.4f,
+	.vol_w = 3.0f, .power_pill = true,
+	.reset_z = 29.5f, .reset_r = 1.2f,
+	.key_low = 5.4f, .key_press = 1.2f, .key_out = 3.0f,
+	.panel_w = 60.0f, .panel_h = 28.0f, .panel_z = 41.0f,
+	.rib_z = -6.0f, .rib_gap = 3.0f, .rib_w = 64.0f, .rib_n = 15,
+};
+
+/* The slab being drawn (slab_draw) */
+static const slab *g_slab = &SLAB_BRICK;
+
+#define BK_W        (g_slab->w)
+#define BK_TOP      (g_slab->top)
+#define BK_RT       (g_slab->rt)
+#define BK_RB       (g_slab->rb)
+#define BK_FRONT    (g_slab->front)
+#define BK_THIN     (g_slab->thin)
+#define BK_BACK     (g_slab->back)
+#define BK_LEDGE    (g_slab->ledge)
 /* A side face's plane, a hair proud of the body so its keys sit on it */
 #define BK_SIDE     (BK_W / 2.0f + 0.1f)
-/* The glass (x 0.9 to 72.2, y 0.8 to 57.2 from the front's top left) and
- * the lit screen centred in it */
-#define BK_GLASS_W  71.3f
-#define BK_GLASS_H  56.4f
-#define BK_GLASS_X  -0.05f
-#define BK_GLASS_Z  25.95f
-#define BK_SCREEN_W 65.0f
-#define BK_SCREEN_H 48.8f
-/* The d-pad's arms, half as wide as they are (7.0) */
-#define BK_ARM      3.5f
-/* F1 and F2, pills this tall */
-#define BK_PILL_H   2.6f
-/* SELECT's square and START's triangle, this big; in MENU's dots' colors
- * (on-accent lit, a soft text at rest) */
-#define BK_ICON     1.6f
-/* The speaker grilles: two rows of dots, 7.4 wide, either side of the
- * bottom keys */
-static const float BK_GRILLE_X[2] = { -25.5f, 25.3f };
-#define BK_GRILLE_Z -44.65f
-#define BK_GRILLE_N 6
-#define BK_DOT_R    0.4f
-/* The volume keys, pills this wide across the side; their + and - */
-#define BK_VOL_W    2.8f
-/* The FN slider on the right side, above POWER: its slot and its knob,
- * drawn and never lit (no key of the launcher's) */
-#define BK_FN_Z     31.65f
-#define BK_FN_L     10.3f
-#define BK_FN_W     3.0f
-/* The light bar along the top edge, at the back */
-#define BK_BAR_W    37.9f
-/* The shoulders: blocks from just behind the thin part to the back, from
- * under the ledge (where the back shows their faces) up to their tops; a
- * press takes a top this far down */
 #define BK_KEY_FRONT (BK_THIN + 0.5f)
-#define BK_KEY_LOW   7.95f
-#define BK_KEY_PRESS 1.2f
-/* The USB-C housing between L2 and R2, a little lower than they are, and
- * the port in its back */
-#define BK_USB_W    13.0f
-#define BK_USB_TOP  (BK_LEDGE + 0.6f)
-#define BK_PORT_W   7.0f
-#define BK_PORT_H   2.2f
+#define BK_KEY_LOW  (g_slab->key_low)
+#define BK_KEY_PRESS (g_slab->key_press)
+#define BK_USB_TOP  (BK_LEDGE + g_slab->usb_rise)
 
 /* How thin `p` is on the screen, about: twice its area over its perimeter
  * (a long shape's width, a round one's radius) */
@@ -1059,7 +1130,7 @@ static float thinness(const SDL_FPoint *p, int n)
 
 /* shape, for a face that turns edge-on: thinner than its edge, it is all
  * edge, a line, rather than an edge turned inside out */
-static void bk_shape(const view *v, SDL_FPoint *p, int n, SDL_Color f, SDL_Color e, float w)
+static void face_shape(const view *v, SDL_FPoint *p, int n, SDL_Color f, SDL_Color e, float w)
 {
 	n = dedup(p, n);
 	if (n < 3) return;
@@ -1096,17 +1167,17 @@ static int bk_outline(float zt, float rt, float *xz)
 }
 
 /* A flat quad of four model points, drawn as a face */
-static void bk_quad(const view *v, const float q[4][3], SDL_Color f, SDL_Color e)
+static void face_quad(const view *v, const float q[4][3], SDL_Color f, SDL_Color e)
 {
 	SDL_FPoint p[4];
 	int i;
 
 	for (i = 0; i < 4; i++) p[i] = at(v, q[i][0], q[i][1], q[i][2]);
-	bk_shape(v, p, 4, f, e, DS_FRAME);
+	face_shape(v, p, 4, f, e, DS_FRAME);
 }
 
 /* The color of a top face, between the sides' and the ends' */
-static unsigned bk_top_col(const view *v)
+static unsigned top_col(const view *v)
 {
 	return ui_mix(v->side, v->body, 0.5f);
 }
@@ -1116,7 +1187,7 @@ static unsigned bk_top_col(const view *v)
  * within `half`) where the tilt shows it; and the end of it facing the
  * viewer in **body**, the front where `front` says it can show, the back
  * where `back` does. */
-static void bk_block(const view *v, const float *xz, int n, float ya, float yb,
+static void block(const view *v, const float *xz, int n, float ya, float yb,
                      float zt, float half, bool front, bool back)
 {
 	SDL_FPoint p[2 * MAXP], pt[MAXP];
@@ -1131,25 +1202,25 @@ static void bk_block(const view *v, const float *xz, int n, float ya, float yb,
 	if (v->sq > 0.0f) {
 		const float q[4][3] = { { -half, ya, zt }, { half, ya, zt }, { half, yb, zt }, { -half, yb, zt } };
 
-		bk_quad(v, q, col(v, bk_top_col(v), 1.0f), col(v, v->line, 1.0f));
+		face_quad(v, q, col(v, top_col(v), 1.0f), col(v, v->line, 1.0f));
 	}
 	if ((v->cp > 0.0f && front) || (v->cp < 0.0f && back)) {
 		const float y = v->cp > 0.0f ? ya : yb;
 
 		for (i = 0; i < n; i++) pt[i] = at(v, xz[2 * i], y, xz[2 * i + 1]);
-		bk_shape(v, pt, n, col(v, v->body, 1.0f), col(v, v->line, 1.0f), DS_FRAME);
+		face_shape(v, pt, n, col(v, v->body, 1.0f), col(v, v->line, 1.0f), DS_FRAME);
 	}
 }
 
 /* How much of a lit key's halo and ring show, by how far its face turns to
  * the viewer (`facing`, the cosine): all of it from a quarter on */
-static float bk_shows(float facing)
+static float shows(float facing)
 {
 	return clampf(facing / 0.25f, 0.0f, 1.0f);
 }
 
 /* A lit key's spot about the screen points `p` reach, `vis` of it showing */
-static spot bk_spot(const view *v, int k, const SDL_FPoint *p, int n, float vis)
+static spot spot_of(const view *v, int k, const SDL_FPoint *p, int n, float vis)
 {
 	float x0 = 1e9f, x1 = -1e9f, y0 = 1e9f, y1 = -1e9f;
 	int i;
@@ -1162,12 +1233,13 @@ static spot bk_spot(const view *v, int k, const SDL_FPoint *p, int n, float vis)
 	               (x1 - x0) / 2.0f, (y1 - y0) / 2.0f, true, false };
 }
 
-/* A round key on the front at its place, `press` of the way to 92% */
-static int bk_round_pts(const view *v, int k, float press, SDL_FPoint *p)
+/* A round key on a front face at depth `y`, at its place, `press` of the
+ * way to 92% */
+static int round_pts(const view *v, int k, float press, float y, SDL_FPoint *p)
 {
 	const td_part *pa = &v->part[k];
 
-	return disc(v, 0, pa->x, BK_FRONT, pa->z, pa->r * (1.0f - 0.08f * press), p);
+	return disc(v, 0, pa->x, y, pa->z, pa->r * (1.0f - 0.08f * press), p);
 }
 
 /* F1 or F2, a pill on the front, `press` of the way to 92% */
@@ -1176,19 +1248,21 @@ static int bk_pill_pts(const view *v, int k, float press, SDL_FPoint *p)
 	const td_part *pa = &v->part[k];
 	const float q = 1.0f - 0.08f * press;
 	float ab[MAXP * 2];
-	const int n = rrect(2.0f * pa->r * q, BK_PILL_H * q, BK_PILL_H * q / 2.0f, 0.0f, 4, ab);
+	const float h = g_slab->pill_h;
+	const int n = rrect(2.0f * pa->r * q, h * q, h * q / 2.0f, 0.0f, 4, ab);
 	int i;
 
 	for (i = 0; i < n; i++) p[i] = at(v, pa->x + ab[i * 2], BK_FRONT, pa->z + ab[i * 2 + 1]);
 	return n;
 }
 
-/* The d-pad's cross, its arms `a` half wide out to `s`, as Pixel 2's dpad
- * draws its own: a pressed arm of the lit d-pad a step darker */
-static void bk_dpad(const view *v)
+/* The d-pad's cross on a front face at depth `y`, its arms `a` half wide
+ * out to its model's reach, as Pixel 2's dpad draws its own: a pressed arm
+ * of the lit d-pad a step darker */
+static void cross(const view *v, float y, float a)
 {
 	const td_part *pa = &v->part[TD_DPAD];
-	const float s = pa->r, a = BK_ARM;
+	const float s = pa->r;
 	const float X[12][2] = { { -a, s }, { a, s }, { a, a }, { s, a }, { s, -a }, { a, -a },
 	                         { a, -s }, { -a, -s }, { -a, -a }, { -s, -a }, { -s, a }, { -a, a } };
 	const float ARM[4][4][2] = {
@@ -1199,40 +1273,40 @@ static void bk_dpad(const view *v)
 	SDL_FPoint p[12];
 	int i, j;
 
-	for (i = 0; i < 12; i++) p[i] = at(v, pa->x + X[i][0], BK_FRONT, pa->z + X[i][1]);
-	bk_shape(v, p, 12, key_fill(v, TD_DPAD), key_edge(v, TD_DPAD), DS_FRAME);
+	for (i = 0; i < 12; i++) p[i] = at(v, pa->x + X[i][0], y, pa->z + X[i][1]);
+	face_shape(v, p, 12, key_fill(v, TD_DPAD), key_edge(v, TD_DPAD), DS_FRAME);
 	if (v->on[TD_DPAD] <= 0.0f) return;
 	for (i = 0; i < 4; i++) {
 		const float k = v->arm[i] * v->on[TD_DPAD];
 		SDL_FPoint q[4], in[4];
 
 		if (k <= 0.004f) continue;
-		for (j = 0; j < 4; j++) q[j] = at(v, pa->x + ARM[i][j][0], BK_FRONT, pa->z + ARM[i][j][1]);
+		for (j = 0; j < 4; j++) q[j] = at(v, pa->x + ARM[i][j][0], y, pa->z + ARM[i][j][1]);
 		offset(q, 4, -DS_FRAME / 2.0f, in);
 		fill(v->r, in, 4, col(v, v->dark ? ui_mix(v->lit, v->ink, 0.45f) : v->lit_line, k));
 	}
 }
 
-/* The mark on SELECT (a square) or START (a play triangle), pressed with
- * its key */
-static void bk_icon(const view *v, int k)
+/* The mark on SELECT (a square) or START (a play triangle) on a front face
+ * at depth `y`, `size` across, pressed with its key */
+static void icon(const view *v, int k, float y, float size)
 {
 	const td_part *pa = &v->part[k];
-	const float q = (1.0f - 0.08f * v->press[k]) * BK_ICON / 2.0f;
+	const float q = (1.0f - 0.08f * v->press[k]) * size / 2.0f;
 	const SDL_Color c = col(v, ui_mix(v->dot, v->on_accent, v->on[k]), 1.0f);
 	SDL_FPoint p[4];
 
 	if (k == TD_SELECT) {
-		p[0] = at(v, pa->x - q, BK_FRONT, pa->z - q);
-		p[1] = at(v, pa->x + q, BK_FRONT, pa->z - q);
-		p[2] = at(v, pa->x + q, BK_FRONT, pa->z + q);
-		p[3] = at(v, pa->x - q, BK_FRONT, pa->z + q);
+		p[0] = at(v, pa->x - q, y, pa->z - q);
+		p[1] = at(v, pa->x + q, y, pa->z - q);
+		p[2] = at(v, pa->x + q, y, pa->z + q);
+		p[3] = at(v, pa->x - q, y, pa->z + q);
 		fill(v->r, p, 4, c);
 	} else {
 		/* About its middle, a little right of its box's, so it looks centred */
-		p[0] = at(v, pa->x - 0.8f * q, BK_FRONT, pa->z + 1.1f * q);
-		p[1] = at(v, pa->x - 0.8f * q, BK_FRONT, pa->z - 1.1f * q);
-		p[2] = at(v, pa->x + 1.2f * q, BK_FRONT, pa->z);
+		p[0] = at(v, pa->x - 0.8f * q, y, pa->z + 1.1f * q);
+		p[1] = at(v, pa->x - 0.8f * q, y, pa->z - 1.1f * q);
+		p[2] = at(v, pa->x + 1.2f * q, y, pa->z);
 		fill(v->r, p, 3, c);
 	}
 }
@@ -1243,18 +1317,56 @@ static void bk_front_face(const view *v)
 	SDL_FPoint pt[MAXP];
 	int i, j, n;
 
-	n = front_rr(v, BK_GLASS_W, BK_GLASS_H, 0.6f, BK_GLASS_X, BK_FRONT, BK_GLASS_Z, pt);
-	bk_shape(v, pt, n, col(v, v->glass, 1.0f), col(v, 0, 0.0f), 0.0f);
-	n = front_rr(v, BK_SCREEN_W, BK_SCREEN_H, 0.3f, BK_GLASS_X, BK_FRONT, BK_GLASS_Z, pt);
-	bk_shape(v, pt, n, col(v, v->screen, 1.0f), col(v, 0, 0.0f), 0.0f);
-	for (i = 0; i < 2; i++)
-		for (j = 0; j < 2 * BK_GRILLE_N; j++) {
-			const float x = BK_GRILLE_X[i] - 3.2f + 6.4f * (float)(j % BK_GRILLE_N) / (BK_GRILLE_N - 1);
-			const float z = BK_GRILLE_Z + (j < BK_GRILLE_N ? 0.65f : -0.65f);
+	n = front_rr(v, g_slab->glass_w, g_slab->glass_h, g_slab->glass_r, g_slab->glass_x, BK_FRONT,
+	             g_slab->glass_z, pt);
+	face_shape(v, pt, n, col(v, v->glass, 1.0f), col(v, 0, 0.0f), 0.0f);
+	n = front_rr(v, g_slab->screen_w, g_slab->screen_h, 0.3f, g_slab->glass_x, BK_FRONT, g_slab->glass_z, pt);
+	face_shape(v, pt, n, col(v, v->screen, 1.0f), col(v, 0, 0.0f), 0.0f);
+	for (i = 0; g_slab->grille_n > 1 && i < 2; i++)
+		for (j = 0; j < 2 * g_slab->grille_n; j++) {
+			const int gn = g_slab->grille_n;
+			const float x = g_slab->grille_x[i] - 3.2f + 6.4f * (float)(j % gn) / (float)(gn - 1);
+			const float z = g_slab->grille_z + (j < gn ? 0.65f : -0.65f);
 
-			n = disc(v, 0, x, BK_FRONT, z, BK_DOT_R, pt);
+			n = disc(v, 0, x, BK_FRONT, z, g_slab->dot_r, pt);
 			fill(v->r, pt, n, col(v, v->mark, 1.0f));
 		}
+	for (i = 0; i < g_slab->n_slots; i++) {
+		float ab[MAXP * 2];
+		const float x = g_slab->slots[i][0], z = g_slab->slots[i][1];
+		const float h = g_slab->slot_h;
+
+		n = rrect(g_slab->slots[i][2], h, h / 2.0f, 0.0f, 4, ab);
+		for (j = 0; j < n; j++) pt[j] = at(v, x + ab[j * 2], BK_FRONT, z + ab[j * 2 + 1]);
+		face_shape(v, pt, n, col(v, v->mark, 1.0f), col(v, 0, 0.0f), 0.0f);
+	}
+	if (g_slab->mic_r > 0.0f) {
+		n = disc(v, 0, 0.0f, BK_FRONT, g_slab->mic_z, g_slab->mic_r, pt);
+		fill(v->r, pt, n, col(v, v->mark, 1.0f));
+	}
+	if (g_slab->seam_z != 0.0f) {
+		const float x = BK_W / 2.0f, z = g_slab->seam_z, h = .25f;
+		const float q[4][3] = { { -x, BK_FRONT, z - h }, { x, BK_FRONT, z - h }, { x, BK_FRONT, z + h },
+		                        { -x, BK_FRONT, z + h } };
+
+		for (j = 0; j < 4; j++) pt[j] = at(v, q[j][0], q[j][1], q[j][2]);
+		if (thinness(pt, 4) >= .4f) fill(v->r, pt, 4, col(v, v->mark, 1.0f));
+	}
+	/* The sticks: a well (a light ring standing out of the face, where the
+	 * slab has one, round the cap's dark base), and the cap in it, never
+	 * lit */
+	for (i = 0; g_slab->stick_well > 0.0f && i < 2; i++) {
+		const float x = (i ? 1.0f : -1.0f) * g_slab->stick_x, z = g_slab->stick_z;
+
+		n = disc(v, 0, x, BK_FRONT, z, g_slab->stick_well, pt);
+		if (g_slab->stick_ring > 0.0f) {
+			face_shape(v, pt, n, col(v, v->body, 1.0f), col(v, v->line, 1.0f), DS_FRAME);
+			n = disc(v, 0, x, BK_FRONT, z, g_slab->stick_well - g_slab->stick_ring, pt);
+		}
+		face_shape(v, pt, n, col(v, v->pocket, 1.0f), col(v, v->line, 1.0f), DS_FRAME);
+		n = disc(v, 0, x, BK_FRONT, z, g_slab->stick_cap, pt);
+		face_shape(v, pt, n, col(v, v->key, 1.0f), col(v, v->key_line, 1.0f), DS_FRAME);
+	}
 }
 
 /* The round keys on the front */
@@ -1265,7 +1377,7 @@ static const td_key BK_ROUND[] = { TD_A, TD_B, TD_X, TD_Y, TD_MENU, TD_SELECT, T
  * rest so its ring holds still as it presses */
 static void bk_front_spots(const view *v, spot *spots, int *ns)
 {
-	const float vis = bk_shows(v->cp);
+	const float vis = shows(v->cp);
 	SDL_FPoint pt[2 * MAXP];
 	int i, n;
 
@@ -1273,20 +1385,20 @@ static void bk_front_spots(const view *v, spot *spots, int *ns)
 		const td_part *pa = &v->part[TD_DPAD];
 
 		n = disc(v, 0, pa->x, BK_FRONT, pa->z, pa->r, pt);
-		spots[*ns] = bk_spot(v, TD_DPAD, pt, n, vis);
+		spots[*ns] = spot_of(v, TD_DPAD, pt, n, vis);
 		spots[(*ns)++].press = 0.0f;
 	}
 	for (i = 0; i < BK_NROUND; i++)
 		if (v->on[BK_ROUND[i]] > 0.0f) {
-			n = bk_round_pts(v, BK_ROUND[i], 0.0f, pt);
-			spots[(*ns)++] = bk_spot(v, BK_ROUND[i], pt, n, vis);
+			n = round_pts(v, BK_ROUND[i], 0.0f, BK_FRONT, pt);
+			spots[(*ns)++] = spot_of(v, BK_ROUND[i], pt, n, vis);
 		}
 	/* F1 and F2 lit together (the Brightness lesson): one ring round both,
 	 * as VOL's goes round both volume keys */
 	if (v->on[TD_F1] > 0.0f && v->on[TD_F2] > 0.0f) {
 		n = bk_pill_pts(v, TD_F1, 0.0f, pt);
 		n += bk_pill_pts(v, TD_F2, 0.0f, pt + n);
-		spots[*ns] = bk_spot(v, TD_F1, pt, n, vis);
+		spots[*ns] = spot_of(v, TD_F1, pt, n, vis);
 		spots[*ns].on = fmaxf(v->on[TD_F1], v->on[TD_F2]) * vis;
 		spots[(*ns)++].press = fmaxf(v->press[TD_F1], v->press[TD_F2]);
 		return;
@@ -1294,7 +1406,7 @@ static void bk_front_spots(const view *v, spot *spots, int *ns)
 	for (i = TD_F1; i <= TD_F2; i++)
 		if (v->on[i] > 0.0f) {
 			n = bk_pill_pts(v, i, 0.0f, pt);
-			spots[(*ns)++] = bk_spot(v, i, pt, n, vis);
+			spots[(*ns)++] = spot_of(v, i, pt, n, vis);
 		}
 }
 
@@ -1304,21 +1416,24 @@ static void bk_front_keys(const view *v)
 	SDL_FPoint pt[MAXP];
 	int i, n;
 
-	bk_dpad(v);
+	cross(v, BK_FRONT, g_slab->arm);
 	for (i = 0; i < BK_NROUND; i++) {
-		n = bk_round_pts(v, BK_ROUND[i], v->press[BK_ROUND[i]], pt);
-		bk_shape(v, pt, n, key_fill(v, BK_ROUND[i]), key_edge(v, BK_ROUND[i]), DS_FRAME);
+		n = round_pts(v, BK_ROUND[i], v->press[BK_ROUND[i]], BK_FRONT, pt);
+		face_shape(v, pt, n, key_fill(v, BK_ROUND[i]), key_edge(v, BK_ROUND[i]), DS_FRAME);
 	}
-	bk_icon(v, TD_SELECT);
-	bk_icon(v, TD_START);
+	if (g_slab->icon > 0.0f) {
+		icon(v, TD_SELECT, BK_FRONT, g_slab->icon);
+		icon(v, TD_START, BK_FRONT, g_slab->icon);
+	}
 	for (i = TD_F1; i <= TD_F2; i++) {
+		if (v->part[i].r <= 0.0f) continue;
 		n = bk_pill_pts(v, i, v->press[i], pt);
-		bk_shape(v, pt, n, key_fill(v, i), key_edge(v, i), DS_FRAME);
+		face_shape(v, pt, n, key_fill(v, i), key_edge(v, i), DS_FRAME);
 	}
 }
 
 /* The halos of spots `from` to `to`, under the keys they are about */
-static void bk_halos(const view *v, const spot *spots, int from, int to)
+static void halos(const view *v, const spot *spots, int from, int to)
 {
 	int i;
 
@@ -1338,18 +1453,25 @@ static int bk_side_rr(const view *v, int side, float w, float h, float y, float 
 	return n;
 }
 
-/* A volume key's + or -, on the left face, in MENU's dots' colors */
+/* Which side face a key is on: -1 the left, 1 the right, 0 neither */
+static int bk_side_of(const view *v, int k)
+{
+	return v->part[k].face == TD_FACE_LEFT ? -1 : v->part[k].face == TD_FACE_RIGHT ? 1 : 0;
+}
+
+/* A volume key's + or -, on its side face, in MENU's dots' colors */
 static void bk_vol_sign(const view *v, int k, float q)
 {
 	const td_part *pa = &v->part[k];
 	const SDL_Color c = col(v, ui_mix(v->dot, v->on_accent, v->on[k]), 1.0f);
+	const float x = (float)bk_side_of(v, k) * BK_SIDE;
 	SDL_FPoint p[MAXP];
 	float ab[MAXP * 2];
 	int bar, n, i;
 
 	for (bar = 0; bar < (k == TD_VOLUP ? 2 : 1); bar++) {
 		n = rrect(bar ? SIGN_TH * q : SIGN_L * q, bar ? SIGN_L * q : SIGN_TH * q, SIGN_TH * q / 2.0f, 0.0f, 2, ab);
-		for (i = 0; i < n; i++) p[i] = at(v, -BK_SIDE, pa->x + ab[i * 2], pa->z + ab[i * 2 + 1]);
+		for (i = 0; i < n; i++) p[i] = at(v, x, pa->x + ab[i * 2], pa->z + ab[i * 2 + 1]);
 		fill(v->r, p, n, c);
 	}
 }
@@ -1361,71 +1483,91 @@ static bool bk_side_shows(const view *v)
 	return fabsf(v->sp) > 0.05f;
 }
 
+/* POWER at `q` of its size, on its side: round (the Brick's) or a pill as
+ * the volume keys are (the R36S's) */
+static int bk_power_pts(const view *v, float q, SDL_FPoint *p)
+{
+	const td_part *pw = &v->part[TD_POWER];
+	const int side = bk_side_of(v, TD_POWER);
+
+	if (g_slab->power_pill) return bk_side_rr(v, side, g_slab->vol_w * q, 2.0f * pw->r * q, pw->x, pw->z, p);
+	return disc(v, side, (float)side * BK_SIDE, pw->x, pw->z, pw->r * q, p);
+}
+
 /* Where the lit keys of the side that shows have their halos and rings: the
- * volume keys on the left, one ring round both when both are lit (the
- * Volume lesson); POWER on the right */
+ * volume keys, one ring round both when both are lit (the Volume lesson),
+ * and POWER, on whichever sides the model has them (the Brick's volume on
+ * the left, the R36S's on the right) */
 static void bk_side_spots(const view *v, spot *spots, int *ns)
 {
-	const float vis = bk_shows(fabsf(v->sp));
+	const float vis = shows(fabsf(v->sp));
+	const int side = v->sp < 0.0f ? -1 : 1;
 	SDL_FPoint pt[MAXP];
 	int n, i;
 
 	if (!bk_side_shows(v)) return;
-	if (v->sp < 0.0f) {
+	if (bk_side_of(v, TD_VOLUP) == side) {
 		const td_part *up = &v->part[TD_VOLUP], *dn = &v->part[TD_VOLDN];
 
 		if (v->on[TD_VOLUP] > 0.0f && v->on[TD_VOLDN] > 0.0f) {
 			const float z0 = dn->z - dn->r, z1 = up->z + up->r;
 
-			n = bk_side_rr(v, -1, BK_VOL_W, z1 - z0, up->x, (z0 + z1) / 2.0f, pt);
-			spots[*ns] = bk_spot(v, TD_VOLUP, pt, n, vis);
+			n = bk_side_rr(v, side, g_slab->vol_w, z1 - z0, up->x, (z0 + z1) / 2.0f, pt);
+			spots[*ns] = spot_of(v, TD_VOLUP, pt, n, vis);
 			spots[*ns].on = fmaxf(v->on[TD_VOLUP], v->on[TD_VOLDN]) * vis;
 			spots[(*ns)++].press = fmaxf(v->press[TD_VOLUP], v->press[TD_VOLDN]);
-			return;
+		} else {
+			for (i = TD_VOLUP; i <= TD_VOLDN; i++)
+				if (v->on[i] > 0.0f) {
+					const td_part *pa = &v->part[i];
+
+					n = bk_side_rr(v, side, g_slab->vol_w, 2.0f * pa->r, pa->x, pa->z, pt);
+					spots[(*ns)++] = spot_of(v, i, pt, n, vis);
+				}
 		}
-		for (i = TD_VOLUP; i <= TD_VOLDN; i++)
-			if (v->on[i] > 0.0f) {
-				const td_part *pa = &v->part[i];
-
-				n = bk_side_rr(v, -1, BK_VOL_W, 2.0f * pa->r, pa->x, pa->z, pt);
-				spots[(*ns)++] = bk_spot(v, i, pt, n, vis);
-			}
-	} else if (v->on[TD_POWER] > 0.0f) {
-		const td_part *pw = &v->part[TD_POWER];
-
-		n = disc(v, 1, BK_SIDE, pw->x, pw->z, pw->r, pt);
-		spots[(*ns)++] = bk_spot(v, TD_POWER, pt, n, vis);
+	}
+	if (bk_side_of(v, TD_POWER) == side && v->on[TD_POWER] > 0.0f) {
+		n = bk_power_pts(v, 1.0f, pt);
+		spots[(*ns)++] = spot_of(v, TD_POWER, pt, n, vis);
 	}
 }
 
-/* The side that shows, its keys on its own plane: on the left the volume
- * keys with their + and -, on the right the FN slider and POWER */
+/* The side that shows, its keys on its own plane: the volume keys with
+ * their + and -; POWER, and what is drawn by it and never lit, the Brick's
+ * FN slider above it, the R36S's reset hole under it */
 static void bk_side_keys(const view *v)
 {
+	const int side = v->sp < 0.0f ? -1 : 1;
 	SDL_FPoint pt[MAXP];
 	int n, i;
 
 	if (!bk_side_shows(v)) return;
-	if (v->sp < 0.0f) {
+	if (bk_side_of(v, TD_VOLUP) == side)
 		for (i = TD_VOLUP; i <= TD_VOLDN; i++) {
 			const td_part *pa = &v->part[i];
 			const float q = 1.0f - 0.08f * v->press[i];
 
-			n = bk_side_rr(v, -1, BK_VOL_W * q, 2.0f * pa->r * q, pa->x, pa->z, pt);
-			bk_shape(v, pt, n, key_fill(v, i), key_edge(v, i), DS_FRAME);
+			n = bk_side_rr(v, side, g_slab->vol_w * q, 2.0f * pa->r * q, pa->x, pa->z, pt);
+			face_shape(v, pt, n, key_fill(v, i), key_edge(v, i), DS_FRAME);
 			if (thinness(pt, n) >= DS_FRAME) bk_vol_sign(v, i, q);
 		}
-	} else {
+	if (bk_side_of(v, TD_POWER) == side) {
 		const td_part *pw = &v->part[TD_POWER];
-		const float q = 1.0f - 0.08f * v->press[TD_POWER];
+		const float l = g_slab->fn_l, w = g_slab->fn_w;
 
-		/* The FN slider: its slot, and its knob at the top of it */
-		n = bk_side_rr(v, 1, BK_FN_W, BK_FN_L, pw->x, BK_FN_Z, pt);
-		bk_shape(v, pt, n, col(v, v->glass, 1.0f), col(v, 0, 0.0f), 0.0f);
-		n = bk_side_rr(v, 1, BK_FN_W - 0.8f, BK_FN_L / 2.0f, pw->x, BK_FN_Z + BK_FN_L / 4.0f - 0.4f, pt);
-		bk_shape(v, pt, n, col(v, v->key, 1.0f), col(v, v->key_line, 1.0f), DS_FRAME);
-		n = disc(v, 1, BK_SIDE, pw->x, pw->z, pw->r * q, pt);
-		bk_shape(v, pt, n, key_fill(v, TD_POWER), key_edge(v, TD_POWER), DS_FRAME);
+		if (l > 0.0f) {
+			/* The FN slider: its slot, and its knob at the top of it */
+			n = bk_side_rr(v, side, w, l, pw->x, g_slab->fn_z, pt);
+			face_shape(v, pt, n, col(v, v->glass, 1.0f), col(v, 0, 0.0f), 0.0f);
+			n = bk_side_rr(v, side, w - 0.8f, l / 2.0f, pw->x, g_slab->fn_z + l / 4.0f - 0.4f, pt);
+			face_shape(v, pt, n, col(v, v->key, 1.0f), col(v, v->key_line, 1.0f), DS_FRAME);
+		}
+		if (g_slab->reset_r > 0.0f) {
+			n = disc(v, side, (float)side * BK_SIDE, pw->x, g_slab->reset_z, g_slab->reset_r, pt);
+			face_shape(v, pt, n, col(v, v->glass, 1.0f), col(v, 0, 0.0f), 0.0f);
+		}
+		n = bk_power_pts(v, 1.0f - 0.08f * v->press[TD_POWER], pt);
+		face_shape(v, pt, n, key_fill(v, TD_POWER), key_edge(v, TD_POWER), DS_FRAME);
 	}
 }
 
@@ -1443,17 +1585,42 @@ static void bk_screws(const view *v, float y, float x, const float *zs, int n)
 		}
 }
 
+/* The back's own marks, where the slab has them: the panel on the thin
+ * part's back (`thin`), or the ribs across the thick part's */
+static void bk_back_marks(const view *v, bool thin)
+{
+	SDL_FPoint p[MAXP];
+	int i, j, n;
+
+	if (thin && g_slab->panel_w > 0.0f) {
+		float ab[MAXP * 2];
+
+		n = rrect(g_slab->panel_w, g_slab->panel_h, 2.0f, 0.0f, 4, ab);
+		for (j = 0; j < n; j++) p[j] = at(v, ab[j * 2], BK_THIN, g_slab->panel_z + ab[j * 2 + 1]);
+		face_shape(v, p, n, col(v, v->body, 1.0f), col(v, v->line, 1.0f), DS_FRAME);
+	}
+	for (i = 0; !thin && i < g_slab->rib_n; i++) {
+		const float x = g_slab->rib_w / 2.0f, z = g_slab->rib_z - g_slab->rib_gap * (float)i, h = .45f;
+		const float q[4][3] = { { -x, BK_BACK, z - h }, { x, BK_BACK, z - h }, { x, BK_BACK, z + h },
+		                        { -x, BK_BACK, z + h } };
+
+		for (j = 0; j < 4; j++) p[j] = at(v, q[j][0], q[j][1], q[j][2]);
+		if (thinness(p, 4) >= .5f) fill(v->r, p, 4, col(v, v->mark, 1.0f));
+	}
+}
+
 /* The light bar along the top edge at the back, a mark as the Pixel 2's
  * light lenses are: on the top where the tilt shows it, and over the back's
  * top edge where the back shows */
 static void bk_bar(const view *v)
 {
-	const float x = BK_BAR_W / 2.0f, y0 = BK_THIN - 3.4f, y1 = BK_THIN - 0.4f, z = BK_TOP - 1.0f;
+	const float x = g_slab->bar_w / 2.0f, y0 = BK_THIN - 3.4f, y1 = BK_THIN - 0.4f, z = BK_TOP - 1.0f;
 	const float top[4][3] = { { -x, y0, BK_TOP }, { x, y0, BK_TOP }, { x, y1, BK_TOP }, { -x, y1, BK_TOP } };
 	const float back[4][3] = { { -x, BK_THIN, z }, { x, BK_THIN, z }, { x, BK_THIN, BK_TOP }, { -x, BK_THIN, BK_TOP } };
 	SDL_FPoint p[4];
 	int i;
 
+	if (x <= 0.0f) return;
 	if (v->sq > 0.0f) {
 		for (i = 0; i < 4; i++) p[i] = at(v, top[i][0], top[i][1], top[i][2]);
 		if (thinness(p, 4) >= 1.0f) fill(v->r, p, 4, col(v, v->mark, 1.0f));
@@ -1472,7 +1639,7 @@ static void bk_bar(const view *v)
 static int bk_ledge_block(const view *v, float x0, float x1, float top, SDL_Color f, SDL_Color tf,
                           SDL_Color e, SDL_FPoint *pts, bool draw)
 {
-	const float y0 = BK_KEY_FRONT, y1 = BK_BACK;
+	const float y0 = BK_KEY_FRONT, y1 = BK_BACK + g_slab->key_out;
 	const float lo0 = x0 <= -BK_W / 2.0f + 0.01f ? BK_KEY_LOW : BK_LEDGE;
 	const float lo1 = x1 >= BK_W / 2.0f - 0.01f ? BK_KEY_LOW : BK_LEDGE;
 	int n = 0, i;
@@ -1480,12 +1647,12 @@ static int bk_ledge_block(const view *v, float x0, float x1, float top, SDL_Colo
 	if (v->cp < 0.0f) {
 		const float q[4][3] = { { x0, y1, BK_KEY_LOW }, { x1, y1, BK_KEY_LOW }, { x1, y1, top }, { x0, y1, top } };
 
-		if (draw) bk_quad(v, q, f, e);
+		if (draw) face_quad(v, q, f, e);
 		for (i = 0; i < 4; i++) pts[n++] = at(v, q[i][0], q[i][1], q[i][2]);
 	} else if (v->cp > 0.0f && top > BK_LEDGE) {
 		const float q[4][3] = { { x0, y0, BK_LEDGE }, { x1, y0, BK_LEDGE }, { x1, y0, top }, { x0, y0, top } };
 
-		if (draw) bk_quad(v, q, f, e);
+		if (draw) face_quad(v, q, f, e);
 		for (i = 0; i < 4; i++) pts[n++] = at(v, q[i][0], q[i][1], q[i][2]);
 	}
 	if (v->sp != 0.0f) {
@@ -1494,14 +1661,14 @@ static int bk_ledge_block(const view *v, float x0, float x1, float top, SDL_Colo
 		if (top > lo) {
 			const float q[4][3] = { { x, y0, lo }, { x, y1, lo }, { x, y1, top }, { x, y0, top } };
 
-			if (draw) bk_quad(v, q, f, e);
+			if (draw) face_quad(v, q, f, e);
 			for (i = 0; i < 4; i++) pts[n++] = at(v, q[i][0], q[i][1], q[i][2]);
 		}
 	}
 	if (v->sq > 0.0f) {
 		const float q[4][3] = { { x0, y0, top }, { x1, y0, top }, { x1, y1, top }, { x0, y1, top } };
 
-		if (draw) bk_quad(v, q, tf, e);
+		if (draw) face_quad(v, q, tf, e);
 		for (i = 0; i < 4; i++) pts[n++] = at(v, q[i][0], q[i][1], q[i][2]);
 	}
 	return n;
@@ -1522,7 +1689,7 @@ static void bk_ledge(const view *v, spot *spots, int *ns)
 {
 	/* Left to right: L1, L2, the housing (TD_KEYS), R2, R1 */
 	static const int ORDER[5] = { TD_L1, TD_L2, TD_KEYS, TD_R2, TD_R1 };
-	const float vis = bk_shows(-v->cp);
+	const float vis = shows(-v->cp);
 	SDL_FPoint pt[24];
 	int i, n, first = *ns;
 
@@ -1534,26 +1701,28 @@ static void bk_ledge(const view *v, spot *spots, int *ns)
 		bk_shoulder_x(v, k, &x0, &x1);
 		/* About the key at rest, so the ring holds still as it presses */
 		n = bk_ledge_block(v, x0, x1, v->part[k].z, key_fill(v, k), key_fill(v, k), key_edge(v, k), pt, false);
-		if (n) spots[(*ns)++] = bk_spot(v, k, pt, n, vis);
+		if (n) spots[(*ns)++] = spot_of(v, k, pt, n, vis);
 	}
-	bk_halos(v, spots, first, *ns);
+	halos(v, spots, first, *ns);
 	for (i = 0; i < 5; i++) {
 		const int k = ORDER[v->sp < 0.0f ? 4 - i : i];
 
 		if (k == TD_KEYS) {
 			const SDL_Color line = col(v, v->line, 1.0f);
+			const float uw = g_slab->usb_w;
 
-			bk_ledge_block(v, -BK_USB_W / 2.0f, BK_USB_W / 2.0f, BK_USB_TOP, col(v, v->body, 1.0f),
-			               col(v, bk_top_col(v), 1.0f), line, pt, true);
+			if (uw <= 0.0f) continue;
+			bk_ledge_block(v, -uw / 2.0f, uw / 2.0f, BK_USB_TOP, col(v, v->body, 1.0f),
+			               col(v, top_col(v), 1.0f), line, pt, true);
 			if (v->cp < 0.0f) {
 				float ab[MAXP * 2];
 				SDL_FPoint p[MAXP];
-				const int m = rrect(BK_PORT_W, BK_PORT_H, BK_PORT_H / 2.0f, 0.0f, 4, ab);
+				const int m = rrect(g_slab->port_w, g_slab->port_h, g_slab->port_h / 2.0f, 0.0f, 4, ab);
 				int j;
 
 				for (j = 0; j < m; j++)
 					p[j] = at(v, ab[j * 2], BK_BACK, (BK_KEY_LOW + BK_LEDGE) / 2.0f + ab[j * 2 + 1]);
-				bk_shape(v, p, m, col(v, v->glass, 1.0f), col(v, 0, 0.0f), 0.0f);
+				face_shape(v, p, m, col(v, v->glass, 1.0f), col(v, 0, 0.0f), 0.0f);
 			}
 		} else {
 			float x0, x1;
@@ -1565,54 +1734,411 @@ static void bk_ledge(const view *v, spot *spots, int *ns)
 	}
 }
 
-/* The Brick as `v` has it, into v->r: the farther block first, each one's
- * keys after it, the rings over everything */
-static void brick_draw(view *v)
+/* A slab handheld as `v` has it, in the measures of `sl`, into v->r: the
+ * farther block first, each one's keys after it, the rings over everything */
+static void slab_draw(view *v, const slab *sl)
 {
 	float full[MAXP], low[MAXP];
-	const int nf = bk_outline(BK_TOP, BK_RT, full), nl = bk_outline(BK_LEDGE, 0.0f, low);
 	spot spots[TD_KEYS + 2];
-	int ns = 0, first, i;
+	int nf, nl, ns = 0, first, i;
+
+	g_slab = sl;
+	nf = bk_outline(BK_TOP, BK_RT, full);
+	nl = bk_outline(BK_LEDGE, 0.0f, low);
 
 	if (v->cp >= 0.0f) {
 		/* From the front: the thick part's back and the ledge behind the
 		 * thin part, which covers them but at the sides; then the thin
 		 * part, its front's and its side's lit keys' halos, their keys */
-		bk_block(v, low, nl, BK_THIN, BK_BACK, BK_LEDGE, BK_W / 2.0f, false, true);
+		block(v, low, nl, BK_THIN, BK_BACK, BK_LEDGE, BK_W / 2.0f, false, true);
 		bk_ledge(v, spots, &ns);
 		first = ns;
-		bk_block(v, full, nf, BK_FRONT, BK_THIN, BK_TOP, BK_W / 2.0f - BK_RT, true, true);
+		block(v, full, nf, BK_FRONT, BK_THIN, BK_TOP, BK_W / 2.0f - BK_RT, true, true);
 		bk_bar(v);
 		if (v->cp > 0.0f) {
 			bk_front_face(v);
 			bk_front_spots(v, spots, &ns);
 		}
 		bk_side_spots(v, spots, &ns);
-		bk_halos(v, spots, first, ns);
+		halos(v, spots, first, ns);
 		if (v->cp > 0.0f) bk_front_keys(v);
 		bk_side_keys(v);
 	} else {
 		/* From the back: the thin part, its side's keys, then the thick
 		 * part in front of it, its ledge and the shoulders on it */
-		static const float THIN_Z[1] = { BK_TOP - 4.5f }, THICK_Z[2] = { 3.0f, -BK_TOP + 4.5f };
+		const float THIN_Z[1] = { BK_TOP - 4.5f }, THICK_Z[2] = { 3.0f, -BK_TOP + 4.5f };
 
-		bk_block(v, full, nf, BK_FRONT, BK_THIN, BK_TOP, BK_W / 2.0f - BK_RT, true, true);
+		block(v, full, nf, BK_FRONT, BK_THIN, BK_TOP, BK_W / 2.0f - BK_RT, true, true);
 		bk_bar(v);
 		bk_screws(v, BK_THIN, BK_W / 2.0f - 4.5f, THIN_Z, 1);
+		bk_back_marks(v, true);
 		bk_side_spots(v, spots, &ns);
-		bk_halos(v, spots, 0, ns);
+		halos(v, spots, 0, ns);
 		bk_side_keys(v);
-		bk_block(v, low, nl, BK_THIN, BK_BACK, BK_LEDGE, BK_W / 2.0f, false, true);
+		block(v, low, nl, BK_THIN, BK_BACK, BK_LEDGE, BK_W / 2.0f, false, true);
 		bk_screws(v, BK_BACK, BK_W / 2.0f - 4.5f, THICK_Z, 2);
+		bk_back_marks(v, false);
 		bk_ledge(v, spots, &ns);
 	}
 	for (i = 0; i < ns; i++)
 		if (spots[i].ring) ring(v, spots[i].on, spots[i].cx, spots[i].cy, spots[i].rx, spots[i].ry);
 }
 
+/* ---- the TrimUI Smart Pro -------------------------------------------------------- */
+
+/* The TrimUI Smart Pro's art (TD_ART_SMARTPRO), its keys where its model has
+ * them (src/device/smartpro_model.c), in its millimetres: x right, z up, y
+ * deep, from the body's middle. One block, 188 x 80 and 17 deep, its ends
+ * rounded: on its front the glass and the picture, the d-pad, A B X Y, the
+ * two sticks in their light rings, MENU, SELECT and START, the speaker
+ * grilles; on its top edge L and R toward the front with L2 and R2 behind
+ * them, POWER, the USB-C port and the volume keys. The sticks are no keys
+ * of the launcher's: drawn, never lit. Original art from the published
+ * outline (188 x 80 x 17) and the places in TrimUI's manual drawing; no
+ * maker's mark (MENU and the d-pad's middle are plain). */
+#define SP_W        188.0f
+#define SP_TOP      40.0f
+#define SP_R        27.0f               /* the ends' corners */
+#define SP_FRONT    -8.5f
+#define SP_BACK     8.5f
+/* The glass and the lit picture in it */
+#define SP_GLASS_W  122.1f
+#define SP_GLASS_H  69.1f
+#define SP_GLASS_Z  0.8f
+#define SP_SCREEN_W 113.3f
+#define SP_SCREEN_H 63.7f
+/* The d-pad's arms, half as wide as they are (7.0); SELECT's and START's
+ * marks */
+#define SP_ARM      3.5f
+#define SP_ICON     1.7f
+/* The sticks: a light ring (the mood light), the well in it, the cap */
+static const float SP_STICK_X[2] = { -73.0f, 72.9f };
+#define SP_STICK_Z  -12.2f
+#define SP_RING_OUT 9.6f
+#define SP_RING_IN  8.0f
+#define SP_CAP      4.8f
+/* The speaker grilles, two rows of six dots, and the light between them */
+static const float SP_GRILLE_X[2] = { -56.2f, 56.4f };
+#define SP_GRILLE_Z -35.8f
+#define SP_GRILLE_N 6
+#define SP_DOT_R    0.35f
+/* The keys on the top edge, as bands across its depth: L and R toward the
+ * front, L2 and R2 behind them, POWER, the port and the volume keys in the
+ * middle; a press takes a top this far down */
+#define SP_ROW_Y0   -5.4f
+#define SP_ROW_Y1   0.1f
+#define SP_REAR_Y0  2.7f
+#define SP_REAR_Y1  SP_BACK
+#define SP_MID_Y0   -3.8f
+#define SP_MID_Y1   1.0f
+#define SP_KEY_PRESS 0.6f
+#define SP_PORT_W   8.8f
+#define SP_PORT_H   2.6f
+
+/* The front's outline in (x, z), counterclockwise from the bottom right, all
+ * four corners SP_R. Into `xz`, its count. */
+static int sp_outline(float *xz)
+{
+	int n = 0, q, i;
+
+	for (q = 0; q < 4; q++) {
+		const bool top = q == 1 || q == 2;
+		const float cx = q < 2 ? SP_W / 2.0f - SP_R : -SP_W / 2.0f + SP_R;
+		const float cz = top ? SP_TOP - SP_R : -SP_TOP + SP_R;
+
+		for (i = 0; i <= 8; i++) {
+			const float a = (float)M_PI / 2.0f * ((float)(q - 1) + (float)i / 8.0f);
+
+			xz[n * 2] = cx + cosf(a) * SP_R;
+			xz[n * 2 + 1] = cz + sinf(a) * SP_R;
+			n++;
+		}
+	}
+	return n;
+}
+
+/* The glass, the picture, the speaker grilles and the light between them */
+static void sp_front_face(const view *v)
+{
+	SDL_FPoint pt[MAXP];
+	int i, j, n;
+
+	n = front_rr(v, SP_GLASS_W, SP_GLASS_H, 1.0f, 0.0f, SP_FRONT, SP_GLASS_Z, pt);
+	face_shape(v, pt, n, col(v, v->glass, 1.0f), col(v, 0, 0.0f), 0.0f);
+	n = front_rr(v, SP_SCREEN_W, SP_SCREEN_H, 0.4f, 0.0f, SP_FRONT, SP_GLASS_Z, pt);
+	face_shape(v, pt, n, col(v, v->screen, 1.0f), col(v, 0, 0.0f), 0.0f);
+	for (i = 0; i < 2; i++)
+		for (j = 0; j < 2 * SP_GRILLE_N; j++) {
+			const float x = SP_GRILLE_X[i] - 3.6f + 7.2f * (float)(j % SP_GRILLE_N) / (SP_GRILLE_N - 1);
+			const float z = SP_GRILLE_Z + (j < SP_GRILLE_N ? 0.6f : -0.6f);
+
+			n = disc(v, 0, x, SP_FRONT, z, SP_DOT_R, pt);
+			fill(v->r, pt, n, col(v, v->mark, 1.0f));
+		}
+	n = disc(v, 0, 0.0f, SP_FRONT, SP_GRILLE_Z, 0.8f, pt);
+	fill(v->r, pt, n, col(v, v->mark, 1.0f));
+}
+
+/* A stick: its light ring, the well, the cap; or, with `cap_only`, the cap
+ * alone, over the keys */
+static void sp_stick(const view *v, float x, bool cap_only)
+{
+	SDL_FPoint pt[MAXP];
+	int n;
+
+	if (!cap_only) {
+		n = disc(v, 0, x, SP_FRONT, SP_STICK_Z, SP_RING_OUT, pt);
+		face_shape(v, pt, n, col(v, v->mark, 1.0f), col(v, v->line, 1.0f), DS_FRAME);
+		n = disc(v, 0, x, SP_FRONT, SP_STICK_Z, SP_RING_IN, pt);
+		face_shape(v, pt, n, col(v, v->pocket, 1.0f), col(v, v->line, 1.0f), DS_FRAME);
+		return;
+	}
+	n = disc(v, 0, x, SP_FRONT - 1.0f, SP_STICK_Z, SP_CAP, pt);
+	face_shape(v, pt, n, col(v, v->key, 1.0f), col(v, v->key_line, 1.0f), DS_FRAME);
+}
+
+/* The round keys on the front */
+static const td_key SP_ROUND[] = { TD_A, TD_B, TD_X, TD_Y, TD_MENU, TD_SELECT, TD_START };
+#define SP_NROUND ((int)(sizeof SP_ROUND / sizeof SP_ROUND[0]))
+
+/* Where the front's lit keys' halos and rings go, about each key at rest */
+static void sp_front_spots(const view *v, spot *spots, int *ns)
+{
+	const float vis = shows(v->cp);
+	SDL_FPoint pt[MAXP];
+	int i, n;
+
+	if (v->on[TD_DPAD] > 0.0f) {
+		const td_part *pa = &v->part[TD_DPAD];
+
+		n = disc(v, 0, pa->x, SP_FRONT, pa->z, pa->r, pt);
+		spots[*ns] = spot_of(v, TD_DPAD, pt, n, vis);
+		spots[(*ns)++].press = 0.0f;
+	}
+	for (i = 0; i < SP_NROUND; i++)
+		if (v->on[SP_ROUND[i]] > 0.0f) {
+			n = round_pts(v, SP_ROUND[i], 0.0f, SP_FRONT, pt);
+			spots[(*ns)++] = spot_of(v, SP_ROUND[i], pt, n, vis);
+		}
+}
+
+/* The front's keys, and the sticks' caps */
+static void sp_front_keys(const view *v)
+{
+	SDL_FPoint pt[MAXP];
+	int i, n;
+
+	cross(v, SP_FRONT, SP_ARM);
+	for (i = 0; i < SP_NROUND; i++) {
+		n = round_pts(v, SP_ROUND[i], v->press[SP_ROUND[i]], SP_FRONT, pt);
+		face_shape(v, pt, n, key_fill(v, SP_ROUND[i]), key_edge(v, SP_ROUND[i]), DS_FRAME);
+	}
+	icon(v, TD_SELECT, SP_FRONT, SP_ICON);
+	icon(v, TD_START, SP_FRONT, SP_ICON);
+	for (i = 0; i < 2; i++) sp_stick(v, SP_STICK_X[i], true);
+}
+
+/* A key's band across the top edge's depth (TD_KEYS: the USB-C port's) */
+static void sp_band(int k, float *y0, float *y1)
+{
+	const bool rear = k == TD_L2 || k == TD_R2, row = k == TD_L1 || k == TD_R1;
+
+	*y0 = rear ? SP_REAR_Y0 : row ? SP_ROW_Y0 : SP_MID_Y0;
+	*y1 = rear ? SP_REAR_Y1 : row ? SP_ROW_Y1 : SP_MID_Y1;
+}
+
+/* The outline's top from x0 to x1, left to right: the flat top, and where
+ * it goes past it the rounded corner down the side, as (x, z) with the way
+ * out of the body at each (nx, nz). A shoulder wraps round its corner so.
+ * Into the arrays, the count (SP_PATH at most). */
+#define SP_PATH 24
+static int sp_path(float x0, float x1, float *x, float *z, float *nx, float *nz)
+{
+	const float flat = SP_W / 2.0f - SP_R, cz = SP_TOP - SP_R;
+	int n = 0;
+
+	/* The points along it: the ends, and the corners' every 6 degrees, an
+	 * angle on the left corner from 90 (its top) to 180 (the side), on the
+	 * right from 90 to 0 */
+	if (x0 < -flat) {
+		const float a0 = (float)M_PI - acosf(clampf((-x0 - flat) / SP_R, 0.0f, 1.0f));
+		float a;
+
+		for (a = a0; a > (float)M_PI / 2.0f + 0.01f && n < SP_PATH - 4; a -= 6.0f * (float)M_PI / 180.0f) {
+			x[n] = -flat + cosf(a) * SP_R;
+			z[n] = cz + sinf(a) * SP_R;
+			nx[n] = cosf(a);
+			nz[n] = sinf(a);
+			n++;
+		}
+	}
+	x[n] = fmaxf(x0, -flat);
+	z[n] = SP_TOP;
+	nx[n] = 0.0f;
+	nz[n] = 1.0f;
+	n++;
+	x[n] = fminf(x1, flat);
+	z[n] = SP_TOP;
+	nx[n] = 0.0f;
+	nz[n] = 1.0f;
+	n++;
+	if (x1 > flat) {
+		const float a1 = acosf(clampf((x1 - flat) / SP_R, 0.0f, 1.0f));
+		float a;
+
+		for (a = (float)M_PI / 2.0f - 6.0f * (float)M_PI / 180.0f; a > a1 && n < SP_PATH - 1;
+		     a -= 6.0f * (float)M_PI / 180.0f) {
+			x[n] = flat + cosf(a) * SP_R;
+			z[n] = cz + sinf(a) * SP_R;
+			nx[n] = cosf(a);
+			nz[n] = sinf(a);
+			n++;
+		}
+		x[n] = flat + cosf(a1) * SP_R;
+		z[n] = cz + sinf(a1) * SP_R;
+		nx[n] = cosf(a1);
+		nz[n] = sinf(a1);
+		n++;
+	}
+	return n;
+}
+
+/* A key on the top edge from x0 to x1, across y0 to y1, standing `rise`
+ * out of the outline and round its corner: its outer face a quad a step of
+ * the path, each drawn where it faces the viewer (on the screen, its corners
+ * go round the right way), its two ends the same, and its front where the
+ * viewer is in front. In `f` and `e`, where `draw` says to draw them; their
+ * points into `pts`, their count. */
+static int sp_top_key(const view *v, float x0, float x1, float y0, float y1, float rise,
+                      SDL_Color f, SDL_Color e, SDL_FPoint *pts, int room, bool draw)
+{
+	float x[SP_PATH], z[SP_PATH], nx[SP_PATH], nz[SP_PATH];
+	const int n = sp_path(x0, x1, x, z, nx, nz);
+	SDL_FPoint q[4], face[2 * SP_PATH];
+	int i, j, np = 0;
+
+	if (rise <= 0.0f || n < 2) return 0;
+	/* The outer face's steps that face the viewer, a run of them on a
+	 * convex path: drawn as one shape, its near edge and its far edge */
+	{
+		int lo = -1, hi = -1, m = 0;
+
+		for (i = 0; i + 1 < n; i++) {
+			q[0] = at(v, x[i] + nx[i] * rise, y0, z[i] + nz[i] * rise);
+			q[1] = at(v, x[i + 1] + nx[i + 1] * rise, y0, z[i + 1] + nz[i + 1] * rise);
+			q[2] = at(v, x[i + 1] + nx[i + 1] * rise, y1, z[i + 1] + nz[i + 1] * rise);
+			q[3] = at(v, x[i] + nx[i] * rise, y1, z[i] + nz[i] * rise);
+			if (area2(q, 4) >= 0.0f) continue;
+			if (lo < 0) lo = i;
+			hi = i + 1;
+		}
+		if (lo >= 0) {
+			for (i = lo; i <= hi; i++) face[m++] = at(v, x[i] + nx[i] * rise, y0, z[i] + nz[i] * rise);
+			for (i = hi; i >= lo; i--) face[m++] = at(v, x[i] + nx[i] * rise, y1, z[i] + nz[i] * rise);
+			if (draw && thinness(face, m) < DS_FRAME) fill_any(v->r, face, m, e);
+			else if (draw) shape_any(v, face, m, f, e, DS_FRAME);
+			for (j = 0; j < m && np < room; j++) pts[np++] = face[j];
+		}
+	}
+	/* Its ends, from the outline out: the left end faces left, the right
+	 * right */
+	for (i = 0; i < 2; i++) {
+		const int at_i = i ? n - 1 : 0;
+		const float ox = x[at_i] + nx[at_i] * rise, oz = z[at_i] + nz[at_i] * rise;
+
+		q[0] = at(v, x[at_i], y0, z[at_i]);
+		q[1] = at(v, ox, y0, oz);
+		q[2] = at(v, ox, y1, oz);
+		q[3] = at(v, x[at_i], y1, z[at_i]);
+		if ((area2(q, 4) < 0.0f) != (i == 0)) continue;
+		if (draw) face_shape(v, q, 4, f, e, DS_FRAME);
+		for (j = 0; j < 4 && np < room; j++) pts[np++] = q[j];
+	}
+	if (v->cp != 0.0f) {
+		const float y = v->cp > 0.0f ? y0 : y1;
+
+		for (i = 0; i < n; i++) face[i] = at(v, x[i] + nx[i] * rise, y, z[i] + nz[i] * rise);
+		for (i = 0; i < n; i++) face[n + i] = at(v, x[n - 1 - i], y, z[n - 1 - i]);
+		/* A band round the corner, concave: thinner than its edge, all edge */
+		if (draw && thinness(face, 2 * n) < DS_FRAME) fill_any(v->r, face, 2 * n, e);
+		else if (draw) shape_any(v, face, 2 * n, f, e, DS_FRAME);
+		for (j = 0; j < 2 * n && np < room; j++) pts[np++] = face[j];
+	}
+	return np;
+}
+
+/* The top edge's keys, the rear row first, then the middle and the front
+ * row; the lit ones' halos over the body first. And the USB-C port, where
+ * the tilt shows the top. */
+static void sp_top(const view *v, spot *spots, int *ns)
+{
+	static const int ORDER[9] = { TD_L2, TD_R2, TD_POWER, TD_VOLDN, TD_VOLUP, TD_KEYS, TD_L1, TD_R1, -1 };
+	const float vis = v->sq > 0.0f ? 1.0f : 0.6f;
+	SDL_FPoint pt[4 * SP_PATH + 8];
+	const int room = (int)(sizeof pt / sizeof pt[0]);
+	int i, n, first = *ns;
+
+	for (i = 0; ORDER[i] >= 0; i++) {
+		const int k = ORDER[i];
+		const td_part *pa = &v->part[k];
+		float y0, y1;
+
+		if (k == TD_KEYS || v->on[k] <= 0.0f || pa->r <= 0.0f) continue;
+		sp_band(k, &y0, &y1);
+		/* About the key at rest, so the ring holds still as it presses */
+		n = sp_top_key(v, pa->x - pa->r, pa->x + pa->r, y0, y1, pa->z - SP_TOP, key_fill(v, k),
+		               key_edge(v, k), pt, room, false);
+		if (n) spots[(*ns)++] = spot_of(v, k, pt, n, vis);
+	}
+	halos(v, spots, first, *ns);
+	if (v->sq > 0.0f) {
+		float ab[MAXP * 2];
+		SDL_FPoint p[MAXP];
+		const int m = rrect(SP_PORT_W, SP_PORT_H, SP_PORT_H / 2.0f, 0.0f, 4, ab);
+		int j;
+
+		for (j = 0; j < m; j++)
+			p[j] = at(v, ab[j * 2], (SP_MID_Y0 + SP_MID_Y1) / 2.0f + ab[j * 2 + 1], SP_TOP);
+		face_shape(v, p, m, col(v, v->glass, 1.0f), col(v, 0, 0.0f), 0.0f);
+	}
+	for (i = 0; ORDER[i] >= 0; i++) {
+		const int k = ORDER[i];
+		const td_part *pa = &v->part[k];
+		float y0, y1;
+
+		if (k == TD_KEYS || pa->r <= 0.0f) continue;
+		sp_band(k, &y0, &y1);
+		sp_top_key(v, pa->x - pa->r, pa->x + pa->r, y0, y1, pa->z - SP_TOP - SP_KEY_PRESS * v->press[k],
+		           key_fill(v, k), key_edge(v, k), pt, room, true);
+	}
+}
+
+/* The Smart Pro as `v` has it, into v->r: the body, its front, the lit
+ * keys' halos, the keys, the top edge's keys, the rings over everything */
+static void smartpro_draw(view *v)
+{
+	float out[MAXP];
+	const int n = sp_outline(out);
+	spot spots[TD_KEYS + 2];
+	int ns = 0, i;
+
+	block(v, out, n, SP_FRONT, SP_BACK, SP_TOP, SP_W / 2.0f - SP_R, true, true);
+	if (v->cp > 0.0f) {
+		sp_front_face(v);
+		for (i = 0; i < 2; i++) sp_stick(v, SP_STICK_X[i], false);
+		sp_front_spots(v, spots, &ns);
+		halos(v, spots, 0, ns);
+		sp_front_keys(v);
+	}
+	sp_top(v, spots, &ns);
+	for (i = 0; i < ns; i++)
+		if (spots[i].ring) ring(v, spots[i].on, spots[i].cx, spots[i].cy, spots[i].rx, spots[i].ry);
+}
+
 /* The handheld as `v` has it, into what `r` draws to: its model's art (the
- * Pixel 2's here, the Brick's in brick_draw), its keys where its model has
- * them (none without a model) */
+ * Pixel 2's here, the slab handhelds' (the Brick and the R36S) in slab_draw,
+ * the Smart Pro's in smartpro_draw), its keys where its model has them
+ * (none without a model) */
 static void draw_view(SDL_Renderer *r, view *vp)
 {
 	view v = *vp;
@@ -1627,8 +2153,13 @@ static void draw_view(SDL_Renderer *r, view *vp)
 
 	if (!v.m) return;
 	v.r = r;
-	if (v.m->art == TD_ART_BRICK) {
-		brick_draw(&v);
+	if (v.m->art == TD_ART_BRICK || v.m->art == TD_ART_R36S) {
+		slab_draw(&v, v.m->art == TD_ART_R36S ? &SLAB_R36S : &SLAB_BRICK);
+		flush(r);
+		return;
+	}
+	if (v.m->art == TD_ART_SMARTPRO) {
+		smartpro_draw(&v);
 		flush(r);
 		return;
 	}
@@ -1989,7 +2520,8 @@ static td_keep g_tour_keep;
 /* The tutorial's kept texture, in `m`'s box for it */
 static td_keep *tour_keep(const td_model *m)
 {
-	g_tour_keep.box = (SDL_Rect){ m->keep_tour.l, m->keep_tour.t, m->keep_tour.w, m->keep_tour.h };
+	g_tour_keep.box = (SDL_Rect){ m->keep_tour.l + (ZYPEROS_SCREEN_W - 1024) / 2, m->keep_tour.t,
+	                              m->keep_tour.w, m->keep_tour.h };
 	return &g_tour_keep;
 }
 

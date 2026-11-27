@@ -21,17 +21,18 @@ CTRL-R, Auto Off) is check-pkkeys's and check-portkeys-flow's.
      a key, "Shader / <name>" for each of PICO-8's shaders;
    - the in-game menu over it (--port-menu PICO8 CART) has a game's tabs,
      and its Game tab is Continue, Reset and Quit, Reset before Quit as in a
-     game's; A asks "Reset the game?" with "Play since the last save is
-     lost.", the cursor on Cancel: A there is the menu again; Reset ends it
+     game's; A asks Reset Game's "Reset the game? Play since the last save is
+     lost.", the cursor on Cancel, Reset at its right: A there is the menu again; Reset ends it
      with PORT_MENU_RESET (13), asking nothing of buttons;
    - --reset (PORT_MENU_RESET_ARG, the hotkey's) asks the same question with
      no menu: Cancel 10, Reset 13;
    - its Controls tab (L1 from Game) is a game's, the buttons themselves
      (Applies To, This Game, the A cap giving O, map.PICO8's): a button
      stepped is kept for the cart (map.PICO8.<cart>); the menu closed back
-     to the cart (B) writes the pad's new line and asks "Start the cart
-     again?" with the buttons' line under it; Cancel lets the cart go on
-     (10), the buttons kept for its next start, and as the menu ends the
+     to the cart (B) writes the pad's new line and asks Start Cart Again's
+     question with the buttons' words in it, the cursor on Later; B there is
+     the menu again where it was, and B from it asks again; Later lets the
+     cart go on (10), the buttons kept for its next start, and as the menu ends the
      hotkeys are written for portkeys again with the screenshot's folder
      kept; Start Again is PORT_MENU_RESTART (14) with the Display on in the
      restart file; with no button changed B asks nothing; X with a button
@@ -235,7 +236,7 @@ def launcher(tmp):
         return dict(l.split('\t', 1) for l in path.read_text().splitlines() if '\t' in l) if path.exists() else {}
 
     cart = f'{card}/Roms/PICO-8/celeste.p8'
-    RESET_Q, RESTART_Q = 'Reset the game?', 'Start the cart again?'
+    RESET_Q, RESTART_Q = 'Reset Game', 'Start Cart Again'
     try:
         print('a PICO-8 cart opened, the hand-over:')
         w = start('shelf', ['--device', 'pixel2'])
@@ -283,12 +284,12 @@ def launcher(tmp):
         rows = w.rows() if up else []
         check(rows == ['Continue', 'Reset', 'Quit'], f'the Game tab: Continue, Reset and Quit, as a game\'s ({rows})')
         check(w.to('down', 'Reset', 'Game') and w.step('a', RESET_Q, 'Cancel') and
-              dw.until(lambda: 'Play since the last save is lost.' in w.drawn()),
+              dw.until(lambda: any('Play since the last save is lost.' in x for x in w.drawn())),
               'A asks first, as Reset Game\'s hotkey asks over a game, the cursor on Cancel')
         check(w.step('a', 'Game', 'Reset') and w.proc.poll() is None,
               'A on the question\'s first stop is Cancel: the menu again')
         w.step('a', RESET_Q, 'Cancel')
-        w.step('up', RESET_Q, 'Reset')
+        w.step('right', RESET_Q, 'Reset')
         rc = w.ends('a')
         check(rc == RESET, f'Reset ends the menu with PORT_MENU_RESET ({rc})')
 
@@ -300,7 +301,7 @@ def launcher(tmp):
         check(rc == 10, f'Cancel: the game goes on ({rc})')
         w = start('hot-yes', ['--port-menu', 'PICO8', cart, '--reset'])
         w.up(RESET_Q, 'Cancel')
-        w.step('up', RESET_Q, 'Reset')
+        w.step('right', RESET_Q, 'Reset')
         rc = w.ends('a')
         check(rc == RESET, f'Reset: PORT_MENU_RESET ({rc})')
 
@@ -316,14 +317,18 @@ def launcher(tmp):
         w.press('right')
         check(dw.until(lambda: settings(lib, key='map.PICO8.celeste.p8') is not None),
               f'a button stepped is kept for the cart ({settings(lib, key="map.PICO8.celeste.p8")})')
-        check(w.step('b', RESTART_Q, 'Cancel') and dw.until(lambda: any('new buttons' in x for x in w.drawn())),
-              'B, the menu closing back to the cart, asks to start PICO-8 again for the new buttons')
+        check(w.step('b', RESTART_Q, 'Later') and dw.until(lambda: any('new buttons' in x for x in w.drawn())),
+              'B, the menu closing back to the cart, asks to start PICO-8 again for the new buttons, '
+              'the cursor on Later')
+        check(w.step('b', 'Controls', 'A') and w.proc.poll() is None and not restart.exists(),
+              'B on the question goes back to the menu where it was, nothing done')
+        check(w.step('b', RESTART_Q, 'Later'), 'and B there asks again')
         pad = pad_file.read_text().rstrip('\n') if pad_file.exists() else ''
         check(pad.startswith(GUID) and pad.split('\n')[0] != SWAPPED and len(pad.split('\n')) == 2 and
               pad.split('\n')[1].startswith(VGUID), f'and the pads\' new lines are written ({pad})')
         rc = w.ends('a')
         k = lines(keys_file)
-        check(rc == 10 and not restart.exists(), f'Cancel: the cart goes on, no start again ({rc})')
+        check(rc == 10 and not restart.exists(), f'Later: the cart goes on, no start again ({rc})')
         check(k.get('hotkeys') == 'save:r1,load:l1,faster:r2,slower:l2,shot:y,shader:a,reset:b,quit:x'
               and k.get('shots') == shots,
               f'as the menu ends the hotkeys are written again, the folder kept ({k})')
@@ -341,8 +346,8 @@ def launcher(tmp):
         w.to('down', 'A', 'Controls')
         w.press('right')
         dw.until(lambda: settings(lib, key='map.PICO8.celeste.p8') != was)
-        w.step('b', RESTART_Q, 'Cancel')
-        w.step('up', RESTART_Q, 'Start Again')
+        w.step('b', RESTART_Q, 'Later')
+        w.step('right', RESTART_Q, 'Start Again')
         rc = w.ends('a')
         mode = settings(card / 'userdata/zyperos.db', key='display.PICO8') or 'aspect'
         check(rc == RESTART and restart.exists() and restart.read_text() == mode + '\n',
@@ -370,7 +375,7 @@ def launcher(tmp):
         w.step('r1', 'Game', 'Continue')
         w.to('down', 'Reset', 'Game')
         w.step('a', RESET_Q, 'Cancel')
-        w.step('up', RESET_Q, 'Reset')
+        w.step('right', RESET_Q, 'Reset')
         rc = w.ends('a')
         check(rc == RESET and RESTART_Q not in w.drawn(), f'Reset is CTRL-R, asking nothing of buttons ({rc})')
 
@@ -390,7 +395,7 @@ def launcher(tmp):
         w.step('a', 'Display', then=lambda: w.state().get('focus') not in (None, 'Display'))
         w.press('up')
         w.step('a', RESTART_Q, 'Cancel')
-        w.step('up', RESTART_Q, 'Start Again')
+        w.step('right', RESTART_Q, 'Start Again')
         rc = w.ends('a')
         pad = pad_file.read_text().split('\n')[0] if pad_file.exists() else ''
         check(rc == RESTART and restart.exists() and pad.startswith(GUID) and pad != SWAPPED,

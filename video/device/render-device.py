@@ -1,12 +1,13 @@
-"""The tour video's handhelds: tools/build-pixel2-model.py's Pixel 2, or
-tools/build-brick-model.py's TrimUI Brick, straight on, with its screen cut
-out so the launcher's frames show through it.
+"""The tour video's handhelds: tools/build-pixel2-model.py's Pixel 2,
+tools/build-brick-model.py's TrimUI Brick or tools/build-r36s-model.py's R36S,
+straight on, with its screen cut out so the launcher's frames show through it.
 
 blender --background BLEND --python video/device/render-device.py -- OUT_DIR [WIDTH]
 
 BLEND is the editable scene the model's script saves
-(build/pixel2-model/pixel2.blend, build/brick-model/brick.blend). Writes
-OUT_DIR/pixel2-front.png (or brick-front.png), the product on a transparent
+(build/pixel2-model/pixel2.blend, build/brick-model/brick.blend,
+build/r36s-model/r36s.blend). Writes OUT_DIR/pixel2-front.png (or
+brick-front.png, r36s-front.png), the product on a transparent
 ground in the site poster's studio light, and its .json, where its screen is
 in that picture, in pixels. Both at the same pixels a millimetre, so the two
 stand side by side true to size. video/scripts/prepare-assets.sh runs it.
@@ -26,7 +27,8 @@ out.mkdir(parents=True, exist_ok=True)
 scene = bpy.context.scene
 # Which handheld the scene holds: its name, the picture's height to its width,
 # and the camera's frame, 109 mm over the Pixel 2's height (22 px a mm at 2000)
-DEVICES = {'GKD Pixel 2': ('pixel2-front', 1.2, 109), 'TrimUI Brick': ('brick-front', 1.45, 109 * 1.45 / 1.2)}
+DEVICES = {'GKD Pixel 2': ('pixel2-front', 1.2, 109), 'TrimUI Brick': ('brick-front', 1.45, 109 * 1.45 / 1.2),
+           'R36S': ('r36s-front', 1.4, 109 * 1.4 / 1.2)}
 name = next(n for n in DEVICES if n in bpy.data.objects)
 stem, tall, frame = DEVICES[name]
 root = bpy.data.objects[name]

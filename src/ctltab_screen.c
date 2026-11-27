@@ -890,10 +890,14 @@ static void pages(app *a, const ctlscr_game *g)
 	g_cs.stale = true;
 }
 
+cq_id ctlscr_question_id(const ctlscr_game *g)
+{
+	return scope_all(g) ? CQ_BUTTONS_RESET_ALL : CQ_BUTTONS_RESET_GAME;
+}
+
 void ctlscr_question(const ctlscr_game *g, char *q, size_t n)
 {
-	if (scope_all(g)) snprintf(q, n, T(S_GAMEMENU_RESET_BUTTONS_ALL), g->s->name);
-	else snprintf(q, n, T(S_GAMEMENU_RESET_BUTTONS_GAME), g->s->name, g->title ? g->title : "");
+	cq_text(ctlscr_question_id(g), q, n, g->s->name, g->title ? g->title : "");
 }
 
 /* Reset Buttons: asked first, on Cancel. This Game goes back to the
@@ -908,7 +912,7 @@ static void reset(app *a, const ctlscr_game *g)
 	memset(&c, 0, sizeof c);
 	c.g = g;
 	ctlscr_question(g, q, sizeof q);
-	if (!ask_panel(a, &st, &c, T(S_GAMEMENU_RESET_BUTTONS), q, T(S_GAMEMENU_RESET_BUTTONS_YES))) return;
+	if (!confirm_ask_over(a, ctlscr_question_id(g), q, &st, &c)) return;
 	rms_reset(g->s, scope_all(g) ? NULL : g->file);
 	if (!scope_all(g) && rms_stick_offered(g->s) && rms_stick_get(g->s, g->file) != rms_stick_default(g->s)) {
 		rms_stick_put(g->s, g->file, rms_stick_default(g->s));

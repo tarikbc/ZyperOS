@@ -619,7 +619,7 @@ ja = もう一度サインイン
 it = Accedi di nuovo
 
 [downloads.sign_out]
-note = RetroAchievements' panel's row, and the yes of its question: the account and its token go from the handheld.
+note = RetroAchievements' panel's row, the yes of its question and the question's heading: the account and its token go from the handheld.
 en = Sign Out
 zh-Hans = 退出登录
 es = Cerrar sesión
@@ -630,7 +630,7 @@ ja = サインアウト
 it = Esci
 
 [downloads.sign_out_ask]
-note = The question before Sign Out.
+note = The question before Sign Out, under downloads.sign_out as the heading; downloads.sign_out_body follows it (panel.join).
 en = Sign out of RetroAchievements?
 zh-Hans = 要退出 RetroAchievements 吗？
 es = ¿Cerrar sesión en RetroAchievements?
@@ -641,7 +641,7 @@ ja = RetroAchievements からサインアウトしますか？
 it = Uscire da RetroAchievements?
 
 [downloads.sign_out_body]
-note = Under the question before Sign Out: nothing earned is lost; unlocks earned offline and not sent yet wait for the next sign-in.
+note = After the question before Sign Out: nothing earned is lost; unlocks earned offline and not sent yet wait for the next sign-in.
 en = Your achievements stay on your account. Unlocks still waiting stay for your next sign-in.
 zh-Hans = 你的成就会保留在账号中。尚未发送的解锁会等到你下次登录。
 es = Tus logros se quedan en tu cuenta. Los desbloqueos pendientes esperan tu próximo inicio de sesión.
@@ -696,10 +696,10 @@ ja = 名前はゲームに残ります。
 it = I nomi restano con i giochi.
 
 [downloads.delete_videos_ask]
-note = The question on A on On the Card's Videos.
+note = The question on A on On the Card's Videos, and on Delete on the Video Snaps page, under storage.delete_snaps as the heading; downloads.delete_videos_body follows it (panel.join).
 en = Delete every video snap?
 zh-Hans = 要删除所有视频预览吗？
-es = ¿Borrar todas las vistas previas en video?
+es = ¿Borrar todos los avances en video?
 pt-BR = Apagar todas as prévias em vídeo?
 fr = Supprimer tous les aperçus vidéo ?
 de = Alle Videovorschauen löschen?
@@ -718,10 +718,10 @@ ja = %s 空きます。ダウンロードでまた取得できます。
 it = Si liberano %s. Un download può riprenderli.
 
 [downloads.delete_sys_videos_ask]
-note = The question on X on a Videos cell of Systems: %s is the system's name ("SNES").
+note = The question on X on a Videos cell of Systems, and on a system's page of Storage, Delete Video Snaps: %s is the system's name ("SNES"). Under storage.delete_snaps as the heading; downloads.delete_videos_body follows it (panel.join).
 en = Delete the %s video snaps?
 zh-Hans = 要删除 %s 的视频预览吗？
-es = ¿Borrar las vistas previas en video de %s?
+es = ¿Borrar los avances en video de %s?
 pt-BR = Apagar as prévias em vídeo de %s?
 fr = Supprimer les aperçus vidéo de %s ?
 de = Die Videovorschauen von %s löschen?
@@ -729,7 +729,7 @@ ja = %s の動画プレビューを削除しますか？
 it = Eliminare le anteprime video di %s?
 
 [downloads.delete_sets_ask]
-note = The question on A on On the Card's Achievements: every downloaded achievement set.
+note = The question on A on On the Card's Achievements: every downloaded achievement set. Under downloads.delete_sets_heading; downloads.delete_sets_body follows it (panel.join).
 en = Delete every achievement set?
 zh-Hans = 要删除所有成就集吗？
 es = ¿Borrar todos los sets de logros?
@@ -740,7 +740,7 @@ ja = すべての実績セットを削除しますか？
 it = Eliminare tutti i set di obiettivi?
 
 [downloads.delete_sys_sets_ask]
-note = The question on X on an Achievements cell of Systems: %s is the system's name.
+note = The question on X on an Achievements cell of Systems: %s is the system's name. Under downloads.delete_sets_heading; downloads.delete_sets_body follows it (panel.join).
 en = Delete the %s achievement sets?
 zh-Hans = 要删除 %s 的成就集吗？
 es = ¿Borrar los sets de logros de %s?
@@ -760,6 +760,17 @@ fr = %s libérés. Ce que vous avez gagné reste sur votre compte.
 de = %s werden frei. Was du erreicht hast, bleibt in deinem Konto.
 ja = %s 空きます。獲得した実績はアカウントに残ります。
 it = Si liberano %s. Ciò che hai ottenuto resta sul tuo account.
+
+[downloads.delete_sets_heading]
+note = The heading of the questions that delete achievement sets (downloads.delete_sets_ask, downloads.delete_sys_sets_ask). A heading, the action.
+en = Delete Achievement Sets
+zh-Hans = 删除成就集
+es = Borrar sets de logros
+pt-BR = Apagar conjuntos de conquistas
+fr = Supprimer les listes de succès
+de = Erfolgslisten löschen
+ja = 実績セットを削除
+it = Elimina set di obiettivi
 
 [downloads.you_stopped]
 note = The second line of a download's end page after Y stopped it.
@@ -957,7 +968,7 @@ ja = libretro のチート一覧から応答がありません。
 it = L'elenco dei trucchi di libretro non ha risposto.
 
 [downloads.delete_cheats_ask]
-note = The question on A on On the Card's Cheats: every cheat file the download brought.
+note = The question on A on On the Card's Cheats: every cheat file the download brought. Under downloads.delete_cheats_heading; downloads.delete_cheats_body follows it (panel.join).
 en = Delete the downloaded cheats?
 zh-Hans = 要删除下载的金手指吗？
 es = ¿Borrar los trucos descargados?
@@ -968,7 +979,7 @@ ja = ダウンロードしたチートを削除しますか？
 it = Eliminare i trucchi scaricati?
 
 [downloads.delete_sys_cheats_ask]
-note = The question on X on a Cheats cell of Systems: %s is the system's name.
+note = The question on X on a Cheats cell of Systems: %s is the system's name. Under downloads.delete_cheats_heading; downloads.delete_cheats_body follows it (panel.join).
 en = Delete the %s cheats?
 zh-Hans = 要删除 %s 的金手指吗？
 es = ¿Borrar los trucos de %s?
@@ -988,6 +999,17 @@ fr = Vos propres fichiers restent. Les codes actifs se désactivent.
 de = Deine eigenen Dateien bleiben. Aktive Cheats gehen aus.
 ja = 自分のファイルは残ります。オンのチートはオフになります。
 it = I tuoi file restano. I trucchi attivi si spengono.
+
+[downloads.delete_cheats_heading]
+note = The heading of the questions that delete downloaded cheats (downloads.delete_cheats_ask, downloads.delete_sys_cheats_ask). A heading, the action.
+en = Delete Cheats
+zh-Hans = 删除金手指
+es = Borrar trucos
+pt-BR = Apagar trapaças
+fr = Supprimer les codes
+de = Cheats löschen
+ja = チートを削除
+it = Elimina trucchi
 
 [downloads.n_cheats]
 note = Zyper's bubble's second line after a download: games whose cheats came. %d is the count.

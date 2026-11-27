@@ -145,6 +145,7 @@ def main():
     try:
         run(desk, tmp, 'pixel2', (640, 480))
         run(desk, tmp, 'brick', (1024, 768))
+        run(desk, tmp, 'r36s', (640, 480))
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     print(f'desk: {"all passed" if not fails else f"{len(fails)} failed"}')

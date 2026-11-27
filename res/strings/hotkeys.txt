@@ -104,6 +104,17 @@ de = Schnelltasten zurücksetzen
 ja = ホットキーをリセット
 it = Ripristina scorciatoie
 
+[hotkeys.reset_yes]
+note = The yes of Reset Hotkeys' three questions: put the hotkeys back. The reset word of gamemenu.reset_buttons_yes, not gamemenu.reset, which starts the game over (a restart in Spanish, Portuguese, German and Italian).
+en = Reset
+zh-Hans = 重置
+es = Restablecer
+pt-BR = Restaurar
+fr = Rétablir
+de = Zurücksetzen
+ja = リセット
+it = Ripristina
+
 [hotkeys.reset_every]
 note = The question Reset Hotkeys asks on MENU > System > Hotkeys, or with Applies To on Every Game. Wrapped to the panel.
 en = Put back ZyperOS's hotkeys for every game?
@@ -204,15 +215,15 @@ ja = 何も押さずに B で戻る。
 it = B senza altri tasti: indietro.
 
 [hotkeys.swap_q]
-note = The question when the keys pressed are already another hotkey's: it says they are taken and by which, then what Swap does. The first %s the keys (SELECT+R2), the second that hotkey's name (Faster), the third its name again, the fourth where it goes on Swap (the keys the row had, or hotkeys.none). Swap and Cancel under it, the cursor on Cancel. Wrapped to the panel.
-en = %s is already taken by %s. Swap them, and %s moves to %s.
-zh-Hans = %s 已被 %s 占用。交换后，%s 将改为 %s。
-es = %s ya está ocupado por %s. Al cambiarlos, %s pasa a %s.
-pt-BR = %s já está ocupado por %s. Ao trocar, %s passa para %s.
-fr = %s est déjà pris par %s. En échangeant, %s passe sur %s.
-de = %s ist schon mit %s belegt. Beim Tauschen wandert %s zu %s.
-ja = %s はすでに %s で使われています。入れ替えると %s は %s になります。
-it = %s è già occupato da %s. Scambiandoli, %s passa a %s.
+note = The question when the keys pressed are already another hotkey's: give them to this one? Then who has them and where that one goes. The first %s the keys (SELECT+R2), the second this hotkey's name (Quick Save), the third the hotkey that has them (Faster), the fourth where it goes on Swap (the keys this row had, or hotkeys.none). Cancel and Swap under it, the cursor on Cancel. Wrapped to the panel.
+en = Give %s to %s? %s has it now and moves to %s.
+zh-Hans = 将 %s 分配给 %s？它现在属于 %s，将改为 %s。
+es = ¿Dar %s a %s? Ahora lo tiene %s, que pasa a %s.
+pt-BR = Dar %s para %s? Agora é de %s, que passa para %s.
+fr = Donner %s à %s\u00a0? %s l'a maintenant et passe sur %s.
+de = %s an %s geben? %s hat sie jetzt und wandert zu %s.
+ja = %s を %s に割り当てますか？今は %s が使っていて、%s に移ります。
+it = Dare %s a %s? Ora è di %s, che passa a %s.
 
 [hotkeys.swap]
 note = The yes of the swap question (hotkeys.swap_q): the two hotkeys trade keys. A button's word, short.
@@ -225,8 +236,19 @@ de = Tauschen
 ja = 入れ替え
 it = Scambia
 
+[hotkeys.swap_heading]
+note = The heading of the swap question (hotkeys.swap_q). A heading, the action.
+en = Swap Hotkeys
+zh-Hans = 交换快捷键
+es = Cambiar atajos
+pt-BR = Trocar atalhos
+fr = Échanger les raccourcis
+de = Schnelltasten tauschen
+ja = ホットキーを入れ替え
+it = Scambia scorciatoie
+
 [hotkeys.reset_ask]
-note = Reset Game's hotkey pauses the game and asks this over it, in the yes/cancel panel, the cursor on Cancel; the yes is gamemenu.reset. A heading.
+note = The first sentence of the question Reset Game asks, the Reset Game hotkey over a game and your PICO-8's Reset row, under hotkeys.reset_heading; hotkeys.reset_lost follows it (panel.join). The yes is gamemenu.reset, the cursor on Cancel.
 en = Reset the game?
 zh-Hans = 重置游戏？
 es = ¿Reiniciar el juego?
@@ -246,6 +268,17 @@ fr = La partie depuis la dernière sauvegarde est perdue.
 de = Alles seit dem letzten Speichern geht verloren.
 ja = 最後のセーブ以降の進行は失われます。
 it = Si perde quanto giocato dall'ultimo salvataggio.
+
+[hotkeys.reset_heading]
+note = The heading of the question Reset Game asks (hotkeys.reset_ask is its first sentence). A heading, the action.
+en = Reset Game
+zh-Hans = 重置游戏
+es = Reiniciar juego
+pt-BR = Reiniciar jogo
+fr = Réinitialiser le jeu
+de = Spiel neu starten
+ja = ゲームをリセット
+it = Riavvia gioco
 
 [hotkeys.shot_saved]
 note = The pop-up over the game as the screenshot hotkey saves a picture, first line, beside the picture itself, small; under it where it went (Screenshots/Nintendo 64, a folder's name, never translated).

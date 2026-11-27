@@ -9,6 +9,7 @@
  * build, keys and panel (gm_menu_build, gm_key, menu_style's side).
  * Design: DESIGN.md 11.45. */
 
+#include "confirmq.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -80,6 +81,8 @@ void ctlscr_side(app *a, const menu_side *at);
 int ctlscr_box_check(int *measured);
 
 /* Reset Buttons' question for the scope shown, into `q` */
+/* Reset Buttons' question for the scope shown, and its words */
+cq_id ctlscr_question_id(const ctlscr_game *g);
 void ctlscr_question(const ctlscr_game *g, char *q, size_t n);
 
 /* A shot's (--gm-pick): the choices of the button on row `id` (ct_row) as A

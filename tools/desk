@@ -3,15 +3,16 @@
 """desk: ZyperOS's launcher in a window, as a handheld, for working on the UI
 without one (docs/building.md, "Work on the UI without a device").
 
-    tools/desk [run] [--device pixel2|brick] [--zoom N] [--fresh] [--roms DIR]
+    tools/desk [run] [--device pixel2|brick|r36s] [--zoom N] [--fresh] [--roms DIR]
                      [--tour] [--lang CODE] [--no-frame] [--hz N] [--no-build]
 
 builds the host launcher (make native), makes a sample card once in
 build-native/desk/DEVICE/ (the README's demonstration library, a game on each
 of the systems, ZyperOS Test.nes), and opens it in a window as the handheld
 itself, drawn to its measurements around its screen: the Pixel 2's 640x480
-panel (the default) or the Brick's 1024x768, one panel pixel a display pixel,
-which on a Retina display is about its real size (--zoom 2 twice that,
+panel (the default), the Brick's 1024x768 or the R36S's 640x480, one panel
+pixel a display pixel, which on a Retina display is about its real size
+(--zoom 2 twice that,
 --no-frame the screen alone). Settings made in it stay on that card; --fresh
 makes a new one.
 --roms DIR shows your own Roms folder (Roms/NES/..., as on a card) instead.
@@ -74,10 +75,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DESK = ROOT / 'build-native/desk'
-DEVICES = ('pixel2', 'brick', 'desktop')
+DEVICES = ('pixel2', 'brick', 'r36s', 'desktop')
 CLIENT = ('state', 'press', 'release', 'tap', 'latency', 'shot', 'wait-frames', 'stats',
           'zoom', 'frame', 'bar', 'hints', 'help', 'quit')
-PANEL = {'pixel2': (640, 480), 'brick': (1024, 768), 'desktop': (1024, 768)}
+PANEL = {'pixel2': (640, 480), 'brick': (1024, 768), 'r36s': (640, 480), 'desktop': (1024, 768)}
 CORES = DESK / 'cores'
 # Cores for desk mode, built here for this computer from the source the
 # handheld's own build is from (mk/fetch-vendor.sh names each one's commit):

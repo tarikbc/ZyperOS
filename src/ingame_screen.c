@@ -2001,7 +2001,7 @@ static void port_dmode_preview(void *app_, int k, int x, int y, int w, int h)
 	                   fw, fh, k, x, y, w, h);
 }
 
-bool port_restart_ask(app *a, const menu_style *over, void *ctx, const char *line)
+int port_restart_ask(app *a, const menu_style *over, void *ctx, cq_id q, const char *line)
 {
 	gm_ctx c = { 0 };
 
@@ -2016,10 +2016,10 @@ bool port_restart_ask(app *a, const menu_style *over, void *ctx, const char *lin
 		uisound_play(DS_SOUND_ACCEPT);
 	}
 	{
-		bool yes = ask_panel(a, over, ctx, T(S_PICO8_RESTART_ASK), line, T(S_PICO8_RESTART_YES));
+		int r = confirm_ask_ex(a, q, line, over, ctx, NULL);
 
 		if (c.bg) SDL_DestroyTexture(c.bg);
-		return yes && !plat_run_power_pressed();
+		return plat_run_power_pressed() ? CQ_NONE : r;
 	}
 }
 
@@ -2067,8 +2067,9 @@ static menu_result port_display_pick(app *a, gm_ctx *c)
 	if (p8) SDL_DestroyTexture(p8);
 	if (k == MENU_PICK_POWER || plat_run_power_pressed()) return MENU_DONE;
 	if (k < 0 || k >= DMODE_COUNT || k == v->dmode) return MENU_STAY;
-	snprintf(line, sizeof line, T(S_PICO8_RESTART_DISPLAY), dmode_label(k));
-	if (!port_restart_ask(a, &c->st, c, line)) return plat_run_power_pressed() ? MENU_DONE : MENU_STAY;
+	cq_text(CQ_P8_RESTART_DISPLAY, line, sizeof line, dmode_label(k));
+	if (port_restart_ask(a, &c->st, c, CQ_P8_RESTART_DISPLAY, line) != CQ_RIGHT)
+		return plat_run_power_pressed() ? MENU_DONE : MENU_STAY;
 	if (!port_restart_write(a, k)) return MENU_STAY;
 	c->restart = true;
 	return MENU_DONE;
@@ -2080,8 +2081,8 @@ int port_display_next(app *a)
 	int k = (v->dmode + 1) % DMODE_COUNT, was = v->dmode;
 	char line[256];
 
-	snprintf(line, sizeof line, T(S_PICO8_RESTART_DISPLAY), dmode_label(k));
-	if (!port_restart_ask(a, NULL, NULL, line)) {
+	cq_text(CQ_P8_RESTART_DISPLAY, line, sizeof line, dmode_label(k));
+	if (port_restart_ask(a, NULL, NULL, CQ_P8_RESTART_DISPLAY, line) != CQ_RIGHT) {
 		v->dmode = was;
 		return plat_run_power_pressed() ? PORT_MENU_POWER : PORT_MENU_CONTINUE;
 	}
@@ -2097,8 +2098,10 @@ int port_display_next(app *a)
  * Run / Restart cartridge" (src/portmenu.h, PORT_MENU_RESET). */
 static bool reset_question(app *a, const menu_style *over, void *ctx)
 {
-	return ask_panel(a, over, ctx, T(S_HOTKEYS_RESET_ASK), T(S_HOTKEYS_RESET_LOST), T(S_GAMEMENU_RESET)) &&
-	       !plat_run_power_pressed();
+	char q[512];
+
+	cq_text(CQ_P8_RESET, q, sizeof q);
+	return confirm_ask_over(a, CQ_P8_RESET, q, over, ctx) && !plat_run_power_pressed();
 }
 
 int port_reset_ask(app *a)
@@ -2153,16 +2156,25 @@ static bool port_buttons_kept(app *a)
  * asks about them, as the Controls list over it asked as it was left while
  * it was a page of its own (up to 1.1.0-rc.8): "Start the cart again?" for
  * the new buttons. Start Again starts PICO-8 again with them, in the mode
- * on (true: PORT_MENU_RESTART); Cancel, B or MENU keep them for its next
- * start and the cart goes on. A Display mode's start again, Reset, Quit and
- * POWER ask nothing: the first takes them as it starts, the others keep
- * them for the next start. */
-static bool port_buttons_close(app *a, gm_ctx *c)
+ * on (PORT_BUTTONS_RESTART); Later keeps them for its next start and the
+ * cart goes on (PORT_BUTTONS_GO_ON); B goes back to the menu with nothing
+ * done (PORT_BUTTONS_BACK), so B never closes the menu for good (my pick in
+ * the confirm panels lab, 2026-11-22: B is the safe answer). A Display
+ * mode's start again, Reset, Quit and POWER ask nothing: the first takes
+ * them as it starts, the others keep them for the next start. */
+enum { PORT_BUTTONS_GO_ON, PORT_BUTTONS_RESTART, PORT_BUTTONS_BACK };
+static int port_buttons_close(app *a, gm_ctx *c)
 {
-	if (!port_restart_ask(a, &c->st, c, T(S_PICO8_RESTART_BUTTONS))) return false;
-	if (!port_restart_write(a, owner_view(a)->dmode)) return false;
+	char q[512];
+	int r;
+
+	cq_text(CQ_P8_RESTART_BUTTONS, q, sizeof q);
+	r = port_restart_ask(a, &c->st, c, CQ_P8_RESTART_BUTTONS, q);
+	if (r == CQ_NONE) return plat_run_power_pressed() || !a->running || menu_closing()
+	                         ? PORT_BUTTONS_GO_ON : PORT_BUTTONS_BACK;
+	if (r != CQ_RIGHT || !port_restart_write(a, owner_view(a)->dmode)) return PORT_BUTTONS_GO_ON;
 	c->restart = true;
-	return true;
+	return PORT_BUTTONS_RESTART;
 }
 
 /* The menu's memory over your PICO-8 (src/portmenu.h's PORT_MENU_MEM): read
@@ -2666,6 +2678,7 @@ void game_reset_ask(app *a)
 {
 	gm_ctx c = { 0 };
 	const char *pv = plat_resident_last_preview();
+	char q[512];
 	bool yes;
 
 	c.a = a;
@@ -2682,7 +2695,8 @@ void game_reset_ask(app *a)
 	c.st.backdrop = gm_backdrop;
 	c.st.on_power = gm_power;
 	uisound_play(DS_SOUND_ACCEPT);
-	yes = ask_panel(a, &c.st, &c, T(S_HOTKEYS_RESET_ASK), T(S_HOTKEYS_RESET_LOST), T(S_GAMEMENU_RESET));
+	cq_text(CQ_GAME_RESET, q, sizeof q);
+	yes = confirm_ask_over(a, CQ_GAME_RESET, q, &c.st, &c);
 	gm_preview_frame(NULL);
 	if (c.bg) SDL_DestroyTexture(c.bg);
 	/* POWER while it asked stopped the game (gm_power); quitting the
@@ -2773,15 +2787,17 @@ int port_menu(app *a)
 		g_menu_epoch++;
 	}
 
-	g_menu_closing = false;
-	g_in_game_menu = true;
-	if (menu_run(a, &c.st, gm_menu_build, gm_key, &c) == MENU_LEFT_BACK)
-		c.resume = true;
-	g_in_game_menu = false;
-	g_menu_closing = false;
-	{
+	for (;;) {
 		int ids[GM_IDS_MAX];
-		int n;
+		int n, asked = PORT_BUTTONS_GO_ON;
+
+		g_menu_closing = false;
+		g_in_game_menu = true;
+		c.resume = false;
+		if (menu_run(a, &c.st, gm_menu_build, gm_key, &c) == MENU_LEFT_BACK)
+			c.resume = true;
+		g_in_game_menu = false;
+		g_menu_closing = false;
 
 		/* Where it was closed, for the next MENU over the game: the cursor
 		 * moves without asking gm_key, so it is read from the runner */
@@ -2791,10 +2807,16 @@ int port_menu(app *a)
 		if (c.seen >= 0 && c.seen < n) g_gm_mem.row[c.tabs.at] = ids[c.seen];
 		port_mem_save();
 		/* Over your PICO-8, new buttons kept for its next start, and, back
-		 * to the cart, asked about before it goes on */
+		 * to the cart, asked about before it goes on; B there is back to
+		 * the menu, where it was */
 		if (u.port_buttons && port_buttons_kept(a) && c.resume && !c.reset && !want_quit &&
-		    !plat_run_power_pressed() && port_buttons_close(a, &c))
-			c.resume = false;
+		    !plat_run_power_pressed())
+			asked = port_buttons_close(a, &c);
+		g_menu_closing = false;
+		if (asked == PORT_BUTTONS_RESTART) c.resume = false;
+		if (asked != PORT_BUTTONS_BACK) break;
+		c.st.start_sel = c.seen >= 0 && c.seen < n ? c.seen : 0;
+		g_menu_epoch++;
 	}
 	if (c.resume && !plat_run_power_pressed()) {
 		leave_end how = panel_leave_run(a, gm_backdrop, &c);

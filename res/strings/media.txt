@@ -431,6 +431,17 @@ de = Das Video dieses Spiels löschen? Es lässt sich wieder laden.
 ja = このゲームの動画を削除しますか？あとでもう一度取得できます。
 it = Eliminare il video di questo gioco? Si può scaricare di nuovo.
 
+[media.delete_heading]
+note = The heading of the question the Delete video row asks. A heading, the action.
+en = Delete Video
+zh-Hans = 删除视频
+es = Borrar video
+pt-BR = Apagar vídeo
+fr = Supprimer la vidéo
+de = Video löschen
+ja = 動画を削除
+it = Elimina video
+
 [media.failed]
 note = A one-line message: a picture or a video did not download.
 en = It did not download. Try again.

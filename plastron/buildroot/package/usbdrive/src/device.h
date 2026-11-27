@@ -2,7 +2,8 @@
 /*
  * The handheld usbdrive runs on, as facts: its games partition, its gadget,
  * its cable, its panel's pages. The GKD Pixel 2's unless the build says
- * USBDRIVE_BRICK (usbdrive.mk, from the image's device), the TrimUI Brick's.
+ * USBDRIVE_BRICK (usbdrive.mk, from the image's device), the TrimUI Brick's,
+ * and with USBDRIVE_SMARTPRO the Smart Pro's, which is the Brick's board.
  *
  * The pages ZyperOS leaves in FRAMES are 640x480 on both (its
  * usbdrive_screen.c lays the atlas out in those units): the Pixel 2's as its
@@ -19,7 +20,11 @@
 #define DEV_PART_STAT  "/sys/class/block/mmcblk0p5/stat"
 #define DEV_GADGET     "/sys/kernel/config/usb_gadget/brick"
 #define DEV_VBUS_IN    "/sys/class/power_supply/axp2202-usb/online"
+#ifdef USBDRIVE_SMARTPRO
+#define DEV_INQUIRY    "ZyperOS Smart Pro card"
+#else
 #define DEV_INQUIRY    "ZyperOS TrimUI Brick card"
+#endif
 #define DEV_TURNED     false
 #else
 #define DEV_PART       "/dev/mmcblk0p3"

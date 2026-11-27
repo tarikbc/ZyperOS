@@ -182,6 +182,15 @@ if grep -q '^HANDHELD-BOX:' "$D/one.log"; then
 fi
 measured=$(sed -n 's/^handheld-box: \([0-9]*\) poses of the Controls tab.*/\1/p' "$D/one.log")
 [ "${measured:-0}" -gt 10000 ] || fail "the box check measured ${measured:-no} poses of the Brick's Controls tab"
+# ...and the Smart Pro's, wide and low in the same column
+run --shot "$D/box.png" --theme light --device smartpro --handheld-box tab >"$D/one.log" 2>&1
+cat "$D/one.log" >>"$D/log"
+if grep -q '^HANDHELD-BOX:' "$D/one.log"; then
+	grep '^HANDHELD-BOX:' "$D/one.log" | head -5 | sed 's/^/  FAIL (smartpro) /'
+	fails=$((fails + 1))
+fi
+measured=$(sed -n 's/^handheld-box: \([0-9]*\) poses of the Controls tab.*/\1/p' "$D/one.log")
+[ "${measured:-0}" -gt 10000 ] || fail "the box check measured ${measured:-no} poses of the Smart Pro's Controls tab"
 
 echo "the home's Controls pages, each its own"
 for th in light dark; do

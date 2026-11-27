@@ -169,14 +169,15 @@ ja = 設定
 it = Impostazioni
 
 [tour.menu.line]
-en = Press MENU for settings, anywhere.
-zh-Hans = 随时按 MENU 打开设置。
-es = Presiona MENU para la configuración.
-pt-BR = Aperte MENU para as configurações.
-fr = Appuyez sur MENU pour les paramètres.
-de = Drücke überall MENU für Einstellungen.
-ja = MENU でどこでも設定を開けます。
-it = Premi MENU per le impostazioni, ovunque.
+note = %s is the MENU key as it is printed: MENU, or FN on the R36S. Keep it as it is, in Latin letters.
+en = Press %s for settings, anywhere.
+zh-Hans = 随时按 %s 打开设置。
+es = Presiona %s para la configuración.
+pt-BR = Aperte %s para as configurações.
+fr = Appuyez sur %s pour les paramètres.
+de = Drücke überall %s für Einstellungen.
+ja = %s でどこでも設定を開けます。
+it = Premi %s per le impostazioni, ovunque.
 
 [tour.select.title]
 en = Music
@@ -252,15 +253,15 @@ ja = F1 か F2 を押しましょう。
 it = Premi F1 o F2.
 
 [tour.bright.line_fn]
-note = On the Pixel 2, where brightness is MENU held with a volume key.
-en = Hold MENU and press VOL+ or VOL-.
-zh-Hans = 按住 MENU，再按 VOL+ 或 VOL-。
-es = Mantén MENU y presiona VOL+ o VOL-.
-pt-BR = Segure MENU e aperte VOL+ ou VOL-.
-fr = Maintenez MENU, puis VOL+ ou VOL-.
-de = Halte MENU und drücke VOL+ oder VOL-.
-ja = MENU を押しながら VOL+ か VOL- を押します。
-it = Tieni premuto MENU e premi VOL+ o VOL-.
+note = On the Pixel 2, where brightness is MENU held with a volume key. %s is the MENU key as it is printed: MENU, or FN on the R36S. Keep it as it is, in Latin letters.
+en = Hold %s and press VOL+ or VOL-.
+zh-Hans = 按住 %s，再按 VOL+ 或 VOL-。
+es = Mantén %s y presiona VOL+ o VOL-.
+pt-BR = Segure %s e aperte VOL+ ou VOL-.
+fr = Maintenez %s, puis VOL+ ou VOL-.
+de = Halte %s und drücke VOL+ oder VOL-.
+ja = %s を押しながら VOL+ か VOL- を押します。
+it = Tieni premuto %s e premi VOL+ o VOL-.
 
 [tour.power.title]
 note = The POWER button's lesson.
@@ -641,26 +642,26 @@ ja = それは %s です。%s を押しましょう。
 it = Hai premuto %s. Prova %s.
 
 [tour.wrong.hold_menu]
-note = On the Pixel 2, a volume key alone in the brightness step: brightness is MENU held with it.
-en = That's volume. Hold MENU too.
-zh-Hans = 这是音量键。请同时按住 MENU。
-es = Eso es el volumen. Mantén MENU también.
-pt-BR = Você apertou o volume. Segure MENU também.
-fr = C'est le volume. Maintenez aussi MENU.
-de = Das war die Lautstärke. Halte auch MENU.
-ja = それは音量ボタンです。MENU も押さえましょう。
-it = È il volume. Tieni premuto anche MENU.
+note = On the Pixel 2, a volume key alone in the brightness step: brightness is MENU held with it. %s is the MENU key as it is printed: MENU, or FN on the R36S. Keep it as it is, in Latin letters.
+en = That's volume. Hold %s too.
+zh-Hans = 这是音量键。请同时按住 %s。
+es = Eso es el volumen. Mantén %s también.
+pt-BR = Você apertou o volume. Segure %s também.
+fr = C'est le volume. Maintenez aussi %s.
+de = Das war die Lautstärke. Halte auch %s.
+ja = それは音量ボタンです。%s も押さえましょう。
+it = È il volume. Tieni premuto anche %s.
 
 [tour.wrong.chord]
-note = On the Pixel 2, MENU alone in the brightness step: how the chord goes. One line in his bubble, beside "START: skip": keep it within English's length.
-en = Hold MENU, then press VOL+.
-zh-Hans = 按住 MENU，再按 VOL+。
-es = Mantén MENU, luego VOL+.
-pt-BR = Segure MENU e aperte VOL+.
-fr = Maintenez MENU et VOL+.
-de = Halte MENU, dann VOL+.
-ja = MENU を押しながら VOL+。
-it = Tieni MENU, poi premi VOL+.
+note = On the Pixel 2, MENU alone in the brightness step: how the chord goes. One line in his bubble, beside "START: skip": keep it within English's length. %s is the MENU key as it is printed: MENU, or FN on the R36S. Keep it as it is, in Latin letters.
+en = Hold %s, then press VOL+.
+zh-Hans = 按住 %s，再按 VOL+。
+es = Mantén %s, luego VOL+.
+pt-BR = Segure %s e aperte VOL+.
+fr = Maintenez %s et VOL+.
+de = Halte %s, dann VOL+.
+ja = %s を押しながら VOL+。
+it = Tieni %s, poi premi VOL+.
 
 [tour.key.up]
 note = A button pressed, said in "That's %s.": the d-pad's directions, the volume keys and the brightness keys.

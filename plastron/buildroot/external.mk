@@ -22,6 +22,22 @@ ifneq ($(findstring pixel2,$(BR2_LINUX_KERNEL_INTREE_DTS_NAME)),)
 LINUX_PRE_BUILD_HOOKS += PX2_LINUX_ADD_DTS
 endif
 
+# The R36S's device trees (board/r36s/dts: ROCKNIX's and ZyperOS's over it),
+# on the Pixel 2's rk3326.dtsi, as the Pixel 2's are added, and built with
+# their symbols (-@), so the boot script can lay a panel's overlay on them
+# (board/r36s/boot-prelude.cmd)
+define R36S_LINUX_ADD_DTS
+	cp $(BR2_EXTERNAL_PX2_PATH)/board/px2/dts/rk3326.dtsi $(BR2_EXTERNAL_PX2_PATH)/board/r36s/dts/* \
+		$(@D)/arch/arm64/boot/dts/rockchip/
+	grep -q rk3326-gameconsole-r36s-zyperos $(@D)/arch/arm64/boot/dts/rockchip/Makefile || \
+		printf '%s\n' 'dtb-$$(CONFIG_ARCH_ROCKCHIP) += rk3326-gameconsole-r36s.dtb rk3326-gameconsole-r36s-zyperos.dtb' \
+		'DTC_FLAGS_rk3326-gameconsole-r36s := -@' 'DTC_FLAGS_rk3326-gameconsole-r36s-zyperos := -@' \
+		>> $(@D)/arch/arm64/boot/dts/rockchip/Makefile
+endef
+ifneq ($(findstring r36s,$(BR2_LINUX_KERNEL_INTREE_DTS_NAME)),)
+LINUX_PRE_BUILD_HOOKS += R36S_LINUX_ADD_DTS
+endif
+
 # The Brick's SDL2 draws through Imagination's EGL on the framebuffer, with
 # the video driver board/brick/patches/sdl2 adds (it is off unless asked for)
 ifeq ($(BR2_PACKAGE_PVR_GE8300),y)

@@ -34,6 +34,17 @@ de = Entfernen
 ja = 削除
 it = Dimentica
 
+[wifi.forget_heading]
+note = The heading of the question X asks on a saved network (wifi.forget_ask). A heading, the action.
+en = Forget Network
+zh-Hans = 忘记网络
+es = Olvidar red
+pt-BR = Esquecer rede
+fr = Oublier le réseau
+de = Netzwerk entfernen
+ja = ネットワークを削除
+it = Dimentica rete
+
 [wifi.forgot]
 note = The message after it; %s is the network's name.
 en = Forgot %s

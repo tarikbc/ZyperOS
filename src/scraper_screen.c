@@ -76,7 +76,7 @@
  * found arrives by art_progress.found_seq, decoded off the frame
  * (src/mediatex.h). */
 
-#define SCP_RING  14      /* arrivals kept: the run's grid shows 7, Done's wall 14 */
+#define SCP_RING  14      /* arrivals kept: the run's grid shows 7 (11 on 16:9), Done's wall 14 */
 #define SCP_LAND  520     /* a cover's landing, ms */
 #define SCP_COLS  3
 #define SCP_ROWS  3       /* the Systems grid's rows on the screen */
@@ -688,8 +688,8 @@ static void scp_plan_draw(scp_view *v)
 		}
 		tiles = ds_flex_add(&F, root, &(ds_box){ .dir = DS_ROW, .justify = DS_J_BETWEEN,
 		                                         .pad = { 0, 8, 0, 0 }, .h = 8 + SCP_PLAN_TILE_H });
-		tile0 = ds_flex_add(&F, tiles, &(ds_box){ .w = DS_PAGE_TILE_W, .h = SCP_PLAN_TILE_H });
-		ds_flex_add(&F, tiles, &(ds_box){ .w = DS_PAGE_TILE_W, .h = SCP_PLAN_TILE_H });
+		tile0 = ds_flex_add(&F, tiles, &(ds_box){ .w = ds_page_tile_w(), .h = SCP_PLAN_TILE_H });
+		ds_flex_add(&F, tiles, &(ds_box){ .w = ds_page_tile_w(), .h = SCP_PLAN_TILE_H });
 		ds_flex_solve(&F);
 		for (i = 0; i < 9; i++) sr[i] = ds_flex_rect(&F, slot0 + i);
 	}
@@ -900,7 +900,9 @@ static double scp_eta(scp_view *v, unsigned now, int looked, int total)
  * moving one place along to its right; the counts and the time left over
  * the keys */
 #define SCP_BIG   360   /* the newest's square, from the page's left side */
-#define SCP_CELL  168   /* the six before it, three by two to the right side */
+#define SCP_CELL  168   /* the ones before it, two rows to the right side */
+#define SCP_CELL_MIN_GAP 8   /* between them at least: 3 a row on 4:3, 5 on 16:9 */
+#define SCP_CELLS ((SCP_RING - 1) / 2 * 2)   /* the most the grid shows */
 #define SCP_CELL_GAP 24 /* the square to the six, and their rows */
 
 static void scp_run_draw(scp_view *v, unsigned now)
@@ -908,11 +910,11 @@ static void scp_run_draw(scp_view *v, unsigned now)
 	app *a = v->a;
 	TTF_Font *ft = ui_font(UI_F_TITLE), *fs = ui_font(UI_F_META);
 	ds_page_frame pf = page_top(a, 1.0f);
-	int hx = pf.head_x, m, looked, total, si, sq, cell0 = 0;
+	int hx = pf.head_x, m, looked, total, si, sq, cell0 = 0, nc;
 	float e = v->nring && v->ring[0].tex ? scp_ease((float)(now - v->land_at) / SCP_LAND) : 1.0f;
 	char fit[160], cnt[48], eta[48];
 	static ds_flex F;
-	SDL_FRect cell[6], big;
+	SDL_FRect cell[SCP_CELLS], big;
 	const char *K[2] = { "B", "Y" }, *L[2] = { T(S_UPDATE_BACK_GOES_ON), T(S_SCRAPER_KEY_STOP) };
 
 	/* Which part: covers (the plan's count), then the details of games
@@ -928,23 +930,27 @@ static void scp_run_draw(scp_view *v, unsigned now)
 	}
 	if (total < looked) total = looked;
 	/* The body, laid out by rules (src/ds/flex.h): the newest's square at
-	 * the page's left side, and the six before it three by two in what is
-	 * left, spread to its right side */
+	 * the page's left side, and the ones before it in two rows in what is
+	 * left, spread to its right side: as many a row as it holds, three on
+	 * a 4:3 canvas, more on a wider one */
 	{
 		const int root = scp_body(&F, &pf, DS_ROW, SCP_CELL_GAP, 0);
 		const int grid_w = pf.body.w - SCP_BIG - SCP_CELL_GAP;
+		const int cols = canvas_fit_cols(grid_w, SCP_CELL, SCP_CELL_MIN_GAP, SCP_CELLS / 2);
 		int grid, k;
 
+		nc = 2 * cols;
 		sq = ds_flex_add(&F, root, &(ds_box){ .w = SCP_BIG, .h = SCP_BIG });
 		grid = ds_flex_add(&F, root, &(ds_box){ .dir = DS_ROW, .wrap = true, .w = grid_w,
-		                                        .gap = (grid_w - 3 * SCP_CELL) / 2, .line_gap = SCP_CELL_GAP });
-		for (k = 0; k < 6; k++) {
+		                                        .gap = cols > 1 ? (grid_w - cols * SCP_CELL) / (cols - 1) : 0,
+		                                        .line_gap = SCP_CELL_GAP });
+		for (k = 0; k < nc; k++) {
 			int id = ds_flex_add(&F, grid, &(ds_box){ .w = SCP_CELL, .h = SCP_CELL });
 
 			if (!k) cell0 = id;
 		}
 		ds_flex_solve(&F);
-		for (k = 0; k < 6; k++) {
+		for (k = 0; k < nc; k++) {
 			SDL_Rect q = ds_flex_rect(&F, cell0 + k);
 
 			cell[k] = (SDL_FRect){ (float)q.x, (float)q.y, (float)q.w, (float)q.h };
@@ -968,15 +974,15 @@ static void scp_run_draw(scp_view *v, unsigned now)
 		       total > 0 ? (int)((long long)w * (looked > total ? total : looked) / total) : 0, 255);
 	}
 	ui_text(a->r, fs, cnt, pf.x1, ui_cap_y(fs, DS_PAGE_SUB_Y), 1, UI_TEXT_DIM);
-	/* The six before the newest, three by two; the one that was big comes
-	 * in first */
-	for (m = 6; m >= 0; m--) {
+	/* The ones before the newest, two rows; the one that was big comes in
+	 * first */
+	for (m = nc; m >= 0; m--) {
 		int k = m + 1;
-		SDL_FRect to = cell[m < 6 ? m : 5];
+		SDL_FRect to = cell[m < nc ? m : nc - 1];
 		SDL_FRect from = m == 0 ? big : cell[m - 1];
 
 		if (k >= v->nring) continue;
-		if (m == 6) scp_cover_draw(a, &v->ring[k], from, (Uint8)(255 * (1.0f - e)), false, true);
+		if (m == nc) scp_cover_draw(a, &v->ring[k], from, (Uint8)(255 * (1.0f - e)), false, true);
 		else scp_cover_draw(a, &v->ring[k], scp_lerp(from, to, e), 255, false, true);
 	}
 	if (v->nring) {
@@ -1940,9 +1946,7 @@ static menu_result ss_page_key(app *a, void *ctx, in_button key, int sel)
 	if (sel < 0 || sel >= n) return MENU_STAY;
 	if (ids[sel] == SSP_ACCOUNT) {
 		r = ss_signin_screen(a);
-	} else if (ids[sel] == SSP_UNLINK &&
-	           confirm_panel(a, "ScreenScraper", T(S_SCRAPER_UNLINK_ACCOUNT_ASK),
-	                         T(S_SCRAPER_UNLINK))) {
+	} else if (ids[sel] == SSP_UNLINK && confirm_ask(a, CQ_SS_UNLINK, T(S_SCRAPER_UNLINK_ACCOUNT_ASK))) {
 		/* The password is wiped from memory and from the device's settings */
 		ss_creds_clear();
 		ss_creds_save();
@@ -2065,14 +2069,14 @@ static menu_result snaps_key(app *a, void *ctx, in_button key, int sel)
 		}
 		break;
 	case SN_DELETE: {
-		char sz[24], msg[160];
+		char sz[24], msg[512];
 		unsigned long long gone = 0;
 		int i;
 
 		if (key != IN_ACCEPT) return MENU_STAY;
 		sys_menu_bytes(s->total, sz, sizeof sz);
-		snprintf(msg, sizeof msg, T(S_SNAPS_DELETE_ASK), sz);
-		if (!confirm_panel(a, T(S_SNAPS_HEADING), msg, T(S_SNAPS_DELETE))) return MENU_STAY;
+		cq_text(CQ_SNAPS_DELETE_ALL, msg, sizeof msg, sz);
+		if (!confirm_ask(a, CQ_SNAPS_DELETE_ALL, msg)) return MENU_STAY;
 		for (i = 0; i < s->nc; i++) gone += snaps_delete(P_ROMS, s->folder[i]);
 		snaps_read(s);
 		sys_menu_bytes(gone, sz, sizeof sz);

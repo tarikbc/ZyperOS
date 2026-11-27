@@ -22,19 +22,19 @@ weight: 25
 </ul>
 
 <h2>Why the chip matters</h2>
-<p>A Wi-Fi adapter works only if the system has a driver for its chip, and an adapter's box rarely names the chip. ZyperOS's Linux, plastron, keeps its kernel small, and carries two Wi-Fi drivers:</p>
+<p>A Wi-Fi adapter works only if the system has a driver for its chip, and an adapter's box rarely names the chip. ZyperOS's Linux, plastron, keeps its kernel small, and carries these Wi-Fi drivers:</p>
 <div class="table-wrap wide">
 <table>
   <thead><tr><th scope="col">Driver</th><th scope="col">Chips</th><th scope="col">On ZyperOS</th></tr></thead>
   <tbody>
     <tr><th scope="row">Realtek's own 8188eu</th><td>RTL8188EU and RTL8188EUS, such as the TL-WN725N v2 and v3</td><td>[yes: Tested with the TL-WN725N] Joins networks, and can be the handheld's own network</td></tr>
     <tr><th scope="row">The kernel's rtl8xxxu</th><td>Other Realtek 802.11n chips it drives, such as the RTL8188FU, RTL8192EU, RTL8723BU and RTL8192FU</td><td>[yes: Should work; not tested by me] Joins networks; not tested by me</td></tr>
-    <tr><th scope="row">None</th><td>Realtek 802.11ac chips (RTL8811AU, RTL8812AU, RTL8821CU, RTL8822BU and others), and MediaTek, Atheros and Intel chips</td><td>[no: No driver in ZyperOS's kernel] No driver</td></tr>
+    <tr><th scope="row">The kernel's rtw88 (8822BU)</th><td>RTL8822BU / RTL8812BU USB, such as Edimax EW-7822ULC (<code>7392:b822</code>) and many AC1200 dongles</td><td>[yes: Joins networks] Joins networks; hotspot uses the same hostapd path as 8188eu (try it; say if it fails)</td></tr>
+    <tr><th scope="row">None</th><td>Other Realtek 802.11ac chips not built in (8812AU, 8821CU, …), and MediaTek, Atheros and Intel chips</td><td>[no: No driver in ZyperOS's kernel] No driver</td></tr>
   </tbody>
 </table>
 </div>
-<p>So skip the dual-band "AC" adapters: most use the 802.11ac chips in the last row, which need the kernel's rtw88 drivers, and ZyperOS's kernel does not have them.</p>
-<p>The TL-WN725N's chip goes to Realtek's own driver, not the kernel's, because the kernel's driver can only join a network. Realtek's can also be an access point, which Wi-Fi File Transfer uses when no network is around.</p>
+<p>The TL-WN725N's chip goes to Realtek's own driver, not the kernel's rtl8xxxu, because rtl8xxxu can only join a network. Realtek's 8188eu can also be an access point. Wi-Fi File Transfer's hotspot is generic hostapd over nl80211, so an rtw88 adapter that can be an AP uses that same path.</p>
 <p class="note">TP-Link has sold several hardware versions of the TL-WN725N. Its support page lists V1 to V4.60, and offers Linux drivers for V3 but only a Windows driver for V4.60. I tested V2 and V3. If the box says another version, it may carry another chip.</p>
 
 <h2>Plug it in</h2>
@@ -70,7 +70,7 @@ weight: 25
 <p>The TL-WN725N's chip is known to drop off some home routers again and again while its power saving is on, so ZyperOS turns its power saving off whenever it is on a network. If a network still drops, the handheld writes down why: each join and each drop, with the reason the network or the adapter gave, goes in <code>wifi.log</code>. On the File Transfer page, <strong>Download logs</strong> (under the folders, behind the ⋯ on a phone) packs it with the other logs, ready to send with a bug report. Network names are masked in it.</p>
 
 <h2>The handheld's own network</h2>
-<p>With the TL-WN725N in and no network joined, <strong>MENU &gt; Connections &gt; Wi-Fi File Transfer</strong> makes the handheld a Wi-Fi network for as long as its screen is open. It shows a QR code, the network's name and password, and the PIN. Your phone joins by the code, and the transfer page opens by itself.</p>
+<p>With a supported adapter in and no network joined, <strong>MENU &gt; Connections &gt; Wi-Fi File Transfer</strong> makes the handheld a Wi-Fi network for as long as its screen is open. It shows a QR code, the network's name and password, and the PIN. Your phone joins by the code, and the transfer page opens by itself. The TL-WN725N is the one tested for this; an rtw88 8822BU dongle uses the same path.</p>
 <figure class="shot small"><img src="/img/hotspot.png" alt="Wi-Fi File Transfer as the handheld's own network: a QR code, the network's name ZyperOS-7A2B, its password and the PIN"><figcaption>No network around: the handheld makes its own.</figcaption></figure>
 <p>An adapter whose driver cannot be an access point shows <em>Could not start the hotspot</em>. It can still join a normal network.</p>
 

@@ -23,6 +23,10 @@ typedef enum {
 	DEV_HELPER_BTPLAYER = 1u << 5,   /* tools/btplayer.c: a headset's buttons */
 	DEV_HELPER_BTALSA   = 1u << 6,   /* sd/zyperos/bt-alsa.sh: Bluetooth sound */
 	DEV_HELPER_P8FX     = 1u << 7,   /* src/p8fx/: your PICO-8's Shader and Border */
+	/* tools/sppad.c: the TrimUI Smart Pro's two serial halves as one
+	 * gamepad. In the system, not the card: the image's start script runs
+	 * it before ZyperOS (plastron's package/zyperos) */
+	DEV_HELPER_SPPAD    = 1u << 8,
 } dev_helper;
 
 typedef struct {
@@ -30,6 +34,10 @@ typedef struct {
 	const char *arch;        /* "aarch64": the toolchain and the shared core set */
 	const char *mcpu;        /* the build's baseline: cortex-a53 for every aarch64 device */
 	const char *cpu;         /* the real core, for the record */
+	/* src/device/<this>.c (and <this>_hw.c): the platform layer it runs.
+	 * The device's own id but where it shares another's board: the Smart
+	 * Pro runs the Brick's */
+	const char *backend;
 	const char *diatom_port; /* diatom/port/<this>.c */
 	const char *table;       /* the card's partition table: "mbr" or "gpt" */
 	/* The card's partitions by number, 0 for none: the boot partition, the
@@ -41,5 +49,7 @@ typedef struct {
 
 extern const dev_build device_build_pixel2;
 extern const dev_build device_build_brick;
+extern const dev_build device_build_smartpro;
+extern const dev_build device_build_r36s;
 
 #endif

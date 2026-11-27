@@ -46,6 +46,8 @@ typedef struct {
 	int n_keys;
 	const td_flat_label *labels;
 	int n_labels;
+	const td_flat_stick *sticks;
+	int n_sticks;
 } face_def;
 
 static face_def        g_def;
@@ -105,6 +107,8 @@ bool face_init(const td_model *m)
 	d->word = f->word;
 	d->word_y = f->word_y;
 	d->recess = frect(f->recess);
+	d->sticks = f->sticks;
+	d->n_sticks = f->n_sticks;
 	d->recess_r = f->recess_r;
 	d->dpad_arm = f->dpad_arm;
 	d->led_x = f->light_x;
@@ -598,6 +602,22 @@ void face_draw(SDL_Renderer *r, float s, float ratio, Uint32 held)
 		fill_px(w, rad, shade(F->recess_c, -10, 255), shade(F->recess_c, 6, 255), w.y, w.y + w.h);
 		band_px(w, rad, 0, -0.6f * s * RT, (SDL_Color){ 0, 0, 0, 70 }, (SDL_Color){ 0, 0, 0, 0 }, 1, 0.2f);
 		band_px(w, rad, 0.5f, 0.1f * s * RT, (SDL_Color){ 255, 255, 255, 40 }, (SDL_Color){ 255, 255, 255, 0 }, 0, 1);
+	}
+
+	/* The sticks, no keys of the launcher's: each sunk in its well, the
+	 * cap lit from above */
+	for (int i = 0; i < F->n_sticks; i++) {
+		const td_flat_stick *k = &F->sticks[i];
+		SDL_FRect w = to_px(box_mm(k->x, k->y, 2 * k->well, 2 * k->well, s));
+		SDL_FRect c = to_px(box_mm(k->x, k->y, 2 * k->cap, 2 * k->cap, s));
+
+		radii(w.w / 2, rad);
+		fill_px(w, rad, shade(F->recess_c, -10, 255), shade(F->recess_c, 6, 255), w.y, w.y + w.h);
+		band_px(w, rad, 0, -0.6f * s * RT, (SDL_Color){ 0, 0, 0, 70 }, (SDL_Color){ 0, 0, 0, 0 }, 1, 0.2f);
+		radii(c.w / 2, rad);
+		shadow_px(c, rad, 1.2f * s * RT, 0.5f * s * RT, 80);
+		fill_px(c, rad, shade(F->cap, 18, 255), rgb(F->cap, 255), c.y, c.y + c.h);
+		band_px(c, rad, -0.4f, -0.3f * s * RT, (SDL_Color){ 255, 255, 255, 40 }, (SDL_Color){ 255, 255, 255, 0 }, 1, 0.2f);
 	}
 
 	dpad_px(s, held);

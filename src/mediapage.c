@@ -81,11 +81,17 @@ static void bar(SDL_Renderer *r, int x, int y, int w, float k)
 	ds_bar(r, x, y, w, k > 0 && fill < UI_BAR_H ? UI_BAR_H : fill, 255);
 }
 
+/* A chip's width: its word and its padding */
+static int chip_w(const char *s)
+{
+	return ui_text_width(page_font(PAGE_META), s) + 28;
+}
+
 static void chip(SDL_Renderer *r, int x, int y, const char *s)
 {
 	const ds_theme *th = theme();
 	TTF_Font *f = page_font(PAGE_META);
-	int w = ui_text_width(f, s) + 28, h = 44;
+	int w = chip_w(s), h = 44;
 	SDL_Rect q = { x, y, w, h }, in = { x + DS_FRAME, y + DS_FRAME, w - 2 * DS_FRAME, h - 2 * DS_FRAME };
 
 	ui_round_rect(r, &q, DS_RADIUS_CHIP, col(th->edge));
@@ -131,7 +137,10 @@ static void tile_draw(SDL_Renderer *r, const mpg_tile *t, float x, float bw, flo
 		SDL_SetTextureAlphaMod(t->tex, big ? 255 : 210);
 		SDL_RenderCopyF(r, t->tex, NULL, &f);
 		SDL_SetTextureAlphaMod(t->tex, 255);
-		if (t->chip) chip(r, q.x + 10, q.y + 10, t->chip);
+		/* Its chip where it shows whole: a tile the strip's end cuts at the
+		 * screen's edge shows none (a wide canvas's strip reaches further) */
+		if (t->chip && q.x + 10 + chip_w(t->chip) <= ZYPEROS_SCREEN_W - DS_INSET)
+			chip(r, q.x + 10, q.y + 10, t->chip);
 	}
 }
 
@@ -201,7 +210,7 @@ static void message_draw(SDL_Renderer *r, const mpg_page *p, unsigned now)
 	if (p->zyper) {
 		float bob = 2.0f * sinf((float)(now % DS_MS_ZYPER_BREATHE) * 6.2831853f / DS_MS_ZYPER_BREATHE);
 
-		p->zyper(r, 904.0f, 412.0f + bob, 96.0f, 0.0f, true);
+		p->zyper(r, (float)(X1 - 56), 412.0f + bob, 96.0f, 0.0f, true);   /* 904 on a 4:3 canvas */
 	}
 }
 

@@ -1,0 +1,33 @@
+The R36S's known panels, as overlays for ROCKNIX's generic-dsi driver
+(plastron's kernel patch 4-rocknix-panel-generic-dsi.patch). The card's boot
+partition holds them all as overlays/panel-NAME.dtbo, and r36s-boot.txt's
+zy_panel=NAME picks one (board/r36s/boot-prelude.cmd). Without it, the
+card's device tree drives panel 0, the first R36S's.
+
+Each panel-NAME.dts is what plastron/scripts/r36s-panel.py writes from that
+panel's stock device tree, and panel-NAME.dtbo is dtc's build of it. The
+facts each one holds (the panel's init sequence, its mode, its size, its DSI
+lanes and flags) come from the stock device trees in lcdyk0517/arkos4clone
+(MIT), commit 94d5431f070857736ae2ebe40e567608a08db47d,
+boot/dArkOS/consoles/:
+
+  panel-0     origin panel0/rk3326-r36s-panel0-linux.dtb         ST7703
+  panel-1     origin panel1/rk3326-r36s-panel1-linux.dtb         unknown (E0 AB BA)
+  panel-2     origin panel2/rk3326-r36s-panel2-linux.dtb         NV3051D
+  panel-3     origin panel3/rk3326-r36s-panel3-linux.dtb         NV3051D
+  panel-4     origin panel4 type1/rk3326-r36s-panel4-type1-linux.dtb  NV3051D
+  panel-4v22  origin panel4 type2/rk3326-r36s-panel4-type2-linux.dtb  NV3051D, board V22
+
+Two have the same init sequence in a tree under the GPL too: panel 0 in
+ArkOS's kernel, christianhaitian/linux branch rg351,
+arch/arm64/boot/dts/rockchip/rk3326-r35s-linux.dts ((GPL-2.0+ OR MIT)), and
+panel 4v22 in sudowaffles/dtb-r36s-v30-20251811, dts/rk3326-r36s-linux.dts
+(GPL-2.0). The waits at power-up and the DSI clock flag are the ones that lit
+board R36S-V12's panel 4 (r36s-panel.py says which). Panel 5 (an ST7703
+with other timings) has none yet: no stock tree for it under a license
+that lets it be copied.
+
+To make one again:
+
+    python3 plastron/scripts/r36s-panel.py STOCK.dtb \
+        plastron/buildroot/board/r36s/overlays/panel-NAME.dtbo

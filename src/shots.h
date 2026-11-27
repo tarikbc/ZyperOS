@@ -175,6 +175,12 @@ extern int shot_gamecontrols;
 extern const char *shot_gamecontrols_tag;
 extern const char *shot_handheld_box;
 extern const char *shot_controls_fit;
+/* --ask NAME [ITEM]: a question with two answers (src/confirmq.h), its
+ * words the shot's own with ITEM for the name in it; --confirm-fit: every
+ * question in every language laid out, a line each on stderr */
+extern const char *shot_ask;
+extern const char *shot_ask_item;
+extern bool shot_confirm_fit;
 extern int shot_key;
 extern int shot_gm_choose;     /* --gm-choose */
 extern int shot_gm_restart;    /* --gm-restart */

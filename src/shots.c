@@ -619,16 +619,10 @@ static void shot_draw_ctltab(app *a, menu_tabs *tabs)
 		return;
 	}
 	if (shot_gm_ask) {
-		char q[LIB_NAME + 256], lines[DEL_ASK_LINES][CHV_WRAP_COLS];
-		menu_row ask[DEL_ASK_LINES + 2];
-		int nq;
+		char q[LIB_NAME + 256];
 
 		ctlscr_question(&g, q, sizeof q);
-		nq = store_ask_rows(a, q, lines, ask);
-		ask[nq] = (menu_row){ T(S_GAMEMENU_RESET_BUTTONS_YES), NULL, true };
-		ask[nq + 1] = (menu_row){ T(S_PANEL_CANCEL), NULL, true };
-		menu_draw(a, T(S_GAMEMENU_RESET_BUTTONS), ask, nq + 2, nq + 1, menu_std_width(a),
-		          MENU_ZYPEROS);
+		confirm_preview(a, ctlscr_question_id(&g), q);
 		return;
 	}
 	if (shot_gm_keys >= 0) {
@@ -913,35 +907,28 @@ static void shot_draw_gamemenu(app *a)
 	 * before it starts again (port_restart_ask), the mode --pick-at names
 	 * (Actual Size without), the cursor on Cancel */
 	if (shot_gm_restart && u.port_display) {
-		char q[256], lines[DEL_ASK_LINES][CHV_WRAP_COLS];
-		menu_row ask[DEL_ASK_LINES + 2];
-		int k = shot_pick_at >= 0 && shot_pick_at < DMODE_COUNT ? shot_pick_at : DMODE_COUNT - 1, nq;
+		char q[512];
+		int k = shot_pick_at >= 0 && shot_pick_at < DMODE_COUNT ? shot_pick_at : DMODE_COUNT - 1;
+		cq_id which = shot_gm_restart == 2 ? CQ_P8_RESTART_BUTTONS : CQ_P8_RESTART_DISPLAY;
 
 		/* --gm-restart buttons: the same question as the menu closes with
 		 * a button changed on its Controls tab (port_buttons_close) */
-		if (shot_gm_restart == 2) snprintf(q, sizeof q, "%s", T(S_PICO8_RESTART_BUTTONS));
-		else snprintf(q, sizeof q, T(S_PICO8_RESTART_DISPLAY), dmode_label(k));
-		nq = store_ask_rows(a, q, lines, ask);
-		ask[nq] = (menu_row){ T(S_PICO8_RESTART_YES), NULL, true };
-		ask[nq + 1] = (menu_row){ T(S_PANEL_CANCEL), NULL, true };
+		cq_text(which, q, sizeof q, dmode_label(k));
 		g_menu_tabs = NULL;
 		g_menu_side = NULL;
-		menu_draw(a, T(S_PICO8_RESTART_ASK), ask, nq + 2, nq + 1, menu_std_width(a), a->tint);
+		confirm_preview(a, which, q);
 		if (bg) SDL_DestroyTexture(bg);
 		return;
 	}
 	/* --gm-reset: over your PICO-8, Reset's question (reset_question, the
 	 * Reset row's and the hotkey's), the cursor on Cancel */
 	if (shot_gm_reset && u.port_reset) {
-		char lines[DEL_ASK_LINES][CHV_WRAP_COLS];
-		menu_row ask[DEL_ASK_LINES + 2];
-		int nq = store_ask_rows(a, T(S_HOTKEYS_RESET_LOST), lines, ask);
+		char q[512];
 
-		ask[nq] = (menu_row){ T(S_GAMEMENU_RESET), NULL, true };
-		ask[nq + 1] = (menu_row){ T(S_PANEL_CANCEL), NULL, true };
+		cq_text(CQ_P8_RESET, q, sizeof q);
 		g_menu_tabs = NULL;
 		g_menu_side = NULL;
-		menu_draw(a, T(S_HOTKEYS_RESET_ASK), ask, nq + 2, nq + 1, menu_std_width(a), a->tint);
+		confirm_preview(a, CQ_P8_RESET, q);
 		if (bg) SDL_DestroyTexture(bg);
 		return;
 	}
@@ -1033,6 +1020,93 @@ static void handheld_box_report(void)
  * "CONTROLS-FIT:" line on stderr for each page that does not fit, and a count
  * of the pages read (tools/controls-shots-check.sh). */
 const char *shot_controls_fit;
+const char *shot_ask;
+const char *shot_ask_item;
+bool shot_confirm_fit;
+
+/* A question's words for a shot: the inventory's own examples (the confirm
+ * panels lab, 2026-11-22), the longest name the lab found hard for Delete
+ * Game and a screenshot ("Castlevania - Symphony of the Night"); `item`, when
+ * given, for the name in it */
+static void shot_ask_text(cq_id q, const char *item, char *out, size_t n)
+{
+	char gb[24], mb[24], kb[24], mb525[24], mb38[24];
+	const char *game = item ? item : "Castlevania - Symphony of the Night";
+
+	sys_menu_bytes(1200000000ull, gb, sizeof gb);
+	sys_menu_bytes(860000000ull, mb, sizeof mb);
+	sys_menu_bytes(4100000ull, kb, sizeof kb);
+	sys_menu_bytes(525000000ull, mb525, sizeof mb525);
+	sys_menu_bytes(38000000ull, mb38, sizeof mb38);
+	switch (q) {
+	case CQ_WIFI_FORGET: case CQ_WIFI_FORGET_JOINED: cq_text(q, out, n, item ? item : "Casa 5G"); break;
+	case CQ_P8_RESTART_DISPLAY: cq_text(q, out, n, dmode_label(0)); break;
+	case CQ_HOTKEYS_SWAP:
+		cq_text(q, out, n, "SELECT+R2", T(S_HOTKEYS_QUICK_SAVE), T(S_CONTROLS_FASTER), "SELECT+L1");
+		break;
+	case CQ_HOTKEYS_RESET_GAME: case CQ_BUTTONS_RESET_GAME:
+		cq_text(q, out, n, "Nintendo 64", item ? item : "Tobu Tobu Girl");
+		break;
+	case CQ_HOTKEYS_RESET_SYSTEM: case CQ_BUTTONS_RESET_ALL: cq_text(q, out, n, "Nintendo 64"); break;
+	case CQ_STORE_UNUSED_ART: case CQ_SNAPS_DELETE_ALL: cq_text(q, out, n, gb); break;
+	case CQ_STORE_OLD_STATES: cq_text(q, out, n, 14, mb); break;
+	case CQ_STORE_SYS_SNAPS: cq_text(q, out, n, item ? item : "PlayStation", gb); break;
+	case CQ_STORE_MEDIA_FOLDER: cq_text(q, out, n, item ? item : "Lo-fi Beats", gb); break;
+	case CQ_STORE_MEDIA_FILE: cq_text(q, out, n, item ? item : "Rainy Night.mp3", kb); break;
+	case CQ_STORE_ORPHAN_PORT: cq_text(q, out, n, item ? item : "Stardew Valley", gb); break;
+	case CQ_GAME_DELETE: case CQ_SHOT_DELETE: cq_text(q, out, n, game); break;
+	case CQ_PORT_DELETE: cq_text(q, out, n, item ? item : "Stardew Valley"); break;
+	case CQ_ROLLBACK: cq_text(q, out, n, "1.0.6"); break;
+	case CQ_COLLECT_DELETE: cq_text(q, out, n, item ? item : "Couch Co-op"); break;
+	case CQ_DL_DELETE_VIDEOS: cq_text(q, out, n, mb525); break;
+	case CQ_DL_DELETE_SETS: cq_text(q, out, n, mb38); break;
+	case CQ_DL_SYS_VIDEOS: cq_text(q, out, n, item ? item : "Game Boy", mb525); break;
+	case CQ_DL_SYS_SETS: cq_text(q, out, n, item ? item : "Game Boy", mb38); break;
+	case CQ_DL_SYS_CHEATS: cq_text(q, out, n, item ? item : "Game Boy"); break;
+	case CQ_BT_FORGET: cq_text(q, out, n, item ? item : "WH-1000XM4 Wireless Headphones"); break;
+	default: cq_text(q, out, n); break;
+	}
+}
+
+/* --ask NAME: the question over the shelf, the cursor where it starts */
+static void shot_ask_draw(app *a)
+{
+	cq_id q = cq_named(shot_ask);
+	char text[1024];
+
+	if (q == CQ_COUNT) {
+		fprintf(stderr, "--ask: no question called %s\n", shot_ask);
+		return;
+	}
+	shot_ask_text(q, shot_ask_item, text, sizeof text);
+	ui_scrim(a->r, 0);
+	confirm_preview(a, q, text);
+}
+
+/* --confirm-fit: every question in every language, as the panel lays it
+ * out on this handheld (tools/confirm-fit.py holds them: side by side,
+ * nothing cut, nothing sliding) */
+static void confirm_fit_report(app *a)
+{
+	lang was = i18n_lang();
+	int l, q;
+
+	for (l = 0; l < LANG_COUNT; l++) {
+		i18n_set((lang)l);
+		for (q = 0; q < CQ_COUNT; q++) {
+			char text[1024];
+			ds_confirm_lay lay;
+
+			shot_ask_text((cq_id)q, shot_ask_item, text, sizeof text);
+			confirm_lay(a, (cq_id)q, text, &lay);
+			fprintf(stderr, "confirm-fit: %s %s side=%d small=%d meta=%d lines=%d scroll=%d whole=%d "
+			        "heading=%d rule=%d w=%d h=%d\n", lang_code((lang)l), cq_of((cq_id)q)->name,
+			        lay.side, lay.small, lay.meta, lay.nlines, lay.scroll, lay.whole, lay.head_lines,
+			        lay.rule, lay.panel.w, lay.panel.h);
+		}
+	}
+	i18n_set(was);
+}
 
 static int controls_fit_one(app *a, const char *where, const char *head,
                             const char *count, const menu_row *rows, int n)
@@ -1757,6 +1831,11 @@ static void shot_compose_once(app *a)
 	else if (g_shot_p2 && a->sys.count > 0) shot_draw_player2(a);
 	if (shot_gamecontrols >= 0 && a->sys.count > 0) shot_draw_gamecontrols(a);
 	if (shot_controls_fit) controls_fit_report(a);
+	if (shot_ask) shot_ask_draw(a);
+	if (shot_confirm_fit) {
+		confirm_fit_report(a);
+		shot_confirm_fit = false;   /* once: --flip composes the shot twice */
+	}
 	if (shot_rows_report) {
 		sysmenu_rows_report(a);
 		gm_rows_report(a);
@@ -1961,15 +2040,11 @@ static void shot_compose_once(app *a)
 	if (shot_usb_offer) {
 		/* Zyper's offer of Automatic, as usb_offer_show lays it out, the
 		 * cursor on Keep Asking */
-		char lines[USB_OFFER_LINES][LB_LINE];
-		menu_row rows[USB_OFFER_LINES + 3];
-		int n;
+		char q[512];
 
 		ui_scrim(a->r, 0);
-		n = usb_offer_rows(a, lines, rows);
-		rows[n]     = (menu_row){ T(S_SYSMENU_USB_AUTO), NULL, true };
-		rows[n + 1] = (menu_row){ T(S_XFER_USB_OFFER_KEEP), NULL, true };
-		menu_draw(a, T(S_XFER_USB_OFFER), rows, n + 2, n + 1, menu_std_width(a), MENU_ZYPEROS);
+		cq_text(CQ_USB_OFFER, q, sizeof q);
+		confirm_preview(a, CQ_USB_OFFER, q);
 	}
 	if (shot_datetime >= 0) {
 		/* Date & Time's page as clock_build builds it, at a time of its own,
@@ -2838,6 +2913,7 @@ static void shot_tour_draw(app *a)
 	} else {
 		const dev_chords c = shot_chords();
 
+		tour_menu_word(dev_menu_word(plat_profile()));
 		tour_pose(&t, (tour_step)shot_tour, now, shot_tour_ms, shot_tour_done,
 		          &c, dev_tutorial_model(plat_profile(), &c));
 		tour_lang_from(&t, (int)i18n_lang());

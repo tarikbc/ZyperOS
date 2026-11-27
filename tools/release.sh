@@ -376,12 +376,12 @@ docker run --rm -v plastron-work:/work --user root plastron-builder rm -rf /work
 # packs with their lists unsigned
 GET=
 for d in $DEVICES; do
-	if [ "$d" = brick ]; then
+	if [ "$d" = brick ] || [ "$d" = smartpro ]; then
 		# Its kernel and modules first, from this commit's patches, as
 		# plastron's make release builds them (board/brick/post-image.sh
-		# stops without them)
-		say "The Brick's kernel and modules"
-		make -C "$PLASTRON" brick-kernel
+		# stops without them); the Smart Pro's is the Brick's with its own
+		say "The $d's kernel and modules"
+		make -C "$PLASTRON" "$d-kernel"
 	fi
 	say "The $d image: plastron's release build (everything, from empty; this takes a while)"
 	date

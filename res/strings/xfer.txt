@@ -125,7 +125,7 @@ ja = スマートフォン
 it = Telefono
 
 [xfer.usb_offer]
-note = The heading of Zyper's one-time offer (DESIGN.md 11.36): after the player answers USB Accessory to What did you plug in? a second time, the shelf offers to power accessories with no question from now on, as MENU > USB Accessories' Automatic does. A yes/no question; its answers are sysmenu.usb_auto (Automatic) and xfer.usb_offer_keep. One line in the panel's heading (about 780 units at the heading's size).
+note = The question of Zyper's one-time offer (DESIGN.md 11.36), under xfer.usb_offer_heading: after the player answers USB Accessory to What did you plug in? a second time, the shelf offers to power accessories with no question from now on, as MENU > USB Accessories' Automatic does. Its answers are xfer.usb_offer_keep, where the cursor starts, and sysmenu.usb_auto (Automatic); xfer.usb_offer_said follows it. Wrapped to the panel.
 en = Power without asking?
 zh-Hans = 不再询问，直接供电？
 es = ¿Dar energía sin preguntar?
@@ -136,7 +136,7 @@ ja = 確認せずに給電しますか？
 it = Alimentare senza chiedere?
 
 [xfer.usb_offer_said]
-note = The words under xfer.usb_offer: what Automatic does and its one risk, as sysmenu.usb_auto_said says them, plainly. "Automatic" is sysmenu.usb_auto, the answer under them. Up to four balanced lines.
+note = The words after xfer.usb_offer: what Automatic does and its one risk, as sysmenu.usb_auto_said says them, plainly. "Automatic" is sysmenu.usb_auto, an answer under them. Wrapped to the panel.
 en = Automatic powers what you plug in after 2 seconds. A computer not connected yet gets about 2 seconds of power.
 zh-Hans = “自动”会在插入 2 秒后供电。尚未连接的电脑会得到约 2 秒电力。
 es = Automático da energía a lo que conectes tras 2 segundos. Una computadora sin conectar recibe unos 2 segundos de energía.
@@ -151,11 +151,22 @@ note = The safe answer of xfer.usb_offer, where the cursor starts: the handheld 
 en = Keep Asking
 zh-Hans = 继续询问
 es = Seguir preguntando
-pt-BR = Continuar perguntando
+pt-BR = Sempre perguntar
 fr = Toujours demander
 de = Weiter fragen
 ja = 毎回確認する
 it = Continua a chiedere
+
+[xfer.usb_offer_heading]
+note = The heading of Zyper's one-time offer (DESIGN.md 11.36): its question is xfer.usb_offer, then xfer.usb_offer_said. A heading, the action: Automatic, sysmenu.usb_auto.
+en = Power Automatically
+zh-Hans = 自动供电
+es = Energía automática
+pt-BR = Energia automática
+fr = Alimentation automatique
+de = Automatisch Strom geben
+ja = 自動で給電
+it = Alimentazione automatica
 
 [xfer.replug_computer]
 note = A computer on the USB cable has not connected (its port took the side that waits for power, which the handheld never gives a computer). Which side a port takes is a coin toss at each plug, so it can take a few tries: say so, without blaming the player or the cable. Over any screen but a game, after the player answers Computer, or when a computer showed up on the port during the plug, until the cable comes out; and under USB File Transfer's Cable step. A replug at once is a new plug, so no wait is asked. Never say "power" here. Up to three balanced lines.

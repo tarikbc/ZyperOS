@@ -56,9 +56,10 @@ settles something the lab did not ask about, it says so and gives the reason.
 
 | | |
 |---|---|
-| Design space | 1024 x 768 units, landscape (`ZYPEROS_SCREEN_W/H`) |
+| Design space (the canvas) | 768 units high on every handheld; as wide as the panel's shape makes it, to the grid: 1024 on 4:3, 1368 on 16:9 (`ZYPEROS_SCREEN_W/H`, `src/canvas.h`). A screen takes its places from the canvas's edges, middle and columns, never from a typed 1024 |
 | GKD Pixel 2 panel | 640 x 480 shown, 0.625 px per unit; the panel is 480x640 portrait mounted turned, and the picture is turned onto it (`plat_save_screen`, plastron's SDL patch) |
 | TrimUI Brick | 1024 x 768, 1 px per unit |
+| TrimUI Smart Pro | the 1368 x 768 canvas on its 1280 x 720 panel (turned by its kernel), 0.9375 px per unit; no bars |
 | Grid | 8 units, which is exactly 5 panel pixels; 4 units for fine steps |
 | Screen inset | 24 units from every edge for text and marks |
 
@@ -126,8 +127,10 @@ Each role has one value per theme. Code asks for the role, never the value.
 - **accent-ink** is lime as a *mark* on the ground: the bar's segments for
   volume, an earned achievement, the progress strip. In Beard it is a darker
   lime, because the fill's lime on a light ground is only 1.3:1.
-- **light** is brightness, **favorite** the heart, **warning** low battery
-  and errors.
+- **light** is brightness, **favorite** the heart, **warning** low battery,
+  errors and the answer that loses what no press brings back (11.3, "A
+  question with two answers"): at rest on its **raised** slab, where it is
+  large text and owed 3:1 (`LARGE_TEXT_ON`, 4.0:1 in Beard).
 - **store-games**, **store-saves** and **store-art** are Storage's bar and
   its legend's dots (11.32), and nothing else.
 
@@ -139,7 +142,7 @@ Each role has one value per theme. Code asks for the role, never the value.
 | a system's color (systems.cfg) | its shelf's marks and lift and missing-cover fallback | focus, any menu (its heading rule, its frame, its light), source sprite colors, unrelated screens |
 | **light** | brightness | anything else |
 | **favorite** | the heart | anything else |
-| **warning** | low battery, an error a row reports | emphasis |
+| **warning** | low battery, an error a row reports, an answer that cannot be undone (11.3) | emphasis |
 
 *This document's calls, from the audit (2026-11-04):* MP4 is no longer its
 own green (0x9CD345 sat a few degrees from Zyper's lime and the two could not
@@ -502,6 +505,12 @@ its own says why beside it.
 | **list-mark** | 64 | a list row's mark |
 | **list-row-gap** | 12 | between a list's rows |
 | **list-pad-y** | 14 | a list row's words from its top and foot |
+| **confirm-inset** | 26 | an answer's slab from the panel's edge |
+| **confirm-gap** | 24 | between the two answers side by side |
+| **confirm-word-pad** | 24 | an answer's words from its slab's ends, at the least |
+| **confirm-glyph** | 40 | B's glyph in the answer B gives |
+| **confirm-glyph-gap** | 14 | between that glyph and the answer's word |
+| **confirm-press** | 94 | a pressed answer's slab, percent of its size |
 | **badge** | 40 | a disc with a mark on a cover: its source, a video |
 | **badge-small** | 30 | the same on a small cover |
 | **badge-ring** | 2 | the edge round a badge, and a switch mark's ring |
@@ -1262,7 +1271,7 @@ something other than its row.
 **Lists go round.** Down on the last row that can be selected goes to the
 first, and Up on the first to the last, in every menu list - MENU, a
 system's menu, the in-game menu, a screen's rows, MP4's list, the
-achievement list, Storage, the yes/cancel panel. A **held** direction stops
+achievement list, Storage, the two answers of a question. A **held** direction stops
 at the end and stays there, playing **edge** once (9); the next press goes
 round, heard as any step. It is one rule in one place, `menu_step_round`
 for a press and `menu_step_sel` for a hold (src/menu.c), and
@@ -1278,6 +1287,69 @@ one step and the window scrolls through the seam as it scrolls through rows
 (`menu_loop_*`: slots, where slot s is row s mod (n + 1) and the seam is the
 slot that comes to n). Both triangles show on such a list, since there is
 always more.
+
+**A question with two answers** *(my picks in the confirm panels lab,
+2026-11-22, `~/Documents/ZyperOS/labs/confirm-panels-lab.html`: "Our UI has
+to be flawless and consistent")*. Every question the launcher asks with two
+answers is one panel, 39 of them in one table (`src/confirmq.h`): Delete
+Game, Wi-Fi's and Bluetooth's Forget, Storage's, Downloads', Reset, the USB
+offer. A
+question with three answers or more stays as it is (11.18, 11.36).
+
+- **The heading is the action** ("Delete Game", "Forget Network", "Reset
+  Hotkeys"), in Title Case and never a question; **the item's name is in
+  the question** ("Delete Castlevania - Symphony of the Night? Its saves and
+  states, cover and video go too. This cannot be undone."), however long:
+  it is never moved to the heading. A heading too wide for the panel is
+  broken onto two lines, never slid.
+- **The question wraps** to the panel's width (`menu_std_width`, at most
+  `menu_most_w`'s 864, the 4:3 room on the Smart Pro's wide canvas too),
+  balanced and centered in **menu** **text-dim**, lines 67 apart. When its
+  lines do not fit over the answers it is set in **meta** (lines 55 apart),
+  never under it; only past that does it scroll itself in its room, as a
+  card's body does, which no question in the launcher needs
+  (`check-confirm`). Nothing is cut and nothing slides: until 1.1.0 ask_panel
+  dropped the lines past four, and 14 questions slid in one row. A rule in
+  **edge** divides it from the answers where there is room.
+- **The answers side by side**, each a raised slab (**raised**,
+  **radius.row**), confirm-inset (26) from the panel's edges and
+  confirm-gap (24) apart: 408 units each on English's panel. **The safe
+  answer on the left** (Cancel), the cursor on it as the panel opens; on a
+  question whose answers both go on, the one the cursor started on before
+  (Turn On Wi-Fi, Without Cheats, Keep Asking). The focused one is the
+  **accent** fill, its words **on-accent**, as every focus; the fill glides
+  between them in **quick**. An answer's words are in **menu** while both fit
+  their halves (confirm-word-pad, 24, either end), in **meta** together when
+  one does not, and the two stack the panel's width only when one does not
+  fit its half even in **meta**, Up and Down moving them then.
+- **The answer that loses what no press brings back** (files, a password,
+  play since a save, your own buttons, a pairing: 33 of the 39) has its words in
+  **warning** at rest, the lime fill when focused. A question whose answers
+  both go on marks neither.
+- **B's glyph** (11.9, each handheld's own, confirm-glyph 40) is before the
+  word of the answer B gives, confirm-glyph-gap (14) from it, in
+  **on-accent** on the fill: B gives the safe answer, never one that stays.
+  Where the left answer itself does something that stays (the USB offer's
+  Keep Asking, kept for good; PICO-8's Later, which closes the menu) or the
+  answers both go on, B leaves with nothing done and no answer has its
+  glyph. There is no foot of hints.
+- **Keys.** Left and Right move between the answers and go round; a held
+  one stops at the end and plays **edge** once; Up and Down only play
+  **edge**. A takes the answer under the cursor; B its own answer; MENU
+  leaves with nothing done, as from any screen, and POWER turns the
+  handheld off with nothing done (over a game, it stops the game). A
+  question that comes by itself keeps its guard (11.36).
+- **Motion.** It opens in **move** from 96%, as every panel. The answer
+  taken, by A or by B, presses (**press**, its slab and its fill to
+  confirm-press, 94%), then the panel closes in **exit**; a press during it
+  ends it at once.
+
+It is one drawer and one run: `src/ds/confirm.h` lays it out and draws it,
+`confirm_ask` (src/main.c) runs it, a screen names its question and gives
+its words (`cq_text`). `check-confirm` holds the table, the keys and every
+question in every language on the Pixel 2 and the Brick; `--ask NAME` shoots
+any of them (check-i18n-shots' `ask-*`).
+
 
 **MENU's tabs.** MENU is in six tabs, **Games**, **Display**, **Sound**,
 **Connections**, **System** and **About**, and **L1** and **R1** go round
@@ -1323,6 +1395,15 @@ where it was.)*
 | **Connections** | USB Device (while a plug waits), Wi-Fi, Bluetooth, File Transfer, USB Accessories, Developer Mode |
 | **System** | Date & Time, Clock, Language, Hotkeys, Power Button, Auto Off, Charge Limit, Side Lights, Storage, System Update |
 | **About** | About ZyperOS, Controls, Show Tutorial |
+
+**Wi-Fi and Bluetooth forget after asking.** X on a saved network (Wi-Fi)
+or a paired headset (Bluetooth) asks first, a question with two answers
+(above): **Forget Network**, "Forget Casa 5G?" (and "You are connected to
+it and will lose the network." on the one the handheld is on), or **Forget
+Headset**, "Forget WH-1000XM4? Pair it again to use it.", Cancel and
+**Forget**, the cursor on Cancel, Forget in **warning**. *(Bluetooth's forgot
+at once until 1.1.0; Tarik's, 2026-11-23, after the confirm panels lab
+listed it: it asks as Wi-Fi's does.)*
 
 A row added to MENU goes into `pm_row` where its tab's rows are and into
 `sys_menu_tab_of`, whose switch the compiler holds to every row.
@@ -3491,7 +3572,7 @@ screen), in this order, the rows in brackets only where they apply:
 7. [A quiet row, "Cross has no button now", under a button whose change left
    a game button with none.]
 8. **Reset Buttons**, live only when what shows differs from its default; A
-   asks first in the yes/cancel panel Delete Game uses, "Put back the
+   asks first, a question with two answers (11.3), "Put back the
    PlayStation's buttons in Spyro the Dragon?" or "Put back ZyperOS's buttons
    for every PlayStation game?".
 9. **Hotkeys**: A opens the Hotkeys list (11.61), at its own width, Applies
@@ -3648,21 +3729,15 @@ anything is asked. *(2026-11-08, from Tarik's Pixel 2: Storage showed each
 port as its script alone, and deleting one from there left its folders.
 Ports had had no Delete Game, since nothing had said what was a port's.)*
 
-- **The question** is the confirm panel every destructive row asks with
-  (Forget, Unlink, Delete All, Roll Back): over the shelf on **scrim.menu**,
-  heading **Delete Game**, then the question, then **Delete** and
-  **Cancel**, a centered list, the cursor starting on Cancel; B and MENU are
-  Cancel, POWER turns the handheld off with nothing deleted. What is new is
-  that the question is a paragraph: it names the game, says what goes with
-  it and that it cannot be undone, "Delete Metal Gear Solid? Its saves and
-  states, cover and video go too. This cannot be undone." Its lines are
-  wrapped to the panel and centered, as the one-line question of the other
-  confirms is, in **text-dim** as a question row is, a **menu** note line
-  each; a rule (the heading's) divides it from the answers when there is
-  room. A question too long for the lines over its answers would leave its
-  start where no cursor goes, so a game whose name does not fit is named in
-  the heading instead, as on its details page, and the question says "this
-  game".
+- **The question** is a question with two answers (11.3): over the shelf
+  on **scrim.menu**, heading **Delete Game**, then the question, then
+  **Cancel** and **Delete** side by side, the cursor on Cancel, Delete in
+  **warning**; B is Cancel, MENU leaves, POWER turns the handheld off with
+  nothing deleted. The question names the game, says what goes with it and
+  that it cannot be undone, "Delete Metal Gear Solid? Its saves and states,
+  cover and video go too. This cannot be undone.", wrapped to the panel
+  however long the name. *(Until 1.1.0 a name that did not fit moved to the
+  heading, where it slid, and the question said "this game".)*
 - **The yes** draws one frame, "Deleting..." (11.8), deletes, closes the
   details page onto the shelf as it is now, and says what came of it in a
   one-line message: "Deleted. 1.2 GB given back.", or that some of its
@@ -3759,7 +3834,8 @@ asks it.
 y 92, 112 square) where System Update has Zyper, its size in **title** and its
 games' count at the right, its own bar of games, saves and art with each
 part's size in the legend. Then **Delete Video Snaps** when it has snaps
-(Video Snaps' own delete, 11.19), a rule, and its games, largest first: a
+(Video Snaps' own delete, 11.19; its question names the system, "Delete the
+PlayStation video snaps?", where until 1.1.0 it said "every video snap"), a rule, and its games, largest first: a
 game's size is what Delete Game gives back (11.31's plan, summed), its facts
 "Played 22h 5m · last played 3mo ago · saves and states 69 MB" or "never
 played". A on a game is Delete Game's question, as it is, over this page;
@@ -4309,16 +4385,17 @@ asked about every time (my ask, 2026-11-13: "cant zyper remember?"). So
 the player's USB Accessory answers are counted on the device
 (`usb_accessory_answers`), and after the second, while the setting is Ask
 and the offer was never answered, the shelf offers Automatic once the
-accessory has its power (the power waits for nothing): Delete Game's
-confirm panel, **Power without asking?** over "Automatic powers what you
-plug in after 2 seconds. A computer not connected yet gets about 2
-seconds of power." in up to four balanced lines and the rule, then
-**Automatic** and **Keep Asking**, the cursor on Keep Asking. It comes by
-itself, so it takes a press as the question does (a button held through
-its start, or pressed in its first half second, counts once let go).
-Automatic is the setting's own, told to usbrole. Either answer, B too, is
-kept (`usb_auto_offer`) and it is never offered again; POWER, Auto Off or
-a quit answer nothing, and the next USB Accessory offers it again. On the
+accessory has its power (the power waits for nothing): a question with two
+answers (11.3), **Power Automatically**, "Power without asking? Automatic
+powers what you plug in after 2 seconds. A computer not connected yet gets
+about 2 seconds of power.", then **Keep Asking** and **Automatic**, the
+cursor on Keep Asking. It comes by itself, so it takes a press as the
+question does (a button held through its start, or pressed in its first
+half second, counts once let go). Automatic is the setting's own, told to
+usbrole. Either answer is kept (`usb_auto_offer`) and it is never offered
+again; B, MENU, POWER, Auto Off or a quit answer nothing and keep nothing,
+and the next USB Accessory offers it again. *(Until 1.1.0 B was kept for
+good as Keep Asking: B never takes an answer that stays, 11.3.)* On the
 shelf only, after the question, so never over a game (an answer in MENU >
 USB Device offers it back on the shelf). Host shot: `--usb-offer`.
 
@@ -5642,6 +5719,7 @@ the tiles' style is read off a name.
 | Layout engine | `src/ds/flex.c`, `flex.h` | boxes laid out by rules (section 5, The system): `ds_flex_begin`, `ds_flex_add`, `ds_flex_solve`, `ds_flex_rect`; `check-flex` holds its rules |
 | Stroke marks | `src/ds/glyph.c`, `glyph.h` | the 25 `ui_glyph` marks and their cache; `check-glyphs` holds each to 32 strokes and 4 arrowheads |
 | Page frame | `src/ds/page.c`, `page.h` | `ds_page_frame_of`, one column of boxes on the layout engine (the heading's band **page-body-y** tall, the body with two tiles and a line of words **page-news-drop** under them, the line of marks **page-line-over** over the keys, the keys on the foot inset); the heading (`ds_page_head`: `DS_HEAD_BALANCED`, `DS_HEAD_TWO`, `DS_HEAD_SUB`); the line of marks over the keys (`ds_page_line`, its tones `DS_TONE_*`); a line of words under the tiles (`ds_page_meta`); the foot (`ds_page_foot`). `page_top` (`src/usbdrive_screen.c`) draws the ground and Zyper and hands back the frame. |
+| A question with two answers | `src/ds/confirm.c`, `confirm.h`; the questions `src/confirmq.c`, `confirmq.h` | 11.3: `ds_confirm_layout`, `ds_confirm_draw` (the heading, the question wrapped, the two slabs, the fill, B's glyph, the press). In `src/main.c`, `confirm_ask` runs one (`PANEL_CONFIRM`, its press kept in the panel's copy) and `confirm_preview` draws one for a shot. `check-confirm` |
 | Tiles and the list | `src/ds/tiles.c`, `tiles.h` | `ds_tiles_draw`: `DS_TILES_ROW`, `DS_TILES_GRID`, `DS_TILES_LIST`. In `src/main.c`, `tiles_show` takes the style as the panel's kind (`PANEL_TILES`, `PANEL_TILES_GRID`, `PANEL_LIST`) and each tile's mark. |
 | The grid | `src/gamegrid.c`, `gamegrid.h`; the rule `src/gridrule.c`, `gridrule.h` | 11.47: the shape from the art, the cells, the covers in them, the band; `check-gridrule` |
 | The focus | `src/ds/focus.c`, `focus.h`; its pixels `src/focusgeo.c`, `focusgeo.h` | 3.5's Highlight on the home and the shelves: `ds_focus_marks_of` (what a choice draws for a cover or a still), `ds_focus_tile` (the focused item grown on whole pixels, or on its way), `ds_focus_ring`, `ds_focus_ring_in`, `ds_focus_bar`, `ds_focus_hairline`, `ds_focus_dim`, `ds_focus_sheen`, `ds_round_ring`, the glide's weights (`ds_focus_weights`); `ui_lift_focus` in `src/ui.c`. `check-focusgeo` holds the pixels to the Pixel 2's filter. |
@@ -6166,7 +6244,7 @@ first play gets it.
 **Settings** (START), a panel: **ScreenScraper**, **RetroAchievements**,
 **SteamGridDB** with their accounts, **Video Snaps** (11.19's page),
 **Names and Details** (On or Off), **On the Card** (each kind's room; A on
-Videos or Achievements deletes them all after a question, cursor on Cancel;
+Videos or Achievements deletes them all after a question (11.3);
 Covers and Names say why they are not deleted here). RetroAchievements' page
 says who is signed in, signs in again, and **Sign Out** after a question:
 earned achievements stay on the account, unlocks still waiting stay in their
@@ -6395,8 +6473,9 @@ it starts again in. A opens the Display list, each mode's picture beside it
 (PICO-8's own screen, cut out of the frame the menu is over, drawn in that
 mode); Left and Right step nothing, as a step would start it again. A mode
 other than the one on asks first, as Reset Game's hotkey asks, the cursor on
-Cancel: **Start the cart again?**, "PICO-8 starts again in Actual Size. Play
-since the cart last saved is lost.", **Start Again** and Cancel. Start Again
+Cancel: **Start Cart Again**, "Start the cart again? PICO-8 starts again in
+Actual Size. Play since the cart last saved is lost.", Cancel and **Start
+Again** (11.3). Start Again
 keeps the mode as the shelf's row keeps it (`display.PICO8`), and PICO-8 ends
 (saving its settings) and starts again in it, behind the cart's loading
 screen, MP4 playing on; Cancel, B or the mode on change nothing. The **Next
@@ -6432,8 +6511,9 @@ PICO-8 has no states and no speed, so their keys stay PICO-8's under SELECT.
 
 **Reset** is a row of the Game tab over it, before Quit as in a game's, once
 PICO-8 has drawn, and the Reset Game hotkey's: both ask first, over the frame,
-as Reset Game's hotkey asks over a game, the cursor on Cancel: **Reset the
-game?**, "Play since the last save is lost.", **Reset** and Cancel. Reset is
+as Reset Game's hotkey asks over a game, the cursor on Cancel: **Reset
+Game**, "Reset the game? Play since the last save is lost.", Cancel and
+**Reset**. Reset is
 PICO-8's own CTRL-R ("Reload / Run / Restart cartridge", its manual): portkeys
 keeps a keyboard of its own for the run (uinput, which plastron's kernel has
 built in, as gptokeyb's keyboard is made) and presses CTRL and R on it once
@@ -6449,10 +6529,13 @@ table in force becomes the pad's mapping line (src/p8pad.h: O on SDL's a, X
 on its b), which PICO-8.sh exports, the line that shipped when nothing is
 changed. A change cannot reach a PICO-8 that is running, so the menu closing
 back to the cart with new buttons (Continue, B, MENU) asks the Display row's
-question, "PICO-8 takes the new buttons as it starts again. Play since the
-cart last saved is lost.": **Start Again** starts it again with them, in the
-mode on; Cancel, B or MENU keep them for its next start and the cart goes
-on. A Display mode's start again takes them as it starts, and Reset, Quit
+question, "Start the cart again? PICO-8 takes the new buttons as it starts
+again. Play since the cart last saved is lost.": **Start Again** starts it
+again with them, in the mode on; **Later**, where the cursor starts, keeps
+them for its next start and the cart goes on; B goes back to the menu with
+nothing done, and MENU closes it as Later does. *(Until 1.1.0 the left
+answer was Cancel and B was it, going on without a start again: B never
+takes an answer that stays, 11.3.)* A Display mode's start again takes them as it starts, and Reset, Quit
 and POWER ask nothing, keeping them for the next start. *(Up to 1.1.0-rc.8
 a Controls row opened the list as a page, and leaving it asked.)* A turbo
 is the plain button over it, and the N64's layer is no PICO-8's.
@@ -6525,10 +6608,10 @@ where a player looks*), its line **Not installed** and A **How to Add**, which
 opens a page in System Update's form (11.17): heading **Your PICO-8**, "PICO-8"
 where the versions go, "By Lexaloffle · not on this card" under it, three
 points (what it adds, whose it is, how to add it), and **Back**. With no way
-out to the internet and a radio to turn on, A asks first: **Splore needs
-Wi-Fi**, "Wi-Fi is off. Offline, Splore has only the carts it downloaded
+out to the internet and a radio to turn on, A asks first (11.3): **Open
+Splore**, "Wi-Fi is off. Offline, Splore has only the carts it downloaded
 before.", **Turn On Wi-Fi** (on, and the saved network joined, up to 15 s) or
-**Open Offline**; B leaves it.
+**Open Offline**, both going on and neither marked; B leaves it.
 
 **Splore's downloads.** PICO-8 for Raspberry Pi has no HTTP of its own: it
 runs `wget` for every list and cart. The system's wget is busybox's, which has
@@ -6620,7 +6703,7 @@ kept by its tag: **Added** (the list's order, the order its games went in;
 as it ships), **Name**, **Last Played** and **System** (the home's order of
 the systems, A to Z in each). Rename opens the keyboard on its name and
 renames its file. Delete Collection asks first, as Delete Game does (11.31):
-"Delete Couch Co-op? Its games stay on the card.", Delete over **Cancel**,
+"Delete Couch Co-op? Its games stay on the card.", **Cancel** and Delete,
 the cursor on Cancel; the list goes, never a game. After Rename, Remove and
 Delete the menu closes onto the shelf as it is now: on the collection under
 its new name, on the next game, or on the collection after the one that went.
@@ -7095,9 +7178,10 @@ and B too: SELECT down lights its glyph at 112 (the tutorial's pressed look),
 a button with it lights beside it with "+", and the second line says "Let go
 to keep them.". SELECT let go alone waits again; MENU, or B with nothing
 held, leaves with no change. **A clash says so, and offers a swap**: the
-keys are another action's, so the yes/cancel panel says "SELECT+R2 is
-already taken by Faster. Swap them, and Faster moves to None." (or to the
-keys the row had), **Swap** and Cancel, the cursor on Cancel, so no hotkey
+keys are another action's, so a question with two answers (11.3),
+**Swap Hotkeys**, asks "Give SELECT+R2 to Quick Save? Faster has it now and
+moves to None." (or to the keys the row had), Cancel and **Swap**, the
+cursor on Cancel, so no hotkey
 is lost by accident (2026-11-19: "If a hotkey is taken, we should
 show a message saying it"; it read "SELECT+R2 is Faster now", which did not
 say it was taken). There is no Both: a chord does one
@@ -7105,9 +7189,9 @@ action.
 
 **Reset Game asks first** *(my pick: a reset loses play, so one press is not
 enough)*. The chord pauses the game as MENU does (Diatom's PAUSED
-`for=reset`), and over the paused frame the yes/cancel panel Delete Game uses
-asks "Reset the game?", "Play since the last save is lost.", **Reset** and
-Cancel, the cursor on Cancel. Reset resets and the game goes on; Cancel or B
+`for=reset`), and over the paused frame a question with two answers (11.3),
+**Reset Game**, asks "Reset the game? Play since the last save is lost.",
+Cancel and **Reset**, the cursor on Cancel. Reset resets and the game goes on; Cancel or B
 goes back to it where it was. **Quit** pauses the same way (`for=quit`) and
 stops the game as the menu's Quit does.
 
@@ -7393,15 +7477,16 @@ evaluates nothing (CHEEVOS says `paused=cheats`), the Achievements row says
 off again does not bring them back: what a cheat changed in the game's
 memory stays. While signed in, for a game with achievements, the list's top
 line says "Achievements wait while a cheat is on.", and **the first cheat
-asks first**, once a game: "Turn on a cheat?", "Achievements stop for this
-game until it starts again with every cheat off.", **Turn On** and Cancel,
-the cursor on Cancel, as Delete Game asks.
+asks first**, once a game: **Turn On Cheat**, "Turn on a cheat? Achievements
+stop for this game until it starts again with every cheat off.", Cancel and
+**Turn On**, the cursor on Cancel (11.3).
 
 **The start.** A game starts with what was on when it was last left: the
 pop-up "Cheats" / "2 cheats on" over its first frames, for **hold-short**, so
 nobody plays an evening with a cheat they forgot. A game that stopped by
-itself with cheats on (EXIT `reason=crash`) asks at its next start: "This
-game stopped last time with cheats on. Start it without them?",
+itself with cheats on (EXIT `reason=crash`) asks at its next start (11.3),
+**Start Game**: "This game stopped last time with cheats on. Start it without
+them?",
 **Without Cheats** (the cursor's) and **With Cheats**; without, the game
 starts with none and they stay set for later. B leaves it unstarted.
 

@@ -33,6 +33,18 @@
 
 #include <SDL_syswm.h>
 
+/* What tells this file's RK3326 handhelds apart, for the ones that build it
+ * with their own (src/device/r36s.c): the card's folder, the codes the A and
+ * B caps and the MENU key send, and whether L2 and R2 are taps for the side
+ * lights' battery chord. The Pixel 2's here. */
+#ifndef RK_ID
+#define RK_ID            "pixel2"
+#define RK_CODE_A        BTN_SOUTH
+#define RK_CODE_B        BTN_EAST
+#define RK_CODE_FUNCTION BTN_TRIGGER_HAPPY1
+#define RK_L2R2_TAPS     1
+#endif
+
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -57,7 +69,7 @@
 const char *P_ROOT = "/mnt/SDCARD/ZyperOS";
 const char *P_CARD = "/mnt/SDCARD";
 const char *P_ROMS = "/mnt/SDCARD/Roms";
-const char *P_USERDATA = "/mnt/SDCARD/.userdata/pixel2";
+const char *P_USERDATA = "/mnt/SDCARD/.userdata/" RK_ID;
 const char *P_SHARED = "/mnt/SDCARD/.userdata/shared";
 const char *P_WEB = "/mnt/SDCARD/ZyperOS/res/web";
 const char *P_FONT = "/mnt/SDCARD/ZyperOS/menu.ttf";
@@ -651,12 +663,12 @@ static bool l2_tap, r2_tap;    /* a tap reported last poll ends this one */
 static const struct { int code; in_button b; } keymap[] = {
 	{ BTN_DPAD_UP, IN_UP },       { BTN_DPAD_DOWN, IN_DOWN },
 	{ BTN_DPAD_LEFT, IN_LEFT },   { BTN_DPAD_RIGHT, IN_RIGHT },
-	{ BTN_SOUTH, IN_ACCEPT },     { BTN_EAST, IN_BACK },
+	{ RK_CODE_A, IN_ACCEPT },     { RK_CODE_B, IN_BACK },
 	{ BTN_NORTH, IN_X },          { BTN_WEST, IN_Y },
 	{ BTN_TL, IN_L1 },            { BTN_TR, IN_R1 },
 	{ BTN_SELECT, IN_SELECT },    { BTN_START, IN_START },
 };
-#define CODE_FUNCTION BTN_TRIGGER_HAPPY1
+#define CODE_FUNCTION RK_CODE_FUNCTION
 
 /* Every input device this file wants, found by what each reports, not by
  * number: there is no udev here, and enumeration order is not a promise.
@@ -897,6 +909,11 @@ static void key_event(in_state *st, const struct input_event *ev)
 		/* A press or a hold, as MENU > Power Button says (src/powerhold.h);
 		 * a repeat, which this key does not send, would be no let-go */
 		if (ev->value != 2) plat_set_btn(st, IN_POWER, ev->value == 1);
+		return;
+	}
+	/* L2 and R2 as plain keys, on a handheld with no battery lights */
+	if (!RK_L2R2_TAPS && (ev->code == BTN_TL2 || ev->code == BTN_TR2)) {
+		plat_set_btn(st, ev->code == BTN_TL2 ? IN_L2 : IN_R2, ev->value == 1);
 		return;
 	}
 	if (ev->code == BTN_TL2 || ev->code == BTN_TR2) {
@@ -2003,7 +2020,7 @@ bool plat_tap_held(in_button b) { return b == IN_L2 ? l2_down : b == IN_R2 ? r2_
  * at boot and again on SIGHUP (package/gauge/src/gauge.c; the line's words,
  * src/sidelights.h). Replaced whole (src/atomic.h), so the gauge never reads
  * half a line; a missing file is every part on both sides. */
-#define SIDE_LIGHTS_FILE "/mnt/SDCARD/.userdata/pixel2/side-lights"
+#define SIDE_LIGHTS_FILE "/mnt/SDCARD/.userdata/" RK_ID "/side-lights"
 
 side_lights plat_side_lights(void)
 {

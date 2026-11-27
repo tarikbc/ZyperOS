@@ -8,8 +8,8 @@ In src/*.c and src/*.h, outside src/device/ and src/profile.c, it fails on:
   - access("/usr/sbin/...") - what the system has is plat_system_has()'s;
   - plat_usb_peer() compared with USB_PEER_UNKNOWN as a capability (a port
     that cannot tell what is plugged in is not a device's identity);
-  - the string literals "pixel2" and "brick" - a device by name;
-  - device_profile_pixel2, _brick or _desktop - a device's profile by name,
+  - the string literals "pixel2", "brick" and "smartpro" - a device by name;
+  - device_profile_pixel2, _brick, _smartpro or _desktop - a device's profile by name,
     which a device build does not even link (it has its own alone);
   - td_model_pixel2 and the like - a handheld's drawing by name, for the
     same reason (plat_profile()->model is the one in force).
@@ -29,10 +29,10 @@ RULES = [
     (re.compile(r'access\(\s*("/usr/sbin/|HOSTAPD\b)'), 'a system program by its file: use plat_system_has()'),
     (re.compile(r'plat_usb_peer\(\)\s*[!=]=\s*USB_PEER_UNKNOWN|USB_PEER_UNKNOWN\s*[!=]=\s*plat_usb_peer\(\)'),
      'the USB peer as a device guess: use the profile (usb_shared_port, wifi)'),
-    (re.compile(r'"(pixel2|brick)"'), 'a device by name: ask the profile'),
-    (re.compile(r'\bdevice_profile_(pixel2|brick|desktop)\b'),
+    (re.compile(r'"(pixel2|brick|smartpro)"'), 'a device by name: ask the profile'),
+    (re.compile(r'\bdevice_profile_(pixel2|brick|smartpro|desktop)\b'),
      'a device\'s profile by name (a device build links its own alone): use plat_profile() or plat_profile_at()'),
-    (re.compile(r'\btd_model_(pixel2|brick|desktop)\b'),
+    (re.compile(r'\btd_model_(pixel2|brick|smartpro|desktop)\b'),
      'a handheld\'s model by name (a device build links its own alone): use plat_profile()->model'),
 ]
 # Files a rule does not apply to, each with its reason

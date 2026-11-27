@@ -16,12 +16,8 @@ const char *storage_menu_value(void);
 /* MENU > Storage */
 void storage_screen(app *a);
 
-/* What the Cover and Video page asks with too: Zyper as the page draws
- * him, a question's rows as Delete Game asks it (`rows` holds
- * DEL_ASK_LINES + 2), and the question asked over the page */
+/* What the Cover and Video page draws with too: Zyper as the page draws him */
 void store_zyper(SDL_Renderer *r, float cx, float cy, float h, float tilt, bool shadow);
-int store_ask_rows(app *a, const char *q, char (*lines)[CHV_WRAP_COLS], menu_row *rows);
-bool store_ask(app *a, const char *heading, const char *q, const char *yes_label);
 /* The page as a base, as MP4's shelf is: the screen's, and a shot's */
 int store_base_open(void);
 

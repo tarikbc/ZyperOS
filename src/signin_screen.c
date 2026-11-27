@@ -235,10 +235,7 @@ static menu_result sgdb_key(app *a, void *ctx, in_button key, int sel)
 	if (sel < 0 || sel >= n) return MENU_STAY;
 	if (ids[sel] == SG_KEY) {
 		r = sgdb_enter(a);
-	} else if (ids[sel] == SG_REMOVE &&
-	           confirm_panel(a, "SteamGridDB",
-	                         T(S_SCRAPER_UNLINK_KEY_ASK),
-	                         T(S_SCRAPER_UNLINK))) {
+	} else if (ids[sel] == SG_REMOVE && confirm_ask(a, CQ_SGDB_UNLINK, T(S_SCRAPER_UNLINK_KEY_ASK))) {
 		sgdb_key_forget();
 		result_message(a, "SteamGridDB", T(S_SCRAPER_UNLINKED));
 		r = MENU_CHANGED;

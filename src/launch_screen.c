@@ -513,7 +513,7 @@ int g_p8_said_shot = -1;
  * its version and without) or not (a zip of another PICO-8, one that could
  * not be taken), in p8_take_message's words under the heading main.c gives
  * them; 4 Splore with no network joined; 5 Delete Game on Splore; 6 the
- * question Splore asks with no network, as ask_two_panel hands it to
+ * question Splore asks with no network, as confirm_ask hands it to
  * confirm_rows_pick, Turn On Wi-Fi focused */
 void p8_said_shot(app *a, int k)
 {
@@ -529,14 +529,9 @@ void p8_said_shot(app *a, int k)
 	} else if (k == 5) {
 		result_preview(a, T(S_GAMEMENU_DELETE), T(S_PICO8_SPLORE_STAYS));
 	} else if (k == 6) {
-		char lines[ASK_TWO_LINES][CHV_WRAP_COLS];
-		menu_row rows[ASK_TWO_LINES + 2];
-		int n = ask_two_rows(a, T(S_PICO8_WIFI_BODY), T(S_PICO8_WIFI_ON), T(S_PICO8_OFFLINE), lines,
-		                     rows);
-
 		draw_shelf(a);
 		ui_scrim(a->r, 0);
-		menu_draw(a, T(S_PICO8_WIFI_TITLE), rows, n + 2, n, menu_std_width(a), MENU_ZYPEROS);
+		confirm_preview(a, CQ_SPLORE_WIFI, T(S_PICO8_WIFI_BODY));
 	}
 }
 
@@ -574,8 +569,7 @@ static void splore_open(app *a, const system_cfg *s, const char *file)
 		return;
 	}
 	if (!net_internet(NULL) && plat_has_wifi()) {
-		int r = ask_two_panel(a, T(S_PICO8_WIFI_TITLE), T(S_PICO8_WIFI_BODY), T(S_PICO8_WIFI_ON),
-		                      T(S_PICO8_OFFLINE));
+		int r = confirm_ask_ex(a, CQ_SPLORE_WIFI, T(S_PICO8_WIFI_BODY), NULL, NULL, NULL);
 
 		if (r == 0) return;
 		if (r == 1 && !splore_join(a)) {
@@ -1012,10 +1006,8 @@ void launch(app *a)
 		char q[480];
 		int r;
 
-		snprintf(q, sizeof q, "%s %s", T(S_CHEATS_CRASH_TITLE), T(S_CHEATS_CRASH_BODY));
-		ui_fit_drawn(T(S_CHEATS_CRASH_TITLE));
-		ui_fit_drawn(T(S_CHEATS_CRASH_BODY));
-		r = ask_two_panel(a, T(S_CHEATS_ROW), q, T(S_CHEATS_CRASH_WITHOUT), T(S_CHEATS_CRASH_WITH));
+		cq_text(CQ_CHEATS_CRASH, q, sizeof q);
+		r = confirm_ask_ex(a, CQ_CHEATS_CRASH, q, NULL, NULL, NULL);
 		if (r == 0 || !a->running) return;
 		cheats_without = r == 1;
 	}

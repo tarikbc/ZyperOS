@@ -39,6 +39,7 @@ check-clients	0.3
 check-clock	0.4
 check-collect	0.4
 check-config	0.3
+check-confirm	35.0
 check-controls	1.6
 check-controls-shots	105.0
 check-core-room	0.2

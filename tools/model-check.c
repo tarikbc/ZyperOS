@@ -7,7 +7,8 @@
  * turned 10 degrees), so the drawing that reads them draws the same pixels;
  * and the TrimUI Brick's as src/device/brick_model.c measures them: its outline, its keys on their faces at
  * their places and sizes, the shoulders on the back ledge, and the back
- * view that shows them. No SDL. */
+ * view that shows them; the TrimUI Smart Pro's (src/device/smartpro_model.c);
+ * and the R36S's (src/device/r36s_model.c). No SDL. */
 #include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -129,6 +130,90 @@ static void brick(void)
 	   "brick: its kept boxes (--handheld-box holds them)");
 }
 
+/* The TrimUI Smart Pro's, as src/device/smartpro_model.c measures them on
+ * TrimUI's manual drawing: its 188 x 80 outline, the front's keys on their
+ * sides, the top edge's from left to right, its views */
+static void smartpro(void)
+{
+	const td_model *m = &td_model_smartpro;
+	const td_part *l1 = td_part_of(m, TD_L1), *l2 = td_part_of(m, TD_L2), *r1 = td_part_of(m, TD_R1);
+	const td_part *r2 = td_part_of(m, TD_R2), *pw = td_part_of(m, TD_POWER);
+	const td_part *vd = td_part_of(m, TD_VOLDN), *vu = td_part_of(m, TD_VOLUP);
+	int i, top = 0, front = 0, sides = 0;
+
+	keys_once(m);
+	ck(m->art == TD_ART_SMARTPRO && m->body_w == 188.0f && m->body_h == 80.0f,
+	   "smartpro: its art, its 188 x 80 body");
+	for (i = 0; i < m->n_parts; i++) {
+		const td_part *p = &m->parts[i];
+
+		top += p->face == TD_FACE_TOP;
+		front += p->face == TD_FACE_FRONT;
+		sides += p->face == TD_FACE_LEFT || p->face == TD_FACE_RIGHT || p->face == TD_FACE_LEDGE;
+		ck(fabsf(p->x) + p->r < 94.0f, "smartpro: every key inside the body's width");
+		if (p->face == TD_FACE_FRONT) ck(fabsf(p->z) + p->r < 40.0f, "smartpro: a front key inside its height");
+	}
+	ck(front == 8 && top == 7 && sides == 0, "smartpro: eight keys on the front, seven on the top edge, none on the sides");
+	ck(td_part_of(m, TD_DPAD)->x < -60.0f && td_part_of(m, TD_MENU)->x < -60.0f,
+	   "smartpro: the d-pad and MENU at the left end");
+	ck(td_part_of(m, TD_A)->x > td_part_of(m, TD_Y)->x && td_part_of(m, TD_X)->z > td_part_of(m, TD_B)->z &&
+	   td_part_of(m, TD_A)->x > 60.0f, "smartpro: A B X Y at the right end, A right, X top");
+	ck(td_part_of(m, TD_START)->x > td_part_of(m, TD_SELECT)->x && td_part_of(m, TD_SELECT)->x > 60.0f,
+	   "smartpro: SELECT then START at the right end's foot");
+	ck(l1 && l2 && r1 && r2 && pw && vd && vu && l1->x < pw->x && pw->x < vd->x && vd->x < vu->x &&
+	   vu->x < r1->x && l2->z > l1->z && r2->z > r1->z,
+	   "smartpro: L, POWER, VOL-, VOL+, R along the top, L2 and R2 standing higher");
+	ck(!td_part_of(m, TD_F1) && !td_part_of(m, TD_F2), "smartpro: no F1, F2");
+	ck(m->top.pitch == TD_PITCH_DEG && m->front.pitch == 0.0f && m->tab.pitch == 0.0f,
+	   "smartpro: tilted back for the top edge's keys, level otherwise");
+	ck(m->right.deg > 0.0f && m->left.deg < 0.0f, "smartpro: its sides' turns, for how far it may turn");
+	ck(m->front.s * 188.0f < 620.0f, "smartpro: as wide in the tutorial as its column on a 16:9 canvas");
+	ck(m->keep_tour.w > 0 && m->keep_tour.h > 0 && m->keep_tab.w > 0 && m->keep_tab.h > 0,
+	   "smartpro: its kept boxes (--handheld-box holds them)");
+}
+
+/* The R36S's as src/device/r36s_model.c measures it on photos of a real
+ * one: its keys on their faces, the volume keys on the right and POWER on
+ * the left (the Brick's the other way round), the shoulders on the back
+ * ledge, and the views at its size */
+static void r36s(void)
+{
+	const td_model *m = &td_model_r36s;
+	const td_part *up = td_part_of(m, TD_VOLUP), *dn = td_part_of(m, TD_VOLDN), *pw = td_part_of(m, TD_POWER);
+	const td_part *l1 = td_part_of(m, TD_L1), *l2 = td_part_of(m, TD_L2);
+	const td_part *r2 = td_part_of(m, TD_R2), *r1 = td_part_of(m, TD_R1);
+	int i;
+
+	keys_once(m);
+	ck(m->art == TD_ART_R36S && m->body_w == 80.0f && m->body_h == 119.0f, "r36s: its art, its 80 x 119 body");
+	ck(is(m, TD_DPAD, TD_FACE_FRONT, -25.0f, -13.5f, 10.75f), "r36s: the d-pad on the left, under the glass");
+	ck(is(m, TD_A, TD_FACE_FRONT, 33.6f, -14.1f, 3.6f) && is(m, TD_B, TD_FACE_FRONT, 25.6f, -22.1f, 3.6f) &&
+	   is(m, TD_X, TD_FACE_FRONT, 25.6f, -6.1f, 3.6f) && is(m, TD_Y, TD_FACE_FRONT, 17.6f, -14.1f, 3.6f),
+	   "r36s: A B X Y on the right, A right, B bottom, X top, Y left");
+	ck(is(m, TD_MENU, TD_FACE_FRONT, 0.0f, -22.9f, 3.6f) && is(m, TD_SELECT, TD_FACE_FRONT, -7.4f, -30.4f, 3.6f) &&
+	   is(m, TD_START, TD_FACE_FRONT, 7.4f, -30.4f, 3.6f), "r36s: FN in the middle, SELECT and START under it");
+	ck(up && dn && up->face == TD_FACE_RIGHT && dn->face == TD_FACE_RIGHT && up->z > dn->z &&
+	   near(up->z - up->r, dn->z + dn->r), "r36s: the volume rocker on the right, VOL+ the top half");
+	ck(pw && pw->face == TD_FACE_LEFT && pw->z > 30.0f, "r36s: POWER on the left side, near the top");
+	ck(!td_part_of(m, TD_F1) && !td_part_of(m, TD_F2), "r36s: no brightness keys of its own");
+	for (i = 0; i < m->n_parts; i++)
+		if (m->parts[i].face == TD_FACE_LEFT || m->parts[i].face == TD_FACE_RIGHT)
+			ck(near(m->parts[i].x, -15.0f + 18.5f / 2.0f), "r36s: a side key across the thin part's middle");
+	ck(l1 && l2 && r2 && r1 && l1->face == TD_FACE_LEDGE && l2->face == TD_FACE_LEDGE &&
+	   r2->face == TD_FACE_LEDGE && r1->face == TD_FACE_LEDGE, "r36s: L1 L2 R2 R1 on the ledge");
+	ck(l1 && l2 && r2 && r1 && l1->x < l2->x && l2->x < 0.0f && r2->x > 0.0f && r2->x < r1->x &&
+	   l1->x - l1->r >= -40.0f && r1->x + r1->r <= 40.0f, "r36s: L1, L2, R2, R1 from left to right, inside the body");
+	ck(m->lean_centre > 7.4f + 3.6f - 0.01f && m->lean_centre < 17.6f, "r36s: FN, SELECT and START the middle, Y not");
+	ck(view_is(m->right, 52.0f, m->right.s, 0.0f) && view_is(m->left, -52.0f, m->left.s, 0.0f) &&
+	   m->back.deg >= 150.0f && m->back.deg <= 170.0f, "r36s: the Brick's turns");
+	ck(m->front.s * 119.0f > 0.97f * 81.0f * 3.55f && m->front.s * 119.0f < 1.03f * 81.0f * 3.55f,
+	   "r36s: as tall in the tutorial as the Pixel 2");
+	ck(m->tab.s * 119.0f > 0.97f * 81.0f * 3.15f && m->tab.s * 119.0f < 1.03f * 81.0f * 3.15f,
+	   "r36s: as tall on the Controls tab as the Pixel 2");
+	ck(m->flat && m->keep_tour.w > 0 && m->keep_tab.w > 0, "r36s: drawn flat, its kept boxes");
+	ck(td_spins(m, 1u << TD_DPAD | 1u << TD_L1), "r36s: the d-pad's lesson turns round to L1");
+}
+
 /* td_swing: held on the front, turned round, held on the back, turned
  * back, and again; td_spins only with keys on the back ledge and off it */
 static void spin(void)
@@ -197,6 +282,8 @@ int main(void)
 		   "pixel2: no key on a ledge, its back view the front");
 	}
 	brick();
+	smartpro();
+	r36s();
 	spin();
 	if (fails) {
 		printf("model: %d of %d checks failed\n", fails, checks);

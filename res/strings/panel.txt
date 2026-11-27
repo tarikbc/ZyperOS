@@ -89,6 +89,17 @@ de = Abbrechen
 ja = キャンセル
 it = Annulla
 
+[panel.join]
+note = Two sentences of a question on a yes/cancel panel made one paragraph: the first %s the question, the second what goes with it. Chinese and Japanese join with no space.
+en = %s %s
+zh-Hans = %s%s
+es = %s %s
+pt-BR = %s %s
+fr = %s %s
+de = %s %s
+ja = %s%s
+it = %s %s
+
 [panel.needs_wifi]
 note = A message when a screen needs the network and there is none.
 en = Connect to Wi-Fi first.

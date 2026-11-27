@@ -134,6 +134,39 @@ de = Wird entfernt ...
 ja = 登録解除中…
 it = Dissociazione...
 
+[bt.forget_heading]
+note = The heading of the question X asks on a paired headset (bt.forget_ask), as Wi-Fi's Forget asks. A heading, the action.
+en = Forget Headset
+zh-Hans = 忘记耳机
+es = Olvidar audífono
+pt-BR = Esquecer fone
+fr = Supprimer le casque
+de = Kopfhörer entfernen
+ja = ヘッドセットの登録を解除
+it = Dissocia auricolare
+
+[bt.forget_ask]
+note = The question X asks on a paired headset, under bt.forget_heading: %s is the headset's name. Cancel and bt.forget under it, the cursor on Cancel. Wrapped to the panel.
+en = Forget %s? Pair it again to use it.
+zh-Hans = 要忘记 %s 吗？需要重新配对才能使用。
+es = ¿Olvidar %s? Vuelve a emparejarlo para usarlo.
+pt-BR = Esquecer %s? Pareie de novo para usar.
+fr = Supprimer %s\u00a0? Appairez-le de nouveau pour l'utiliser.
+de = %s entfernen? Zum Verwenden erneut koppeln.
+ja = %s の登録を解除しますか？使うにはもう一度ペアリングします。
+it = Dissociare %s? Associalo di nuovo per usarlo.
+
+[bt.forget]
+note = The yes of bt.forget_ask: the headset is unpaired, as bt.forgetting says it. A button, short.
+en = Forget
+zh-Hans = 忘记
+es = Olvidar
+pt-BR = Esquecer
+fr = Supprimer
+de = Entfernen
+ja = 登録解除
+it = Dissocia
+
 [bt.forgotten]
 note = The note under the list after a headset is forgotten (unpaired)
 en = Forgotten

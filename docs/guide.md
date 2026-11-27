@@ -806,8 +806,10 @@ this network as is**, and open `10.42.1.1` in Chrome. The phone has no
 internet on this network; it comes back when the phone leaves it.
 
 The adapter needs a driver that can be an access point. The TL-WN725N v2/v3
-(RTL8188EUS) can, with Realtek's own driver, which plastron gives it. An
-adapter that cannot shows **Could not start the hotspot.**
+(RTL8188EUS) can, with Realtek's own driver, which plastron gives it. AC1200
+USB adapters on the kernel's rtw88 (8822BU, such as Edimax EW-7822ULC /
+`7392:b822`) use the same hostapd path; try Wi-Fi File Transfer with no
+network joined. An adapter that cannot shows **Could not start the hotspot.**
 
 On a network, that driver's power saving is off: with it on, this chip is
 known to drop off some routers over and over. Each join and each drop, with

@@ -19,8 +19,13 @@
  * device file, src/device/<name>.c, chosen by DEVICE= at build time (the
  * Brick's is brick.c). device.h is the seam between those two halves. */
 
-#define ZYPEROS_SCREEN_W 1024
-#define ZYPEROS_SCREEN_H 768
+/* The canvas every screen is drawn in (src/canvas.h): 768 units high on
+ * every handheld, and as wide as its panel's shape makes it, 1024 on a 4:3
+ * panel, 1368 on a 16:9 one. A run-time width, set from the device's profile
+ * at the start: a screen lays itself out from it, never from a typed 1024. */
+#include "canvas.h"
+#define ZYPEROS_SCREEN_W canvas_w
+#define ZYPEROS_SCREEN_H CANVAS_H
 
 /* THE FORMAT OF EVERY TEXTURE ZYPEROS DRAWS INTO (SDL_TEXTUREACCESS_TARGET):
  * the screen itself on the Pixel 2, the menus' panel pass, the keyboard's and

@@ -370,6 +370,14 @@ void diatom_port_audio_get(char *out, size_t cap);
 void     diatom_port_input_poll(void);
 uint32_t diatom_port_input_state(void);
 
+/* The handheld's own sticks, where it has them (the TrimUI Smart Pro's two,
+ * from ZyperOS's tools/sppad.c): left X and Y, then right X and Y, in
+ * libretro's range (-0x7fff..0x7fff), + right and down, the centre and the
+ * dead zone already taken out by the system's reader. Read at the last poll.
+ * False, and nothing written, on a handheld with none: there the left stick
+ * is the d-pad's, where RUN stick=dpad says so (stick.h). */
+bool diatom_port_input_axes(int16_t axes[4]);
+
 /* The buttons that went down during the last poll, whether they are held now
  * or were let go again before it ended: a tap that went down and up between
  * two polls is here and not in diatom_port_input_state. A slow game polls

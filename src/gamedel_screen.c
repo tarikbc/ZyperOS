@@ -17,93 +17,27 @@
 
 /* ---- Delete Game (DESIGN.md 11.31, src/gamedel.h) -------------------------
  *
- * The details page's last row. A asks first, in the confirm panel every
- * destructive row in the launcher asks with (confirm_rows): the question,
- * then Delete and Cancel, the cursor on Cancel, B the same as Cancel. The
- * question is a paragraph, which no other confirm has needed: it names the
- * game, says what goes and that it cannot be undone, so it is wrapped to the
- * panel and read left to right, a BODY row a line, in text-soft.
+ * The details page's last row. A asks first, in the panel every question
+ * with two answers asks in (confirm_ask, src/confirmq.h): the question,
+ * then Cancel and Delete side by side, the cursor on Cancel, B the same as
+ * Cancel. The question names the game, says what goes and that it cannot be
+ * undone, and wraps to the panel however long the name is.
  *
  * Nothing is read or deleted until the yes: no work per frame, and the
  * listing of the other games and the plan are built once, on that press,
  * under one frame that says so (11.8). */
 
-/* How many of the question's lines fit over its two answers before the
- * panel windows (menu_list_fit's arithmetic): a window would leave the top
- * of the question where no cursor can go */
-int delete_ask_fit(bool *rule)
-{
-	int pad = menu_pad();
-	int note_h = ui_font_line(UI_F_MENU) + pad / 3;
-	int avail = MENU_AVAIL_H - (ui_font_line(UI_F_LABEL) + pad + pad / 2) - pad
-	          - 2 * menu_row_h();
-	int n = note_h > 0 && avail > note_h ? avail / note_h : 1;
-
-	/* And whether a rule still fits under that many (menu_panel's rule_h) */
-	*rule = avail - n * note_h >= pad / 2 + 2;
-	return n;
-}
-
-/* The question's rows and its heading, shared by the screen and
- * --delete-ask; `rows` holds DEL_ASK_LINES + 2, for the answers
- * confirm_rows puts after them. Lines centered, as the one-line question of
- * every other confirm is, and quiet as it is (a dead row): the answers are
- * what the eye goes to. A rule between the two when there is room, the
- * heading's own (MENU_HR), so four lines of question do not read on into
- * Delete.
- *
- * A name too long for the question to fit names the game in the heading
- * instead, as the details page under it does, and the question says "this
- * game": a name may slide in a heading, a question may not be cut. */
-static int delete_ask_rows_for(app *a, const char *title, bool port, char (*lines)[CHV_WRAP_COLS],
-                               menu_row *rows, const char **heading)
-{
-	char q[LIB_NAME + 512];
-	bool rule;
-	int n, i, fit = delete_ask_fit(&rule), w = menu_std_width(a);
-	TTF_Font *f = ui_font(UI_F_MENU);
-
-	/* A port's question says its folders go, its saves in them (DESIGN.md
-	 * 11.31): a port keeps nothing in Saves/ */
-	snprintf(q, sizeof q, T(port ? S_GAMEMENU_DELETE_ASK_PORT : S_GAMEMENU_DELETE_ASK), title);
-	n = wrap_text(f, q, w, lines, DEL_ASK_LINES);
-	*heading = T(S_GAMEMENU_DELETE);
-	if (n > fit) {
-		n = wrap_text(f, T(port ? S_GAMEMENU_DELETE_ASK_PORT_THIS : S_GAMEMENU_DELETE_ASK_THIS), w,
-		              lines, DEL_ASK_LINES);
-		*heading = title;
-		ui_fit_drawn(T(port ? S_GAMEMENU_DELETE_ASK_PORT_THIS : S_GAMEMENU_DELETE_ASK_THIS));
-	} else {
-		ui_fit_drawn(q);    /* drawn in lines, said whole to the host's check */
-	}
-	for (i = 0; i < n; i++)
-		rows[i] = (menu_row){ lines[i], MENU_NOTE_MARK, false };
-	if (n < fit || rule) rows[n++] = MENU_HR;
-	return n;
-}
-
-int delete_ask_rows(app *a, const char *title, char (*lines)[CHV_WRAP_COLS],
-                    menu_row *rows, const char **heading)
-{
-	return delete_ask_rows_for(a, title, false, lines, rows, heading);
-}
-
 /* One frame of the question over the shelf, Cancel focused, for a shot */
 void delete_ask_preview(app *a)
 {
 	sysview *v = &a->view[a->sys_cursor];
-	char lines[DEL_ASK_LINES][CHV_WRAP_COLS];
-	menu_row rows[DEL_ASK_LINES + 2];
-	const char *heading;
-	int nq;
+	char q[LIB_NAME + 512];
 
 	if (v->list.count == 0) return;
-	nq = delete_ask_rows(a, v->list.items[v->cursor].title, lines, rows, &heading);
-	rows[nq]     = (menu_row){ T(S_GAMEMENU_DELETE_YES), NULL, true };
-	rows[nq + 1] = (menu_row){ T(S_PANEL_CANCEL), NULL, true };
+	cq_text(CQ_GAME_DELETE, q, sizeof q, v->list.items[v->cursor].title);
 	draw_shelf(a);
 	ui_scrim(a->r, 0);
-	menu_draw(a, heading, rows, nq + 2, nq + 1, menu_std_width(a), MENU_ZYPEROS);
+	confirm_preview(a, CQ_GAME_DELETE, q);
 }
 
 /* The yes: the plan, held against every other game on the shelves, run, the
@@ -220,10 +154,7 @@ bool game_delete_now(app *a, int owner, const game_entry *g, bool wait,
  * True when the game went (game_delete_now). */
 bool game_delete(app *a, int owner, const game_entry *g, char *said, size_t n)
 {
-	char lines[DEL_ASK_LINES][CHV_WRAP_COLS];
-	menu_row rows[DEL_ASK_LINES + 2];
-	const char *heading;
-	int nq, lv;
+	char q[LIB_NAME + 512];
 	bool yes;
 
 	const system_cfg *s = owner >= 0 && owner < sys_kept(a) ? &a->sys.systems[owner] : NULL;
@@ -259,10 +190,11 @@ bool game_delete(app *a, int owner, const game_entry *g, char *said, size_t n)
 		free(ports);
 		if (said[0]) return false;
 	}
-	nq = delete_ask_rows_for(a, g->title, port, lines, rows, &heading);
-	lv = panel_open();
-	yes = confirm_rows(a, heading, rows, nq, T(S_GAMEMENU_DELETE_YES), menu_std_width(a), lv);
-	panel_close(a, lv, !a->running);
+	/* A port's question says its folders go, its saves in them (DESIGN.md
+	 * 11.31): a port keeps nothing in Saves/. The name stays in the
+	 * question, however long: it wraps (my pick, 2026-11-22) */
+	cq_text(port ? CQ_PORT_DELETE : CQ_GAME_DELETE, q, sizeof q, g->title);
+	yes = confirm_ask(a, port ? CQ_PORT_DELETE : CQ_GAME_DELETE, q);
 	if (!yes || !a->running) return false;
 	return game_delete_now(a, owner, g, true, said, n);
 }

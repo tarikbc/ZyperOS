@@ -38,10 +38,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "canvas.h"
 #include "design.h"
 
 /* Where the corner stands, in units. */
-#define STATUS_RIGHT     (1024 - DS_INSET)   /* the battery's right edge */
+#define STATUS_RIGHT     (canvas_w - DS_INSET)   /* the battery's right edge */
 #define STATUS_TOP       DS_INSET            /* the row's top */
 #define STATUS_ROW       24                  /* the row's height */
 #define STATUS_MID       (STATUS_TOP + STATUS_ROW / 2)  /* the clock's capitals */

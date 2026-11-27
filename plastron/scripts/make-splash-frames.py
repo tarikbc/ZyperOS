@@ -9,6 +9,7 @@ changes:
 
     scripts/make-splash-frames.py [path/to/zyperos-fly.mp4]
     scripts/make-splash-frames.py --brick [path/to/zyperos-fly.mp4]
+    scripts/make-splash-frames.py --smartpro [path/to/zyperos-fly.mp4]
 
 The boot animation is ZyperOS's res/boot/zyperos-fly.mp4, from its
 tools/genboot.py, at 60 fps: the name from the first frame, and Zyper. Without --brick the frames are the Pixel 2's
@@ -78,6 +79,22 @@ the splash plays the one the card's Appearance asks for (ZyperOS's DESIGN.md
 
     scripts/make-splash-frames.py --light path/to/build/boot-frames-light
 
+--r36s turns the Pixel's frames and first-start pictures back to the
+landscape 640x480 they were scaled to, which is how the R36S's panel scans
+(no quarter turn). Written under package/splash/r36s/. The bar then fills
+left to right; splash.c does that when the bar is wider than it is tall.
+The bar and the ground round the line come from each Pixel picture itself.
+It writes package/splash/r36s/SOURCES, the sha256 of each Pixel file it read
+and of each file it made, and --r36s-check (make check-splash-r36s) fails
+when they differ: run --r36s again after the Pixel's art changes.
+
+The Smart Pro's (--smartpro, smartpro/frames.bin) is the Brick's format at its
+framebuffer's 1280x720: the animation at the launcher's own scale there (its
+768-unit canvas on 720 rows, 0.9375), 960x720 in the middle, on the
+animation's own ground beside it, the colour of the first frame's corner.
+Zyper and the word are drawn in the middle of a flat ground, so this is the
+animation as a 1368-unit canvas would draw it.
+
 The Brick's (--brick) is "TSPZ" instead, for splash-fb.c: the same header and
 offsets, then per frame only the band of rows that changed from the frame
 before (frame 0 whole), as u16 first row, u16 rows, u32 length, and that
@@ -104,9 +121,16 @@ def main():
     if args and args[0] == "--first-start":
         first_start(args[1] if len(args) > 1 else DEFAULT_FIRST_START)
         return
+    if args and args[0] == "--r36s":
+        r36s_landscape()
+        return
+    if args and args[0] == "--r36s-check":
+        r36s_check()
+        return
     brick = "--brick" in args
+    smartpro = "--smartpro" in args
     light = "--light" in args
-    args = [a for a in args if a not in ("--brick", "--light")]
+    args = [a for a in args if a not in ("--brick", "--smartpro", "--light")]
     video = args[0] if args else DEFAULT_VIDEO
     fps = FPS
     loop = None
@@ -116,6 +140,9 @@ def main():
     if brick:
         W, H, OUT = 1024, 768, os.path.join(PACKAGE, "frames-brick.bin")
         vf = "fps=%d" % fps
+    elif smartpro:
+        W, H, OUT = 1280, 720, os.path.join(PACKAGE, "smartpro", "frames.bin")
+        vf = "fps=%d,scale=960:720:flags=lanczos,pad=1280:720:160:0:color=0x%s" % (fps, ground_of(video))
     else:
         W, H, OUT = 480, 640, os.path.join(PACKAGE, "frames-light.bin" if light else "frames.bin")
         vf = "scale=640:480:flags=area,transpose=2,fps=%d" % fps
@@ -145,10 +172,20 @@ def main():
     elif not 0 < loop < len(frames):
         sys.exit("loop.txt: the loop starts at frame %d of %d" % (loop, len(frames)))
 
-    if brick:
+    if brick or smartpro:
+        os.makedirs(os.path.dirname(OUT), exist_ok=True)
         write_bands(OUT, frames, W, H, fps)
     else:
         write_bands(OUT, frames, W, H, fps, loop=len(frames) if loop is None else loop)
+
+
+def ground_of(video):
+    """The animation's ground: its first frame's top left pixel, RRGGBB"""
+    source = ["-i", os.path.join(video, "f0000.png")] if os.path.isdir(video) else ["-i", video]
+    px = subprocess.run(["ffmpeg", "-v", "error"] + source + ["-frames:v", "1", "-vf", "crop=1:1:0:0",
+                         "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
+                        check=True, stdout=subprocess.PIPE).stdout
+    return "%02x%02x%02x" % (px[0], px[1], px[2])
 
 
 def first_start(folder):
@@ -239,6 +276,169 @@ def band(f, prev, w, h):
     rowsdata = bytes(f[first * stride:(first + rows) * stride])
     data = zlib.compress(sub_filter(rowsdata, stride), 9) if rows else b""
     return struct.pack("<HHI", first, rows, len(data)) + data
+
+
+def undo_sub(band, stride):
+    band = bytearray(band)
+    for start in range(0, len(band), stride):
+        for i in range(4, stride):
+            band[start + i] = (band[start + i] + band[start + i - 4]) & 0xff
+    return bytes(band)
+
+
+def read_frames(path):
+    """The Pixel's TSPY file, every frame whole."""
+    data = open(path, "rb").read()
+    magic, w, h, count, fps, loop, _pad = struct.unpack_from("<4sHHHHHH", data, 0)
+    if magic != b"TSPY":
+        sys.exit("%s: not the Pixel's frames" % path)
+    offsets = struct.unpack_from("<%dI" % (count + 1), data, 16)
+    stride = w * 4
+    frames, prev = [], bytearray(h * stride)
+    for i in range(count):
+        at = offsets[i]
+        first, rows, length = struct.unpack_from("<HHI", data, at)
+        if rows:
+            raw = undo_sub(zlib.decompress(data[at + 8:at + 8 + length]), stride)
+            prev[first * stride:(first + rows) * stride] = raw
+        frames.append(bytes(prev))
+    return w, h, fps, loop, frames
+
+
+def turn_landscape(frame, pw, ph):
+    """Undo the Pixel's 90 degree counter-clockwise turn: 480x640 back to 640x480."""
+    lw, lh = ph, pw
+    out = bytearray(lw * lh * 4)
+    for py in range(ph):
+        for px in range(pw):
+            src = (py * pw + px) * 4
+            lx, ly = (lw - 1) - py, px
+            dst = (ly * lw + lx) * 4
+            out[dst:dst + 4] = frame[src:src + 4]
+    return bytes(out)
+
+
+def read_first(path):
+    data = open(path, "rb").read()
+    if data[:4] != b"TSPC":
+        sys.exit("%s: not a first-start picture" % path)
+    x, y, w, h, bx0, bx1, by0, by1, count, _pad = struct.unpack_from("<10H", data, 4)
+    read_first.bar = (bx0, bx1, by0, by1)
+    at, pics = 24, []
+    for _ in range(count):
+        length = struct.unpack_from("<I", data, at)[0]
+        at += 4
+        pics.append(zlib.decompress(data[at:at + length]))
+        at += length
+    return x, y, w, h, pics
+
+
+def r36s_landscape():
+    """package/splash/r36s/: the Pixel's boot pictures on a 640x480 panel."""
+    out_dir = os.path.join(PACKAGE, "r36s")
+    os.makedirs(out_dir, exist_ok=True)
+    for src, name in (("frames.bin", "frames.bin"), ("frames-light.bin", "frames-light.bin")):
+        w, h, fps, loop, frames = read_frames(os.path.join(PACKAGE, src))
+        if (w, h) != (480, 640):
+            sys.exit("%s: expected 480x640, got %dx%d" % (src, w, h))
+        turned = [turn_landscape(f, w, h) for f in frames]
+        write_bands(os.path.join(out_dir, name), turned, 640, 480, fps, loop=loop)
+    for name in r36s_first_starts():
+        x, y, w, h, pics = read_first(os.path.join(PACKAGE, name))
+        # The bar where the Pixel's picture has it, turned back: its rect's
+        # rows y.. on the portrait panel are the landscape screen's columns
+        # from the right, its columns x.. the landscape's rows
+        bx0, bx1, by0, by1 = read_first.bar
+        bar = (640 - y - by1, x + bx0, by1 - by0, bx1 - bx0)
+        # The ground round the line: the picture's own corner, which the
+        # Pixel's rect starts on (dark or light, the theme's)
+        ground = bytes(pics[0][:3]) + b"\0"
+        turned = []
+        for pic in pics:
+            full = bytearray(ground * (480 * 640))
+            stride = w * 4
+            for row in range(h):
+                src = row * stride
+                dst = ((y + row) * 480 + x) * 4
+                full[dst:dst + stride] = pic[src:src + stride]
+            turned.append(turn_landscape(bytes(full), 480, 640))
+        xs, ys = [], []
+        for raw in turned:
+            for yy in range(480):
+                row = raw[yy * 640 * 4:(yy + 1) * 640 * 4]
+                hit = [xx for xx in range(640) if row[xx * 4:xx * 4 + 3] != ground[:3]]
+                if hit:
+                    ys.append(yy)
+                    xs += [hit[0], hit[-1]]
+        x0, x1, y0, y1 = min(xs), max(xs) + 1, min(ys), max(ys) + 1
+        bx, by, bw, bh = bar
+        local = (bx - x0, bx + bw - x0, by - y0, by + bh - y0)
+        if not (0 <= local[0] < local[1] <= x1 - x0 and 0 <= local[2] < local[3] <= y1 - y0):
+            sys.exit("%s: bar %s outside the rect %d,%d %dx%d" % (name, local, x0, y0, x1 - x0, y1 - y0))
+        out = bytearray(b"TSPC" + struct.pack("<HHHH", x0, y0, x1 - x0, y1 - y0))
+        out += struct.pack("<HHHHHH", *local, len(turned), 0)
+        rw, rh = x1 - x0, y1 - y0
+        for raw in turned:
+            px = bytearray()
+            for yy in range(y0, y1):
+                px += raw[(yy * 640 + x0) * 4:(yy * 640 + x1) * 4]
+            if len(px) != rw * rh * 4:
+                sys.exit("%s: rect size" % name)
+            data = zlib.compress(bytes(px), 9)
+            out += struct.pack("<I", len(data)) + data
+        dest = os.path.join(out_dir, name)
+        with open(dest, "wb") as f:
+            f.write(out)
+        print("%s: rect %d,%d %dx%d, bar %d-%d x %d-%d, %d bytes" % (
+            os.path.normpath(dest), x0, y0, rw, rh, *local, len(out)))
+    with open(os.path.join(out_dir, "SOURCES"), "w") as f:
+        f.write(r36s_sources())
+    print("%s: the Pixel's files these were made from" % os.path.join(out_dir, "SOURCES"))
+
+
+def r36s_first_starts():
+    return [n for n in sorted(os.listdir(PACKAGE)) if n.startswith("first-start") and n.endswith(".bin")]
+
+
+def r36s_sources():
+    """package/splash/r36s/SOURCES: the sha256 of each of the Pixel's files
+    the R36S's are made from, so a change to the Pixel's art shows them
+    stale (--r36s-check, make check-splash-r36s)"""
+    import hashlib
+    lines = ["# The Pixel 2's files package/splash/r36s/ was made from",
+             "# (scripts/make-splash-frames.py --r36s writes this)"]
+    names = ["frames.bin", "frames-light.bin"] + r36s_first_starts()
+    for name in names:
+        with open(os.path.join(PACKAGE, name), "rb") as f:
+            lines.append("%s  %s" % (hashlib.sha256(f.read()).hexdigest(), name))
+    lines.append("# And what it made from them, package/splash/r36s/")
+    for name in names:
+        try:
+            with open(os.path.join(PACKAGE, "r36s", name), "rb") as f:
+                lines.append("%s  r36s/%s" % (hashlib.sha256(f.read()).hexdigest(), name))
+        except OSError:
+            lines.append("missing  r36s/%s" % name)
+    return "\n".join(lines) + "\n"
+
+
+def r36s_check():
+    """Fails when the R36S's pictures are not the Pixel's of now: a Pixel file
+    changed, added or gone since --r36s made them, or one of the R36S's
+    changed or missing"""
+    out_dir = os.path.join(PACKAGE, "r36s")
+    try:
+        kept = open(os.path.join(out_dir, "SOURCES")).read()
+    except OSError:
+        sys.exit("check-splash-r36s: package/splash/r36s/SOURCES is missing")
+    now = r36s_sources()
+    if kept != now:
+        old = set(kept.splitlines()) - set(now.splitlines())
+        new = set(now.splitlines()) - set(kept.splitlines())
+        for line in sorted(old | new):
+            print("check-splash-r36s: %s %s" % ("was" if line in old else "now", line))
+        sys.exit("check-splash-r36s: the R36S's boot pictures are stale against the Pixel 2's;"
+                 " run python3 plastron/scripts/make-splash-frames.py --r36s")
+    print("check-splash-r36s: the R36S's %d boot pictures are the Pixel 2's of now" % (2 + len(r36s_first_starts())))
 
 
 def write_bands(out_path, frames, w, h, fps, loop=None):

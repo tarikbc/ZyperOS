@@ -170,9 +170,9 @@ static void turned_cover(SDL_Renderer *r,SDL_Texture *t,const cover_pose *p,Uint
 /* One part of the line under the name at x, or nothing once a part did not
  * fit (x < 0): returns where the next one starts, or -1 */
 #define GAMES_META_RIGHT (ZYPEROS_SCREEN_W-SHELF_MARGIN)
-/* A's hint beside the name: its left, and its middle 16 under the name's
- * first line's (600) */
-#define SHELF_HINT_X  800
+/* A's hint beside the name: its left, 224 in from the canvas's right edge,
+ * and its middle 16 under the name's first line's (600) */
+#define SHELF_HINT_X  (ZYPEROS_SCREEN_W-224)
 #define SHELF_HINT_DY 16
 /* The name's room ends 80 short of A's hint (656 from the margin), and the
  * system's line beside the hint 40 short of it */

@@ -43,15 +43,15 @@ it = Può volerci un minuto.
 # back. Each of the two sentences takes up to two lines.
 
 [portload.still_go_back]
-note = The line after a minute, on one line: portload.still and portload.go_back together. MENU and START are the handheld's buttons, never translated.
-en = A first start can install for hours. Hold MENU and START to go back.
-zh-Hans = 首次安装可能需要数小时。按住 MENU 和 START 可返回。
-es = La primera instalación puede tardar horas. Mantén MENU y START para volver.
-pt-BR = A primeira instalação pode levar horas. Segure MENU e START para voltar.
-fr = La première installation peut durer des heures. Maintenez MENU et START pour revenir.
-de = Die erste Installation kann Stunden dauern. MENU und START halten, um zurückzugehen.
-ja = 初回はインストールに数時間かかる場合があります。MENU と START を長押しで戻ります。
-it = La prima installazione può durare ore. Tieni MENU e START per tornare.
+note = The line after a minute, on one line: portload.still and portload.go_back together. MENU and START are the handheld's buttons, never translated. %s is the MENU key as it is printed: MENU, or FN on the R36S. Keep it as it is, in Latin letters.
+en = A first start can install for hours. Hold %s and START to go back.
+zh-Hans = 首次安装可能需要数小时。按住 %s 和 START 可返回。
+es = La primera instalación puede tardar horas. Mantén %s y START para volver.
+pt-BR = A primeira instalação pode levar horas. Segure %s e START para voltar.
+fr = La première installation peut durer des heures. Maintenez %s et START pour revenir.
+de = Die erste Installation kann Stunden dauern. %s und START halten, um zurückzugehen.
+ja = 初回はインストールに数時間かかる場合があります。%s と START を長押しで戻ります。
+it = La prima installazione può durare ore. Tieni %s e START per tornare.
 
 [portload.still]
 note = The first sentence of the line after a minute, in up to two lines of its own when the two do not fit one: the port may still be starting, and its first start can install or patch it for hours (PortMaster's installer, under this screen), so the wait is not a hang. Short: about 46 Latin letters at most.
@@ -65,15 +65,15 @@ ja = 初回はインストールに数時間かかる場合があります。
 it = La prima installazione può durare ore.
 
 [portload.go_back]
-note = The second sentence of the line after a minute: how to give up and go back to the shelf. MENU and START never translated.
-en = Hold MENU and START to go back.
-zh-Hans = 按住 MENU 和 START 可返回。
-es = Mantén MENU y START para volver.
-pt-BR = Segure MENU e START para voltar.
-fr = Maintenez MENU et START pour revenir.
-de = MENU und START halten, um zurückzugehen.
-ja = MENU と START を長押しで戻ります。
-it = Tieni MENU e START per tornare.
+note = The second sentence of the line after a minute: how to give up and go back to the shelf. MENU and START never translated. %s is the MENU key as it is printed: MENU, or FN on the R36S. Keep it as it is, in Latin letters.
+en = Hold %s and START to go back.
+zh-Hans = 按住 %s 和 START 可返回。
+es = Mantén %s y START para volver.
+pt-BR = Segure %s e START para voltar.
+fr = Maintenez %s et START pour revenir.
+de = %s und START halten, um zurückzugehen.
+ja = %s と START を長押しで戻ります。
+it = Tieni %s e START per tornare.
 
 [portload.keep_waiting]
 note = The first row of the in-game menu MENU opens over a port that is still starting (its loading screen behind): it closes the menu and lets the port go on starting. Where Continue is over a running game.

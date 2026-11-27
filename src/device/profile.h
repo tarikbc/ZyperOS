@@ -129,6 +129,8 @@ typedef struct device_profile {
 
 extern const device_profile device_profile_pixel2;
 extern const device_profile device_profile_brick;
+extern const device_profile device_profile_smartpro;
+extern const device_profile device_profile_r36s;
 extern const device_profile device_profile_desktop;
 
 /* The Pixel 2's core options (src/device/pixel2_coreopts.c), linked on every
@@ -146,10 +148,23 @@ bool plat_profile_select(const char *id);
  * the host, the device's own alone on a device */
 const device_profile *plat_profile_at(int i);
 /* The linked profiles' ids, ", " between them, into `out` (for --device's
- * error: "pixel2, brick, desktop" on the host, the device's own on a device) */
+ * error: "pixel2, brick, r36s, desktop" on the host, the device's own on a device) */
 void plat_profile_ids(char *out, size_t n);
 /* `b` as `p` prints it, or NULL where `p` has no such control */
 const dev_button *dev_button_of(const device_profile *p, in_button b);
+/* The word printed on (or over) the key that is MENU, for the words that
+ * name it ("Press %s for settings"): MENU on the Pixel 2 and the Brick, FN
+ * on the R36S; MENU where `p` has none. Inline, as dev_role_keys, so the
+ * tutorial's check needs no profile in force. */
+static inline const char *dev_menu_word(const device_profile *p)
+{
+	int i;
+
+	for (i = 0; p && i < p->n_buttons; i++)
+		if (p->buttons[i].id == IN_MENU && p->buttons[i].label && *p->buttons[i].label)
+			return p->buttons[i].label;
+	return "MENU";
+}
 /* What a chord does, named rather than spelled: screens ask for the role and
  * get the buttons this handheld does it with */
 typedef enum {

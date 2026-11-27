@@ -370,13 +370,14 @@ async fn pick_pico8(app: AppHandle) -> Result<Option<String>, String> {
 }
 
 /// A card image to use instead of downloading one, for trying out a build
-/// before it is published: ZYPEROS_BRICK_IMAGE for the Brick, ZYPEROS_IMAGE
-/// for the Pixel. Its device is offered even when the release has no image
-/// for it.
+/// before it is published: ZYPEROS_BRICK_IMAGE for the Brick,
+/// ZYPEROS_SMARTPRO_IMAGE for the Smart Pro, ZYPEROS_IMAGE for the Pixel. Its
+/// device is offered even when the release has no image for it.
 fn local_release(device: cards::Device) -> Option<PathBuf> {
     let var = match device {
         cards::Device::Pixel2 => "ZYPEROS_IMAGE",
         cards::Device::Brick => "ZYPEROS_BRICK_IMAGE",
+        cards::Device::SmartPro => "ZYPEROS_SMARTPRO_IMAGE",
     };
     std::env::var_os(var).map(PathBuf::from)
 }
@@ -462,6 +463,7 @@ fn device_name(d: cards::Device) -> &'static str {
     match d {
         cards::Device::Pixel2 => "the GKD Pixel 2",
         cards::Device::Brick => "the TrimUI Brick",
+        cards::Device::SmartPro => "the TrimUI Smart Pro",
     }
 }
 
@@ -506,7 +508,7 @@ fn write(
     if into_volume {
         games_volume(&card)?;
     }
-    let closed = if device == cards::Device::Brick {
+    let closed = if device.on_brick_system() {
         let cancelled = || cancel.load(Ordering::Relaxed);
         let cache = cache.ok_or("This computer has no folder for the installer's own files. Nothing was written.")?;
         closed::fetch(
@@ -525,7 +527,7 @@ fn write(
     // still the same card
     let result = find(card_id, card_size).and_then(|card| {
         let action = match action {
-            install::Action::Update if device == cards::Device::Brick => install::Action::BrickUpdate,
+            install::Action::Update if device.on_brick_system() => install::Action::BrickUpdate,
             a => a,
         };
         let cancelled = || cancel.load(Ordering::Relaxed);

@@ -256,6 +256,17 @@ struct DeviceView: View {
                     .position(g.point(r.x, r.y))
                     .allowsHitTesting(false)
             }
+            ForEach(0..<h.sticks.count, id: \.self) { i in
+                // A stick, sunk in its well, never pressed
+                let k = h.sticks[i]
+                Circle().fill(LinearGradient(colors: [p.recessTop, p.recess], startPoint: .top, endPoint: .bottom))
+                    .overlay(Circle().fill(LinearGradient(colors: [p.capLight, p.cap], startPoint: .top,
+                                                          endPoint: .bottom))
+                        .frame(width: g.len(2 * k.cap), height: g.len(2 * k.cap)))
+                    .frame(width: g.len(2 * k.well), height: g.len(2 * k.well))
+                    .position(g.point(k.x, k.y))
+                    .allowsHitTesting(false)
+            }
             ForEach(keys.filter { $0.kind == .round || $0.kind == .pill }, id: \.button) { k in
                 let n = k.label.count
                 Key(button: k.button!, label: k.label,

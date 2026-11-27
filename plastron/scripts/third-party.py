@@ -3,7 +3,7 @@
 comes from, as Markdown: from Buildroot's own manifest of the image
 (legal-info/manifest.csv), so the list is the build's, not a hand-kept one.
 
-usage: third-party.py MANIFEST DEVICE   (DEVICE: pixel2 or brick)
+usage: third-party.py MANIFEST DEVICE   (DEVICE: pixel2, brick or smartpro)
 
 make third-party writes it to buildroot/board/<board>/third-party-packages.md
 from the last release build; make release stops when the committed list no
@@ -11,7 +11,7 @@ longer matches its build."""
 import csv
 import sys
 
-NAMES = {"pixel2": "GKD Pixel 2", "brick": "TrimUI Brick"}
+NAMES = {"pixel2": "GKD Pixel 2", "brick": "TrimUI Brick", "smartpro": "TrimUI Smart Pro"}
 
 # Where the packages built from local folders come from, by their site
 LOCAL = {
@@ -21,6 +21,7 @@ LOCAL = {
     "/brick-gpu": "Imagination Technologies: closed, not in the image or its release; ZyperOS Installer gets each player's own copy (see THIRD-PARTY.md)",
     "/brick-xr829": "XRadio: closed, not in the image or its release; ZyperOS Installer gets each player's own copy (see THIRD-PARTY.md)",
     "/work/brick-kernel/images": "plastron's build of the Brick's kernel (see THIRD-PARTY.md)",
+    "/work/smartpro-kernel/images": "plastron's build of the Smart Pro's kernel, the Brick's with its own patches (see THIRD-PARTY.md)",
 }
 
 

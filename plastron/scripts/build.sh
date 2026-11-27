@@ -11,13 +11,18 @@ BUILDROOT=/work/buildroot-$BUILDROOT_VERSION
 # never leaves one's files in the other. FLAVOR=brick is the TrimUI Brick's
 # system, its own defconfig with its own toolchain. FLAVOR=qemu is ZyperOS on
 # QEMU's virt machine, standing in for the Pixel 2 (docs/qemu.md).
+# FLAVOR=r36s is ZyperOS on the R36S, a test card (ZyperOS's
+# docs/devices/r36s.md): the Pixel 2's system with the R36S's kernel,
+# device tree and launcher.
 FLAVOR=${FLAVOR:-zyperos}
 DEFCONFIG=px2_defconfig
 case $FLAVOR in
 zyperos) OUTPUT=/work/output ;;
 base) OUTPUT=/work/output-base ;;
 brick) OUTPUT=/work/output-brick DEFCONFIG=brick_defconfig ;;
+smartpro) OUTPUT=/work/output-smartpro DEFCONFIG=smartpro_defconfig ;;
 qemu) OUTPUT=/work/output-qemu DEFCONFIG=qemu_defconfig ;;
+r36s) OUTPUT=/work/output-r36s DEFCONFIG=r36s_defconfig ;;
 *) echo "unknown FLAVOR $FLAVOR" >&2; exit 1 ;;
 esac
 # A release builds in an empty output folder of its own (scripts/release.sh)
@@ -67,6 +72,11 @@ make -C "$BUILDROOT" O="$OUTPUT" BR2_EXTERNAL=/src/buildroot BR2_DL_DIR=/work/dl
 if [ "$FLAVOR" = zyperos ]; then
 	"$BUILDROOT/support/kconfig/merge_config.sh" -m -O "$OUTPUT" \
 		"$OUTPUT/.config" /src/buildroot/board/zyperos/zyperos.config >/dev/null
+	make -C "$OUTPUT" olddefconfig >/dev/null
+elif [ "$FLAVOR" = r36s ]; then
+	"$BUILDROOT/support/kconfig/merge_config.sh" -m -O "$OUTPUT" \
+		"$OUTPUT/.config" /src/buildroot/board/zyperos/zyperos.config \
+		/src/buildroot/board/r36s/r36s.config >/dev/null
 	make -C "$OUTPUT" olddefconfig >/dev/null
 elif [ "$FLAVOR" = qemu ]; then
 	"$BUILDROOT/support/kconfig/merge_config.sh" -m -O "$OUTPUT" \
