@@ -8,7 +8,8 @@
 #include <time.h>
 
 #define RATE  48000
-#define RING  16384                       /* 341 ms: the queue's 200 and a window */
+#define RING  65536                       /* 1.37 s: the queue (half a second decoded
+                                           * ahead, pcm.h, and the output's) and a window */
 #define MASK  (RING - 1)
 
 /* The scale, in dB of a band's loudest bin against a full-scale sine's:

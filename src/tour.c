@@ -340,11 +340,13 @@ static const char *lock_key_name(void)
 
 /* ---- the launcher's buttons ------------------------------------------------ */
 
-/* L2 and R2 are keys of the tutorial's like L1 and R1: no step asks for
- * them, so a press of one is a wrong press in every step, Music's too. Music's
- * note names them and the handheld shows them pressed (tour_hands). The
- * Pixel 2's device layer reads L2+R2 together itself, for the battery level,
- * and then sends neither. */
+/* L2 and R2 are keys of the tutorial's like L1 and R1: Music's step asks
+ * for them beside SELECT, as Move takes L1/R1 (its note names them, they
+ * change the song, and the handheld lights them), so every button the
+ * handheld has is one some step asks for (the Smart Pro kit's notes,
+ * 2026-11-24). Anywhere else a press of one is a wrong press. The Pixel 2's
+ * device layer reads L2+R2 together itself, for the battery level, and then
+ * sends neither. */
 static const tour_key KEY_OF[IN_COUNT] = {
 	[IN_LEFT] = TK_LEFT, [IN_RIGHT] = TK_RIGHT, [IN_UP] = TK_UP, [IN_DOWN] = TK_DOWN,
 	[IN_ACCEPT] = TK_A, [IN_BACK] = TK_B, [IN_X] = TK_X, [IN_Y] = TK_Y,
@@ -816,7 +818,7 @@ static bool answers(const tour *t, tour_key k)
 	case TOUR_X:      return k == TK_X;
 	case TOUR_Y:      return k == TK_Y;
 	case TOUR_MENU:   return k == TK_MENU;
-	case TOUR_SELECT: return k == TK_SELECT;
+	case TOUR_SELECT: return k == TK_SELECT || k == TK_L2 || k == TK_R2;
 	case TOUR_VOL:    return k == TK_VOL;
 	case TOUR_BRIGHT: return k == TK_BRIGHT;
 	case TOUR_POWER:  return k == TK_POWER;

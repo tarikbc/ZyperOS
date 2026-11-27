@@ -516,7 +516,22 @@ static void *player(void *arg)
 		}
 		if (n == 0) {
 			/* The end of the file. What is queued plays out on its own; the
-			 * launcher hears END and decides what comes next. */
+			 * launcher hears END and decides what comes next. But not before
+			 * what is decoded ahead (pcm.h) has gone to the output: the next
+			 * PLAY drops the queue, and would cut the song's last half
+			 * second. A command meanwhile ends the wait. */
+			int waited = 0;
+
+			while (pcm_ahead() > 0 && q_len == 0 && !g_quit && waited < 1000) {
+				struct timespec ts = { 0, 10 * 1000000L };
+				double h = dec_pos(g_dec) - (double)pcm_queued() * S.speed / DEC_RATE;
+
+				S.heard = h > 0 ? h : 0;
+				pthread_mutex_unlock(&S.mu);
+				nanosleep(&ts, NULL);
+				pthread_mutex_lock(&S.mu);
+				waited += 10;
+			}
 			dec_close(g_dec);
 			g_dec = NULL;
 			S.state = ST_STOPPED;

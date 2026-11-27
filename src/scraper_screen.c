@@ -1734,10 +1734,12 @@ int shot_scraper_page = -1, shot_scraper_page_t = 7180;
 /* What a run says it is doing, past a cover's game, and why it passed a
  * system over or stopped a source (art_status's now and problem): shot as
  * --scraper-page 17 K (the run, K one of the three lines) and 16 K (done,
- * K one of the reasons) */
+ * K one of the reasons, or one past the last: three systems passed over,
+ * art.problems) */
 static const str_id SCP_SHOT_WHY[] = {
 	S_ART_WHY_NO_FOLDER, S_ART_WHY_NOT_IN_TABLE, S_ART_WHY_NO_CURL, S_ART_WHY_INDEX_FAILED,
-	S_ART_WHY_INDEX_BAD,   /* the first five a system's own: "NES: ..." */
+	S_ART_WHY_INDEX_REFUSED,
+	S_ART_WHY_INDEX_BAD,   /* the first six a system's own: "NES: ..." */
 	S_ART_SS_QUOTA, S_ART_SS_TOO_MANY, S_ART_SS_BUSY, S_ART_SS_NO_ANSWER,
 	S_ART_SG_REFUSED, S_ART_SG_BUSY, S_ART_SG_NO_ANSWER,
 };
@@ -1860,8 +1862,13 @@ static void scp_fixture(scp_view *v, app *a, int state, int t)
 			if (v->s[i].vid) v->s[i].vroom = (unsigned long long)(v->s[i].vneed[SNAPS_FOR_ALL] * SCP_MB_PER_VIDEO * 1e6);
 	}
 	if (why >= 0 && why < (int)(sizeof SCP_SHOT_WHY / sizeof SCP_SHOT_WHY[0])) {
-		if (why < 5) snprintf(v->problem, sizeof v->problem, T(S_ART_PROBLEM), "NES", T(SCP_SHOT_WHY[why]));
+		if (why < 6) snprintf(v->problem, sizeof v->problem, T(S_ART_PROBLEM), "NES", T(SCP_SHOT_WHY[why]));
 		else snprintf(v->problem, sizeof v->problem, "%s", T(SCP_SHOT_WHY[why]));
+	} else if (why == (int)(sizeof SCP_SHOT_WHY / sizeof SCP_SHOT_WHY[0])) {
+		char last[sizeof v->problem];
+
+		snprintf(last, sizeof last, T(S_ART_PROBLEM), "NES", T(S_ART_WHY_INDEX_REFUSED));
+		snprintf(v->problem, sizeof v->problem, T(S_ART_PROBLEMS), 3, last);
 	}
 	if (pass == 0) snprintf(v->p.now, sizeof v->p.now, T(S_ART_NOW_CATALOG), "NES");
 	else if (pass == 1) snprintf(v->p.now, sizeof v->p.now, T(S_ART_NOW_NO_ART), "Tetris");

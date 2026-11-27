@@ -94,6 +94,7 @@ typedef struct {
 	 * saying afterwards. Showing `now` at the end left the panel naming the
 	 * last game it fetched, which reads as still working on it. */
 	char problem[128];
+	int  passed;         /* consoles passed over, each with a reason */
 	/* Who found what, for MENU > Scraper: covers from each source, in the
 	 * order they are asked. `found` is their sum. */
 	int  ss_found, lr_found, sg_found;

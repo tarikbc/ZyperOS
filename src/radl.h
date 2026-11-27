@@ -173,6 +173,11 @@ void radl_status(radl_progress *out);
 bool radl_read_set(const char *path, int *game, int *count, int *ids,
                    char (*badges)[24], int max, char *hash);
 
+/* Every set's loose badges on the card into its pack (src/rapack.h), once
+ * a start, on a thread of the caller's: a folder whose badges/ has no loose
+ * PNG costs one readdir. How many it packed. */
+int radl_badges_migrate(const char *roms);
+
 /* What a set on the card wants, given what allprogress said (`published`, -1
  * when it did not) and the count it had when last checked (`checked`, -1
  * never): true to fetch it again. A count that differs from the last check's

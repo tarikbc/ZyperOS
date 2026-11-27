@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* See pcm.h. */
 #include "pcm.h"
+#include "ahead.h"
 #include "../monoclock.h"
 
 #include <alsa/asoundlib.h>
@@ -27,6 +28,13 @@ static char     g_trail[TRAIL][128];
 static unsigned g_trail_n;
 static volatile long g_write_since;   /* when the write in progress began, or 0 */
 static long     g_written;           /* frames written since the last open or prepare */
+/* The output's own queue after the writer's last write, and when: what
+ * pcm_queued adds to the ring's, less what has played since. Kept by the
+ * writer thread so the player never calls into ALSA beside its write. */
+static volatile long g_delay, g_delay_at;
+static char     g_werr[128];         /* the writer's failure, for pcm_write to say */
+static long     g_underruns;         /* the output ran dry, since the start */
+static long     g_underrun_said_at, g_underrun_said;
 
 void pcm_note(const char *fmt, ...)
 {
@@ -70,17 +78,27 @@ long pcm_in_write_ms(void)
 	return since ? now_ms() - since : 0;
 }
 
+static long write_out(const int16_t *frames, int n);
+
 bool pcm_open(const char *device)
 {
+	bool ok;
 	int r;
 
 	pcm_close();
+	if (!ahead_start(write_out)) {
+		snprintf(g_err, sizeof g_err, "open %s: no writer thread", device);
+		pcm_note("%s", g_err);
+		return false;
+	}
+	ahead_hold();
 	r = snd_pcm_open(&g_pcm, device, SND_PCM_STREAM_PLAYBACK, 0);
 	g_last = r < 0 ? r : 0;
 	if (r < 0) {
 		snprintf(g_err, sizeof g_err, "open %s: %s", device, snd_strerror(r));
 		pcm_note("%s", g_err);
 		g_pcm = NULL;
+		ahead_release();
 		return false;
 	}
 	/* soft_resample 0: the decoder already delivers 48 kHz, and asking ALSA
@@ -103,7 +121,8 @@ bool pcm_open(const char *device)
 	if (r == -EINVAL && strcmp(device, "default")) {
 		char plug[160];
 
-		pcm_close();
+		snd_pcm_close(g_pcm);   /* held already: not pcm_close, which holds */
+		g_pcm = NULL;
 		snprintf(plug, sizeof plug, "plug:%s", device);
 		r = snd_pcm_open(&g_pcm, plug, SND_PCM_STREAM_PLAYBACK, 0);
 		if (r >= 0)
@@ -120,25 +139,52 @@ bool pcm_open(const char *device)
 		         snd_strerror(r));
 		g_last = r;
 		pcm_note("%s", g_err);
-		pcm_close();
+		if (g_pcm) snd_pcm_close(g_pcm);
+		g_pcm = NULL;
+		ahead_release();
 		return false;
 	}
 	pcm_note("open %s: ok", device);
 	g_written = 0;
-	return true;
+	g_delay = 0;
+	ok = g_pcm != NULL;
+	ahead_release();
+	return ok;
 }
 
 void pcm_close(void)
 {
-	if (g_pcm) {
-		pcm_note("close");
-		snd_pcm_close(g_pcm);
-	}
+	if (!g_pcm) return;
+	ahead_hold();
+	pcm_note("close");
+	snd_pcm_close(g_pcm);
 	g_pcm = NULL;
+	g_delay = 0;
+	ahead_release();
 }
 
-bool pcm_write(const int16_t *frames, int n)
+/* An underrun, said on stderr as it happens, but at most once a second with
+ * how many there were since: a run of them is one line a second, not fifty */
+static void underrun(void)
 {
+	long t = now_ms();
+
+	g_underruns++;
+	if (g_underrun_said_at && t - g_underrun_said_at < 1000) return;
+	fprintf(stderr, "mp4d: underrun: the output ran dry (%ld since the start, %ld in the last %ld ms), "
+	        "%ld frames decoded ahead\n", g_underruns, g_underruns - g_underrun_said,
+	        g_underrun_said_at ? t - g_underrun_said_at : 0L, ahead_frames());
+	g_underrun_said_at = t;
+	g_underrun_said = g_underruns;
+}
+
+/* The writer thread's output (ahead.h): every frame written, recovering from
+ * an underrun on the way, then the output's queue measured for pcm_queued */
+static long write_out(const int16_t *frames, int n)
+{
+	snd_pcm_sframes_t d = 0;
+	const int all = n;
+
 	while (g_pcm && n > 0) {
 		long t0 = now_ms(), took;
 		long w;
@@ -158,11 +204,12 @@ bool pcm_write(const int16_t *frames, int n)
 			 * recover re-prepares the stream. Anything else is not. */
 			int r = snd_pcm_recover(g_pcm, (int)w, 1);
 
+			if (w == -EPIPE) underrun();
 			pcm_note("write: %s, recover %s", snd_strerror((int)w),
 			         r < 0 ? snd_strerror(r) : "ok");
 			if (r < 0) {
-				snprintf(g_err, sizeof g_err, "write: %s", snd_strerror((int)w));
-				return false;
+				snprintf(g_werr, sizeof g_werr, "write: %s", snd_strerror((int)w));
+				return -1;
 			}
 			continue;
 		}
@@ -170,7 +217,22 @@ bool pcm_write(const int16_t *frames, int n)
 		n -= (int)w;
 		g_written += w;
 	}
-	return g_pcm != NULL;
+	if (!g_pcm) return -1;
+	if (snd_pcm_delay(g_pcm, &d) < 0 || d < 0) d = 0;
+	g_delay = d;
+	g_delay_at = now_ms();
+	return all;
+}
+
+/* Into the ring, decoded ahead; the writer thread takes it to the output */
+bool pcm_write(const int16_t *frames, int n)
+{
+	if (!g_pcm) return false;
+	if (!ahead_push(frames, n)) {
+		snprintf(g_err, sizeof g_err, "%s", g_werr[0] ? g_werr : "write: the output stopped");
+		return false;
+	}
+	return true;
 }
 
 void pcm_drop(void)
@@ -184,23 +246,33 @@ void pcm_drop(void)
 	 * 2026-09-25/26 were SINK then PLAY, the drop right behind the open; the
 	 * third was caught in order in the syslog: Acquire, ACTIVE, the open,
 	 * PLAY, drop, Release, IDLE, then a write that never returned. */
+	ahead_hold();   /* what is decoded ahead goes too */
 	if (!g_written) {
 		pcm_note("drop skipped: nothing written since the open or prepare");
+		ahead_release();
 		return;
 	}
 	pcm_note("drop+prepare");
 	snd_pcm_drop(g_pcm);
 	snd_pcm_prepare(g_pcm);
 	g_written = 0;
+	g_delay = 0;
+	ahead_release();
 }
 
 long pcm_queued(void)
 {
-	snd_pcm_sframes_t d = 0;
+	long d = g_delay, played;
 
-	if (!g_pcm || snd_pcm_delay(g_pcm, &d) < 0 || d < 0) return 0;
-	return d;
+	if (!g_pcm) return 0;
+	/* The output's queue as the writer last measured it, less what has
+	 * played since, and what is decoded ahead of it */
+	played = g_delay_at ? (now_ms() - g_delay_at) * 48 : 0;
+	d = d > played ? d - played : 0;
+	return ahead_frames() + d;
 }
+
+long pcm_ahead(void) { return ahead_frames(); }
 
 const char *pcm_error(void) { return g_err; }
 

@@ -13,8 +13,11 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+#include <math.h>
+
 #include "../src/db.h"
 #include "../src/eq.h"
+#include "../src/eqdsp.h"
 #include "../src/i18n.h"
 
 static int fails;
@@ -43,7 +46,7 @@ static void words(void)
 	       !strcmp(eq_out_name(EQ_OUT_SPEAKER), "Speaker") && !strcmp(eq_out_name(EQ_OUT_PHONES), "Headphones"),
 	       "names_in_english");
 	eq_band_name(0, name, sizeof name);
-	report(!strcmp(name, "60 Hz") && (eq_band_name(4, name, sizeof name), !strcmp(name, "12 kHz")), "band_names");
+	report(!strcmp(name, "120 Hz") && (eq_band_name(4, name, sizeof name), !strcmp(name, "7 kHz")), "band_names");
 	eq_bands_wire(want, w, sizeof w);
 	report(!strcmp(w, "5,-2,0,3,-6"), "bands_on_the_wire");
 	report(eq_bands_parse(w, db) && same(db, want), "and_back");
@@ -51,7 +54,7 @@ static void words(void)
 	report(!eq_bands_parse("1,2,3,4", db) && !eq_bands_parse("1,2,3,4,7", db) &&
 	       !eq_bands_parse("1,2,3,4,5,6", db) && !eq_bands_parse("a,2,3,4,5", db) && db[0] == 9,
 	       "anything_else_is_refused_and_changes_nothing");
-	report(EQ_CURVE[EQ_BASS][0] == 5 && EQ_CURVE[EQ_VOICE][2] == 3 && EQ_CURVE[EQ_TREBLE][4] == 5 &&
+	report(EQ_CURVE[EQ_BASS][0] == 6 && EQ_CURVE[EQ_VOICE][2] == 3 && EQ_CURVE[EQ_TREBLE][4] == 6 &&
 	       eq_flat(EQ_CURVE[EQ_OFF]), "the_labs_curves");
 }
 
@@ -79,7 +82,7 @@ static void store(void)
 	/* A step on Bass: Bass's curve with the step becomes Custom's */
 	report(eq_band_step(EQ_OUT_PHONES, 1, 1), "a_step_on_a_preset");
 	eq_bands(EQ_OUT_PHONES, db);
-	report(eq_preset_get(EQ_OUT_PHONES) == EQ_CUSTOM && db[0] == 5 && db[1] == 3 && db[4] == 1,
+	report(eq_preset_get(EQ_OUT_PHONES) == EQ_CUSTOM && db[0] == 6 && db[1] == 4 && db[4] == 0,
 	       "makes_it_custom_with_the_step");
 	eq_preset_set(EQ_OUT_PHONES, EQ_CUSTOM);
 	db[0] = 6;
@@ -94,11 +97,53 @@ static void store(void)
 	report(eq_preset_get(EQ_OUT_SPEAKER) == EQ_OFF, "a_word_it_cannot_read_is_off");
 }
 
+/* A curve's lift of a tone, dB: a second of it at 48 kHz, its second half
+ * measured */
+static double lift(const int8_t *db, float hz)
+{
+	static int16_t buf[48000 * 2];
+	double sq = 0;
+	eq_state e;
+	int i;
+
+	for (i = 0; i < 48000; i++)
+		buf[i * 2] = buf[i * 2 + 1] = (int16_t)(3276.7 * sin(2.0 * 3.14159265358979 * hz * i / 48000.0));
+	eq_init(&e, 48000);
+	eq_jump(&e, db);
+	eq_run(&e, buf, 48000);
+	for (i = 24000; i < 48000; i++) sq += (double)buf[i * 2] * buf[i * 2];
+	return 20.0 * log10(sqrt(sq / 24000) / (3276.7 / sqrt(2.0)));
+}
+
+/* Bass and Treble plain to hear on a small speaker (2026-11-24): Bass lifts
+ * 100 to 300 Hz, where the speaker plays, by 2.5 dB and more, never less at
+ * a lower tone than at a higher one (the dip at 100-120 Hz the 60 Hz shelf
+ * left); Treble lifts 6 to 14 kHz by 3 dB and more, 8 kHz by 4 */
+static void heard(void)
+{
+	static const float LOW[] = { 300, 200, 150, 120, 100, 80 };
+	double was = -99, d;
+	int ok = 1;
+	size_t i;
+
+	for (i = 0; i < sizeof LOW / sizeof LOW[0]; i++) {
+		d = lift(EQ_CURVE[EQ_BASS], LOW[i]);
+		if (d < 2.5 || d < was - 0.3) ok = 0;
+		if (ok == 0) { printf("  bass at %.0f Hz: %.2f dB\n", LOW[i], d); break; }
+		was = d;
+	}
+	report(ok, "bass_lifts_100_to_300_hz_with_no_dip");
+	report(lift(EQ_CURVE[EQ_BASS], 1000) < 0.5 && lift(EQ_CURVE[EQ_TREBLE], 1000) < 0.5,
+	       "neither_moves_1_khz");
+	report(lift(EQ_CURVE[EQ_TREBLE], 6000) > 3.0 && lift(EQ_CURVE[EQ_TREBLE], 8000) > 4.0 &&
+	       lift(EQ_CURVE[EQ_TREBLE], 14000) > 5.0, "treble_lifts_6_to_14_khz");
+}
+
 static void share(void)
 {
 	char path[] = "/tmp/eq-check-share-XXXXXX";
 	int fd = mkstemp(path);
-	const int8_t bass[EQ_BANDS] = { 5, 2, 0, 0, 1 };
+	const int8_t bass[EQ_BANDS] = { 6, 3, 0, 0, 0 };
 	int8_t got[EQ_BANDS];
 	eq_share s;
 	FILE *f;
@@ -152,6 +197,8 @@ int main(void)
 
 	printf("eq: the words\n");
 	words();
+	printf("eq: Bass and Treble heard\n");
+	heard();
 	printf("eq: kept on the handheld\n");
 	if (fd >= 0) close(fd);
 	if (fl >= 0) close(fl);
