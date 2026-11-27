@@ -50,6 +50,23 @@ if [ ! -f "$PUB/music/level1-loop.wav" ]; then
 		"[0:a]asplit[x][y];[x]atrim=start=$1:end=$2,asetpts=PTS-STARTPTS[a];[y]atrim=start=$3:end=$4,asetpts=PTS-STARTPTS[b];[a][b]acrossfade=d=0.012:c1=tri:c2=tri" \
 		-ar 48000 "$PUB/music/level1-loop.wav"
 fi
+# The 1.1 videos' tracks (src/v110/music.ts, src/reddit110/music.ts), both
+# Zane Little Music's, CC0 on OpenGameArt: fetched once into the same cache,
+# checked, and written from each one's first downbeat, so its first sample is
+# bar 0. Neither video runs past its file's end, so neither is looped.
+fetch_track() { # URL FILE SHA256 FIRST_BEAT_S OUT
+	if [ ! -f "$MUSIC_CACHE/$2" ]; then
+		mkdir -p "$MUSIC_CACHE"
+		curl -sSfL --max-time 120 -o "$MUSIC_CACHE/$2.part" "$1"
+		mv "$MUSIC_CACHE/$2.part" "$MUSIC_CACHE/$2"
+	fi
+	[ "$(shasum -a 256 "$MUSIC_CACHE/$2" | cut -d' ' -f1)" = "$3" ] || { echo "$MUSIC_CACHE/$2 is not the track that was measured" >&2; exit 1; }
+	[ -f "$PUB/music/$5" ] || ffmpeg -loglevel error -y -i "$MUSIC_CACHE/$2" -af "atrim=start=$4,asetpts=PTS-STARTPTS" -ar 48000 "$PUB/music/$5"
+}
+fetch_track https://opengameart.org/sites/default/files/it_takes_a_hero.mp3 it_takes_a_hero.mp3 \
+	d733e5a437e875b2cf14edb954e60de6dca5a6d2621b25dfbf260098c068a209 0.0241 it-takes-a-hero.wav
+fetch_track https://opengameart.org/sites/default/files/space_cadet_training_montage.mp3 space_cadet_training_montage.mp3 \
+	894d706b047dd662640d9944bc60ee797898626e61e9a377ea335407dd7ee548 0.0263 space-cadet-training-montage.wav
 cp "$ROOT"/res/sounds/wood/*.wav "$PUB/audio/ui/"
 snap="$ART/Sega_-_Mega_Drive_-_Genesis/Named_Snaps/Sonic The Hedgehog 2 (World).png"
 [ -f "$snap" ] || { echo "no $snap: run video/footage/takes.py first, which fills the art cache" >&2; exit 1; }

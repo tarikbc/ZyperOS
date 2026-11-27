@@ -4,13 +4,15 @@
  * desktop and no change to the launcher.
  *
  * Loaded with DYLD_INSERT_LIBRARIES into the headless host build (SDL's dummy
- * video driver, the software renderer), it interposes five SDL calls:
+ * video driver, the software renderer), it interposes six SDL calls:
  *
  *   SDL_RenderPresent  reads the frame that is about to be shown and hands it
  *                      to ffmpeg, then moves the clock one display refresh on
  *   SDL_GetTicks(64)   answer that clock rather than the wall's
  *   SDL_Delay          moves it on by the delay (on the main thread)
  *   SDL_PollEvent      delivers the script's key presses when their time comes
+ *   SDL_WaitEventTimeout  the host build's rest: moves the clock on to the
+ *                      next press, or by the wait (on the main thread)
  *
  * So the clock the launcher animates by is the frames it drew: every frame of
  * every motion is in the file, at 60 per second, however long the software
@@ -42,8 +44,9 @@
  *               this take reads REC_BATT there instead, so the corner shows a
  *               battery without a file in /tmp that other runs would see
  *
- * Key names: left right up down a b x y l1 r1 l2 r2 start select menu.
- * They are the host build's keyboard keys (src/device/brick.c, map_key).
+ * Key names: left right up down a b x y l1 r1 l2 r2 start select menu, and
+ * volup voldown brightup brightdown power. They are the host build's
+ * keyboard keys (src/device/keymap.h), sent by scancode.
  */
 #include <SDL.h>
 #include <math.h>
@@ -63,7 +66,7 @@
 
 #define MAX_EVENTS 4096
 
-typedef struct { double at; SDL_Keycode key; int down; } rec_ev;
+typedef struct { double at; SDL_Scancode key; int down; } rec_ev;
 
 static rec_ev g_ev[MAX_EVENTS];
 static int g_nev, g_next;
@@ -91,18 +94,23 @@ static double wall_ms(void)
 	return ts.tv_sec * 1000.0 + ts.tv_nsec / 1e6;
 }
 
-static SDL_Keycode key_of(const char *name)
+/* The host build's keyboard keys, by scancode, as src/device/keymap.h reads
+ * them since desk mode (1.1.0): its A is X, B is Z, START is Return */
+static SDL_Scancode key_of(const char *name)
 {
-	static const struct { const char *n; SDL_Keycode k; } map[] = {
-		{ "left", SDLK_LEFT }, { "right", SDLK_RIGHT }, { "up", SDLK_UP },
-		{ "down", SDLK_DOWN }, { "a", SDLK_RETURN }, { "b", SDLK_ESCAPE },
-		{ "x", SDLK_x }, { "y", SDLK_y }, { "l1", SDLK_COMMA },
-		{ "r1", SDLK_PERIOD }, { "l2", SDLK_k }, { "r2", SDLK_l },
-		{ "start", SDLK_s }, { "select", SDLK_LSHIFT }, { "menu", SDLK_m },
+	static const struct { const char *n; SDL_Scancode k; } map[] = {
+		{ "left", SDL_SCANCODE_LEFT }, { "right", SDL_SCANCODE_RIGHT }, { "up", SDL_SCANCODE_UP },
+		{ "down", SDL_SCANCODE_DOWN }, { "a", SDL_SCANCODE_X }, { "b", SDL_SCANCODE_Z },
+		{ "x", SDL_SCANCODE_S }, { "y", SDL_SCANCODE_A }, { "l1", SDL_SCANCODE_Q },
+		{ "r1", SDL_SCANCODE_W }, { "l2", SDL_SCANCODE_E }, { "r2", SDL_SCANCODE_R },
+		{ "start", SDL_SCANCODE_RETURN }, { "select", SDL_SCANCODE_RSHIFT }, { "menu", SDL_SCANCODE_M },
+		{ "volup", SDL_SCANCODE_EQUALS }, { "voldown", SDL_SCANCODE_MINUS },
+		{ "brightup", SDL_SCANCODE_RIGHTBRACKET }, { "brightdown", SDL_SCANCODE_LEFTBRACKET },
+		{ "power", SDL_SCANCODE_P },
 	};
 	for (size_t i = 0; i < sizeof map / sizeof map[0]; i++)
 		if (!strcmp(map[i].n, name)) return map[i].k;
-	return SDLK_UNKNOWN;
+	return SDL_SCANCODE_UNKNOWN;
 }
 
 static int ev_cmp(const void *a, const void *b)
@@ -127,8 +135,8 @@ static void load_script(const char *path)
 		n = sscanf(line, "%lf %31s %lf", &at, name, &hold);
 		if (n < 2) continue;
 		if (!strcmp(name, "end")) { g_end = at; continue; }
-		SDL_Keycode k = key_of(name);
-		if (k == SDLK_UNKNOWN) { fprintf(stderr, "rec: no key %s\n", name); exit(4); }
+		SDL_Scancode k = key_of(name);
+		if (k == SDL_SCANCODE_UNKNOWN) { fprintf(stderr, "rec: no key %s\n", name); exit(4); }
 		if (g_nev + 2 > MAX_EVENTS) break;
 		g_ev[g_nev++] = (rec_ev){ at, k, 1 };
 		g_ev[g_nev++] = (rec_ev){ at + hold, k, 0 };
@@ -295,12 +303,34 @@ static int rec_PollEvent(SDL_Event *e)
 		memset(e, 0, sizeof *e);
 		e->type = g_ev[g_next].down ? SDL_KEYDOWN : SDL_KEYUP;
 		e->key.state = g_ev[g_next].down ? SDL_PRESSED : SDL_RELEASED;
-		e->key.keysym.sym = g_ev[g_next].key;
+		e->key.keysym.scancode = g_ev[g_next].key;
+		e->key.keysym.sym = SDL_GetKeyFromScancode(g_ev[g_next].key);
 		e->key.timestamp = (Uint32)g_vt;
 		g_next++;
 		return 1;
 	}
 	return SDL_PollEvent(e);
+}
+
+/* Desk mode's rest (src/device/desk.c, desk_wait): since 1.1.0 the host
+ * build waits for an event or the time, where it called SDL_Delay. On the
+ * main thread that is the clock moved on to the script's next press, or by
+ * the whole wait, as SDL_Delay moves it: a still screen draws nothing, so
+ * without this its clock never reached the next press */
+static int rec_WaitEventTimeout(SDL_Event *e, int ms)
+{
+	double step = ms < 0 ? 1000 : ms;
+
+	start();
+	if (!pthread_main_np()) return SDL_WaitEventTimeout(e, ms);
+	if (rec_PollEvent(e)) return 1;
+	if (g_first >= 0 && g_next < g_nev) {
+		double due = g_first + g_ev[g_next].at - g_vt;
+
+		if (due < step) step = due > 0 ? due : 0;
+	}
+	if (step > 0) rec_Delay((Uint32)ceil(step));
+	return rec_PollEvent(e);
 }
 
 static FILE *rec_fopen(const char *path, const char *mode)
@@ -327,5 +357,6 @@ DYLD_INTERPOSE(rec_GetTicks64, SDL_GetTicks64)
 DYLD_INTERPOSE(rec_Delay, SDL_Delay)
 DYLD_INTERPOSE(rec_RenderPresent, SDL_RenderPresent)
 DYLD_INTERPOSE(rec_PollEvent, SDL_PollEvent)
+DYLD_INTERPOSE(rec_WaitEventTimeout, SDL_WaitEventTimeout)
 DYLD_INTERPOSE(rec_time, time)
 DYLD_INTERPOSE(rec_clock_gettime, clock_gettime)

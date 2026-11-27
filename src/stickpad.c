@@ -10,6 +10,20 @@
  * not flip between up and right */
 #define STICK_KEEP_PCT 80
 
+int stickpad_centred(int value, int min, int max, int flat, int *range)
+{
+	const long mid = ((long)min + max) / 2, half = ((long)max - min) / 2;
+	long v = (long)value - mid;
+
+	if (flat < 0) flat = 0;
+	*range = half > flat ? (int)(half - flat) : 0;
+	if (*range == 0 || (v > -flat && v < flat)) return 0;
+	v = v > 0 ? v - flat : v + flat;
+	if (v > *range) v = *range;
+	if (v < -*range) v = -*range;
+	return (int)v;
+}
+
 void stickpad_update(stickpad *s, int x, int y, int max)
 {
 	int ax = abs(x), ay = abs(y), cur = -1, i, on, off, along, dir;

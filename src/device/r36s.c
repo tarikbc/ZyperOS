@@ -6,7 +6,9 @@
  * - its folder on the card, .userdata/r36s;
  * - its keys as ROCKNIX's R36S device tree sends them: the A cap BTN_EAST and
  *   the B cap BTN_SOUTH (the Pixel 2's the other way round), FN BTN_MODE;
- * - L2 and R2 plain keys: it has no battery lights for them to ask for.
+ * - L2 and R2 plain keys: it has no battery lights for them to ask for;
+ * - its sticks (RK_STICKS): the left one moves as the d-pad, and their
+ *   clicks are L3 and R3.
  *
  * Its panel scans 640x480 as it is seen, so pixel2.c's turn, which follows
  * the panel's mode, is none here. Nothing in this file was run on an R36S
@@ -19,5 +21,6 @@
 #define RK_CODE_B        BTN_SOUTH
 #define RK_CODE_FUNCTION BTN_MODE
 #define RK_L2R2_TAPS     0
+#define RK_STICKS        1
 
 #include "pixel2.c"

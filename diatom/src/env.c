@@ -824,7 +824,7 @@ uint32_t diatom_env_p2_pad(void)
  * Order matches the enum. */
 static const char *const button_names[DIATOM_BTN_COUNT] = {
 	"up", "down", "left", "right", "a", "b", "x", "y",
-	"l1", "r1", "l2", "r2", "select", "start", "menu"
+	"l1", "r1", "l2", "r2", "select", "start", "menu", "l3", "r3"
 };
 
 /* Canonical Diatom buttons -> retropad. Near-identity by design; its purpose is
@@ -849,6 +849,8 @@ static int button_map[DIATOM_BTN_COUNT] = {
 	[DIATOM_BTN_SELECT] = RETRO_DEVICE_ID_JOYPAD_SELECT,
 	[DIATOM_BTN_START]  = RETRO_DEVICE_ID_JOYPAD_START,
 	[DIATOM_BTN_MENU]   = -1,          /* Diatom's own; never reaches a core */
+	[DIATOM_BTN_L3]     = RETRO_DEVICE_ID_JOYPAD_L3,
+	[DIATOM_BTN_R3]     = RETRO_DEVICE_ID_JOYPAD_R3,
 };
 
 static int identity_map[DIATOM_BTN_COUNT];

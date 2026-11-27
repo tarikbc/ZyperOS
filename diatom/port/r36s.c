@@ -5,14 +5,15 @@
  * 640x480 as it is seen, so pixel2.c's turn, which follows the panel's mode,
  * is none here.
  *
- * Its two sticks are read by no port yet: the joypad reports ABS_X, ABS_Y,
- * ABS_RX and ABS_RY, and L3 and R3 as BTN_THUMBL and BTN_THUMBR, for the
- * sticks' hook when Diatom has one (docs/devices/r36s.md, "What is left"). */
+ * Its two sticks (RK_STICKS): the joypad reports ABS_X, ABS_Y, ABS_RX and
+ * ABS_RY, read as the RetroPad's analog sticks, and L3 and R3 as BTN_THUMBL
+ * and BTN_THUMBR. */
 #include <linux/input.h>
 
 #define RK_PORT          "r36s"
 #define RK_CODE_A        BTN_EAST
 #define RK_CODE_B        BTN_SOUTH
 #define RK_CODE_FUNCTION BTN_MODE
+#define RK_STICKS        1
 
 #include "pixel2.c"

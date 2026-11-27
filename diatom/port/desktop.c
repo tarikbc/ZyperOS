@@ -618,7 +618,7 @@ static void script_load(void)
 {
 	static const char *const names[DIATOM_BTN_COUNT] = {
 		"up", "down", "left", "right", "a", "b", "x", "y",
-		"l1", "r1", "l2", "r2", "select", "start", "menu"
+		"l1", "r1", "l2", "r2", "select", "start", "menu", "l3", "r3"
 	};
 	const char *e = getenv("DIATOM_INPUT_SCRIPT");
 	char buf[2048], *step, *save = NULL;

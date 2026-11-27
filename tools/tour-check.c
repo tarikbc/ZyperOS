@@ -492,10 +492,11 @@ static void keys(void)
 		{ IN_VOLUP, TK_VOL }, { IN_VOLDN, TK_VOL },
 		{ IN_BRIGHTUP, TK_BRIGHT }, { IN_BRIGHTDN, TK_BRIGHT }, { IN_POWER, TK_POWER },
 		{ IN_L2, TK_L2 }, { IN_R2, TK_R2 },
+		{ IN_L3, TK_L3 }, { IN_R3, TK_R3 },
 	};
 	static const char *const names[TK_KEYS] = {
 		"Up", "Down", "Left", "Right", "A", "B", "X", "Y", "L1", "R1", "L2", "R2",
-		"START", "SELECT", "MENU", "volume", "brightness", "POWER" };
+		"START", "SELECT", "MENU", "volume", "brightness", "POWER", "L3", "R3" };
 	size_t i;
 	int k;
 

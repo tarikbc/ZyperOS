@@ -45,6 +45,11 @@ const SHOT_PRESSES: Record<string, [number, string][]> = {
   "charge-full": [[1400, "accept"]],
   // 1.0.6's: POWER held, its bar filling (no press to hear but the hold)
   powerhold: [],
+  // 1.1's: VOL+ makes no interface sound, and the video snap and the PSP's
+  // start are no presses
+  "v11-boost": [],
+  "v11-vview": [],
+  "v11-psp": [],
 };
 
 /** Scenes' own moments, in seconds into the scene: POWER pressed, and Zyper's

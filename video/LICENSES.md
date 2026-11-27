@@ -52,6 +52,29 @@ video plays the loop once from the first downbeat, then from the top again,
 joined with a 12 ms crossfade on the bar line, and it is mastered 8.5 dB louder
 than Leap, so the video plays it at 0.34 (`src/v106/music.ts`).
 
+The 1.1 videos have their own tracks, both by **Zane Little Music**, both
+**CC0 1.0** on OpenGameArt, where they were picked from the list of checked
+candidates. His Bandcamp album gives CC BY 4.0 for the same music, so the
+videos credit him as CC BY 4.0 asks, the stricter of the two. Neither is in
+the repository: `scripts/prepare-assets.sh` fetches each into
+`~/Library/Caches/zyperos-video-music`, checks its sha256, and writes it to
+`public/music/` from its first downbeat. Measured with the release-video
+skill's `measure_track.py` (onsets of ffmpeg's decode, 5 ms hops, a beat grid
+fitted for every tempo):
+
+- **It Takes A Hero** (<https://opengameart.org/content/it-takes-a-hero>,
+  <https://opengameart.org/sites/default/files/it_takes_a_hero.mp3>, sha256
+  `d733e5a4...0a209`), the Discord video's (`src/v110/music.ts`): exactly 140
+  BPM, the first downbeat 0.0241 s in, 90 bars of 1.714 s; a quiet break at
+  bars 49 to 54, where the video's pair and end card stand. -13.1 LUFS, so it
+  plays at 0.64.
+- **Space Cadet Training Montage**
+  (<https://opengameart.org/content/space-cadet-training-montage>,
+  <https://opengameart.org/sites/default/files/space_cadet_training_montage.mp3>,
+  sha256 `894d706b...7ee548`), the Reddit cut's (`src/reddit110/music.ts`):
+  exactly 130 BPM, the first downbeat 0.0263 s in, 39 bars of 1.846 s; three
+  quiet bars of build, the band from bar 3. -12.9 LUFS, so it plays at 0.62.
+
 ## Sound effects
 
 `public/audio/ui/*.wav` are the launcher's own interface sounds, `res/sounds/wood/`, the

@@ -204,3 +204,73 @@ takes start after Zyper's song pop-up. `scripts/finish-106.sh` ends with
 video as `NAME-poster.jpg` and fails if it is blank. The tour and the Reddit cut
 still fade in from the ground colour; give them the same opening before
 rendering them again.
+
+## The 1.1 videos: the Discord's and the Reddit cut
+
+Two more compositions, each with its own track and scenes, so the older
+videos stay as they were:
+
+- `src/v110/`, `Release110`: what 1.1 adds next to 1.0.6, in 95 seconds at
+  16:9, for the ZyperOS Discord, on both handhelds; a feature the Discord
+  asked for wears "Asked for on Discord", and a feature only one handheld has
+  says so. The PSP and Saturn scene shows the release notes' speeds, measured
+  on my Pixel 2. Its track is Zane Little Music's "It Takes A Hero"
+  (`src/v110/music.ts`).
+- `src/reddit110/`, `Reddit110`: everything new since 1.0.5 (1.0.6 and 1.1)
+  in 60 seconds at 4:5, the 1.0.5 cut's way: large captions in a top band,
+  each feature tagged with the release it came in, "ZyperOS 1.1" and both
+  handhelds whole from frame 0. Its track is Zane Little Music's "Space Cadet
+  Training Montage" (`src/reddit110/music.ts`).
+
+Their takes are `footage/takes.py`'s 1.1 section, on `card.py`'s `v110`
+card: the fuller card with your PICO-8's place (two empty stand-in files
+where the player's own go, never Lexaloffle's), carts named on its shelf,
+three Collections, Screenshots and Recents' last screens (each the game's
+libretro snap, as the hotkey would write it), and a game's stand-in cheats.
+The Video view plays Symphony of the Night's ScreenScraper snap, as the
+tour's video snap does:
+
+```sh
+make native
+SNAP_SOURCE=/path/to/sotn.mp4 SNAP_START=2 python3 video/footage/takes.py v11-home v11-brick-home ...
+sh video/scripts/prepare-assets.sh
+cd video && npm run stills:110 && npm run stills:reddit110
+npx remotion render Release110 out/v110/zyperos-1.1-raw.mp4 --crf=6 --concurrency=4
+npx remotion render Reddit110 out/reddit110/zyperos-1.1-reddit-raw.mp4 --crf=6 --concurrency=4
+sh scripts/finish-110.sh            # the master, the Discord file at 10 MB or less, the Reddit cut, outside the repository
+```
+
+## The Brick introduction: ZyperOS on the TrimUI Brick, for r/trimui
+
+`src/brick-intro/`, `BrickIntro`: ZyperOS introduced to Brick owners, 4:5,
+exactly 2:00 on the 1.1 videos' "It Takes A Hero" (70 bars at 140 BPM), the
+Brick alone, every feature named in a caption, no version anywhere (a frame
+with one would date the video). Its takes are `footage/takes.py`'s Brick
+introduction section: `brick(NAME)` copies a take onto the Brick's profile as
+`bi-NAME`, and the `bi` card (`card.py`'s `brick_intro`) is the 1.1 card on
+1.0.6. The Rumble list and the Side Lights page are drawn on the Pixel 2's
+profile until the Brick's own land. A scene may carry `wait` (a WAITING band
+over its stand-in); `scripts/check-waits.mjs` lists them, and the finish
+script refuses to make a file while one is left.
+
+```sh
+make native
+python3 video/footage/takes.py bi-poweroff bi-homegrid ...   # every bi- take but bi-vview,
+                                     # and v11-brick-home v11-brick-grid v11-brick-gpu v11-brick
+SNAP_SOURCE=~/Documents/ZyperOS/video/snaps/sotn.mp4 SNAP_START=2 python3 video/footage/takes.py bi-vview   # its own run:
+                                     # the snap file is made once a run, from SNAP_SOURCE
+cd video && npm run stills:brick-intro
+npx remotion render BrickIntro out/brick-intro/zyperos-brick-raw.mp4 --crf=6 --concurrency=4
+sh scripts/finish-brick-intro.sh     # the master and the Reddit file, outside the repository
+```
+
+Since desk mode (1.1), the host build rests in `SDL_WaitEventTimeout` and
+reads its keys by scancode, with A on X and B on Z: `rec/rec.c` answers both,
+so a still screen's clock still reaches the next press. Its key names gained
+`volup`, `voldown`, `brightup`, `brightdown` and `power`.
+
+What the host cannot draw: the volume boost opens over MP4, games and ports,
+not over the menus alone, so its scene shows it over MP4 playing, from the
+launcher's own `--osd` pictures; a Border round a game is drawn by Diatom, so
+its scene shows the Border list's own picture of it.
+

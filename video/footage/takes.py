@@ -470,8 +470,156 @@ shots('psp-home', [(('PSP', 'God of War - Chains of Olympus (USA).iso'), ['--hom
                     motion(0, 6300))], card='more')
 
 
+# ---- 1.1: the Discord video and the Reddit cut (src/v110, src/reddit110) ----
+# On card.py's v110 card: the fuller card, and your PICO-8's place, carts,
+# Collections, Screenshots, Recents with their last screens, and a game's
+# cheats. The Pixel 2's unless a take says the Brick's.
+V11 = 'v110'
+SOTN = ('PS1', 'Castlevania - Symphony of the Night (USA).chd')
+SOTN_SNAP = '{art}/Sony_-_PlayStation/Named_Snaps/Castlevania - Symphony of the Night (USA).png'
+THPS2 = ('PS1', "Tony Hawk's Pro Skater 2 (USA).chd")
+THPS2_SNAP = "{art}/Sony_-_PlayStation/Named_Snaps/Tony Hawk's Pro Skater 2 (USA).png"
+GB_KEPT = {'display.GB': 'integer', 'display_source.GB': '160x144', 'display_shape.GB': '1.11111'}
+P8 = ('PICO8', 'Celeste Classic.p8')
+# The home moving between systems, on each handheld, still on the first
+# system until after Zyper's pop-up (the posters' frame)
+live('v11-home', ('PICO8', 'Splore.splore'), [900, 'right', 800, 'right', 800, 'left', 700, 'left', 700, 'left', 1400],
+     card=V11)
+live('v11-brick-home', PS1, [900, 'right', 800, 'right', 800, 'right', 1000, 'a', 1300, 'right', 600, 'right', 600, 'right', 1400],
+     card=V11, device='brick')
+# Grid view on the SNES shelf, on each (1.0.6's, for the Reddit cut and the pair)
+live('v11-grid', SFC, GRID_KEYS, card=V11)
+live('v11-brick-grid', SFC, GRID_KEYS, card=V11, device='brick')
+# Your PICO-8: the home on its shelf, in, Splore first, then along the carts
+live('v11-p8', ('PICO8', 'Splore.splore'), ['a', 1300, 'right', 900, 'right', 700, 'right', 700, 'right', 1200],
+     card=V11)
+# Collections: the home on its group, in, along the lists, into one and along it
+live('v11-coll', ('COLL', 'Couch Co-op'), ['a', 1200, 'right', 900, 'a', 1200, 'right', 600, 'right', 600, 'right', 1200],
+     card=V11)
+# Screenshots: the home on its group, in, A for the newest on the whole
+# screen, Right and Right through them, R1 to another game's
+live('v11-shots', ('SHOT', ''), ['a', 1200, 'a', 1400, 'right', 1000, 'right', 1000, 'r1', 1400], card=V11)
+# Louder than the top, over MP4 playing (the boost opens in MP4, games and
+# ports, not over the menus alone): the level at the top, then the boost's
+# cells, one each press, up to six
+NP_SPEC = ['--nowplaying', '0', '0', '{t}', '--np-look', 'spectrum']
+BOOST = [(17, 0, 450), (18, 0, 350), (19, 0, 350), (20, 0, 600)] + [(20, b, 450) for b in range(1, 6)] + [(20, 6, 1400)]
+shots('v11-boost', [(('MUSE', ''), NP_SPEC + ['--osd', 'volume', str(v)] + (['+%d' % b] if b else []),
+                     [f'{90 + t / 1000:.3f}' for t in motion(a, a + ms)])
+                    for (v, b, ms), a in zip(BOOST, [sum(x[2] for x in BOOST[:k]) for k in range(len(BOOST))])],
+      card=V11)
+# MENU > Downloads: the plan, A and the run, its stream, all done
+shots('v11-dl', [(PS1, ['--downloads', '0'], 1100), (PS1, ['--downloads', '1'], 800),
+                 (PS1, ['--downloads', '14'], 1700), (PS1, ['--downloads', '17'], 1600)], card=V11)
+# Cheats: the Game tab's row, two on, then the game's list, down it
+shots('v11-cheats', [(THPS2, ['--gamemenu', '4', '--cheats', '--backdrop', THPS2_SNAP], 900)] +
+      [(THPS2, ['--gamemenu', '0', '--cheats-page', str(r), '--backdrop', THPS2_SNAP], ms)
+       for r, ms in ((0, 600), (1, 400), (2, 400), (3, 400), (4, 1200))], card=V11)
+# MENU > System > Hotkeys: down to Screenshot, its capture with SELECT and Y down
+shots('v11-hotkeys', [(PS1, ['--hotkeys', str(r)], ms) for r, ms in ((0, 500), (1, 250), (2, 250), (3, 250), (4, 700))] +
+      [(PS1, ['--hotkeys', '4', '--hk-capture', '1'], 600), (PS1, ['--hotkeys', '4', '--hk-capture', '2', '--hk-key', '3'], 1400)],
+      card=V11)
+# The Video view: Crash with no snap, its card whole, then Symphony of the
+# Night's snap (Tarik's ScreenScraper clip, SNAP_SOURCE) on the whole screen
+VVIEW_ENV = {'SNAP_I420': '{work}/snap.yuv', 'DYLD_INSERT_LIBRARIES': str(ROOT / 'video/rec/snapsub.dylib')}
+shots('v11-vview', [(('PS1', 'Crash Bandicoot (USA).chd'), ['--screen', 'games', '--view', 'video'], 900),
+                    (SOTN, ['--screen', 'games', '--view', 'video', '--snap', '1', '--snap-frame', '{i}'], motion(0, 4200))],
+      card=V11, env=VVIEW_ENV)
+# Recents with each game's last screen, the cursor along them
+shots('v11-recents', [(('RECENT', f), ['--screen', 'games'], ms, {'settings': {'recents.picture': 'screen'}})
+                      for f, ms in (('Super Metroid (USA).sfc', 1000), ('Metroid Fusion (USA).gba', 800),
+                                    ('Castlevania - Symphony of the Night (USA).chd', 1300))], card=V11)
+# MENU > Sound > Equalizer: the presets, each its curve, then five bands of your own
+shots('v11-eq', [(PS1, ['--look-page', 'eq-presets', '0', '--pick-at', str(k)], 500 if k < 3 else 700) for k in range(4)] +
+      [(PS1, ['--look-page', 'eq', '1'], 1500, {'settings': {'eq.speaker': 'custom', 'eq.speaker.bands': '4,1,-2,3,5'}})],
+      card=V11)
+# MP4's Player Looks, each playing: Cassette's reels, Vinyl's record and arm, Classic, Spectrum
+shots('v11-looks', [(('MUSE', ''), ['--nowplaying', '0', '0', '{t}', '--np-look', look], [f'{83 + t / 1000:.3f}' for t in motion(a, a + ms)])
+                    for look, a, ms in (('cassette', 0, 1500), ('vinyl', 1500, 1500), ('classic', 3000, 1000),
+                                        ('spectrum', 4000, 1300))], card=V11)
+# Border on a Game Boy game: its Display tab, the row, its list with each
+# kind's picture, my drawing of the Game Boy round the game
+GB_GM = ['--backdrop', GB_SNAP, '--gm-source', '160x144@1.11111']
+shots('v11-border', [(GB, ['--gamemenu', str(r), '--gm-tab', '1'] + GB_GM, ms, {'settings': GB_KEPT})
+                     for r, ms in ((0, 500), (1, 700))] +
+      [(GB, ['--gamemenu', '1', '--gm-tab', '1', '--gm-choose', '--pick-en', w] + GB_GM, ms, {'settings': GB_KEPT})
+       for w, ms in (('Off', 400), ('Blur', 500), ('Handheld', 1300), ('Handheld, Whole', 1300))], card=V11)
+# Screen Colors in a game: the Display tab down to it, its page over the
+# paused game, the Look list
+SOTN_GM = ['--backdrop', SOTN_SNAP]
+shots('v11-gmcolors', [(SOTN, ['--gamemenu', str(r), '--gm-tab', '1'] + SOTN_GM, ms) for r, ms in ((0, 400), (1, 300), (2, 700))] +
+      [(SOTN, ['--gamemenu', '0', '--look-page', 'screen', '0'] + SOTN_GM, 700)] +
+      [(SOTN, ['--gamemenu', '0', '--look-page', 'screen-looks', '0', '--pick-at', str(k)] + SOTN_GM, 420 if k < 4 else 900)
+       for k in range(5)], card=V11)
+# The game's file in its details: X on Final Fantasy VII, its File row
+# sliding to the end of its whole name
+FF7 = ('PS1', cardlib.FF7 + '.chd')
+shots('v11-details', [(FF7, ['--screen', 'games'], 600),
+                      (FF7, ['--screen', 'games', '--info', '--phase', '{t}'], motion(0, 3600))], card=V11)
+# The in-game menu over your PICO-8: its Game tab, R1 to Display, down it
+# (Border, Shader, its Strength and Screen Colors drawn over PICO-8)
+P8_SET = {'settings': {'display.PICO8': 'integer', 'shader.PICO8': 'crt', 'shader_strength.PICO8': '70', 'border.PICO8': 'blur'}}
+shots('v11-p8menu', [(P8, ['--screen', 'games', '--gamemenu', '0', 'port'], 800, P8_SET)] +
+      [(P8, ['--screen', 'games', '--gamemenu', str(r), 'port', '--gm-tab', '1'], ms, P8_SET)
+       for r, ms in ((0, 500), (1, 350), (2, 350), (3, 350), (4, 900))], card=V11)
+# The PSP's home, its console's own start, beside the numbers
+shots('v11-psp', [(('PSP', 'God of War - Chains of Olympus (USA).iso'), ['--home', 'spotlight', '--phase', '{t}'],
+                   motion(0, 6300))], card=V11)
+# New on the Brick: the consoles whose cores draw with its GPU (#446), each
+# on its home with its console's own start: N64, Dreamcast, PSP (the card has
+# no Saturn games)
+shots('v11-brick-gpu', [(sys_game, ['--home', 'spotlight', '--phase', '{t}'], motion(0, ms))
+                        for sys_game, ms in [(('N64', 'Super Mario 64 (USA).z64'), 1700),
+                                             (('DC', 'Crazy Taxi (USA).chd'), 1700),
+                                             (('PSP', 'God of War - Chains of Olympus (USA).iso'), 2400)]],
+      card=V11, device='brick')
+# New on the Brick: Screen Colors' looks, Night Mode's page, and a computer's
+# cable asking what it is for, Flash Drive, and its screen
+shots('v11-brick', [(PS1, ['--look-page', 'screen', '0'], 600)] +
+      [(PS1, ['--look-page', 'screen-looks', '0', '--pick-at', str(k)], 380) for k in range(1, 5)] +
+      [(PS1, ['--look-page', 'night', str(r)], ms, {'settings': {'night.mode': 'hours'}}) for r, ms in ((0, 600), (1, 700))] +
+      [(PS1, ['--usb-ask', str(k), 'plain', 'drive'], ms) for k, ms in ((0, 400), (1, 400), (2, 700))] +
+      [(PS1, ['--usb-drive', '0', v], ms) for v, ms in (('in', 700), ('both', 1300))], card=V11, device='brick')
+
+
 for code in ['en', 'zh-Hans', 'es', 'pt-BR', 'fr', 'de', 'ja', 'it']:
     shots(f'lang-{code}', [(PS1, ['--lang', code, '--menu', 'Language'], 100)])
+
+
+# ---- The Brick introduction (src/brick-intro) ----------------------------------
+# Every scene on the TrimUI Brick alone: each take a copy of one above, the
+# same card and presses, drawn on the Brick's profile. A take whose presses
+# land elsewhere on the Brick's home gets a Brick-only live() of its own.
+def brick(name):
+    """TAKES['bi-NAME'] (without a 'v11-' prefix): TAKES[name] on the Brick"""
+    new = 'bi-' + name.removeprefix('v11-')
+    TAKES[new] = {**TAKES[name], 'device': 'brick'}
+    return new
+
+
+for _src in ['poweroff', 'homegrid', 'snap', 'v11-vview', 'v11-dl', 'quicksave', 'undo', 'gm-remap',
+             'v11-hotkeys', 'v11-shots', 'v11-cheats', 'gm-cheevos', 'v11-coll', 'v11-recents', 'search',
+             'wifi-xfer', 'v11-looks', 'v11-boost', 'v11-eq', 'look', 'firststart', 'folders']:
+    brick(_src)
+# System Update as a Brick on 1.0.6 saw 1.1.0 (card.py's brick_intro)
+TAKES['bi-update'] = {**TAKES['update'], 'device': 'brick', 'card': 'bi'}
+# Made as if the Brick has every feature the Pixel 2 has (Tarik, 2026-11-22:
+# the video waits for them, so it shows them): the shader and border lists,
+# the Ports shelf and PortMaster, your PICO-8 with Splore, Player 2, the
+# charge limit, and the Rumble and lights pages, each on the Brick's profile
+for _src in ['lshader', 'v11-border', 'ports', 'portline', 'v11-p8', 'player2', 'charge']:
+    brick(_src)
+# The Brick's profile has no Rumble row yet (draft #452): the Rumble list as
+# the Pixel 2's profile draws it, until the Brick's lands. The Brick's lights
+# page does not exist yet, so the video does not show one.
+# Only the Rumble list itself: its rows and lines are the same on every
+# handheld, where the Sound tab around it is the Pixel 2's (its mono speaker)
+shots('bi-rumble', [(PS1, ['--menu', 'Rumble', '--press', 'a', '--pick-at', str(k)], ms)
+                    for k, ms in ((0, 700), (1, 750), (2, 750), (3, 1300))])
+# System Update in the background without its page (it names versions): the
+# shelf's download mark filling, on the Brick introduction's card
+TAKES['bi-update-bg'] = {**TAKES['update-bg'], 'device': 'brick', 'card': 'bi',
+                         'segments': TAKES['update-bg']['segments'][1:]}
 
 
 # ---- running them --------------------------------------------------------------
@@ -597,6 +745,10 @@ def run_shots(name, spec, cards):
     shutil.rmtree(frames)
 
 
+def spec_card(name):
+    return TAKES[name]['card']
+
+
 def build_rec():
     flags = subprocess.check_output(['pkg-config', '--cflags', '--libs', 'sdl2'], text=True).split()
     for name in ('rec', 'snapsub'):
@@ -620,10 +772,21 @@ def main():
     # 1.0.6's: fuller shelves for the Grid, and the SG-1000's
     cards['more'] = cardlib.build(WORK / 'card-more', more=True)
     cardlib.device_settings(cards['more'], BINARY, **{'tour.done': 1, 'clock': '24h'})
+    # 1.1's: the fuller card with what 1.1 brings to a card (card.py's v110)
+    if not only or any(spec_card(t) == V11 for t in only):
+        cards[V11] = cardlib.v110(cardlib.build(WORK / 'card-v110', more=True))
+        cardlib.device_settings(cards[V11], BINARY, **{'tour.done': 1, 'clock': '24h'})
+    # The Brick introduction's: 1.1's card, a Brick on 1.0.6 offered 1.1.0
+    if not only or any(spec_card(t) == 'bi' for t in only):
+        cards['bi'] = cardlib.brick_intro(cardlib.v110(cardlib.build(WORK / 'card-bi', more=True)))
+        cardlib.device_settings(cards['bi'], BINARY, **{'tour.done': 1, 'clock': '24h'})
     # The demonstration card with the snap's game holding it in its .media,
     # for the play mark and the bar, and the snap's frames for snapsub.dylib
     cards['snaps'] = cardlib.build(WORK / 'card-snaps')
     cardlib.device_settings(cards['snaps'], BINARY, **{'tour.done': 1, 'clock': '24h'})
+    # Its BIOS files as stand-ins, as the 1.1 card's, so a shelf shows no
+    # "Needs scph5501.bin in Bios" (the Brick's PlayStation core asks for one)
+    cardlib.rs.stand_in_bios(cards['snaps'])
     folder = next(line.split('|')[2] for line in (ROOT / 'config/systems.cfg').read_text().splitlines()
                   if line.startswith('sys|') and line.split('|')[4] == SNAP_GAME[0])
     stem = Path(SNAP_GAME[1]).stem

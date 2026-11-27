@@ -105,7 +105,9 @@ static const td_key SHOULDER[4] = { TD_L1, TD_R1, TD_L2, TD_R2 };
 static unsigned lit_of(const tour *t, tour_step s)
 {
 	switch (s) {
-	case TOUR_MOVE:   return 1u << TD_DPAD | 1u << TD_L1 | 1u << TD_R1;
+	/* The left stick too, which moves as the d-pad does, where the
+	 * handheld has one (the R36S): a key its model has not stays unlit */
+	case TOUR_MOVE:   return 1u << TD_DPAD | 1u << TD_L1 | 1u << TD_R1 | 1u << TD_L3;
 	case TOUR_A:      return 1u << TD_A;
 	case TOUR_B:      return 1u << TD_B;
 	case TOUR_X:      return 1u << TD_X;
@@ -949,7 +951,9 @@ static void tourdev_pose(const tour *t, uint32_t now, float op, td_pose *out)
 		[TD_SELECT] = TP_SELECT, [TD_START] = TP_START, [TD_MENU] = TP_MENU,
 		[TD_VOLUP] = TP_VOLUP, [TD_VOLDN] = TP_VOLDN, [TD_POWER] = TP_POWER,
 		[TD_L1] = TP_L1, [TD_R1] = TP_R1, [TD_L2] = TP_L2, [TD_R2] = TP_R2,
-		[TD_F1] = TP_F1, [TD_F2] = TP_F2 };
+		[TD_F1] = TP_F1, [TD_F2] = TP_F2,
+		/* The sticks' caps have no part of the lesson's: they never show a press */
+		[TD_L3] = TP_PARTS, [TD_R3] = TP_PARTS };
 	static const tour_part ARM_PART[4] = { TP_UP, TP_DOWN, TP_LEFT, TP_RIGHT };
 	int i;
 
@@ -1353,8 +1357,9 @@ static void bk_front_face(const view *v)
 		if (thinness(pt, 4) >= .4f) fill(v->r, pt, 4, col(v, v->mark, 1.0f));
 	}
 	/* The sticks: a well (a light ring standing out of the face, where the
-	 * slab has one, round the cap's dark base), and the cap in it, never
-	 * lit */
+	 * slab has one, round the cap's dark base). Their caps are keys where
+	 * the model has them (L3, R3: bk_front_keys), else drawn here, never
+	 * lit. */
 	for (i = 0; g_slab->stick_well > 0.0f && i < 2; i++) {
 		const float x = (i ? 1.0f : -1.0f) * g_slab->stick_x, z = g_slab->stick_z;
 
@@ -1364,13 +1369,15 @@ static void bk_front_face(const view *v)
 			n = disc(v, 0, x, BK_FRONT, z, g_slab->stick_well - g_slab->stick_ring, pt);
 		}
 		face_shape(v, pt, n, col(v, v->pocket, 1.0f), col(v, v->line, 1.0f), DS_FRAME);
+		if (v->part[i ? TD_R3 : TD_L3].r > 0.0f) continue;
 		n = disc(v, 0, x, BK_FRONT, z, g_slab->stick_cap, pt);
 		face_shape(v, pt, n, col(v, v->key, 1.0f), col(v, v->key_line, 1.0f), DS_FRAME);
 	}
 }
 
-/* The round keys on the front */
-static const td_key BK_ROUND[] = { TD_A, TD_B, TD_X, TD_Y, TD_MENU, TD_SELECT, TD_START };
+/* The round keys on the front: the sticks' caps too, where the model has
+ * them (a key it has not is passed over, its radius 0) */
+static const td_key BK_ROUND[] = { TD_A, TD_B, TD_X, TD_Y, TD_MENU, TD_SELECT, TD_START, TD_L3, TD_R3 };
 #define BK_NROUND ((int)(sizeof BK_ROUND / sizeof BK_ROUND[0]))
 
 /* Where the front's lit keys' halos and rings go, each about its key at
@@ -1389,7 +1396,7 @@ static void bk_front_spots(const view *v, spot *spots, int *ns)
 		spots[(*ns)++].press = 0.0f;
 	}
 	for (i = 0; i < BK_NROUND; i++)
-		if (v->on[BK_ROUND[i]] > 0.0f) {
+		if (v->on[BK_ROUND[i]] > 0.0f && v->part[BK_ROUND[i]].r > 0.0f) {
 			n = round_pts(v, BK_ROUND[i], 0.0f, BK_FRONT, pt);
 			spots[(*ns)++] = spot_of(v, BK_ROUND[i], pt, n, vis);
 		}
@@ -1418,6 +1425,7 @@ static void bk_front_keys(const view *v)
 
 	cross(v, BK_FRONT, g_slab->arm);
 	for (i = 0; i < BK_NROUND; i++) {
+		if (v->part[BK_ROUND[i]].r <= 0.0f) continue;
 		n = round_pts(v, BK_ROUND[i], v->press[BK_ROUND[i]], BK_FRONT, pt);
 		face_shape(v, pt, n, key_fill(v, BK_ROUND[i]), key_edge(v, BK_ROUND[i]), DS_FRAME);
 	}

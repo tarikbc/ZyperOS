@@ -9,7 +9,10 @@ typedef enum { TD_DPAD, TD_A, TD_B, TD_X, TD_Y, TD_SELECT, TD_START, TD_MENU, TD
                TD_VOLDN, TD_POWER, TD_L1, TD_R1, TD_L2, TD_R2,
                /* The brightness keys of a device that has them (the Brick's F1
                 * and F2); none on the Pixel 2 */
-               TD_F1, TD_F2, TD_KEYS } td_key;
+               TD_F1, TD_F2,
+               /* The sticks, pressed and pushed (L3, R3), on a handheld that
+                * has them (the R36S); none on the Pixel 2 or the Brick */
+               TD_L3, TD_R3, TD_KEYS } td_key;
 
 /* How far the handheld tilts back, degrees, so its top shows with the
  * shoulders standing on it: for the shoulders, in the tutorial's lessons

@@ -907,7 +907,7 @@ static const char *const BTN_NAMES[IN_COUNT] = {
 	[IN_L1] = "l1", [IN_R1] = "r1", [IN_START] = "start", [IN_SELECT] = "select",
 	[IN_MENU] = "menu", [IN_VOLUP] = "volup", [IN_VOLDN] = "voldown",
 	[IN_BRIGHTUP] = "brightup", [IN_BRIGHTDN] = "brightdown", [IN_POWER] = "power",
-	[IN_L2] = "l2", [IN_R2] = "r2",
+	[IN_L2] = "l2", [IN_R2] = "r2", [IN_L3] = "l3", [IN_R3] = "r3",
 };
 
 /* "a+right" as a mask of buttons; 0 when one is no button */

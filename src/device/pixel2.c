@@ -29,6 +29,7 @@
 #include "portmenu.h"
 #include "screenfx_draw.h"
 #include "spawn.h"
+#include "stickpad.h"
 #include "thermal.h"
 
 #include <SDL_syswm.h>
@@ -43,6 +44,12 @@
 #define RK_CODE_B        BTN_EAST
 #define RK_CODE_FUNCTION BTN_TRIGGER_HAPPY1
 #define RK_L2R2_TAPS     1
+#endif
+/* Whether the handheld has sticks (the R36S's: the left one moves as the
+ * d-pad, their clicks are L3 and R3). None on the Pixel 2, whose pad is read
+ * as it always was. */
+#ifndef RK_STICKS
+#define RK_STICKS        0
 #endif
 
 #include <dirent.h>
@@ -654,6 +661,21 @@ static bool l2_down, r2_down;  /* the two together ask for the battery level (be
 static bool l2r2_chorded;      /* ...and have, since both were last up */
 static bool l2_tap, r2_tap;    /* a tap reported last poll ends this one */
 
+/* The left stick as the d-pad on the launcher's screens (src/stickpad.h),
+ * where the pad has one: the R36S's, as ABS_X and ABS_Y with their range and
+ * their flat, the dead zone its device tree gives. A direction is held while
+ * its d-pad key or the stick holds it, so it repeats as the d-pad's does.
+ * The right stick moves nothing here (L1 and R1 already page, and a thumb
+ * resting on it under A B X Y would move the cursor). The Pixel 2 has no
+ * stick (RK_STICKS 0): stick_on stays false and nothing changes there. */
+_Static_assert((int)IN_LEFT == (int)STICK_LEFT && (int)IN_RIGHT == (int)STICK_RIGHT &&
+               (int)IN_UP == (int)STICK_UP && (int)IN_DOWN == (int)STICK_DOWN,
+               "stickpad's directions are the d-pad's buttons");
+static stickpad stick;
+static bool     stick_on;
+static struct { int value, min, max, flat; } stick_axis[2];
+static bool     dpad_key[STICK_DIRS];
+
 /* Kernel code -> ZyperOS button, by what is printed on the key. Measured
  * 2026-10-01 pressing each in a known order: the A, B, X and Y caps send
  * SOUTH, EAST, NORTH and WEST - named for their labels, not for where they
@@ -666,9 +688,57 @@ static const struct { int code; in_button b; } keymap[] = {
 	{ RK_CODE_A, IN_ACCEPT },     { RK_CODE_B, IN_BACK },
 	{ BTN_NORTH, IN_X },          { BTN_WEST, IN_Y },
 	{ BTN_TL, IN_L1 },            { BTN_TR, IN_R1 },
+#if RK_STICKS
+	{ BTN_THUMBL, IN_L3 },        { BTN_THUMBR, IN_R3 },
+#endif
 	{ BTN_SELECT, IN_SELECT },    { BTN_START, IN_START },
 };
 #define CODE_FUNCTION RK_CODE_FUNCTION
+
+/* Whether the pad has a left stick, and its two axes' range and flat */
+static void stick_probe(void)
+{
+	unsigned long abs[NLONGS(ABS_MAX)];
+	struct input_absinfo ai;
+	static const int code[2] = { ABS_X, ABS_Y };
+	int i;
+
+	stick_on = false;
+	memset(abs, 0, sizeof abs);
+	if (!RK_STICKS || fd_pad < 0 || ioctl(fd_pad, EVIOCGBIT(EV_ABS, sizeof abs), abs) < 0) return;
+	for (i = 0; i < 2; i++) {
+		if (!BIT_IS_SET(abs, code[i]) || ioctl(fd_pad, EVIOCGABS(code[i]), &ai) < 0) return;
+		stick_axis[i].value = ai.value;
+		stick_axis[i].min = ai.minimum;
+		stick_axis[i].max = ai.maximum;
+		stick_axis[i].flat = ai.flat;
+	}
+	stick_on = true;
+	fprintf(stderr, "input: the left stick moves as the d-pad (X %d..%d, Y %d..%d, flat %d)\n",
+	        stick_axis[0].min, stick_axis[0].max, stick_axis[1].min, stick_axis[1].max, stick_axis[0].flat);
+}
+
+/* The stick where the last report left it: each direction it holds or lets
+ * go, with the d-pad's key for that direction */
+static void stick_apply(in_state *st)
+{
+	bool was[STICK_DIRS];
+	int rx, ry, x, y, d;
+
+	if (!stick_on) return;
+	memcpy(was, stick.held, sizeof was);
+	x = stickpad_centred(stick_axis[0].value, stick_axis[0].min, stick_axis[0].max, stick_axis[0].flat, &rx);
+	y = stickpad_centred(stick_axis[1].value, stick_axis[1].min, stick_axis[1].max, stick_axis[1].flat, &ry);
+	/* The two axes on one scale, the smaller range's */
+	if (rx != ry && rx > 0 && ry > 0) {
+		if (rx > ry) x = (int)((long)x * ry / rx);
+		else y = (int)((long)y * rx / ry);
+	}
+	stickpad_update(&stick, x, y, rx < ry ? rx : ry);
+	for (d = 0; d < STICK_DIRS; d++)
+		if (stick.held[d] != was[d])
+			plat_set_btn(st, (in_button)d, stick.held[d] || dpad_key[d]);
+}
 
 /* Every input device this file wants, found by what each reports, not by
  * number: there is no udev here, and enumeration order is not a promise.
@@ -705,7 +775,7 @@ static void input_scan(void)
 			ioctl(fd, EVIOCGNAME(sizeof name), name);
 			if (!strncmp(name, "ZyperOS ", 8)) keys[BTN_SOUTH / BITS_PER_LONG] &= ~(1UL << (BTN_SOUTH % BITS_PER_LONG));
 		}
-		if      (fd_pad < 0   && BIT_IS_SET(keys, BTN_SOUTH))           { fd_pad = fd; pad_node = i; }
+		if      (fd_pad < 0   && BIT_IS_SET(keys, BTN_SOUTH))           { fd_pad = fd; pad_node = i; stick_probe(); }
 		else if (fd_keys < 0  && BIT_IS_SET(keys, KEY_VOLUMEUP))        fd_keys = fd;
 		else if (fd_power < 0 && BIT_IS_SET(keys, KEY_POWER))           fd_power = fd;
 		else if (jack_fd < 0  && BIT_IS_SET(sw, SW_HEADPHONE_INSERT))   jack_fd = fd;
@@ -933,7 +1003,15 @@ static void key_event(in_state *st, const struct input_event *ev)
 	}
 	for (i = 0; i < sizeof keymap / sizeof keymap[0]; i++)
 		if (keymap[i].code == ev->code) {
-			plat_set_btn(st, keymap[i].b, ev->value == 1);
+			const in_button b = keymap[i].b;
+
+			/* A d-pad key: held while it or the stick holds it */
+			if (b == IN_LEFT || b == IN_RIGHT || b == IN_UP || b == IN_DOWN) {
+				dpad_key[b] = ev->value == 1;
+				plat_set_btn(st, b, dpad_key[b] || stick.held[b]);
+				return;
+			}
+			plat_set_btn(st, b, ev->value == 1);
 			return;
 		}
 }
@@ -941,9 +1019,18 @@ static void key_event(in_state *st, const struct input_event *ev)
 static void poll_fd(int fd, in_state *st)
 {
 	struct input_event ev;
+	bool moved = false;
 
-	while (fd >= 0 && read(fd, &ev, sizeof ev) == (ssize_t)sizeof ev)
+	while (fd >= 0 && read(fd, &ev, sizeof ev) == (ssize_t)sizeof ev) {
+		/* The left stick, taken as a whole at each read */
+		if (ev.type == EV_ABS && fd == fd_pad && stick_on && (ev.code == ABS_X || ev.code == ABS_Y)) {
+			stick_axis[ev.code == ABS_Y].value = ev.value;
+			moved = true;
+			continue;
+		}
 		key_event(st, &ev);
+	}
+	if (moved) stick_apply(st);
 }
 
 void plat_input_wait(unsigned ms)

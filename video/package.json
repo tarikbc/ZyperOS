@@ -10,7 +10,10 @@
     "typecheck": "tsc --noEmit",
     "stills": "node scripts/stills.mjs",
     "stills:reddit": "STILLS_COMP=Reddit105 STILLS_TIMELINE=src/reddit/timeline.ts STILLS_OUT=out/reddit node scripts/stills.mjs",
-    "stills:106": "STILLS_COMP=Release106 STILLS_TIMELINE=src/v106/timeline.ts STILLS_MUSIC=src/v106/music.ts STILLS_OUT=out/v106 node scripts/stills.mjs"
+    "stills:106": "STILLS_COMP=Release106 STILLS_TIMELINE=src/v106/timeline.ts STILLS_MUSIC=src/v106/music.ts STILLS_OUT=out/v106 node scripts/stills.mjs",
+    "stills:110": "STILLS_COMP=Release110 STILLS_TIMELINE=src/v110/timeline.ts STILLS_MUSIC=src/v110/music.ts STILLS_OUT=out/v110 node scripts/stills.mjs",
+    "stills:brick-intro": "STILLS_COMP=BrickIntro STILLS_TIMELINE=src/brick-intro/timeline.ts STILLS_MUSIC=src/v110/music.ts STILLS_OUT=out/brick-intro node scripts/stills.mjs",
+    "stills:reddit110": "STILLS_COMP=Reddit110 STILLS_TIMELINE=src/reddit110/timeline.ts STILLS_MUSIC=src/reddit110/music.ts STILLS_OUT=out/reddit110 node scripts/stills.mjs"
   },
   "dependencies": {
     "@remotion/bundler": "4.0.529",

@@ -32,6 +32,11 @@
 #define RK_CODE_B        BTN_EAST
 #define RK_CODE_FUNCTION BTN_TRIGGER_HAPPY1
 #endif
+/* Whether the handheld has sticks to read (the R36S's two, and their clicks
+ * as L3 and R3). None on the Pixel 2: its pad is read as it always was. */
+#ifndef RK_STICKS
+#define RK_STICKS 0
+#endif
 
 #include <SDL.h>
 
@@ -295,6 +300,10 @@ static const struct { int code; int btn; } keymap[] = {
 	{ BTN_TL2,        DIATOM_BTN_L2 },    { BTN_TR2,        DIATOM_BTN_R2 },
 	{ BTN_SELECT,     DIATOM_BTN_SELECT },{ BTN_START,      DIATOM_BTN_START },
 	{ RK_CODE_FUNCTION, DIATOM_BTN_MENU },
+#if RK_STICKS
+	/* The sticks' clicks, on a handheld with sticks (the R36S's) */
+	{ BTN_THUMBL,     DIATOM_BTN_L3 },    { BTN_THUMBR,     DIATOM_BTN_R3 },
+#endif
 };
 
 /* ---------- audio ----------------------------------------------------------- */
@@ -1131,15 +1140,76 @@ size_t diatom_port_audio_queued(void)
 
 /* ---------- input ----------------------------------------------------------- */
 
+/* The pad's sticks, where it has them (the R36S's two, through the
+ * joypad's analog mux; the Pixel 2's has none, and RK_STICKS 0 never looks
+ * for them): their four axes as evdev reports them, with each one's range
+ * and its flat, the dead zone the device tree gives. Read from the pad's
+ * own events in the poll. */
+static const int stick_codes[4] = { ABS_X, ABS_Y, ABS_RX, ABS_RY };
+static struct { int value, min, max, flat; } g_stick[4];
+static int g_sticks = -1;        /* -1 not looked yet, 0 none, 1 both */
+
+static void sticks_read(void)
+{
+	unsigned long abs[NLONGS(ABS_MAX)];
+	struct input_absinfo ai;
+	int i;
+
+	g_sticks = 0;
+	if (!RK_STICKS || g_pad_fd < 0) return;
+	memset(abs, 0, sizeof abs);
+	if (ioctl(g_pad_fd, EVIOCGBIT(EV_ABS, sizeof abs), abs) < 0) return;
+	for (i = 0; i < 4; i++) {
+		if (!BIT_IS_SET(abs, stick_codes[i]) || ioctl(g_pad_fd, EVIOCGABS(stick_codes[i]), &ai) < 0 ||
+		    ai.maximum <= ai.minimum)
+			return;
+		g_stick[i].value = ai.value;
+		g_stick[i].min = ai.minimum;
+		g_stick[i].max = ai.maximum;
+		g_stick[i].flat = ai.flat;
+	}
+	g_sticks = 1;
+	port_logf(DIATOM_LOG_INFO, RK_PORT ": sticks, X %d..%d flat %d, RX %d..%d flat %d",
+	          g_stick[0].min, g_stick[0].max, g_stick[0].flat, g_stick[2].min, g_stick[2].max, g_stick[2].flat);
+}
+
+/* One axis in libretro's range: its middle 0, its flat 0 too, the rest
+ * stretched to the ends */
+static int16_t stick_axis(int i)
+{
+	const long mid = ((long)g_stick[i].min + g_stick[i].max) / 2;
+	const long half = ((long)g_stick[i].max - g_stick[i].min) / 2;
+	long v = (long)g_stick[i].value - mid, room = half - g_stick[i].flat;
+
+	if (v > -g_stick[i].flat && v < g_stick[i].flat) return 0;
+	if (room <= 0) return 0;
+	v = v > 0 ? v - g_stick[i].flat : v + g_stick[i].flat;
+	v = v * 0x7fff / room;
+	return (int16_t)(v > 0x7fff ? 0x7fff : v < -0x7fff ? -0x7fff : v);
+}
+
+bool diatom_port_input_axes(int16_t axes[4])
+{
+	int i;
+
+	if (g_sticks < 0) sticks_read();
+	if (g_sticks <= 0) return false;
+	for (i = 0; i < 4; i++) axes[i] = stick_axis(i);
+	return true;
+}
+
 /* The pad's keys as they are right now, for a start or after the kernel
  * dropped events (SYN_DROPPED): the held-at-entry rule needs to know about a
  * key that was already down. */
 static void pad_resync(void)
 {
 	unsigned long keys[NLONGS(KEY_MAX)];
+	struct input_absinfo ai;
 	size_t i;
 
 	if (g_pad_fd < 0) return;
+	for (i = 0; g_sticks > 0 && i < 4; i++)
+		if (ioctl(g_pad_fd, EVIOCGABS(stick_codes[i]), &ai) == 0) g_stick[i].value = ai.value;
 	memset(keys, 0, sizeof keys);
 	if (ioctl(g_pad_fd, EVIOCGKEY(sizeof keys), keys) < 0) return;
 	g_buttons = 0;
@@ -1191,6 +1261,11 @@ void diatom_port_input_poll(void)
 				pad_resync();
 				continue;
 			}
+			if (ev[i].type == EV_ABS) {
+				for (k = 0; g_sticks > 0 && k < 4; k++)
+					if (ev[i].code == stick_codes[k]) g_stick[k].value = ev[i].value;
+				continue;
+			}
 			if (ev[i].type != EV_KEY || ev[i].value == 2) continue;
 			if (g_input_debug)
 				port_logf(DIATOM_LOG_DEBUG, "key %d -> %d", ev[i].code, ev[i].value);
@@ -1235,9 +1310,6 @@ void diatom_port_input_poll(void)
 
 uint32_t diatom_port_input_state(void) { return g_buttons; }
 uint32_t diatom_port_input_pressed(void) { return g_pressed; }
-
-/* No sticks on the GKD Pixel 2 */
-bool diatom_port_input_axes(int16_t axes[4]) { (void)axes; return false; }
 
 /* The force feedback's strength is the motor's: the scale multiplies it,
  * rounded, so Full (1) is the core's own number as it always was */

@@ -148,9 +148,13 @@ static int moving(menu_row *out)
 {
 	int n = 0;
 
-	/* The d-pad's directions are not printed on it, so they are words */
-	out[n++] = (menu_row){ T(S_CONTROLS_KEY_LEFT_RIGHT), T(S_CONTROLS_MOVE), false };
-	out[n++] = (menu_row){ T(S_CONTROLS_KEY_UP_DOWN), T(S_CONTROLS_JUMP_LETTER), false };
+	/* The d-pad's directions are not printed on it, so they are words; on
+	 * a handheld with a stick (the R36S), the left stick moves as the d-pad
+	 * does, so it is drawn beside it in both rows, by its name (L3) */
+	const bool stick = chords.stick_dpad;
+
+	out[n++] = (menu_row){ stick ? "< >/L3" : T(S_CONTROLS_KEY_LEFT_RIGHT), T(S_CONTROLS_MOVE), false };
+	out[n++] = (menu_row){ stick ? "^ v/L3" : T(S_CONTROLS_KEY_UP_DOWN), T(S_CONTROLS_JUMP_LETTER), false };
 	/* Three systems on the home, a screenful of games on a shelf (
 	 * 2026-11-06), in one row as the guide has it */
 	out[n++] = (menu_row){ "L1/R1", T(S_CONTROLS_JUMP_SYSTEMS), false };
