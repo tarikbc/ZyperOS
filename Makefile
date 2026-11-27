@@ -1767,6 +1767,19 @@ check-strings:
 check-i18n-shots:
 	@python3 tools/i18n-shots.py $(if $(CHECK_SHARD),--part $(CHECK_SHARD))
 
+# Border's two lists, a system's menu's and a game's, on both handhelds and in
+# both themes: each held by --expect-en to the same words in the same order,
+# each once (Blur where the device draws it), so the two say the same
+BORDER_LIST_SHOTS := $(foreach w,off blur handheld whole own,system-menu-border-list-$(w) gamemenu-border-list-$(w))
+check-border-lists:
+	@if pkg-config --exists sdl2 SDL2_image SDL2_ttf 2>/dev/null; then \
+		$(MAKE) --no-print-directory native || exit 1; \
+		for t in light dark; do \
+			ZYPEROS_SHOTS_CACHE=0 python3 tools/i18n-shots.py --lang en --device pixel2 --device brick \
+				--theme $$t $(BORDER_LIST_SHOTS) || exit 1; \
+		done; \
+	else echo "check-border-lists: skipped, no SDL2"; fi
+
 # How the Brick's initramfs (plastron's brick-rootswitch) reads the kernel's
 # line: the slot's root the boot script names, and a developer's root update
 check-rootswitch:

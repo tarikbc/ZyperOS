@@ -5986,6 +5986,16 @@ static int menu_shelf_width(app *a)
 			}
 		}
 	}
+	/* A system's menu keeps its lists' words in one pool for every shelf
+	 * (sysmenu_screen.c's menu_choices), and the loop above built every
+	 * shelf's: the last with a Border row wrote its words over the shown
+	 * one's. A Game Boy's Border list opened before the width was measured
+	 * said the Advance's three words over its own five ("Off, Handheld,
+	 * Handheld, Whole, Handheld, Whole, Your Own" on the Brick, where the
+	 * game's menu said "Off, Blur, Handheld, Handheld, Whole, Your Own").
+	 * So the shown shelf's menu is built again, last. */
+	menu_build(a, a->screen == SCREEN_SYSTEMS ? SCREEN_SYSTEMS : SCREEN_GAMES, a->sys_cursor, rows, &bufs,
+	           &heading);
 	a->menu_w = w;
 	return w;
 }
