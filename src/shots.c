@@ -1080,7 +1080,7 @@ static void shot_ask_text(cq_id q, const char *item, char *out, size_t n)
 		cq_text(q, out, n, "Nintendo 64", item ? item : "Tobu Tobu Girl");
 		break;
 	case CQ_HOTKEYS_RESET_SYSTEM: case CQ_BUTTONS_RESET_ALL: cq_text(q, out, n, "Nintendo 64"); break;
-	case CQ_STORE_UNUSED_ART: case CQ_SNAPS_DELETE_ALL: cq_text(q, out, n, gb); break;
+	case CQ_STORE_UNUSED_ART: case CQ_STORE_DS_COPIES: case CQ_SNAPS_DELETE_ALL: cq_text(q, out, n, gb); break;
 	case CQ_STORE_OLD_STATES: cq_text(q, out, n, 14, mb); break;
 	case CQ_STORE_SYS_SNAPS: cq_text(q, out, n, item ? item : "PlayStation", gb); break;
 	case CQ_STORE_MEDIA_FOLDER: cq_text(q, out, n, item ? item : "Lo-fi Beats", gb); break;

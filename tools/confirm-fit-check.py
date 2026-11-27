@@ -4,7 +4,7 @@
 
     python3 tools/confirm-fit-check.py          (make check-confirm)
 
-The host launcher, as the Pixel 2 and as the Brick, lays out each of the 39
+The host launcher, as the Pixel 2 and as the Brick, lays out each of the 40
 questions in each of the eight languages with the inventory's own words
 (--confirm-fit; src/shots.c's shot_ask_text: Delete Game and Delete
 Screenshot with "Castlevania - Symphony of the Night") and says, a line a
@@ -36,7 +36,7 @@ spec.loader.exec_module(R)
 # the panel is its 4:3 width in the middle of it
 DEVICES = ("pixel2", "brick") + (("smartpro",) if (ROOT / "src/device/smartpro_profile.c").exists() else ())
 LANGS = ("en", "zh-Hans", "es", "pt-BR", "fr", "de", "ja", "it")
-QUESTIONS = 39
+QUESTIONS = 40
 LINE = re.compile(r"confirm-fit: (\S+) (\S+) side=(\d) small=(\d) meta=(\d) lines=(\d+) scroll=(\d) "
                   r"whole=(\d) heading=(\d) rule=(\d) w=(\d+) h=(\d+)")
 
@@ -118,7 +118,7 @@ def main():
     for f in fails:
         print("FAIL " + f)
     if not fails:
-        print("check-confirm: 39 questions in 8 languages on %s: side by side, nothing cut, nothing "
+        print("check-confirm: 40 questions in 8 languages on %s: side by side, nothing cut, nothing "
               "sliding" % ", ".join(DEVICES))
     return 1 if fails else 0
 

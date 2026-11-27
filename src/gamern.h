@@ -5,7 +5,8 @@
 /* Rename, from a game's details page (DESIGN.md 11.41): the game's file, or
  * its folder for a game that is one, and everything the launcher, Diatom and
  * the cores find by its name - its saves, its states and Auto, its cover,
- * its video snap and Before's cover, its cached achievement set, the
+ * its video snap and Before's cover, its cached achievement set, a zipped
+ * DS game's unpacked copy and its tag (src/dscache.h), the
  * EmulationStation pictures and video named after it and its gamelist.xml
  * entry (src/esmedia.h) - and its rows in the card's library database:
  * details, favorite, play sessions, Pak and where its cover came from.
@@ -98,6 +99,9 @@ typedef struct {
 	char          es_rel[GR_ES][ES_PATH], es_to[GR_ES][ES_PATH];
 	int           nes;
 	char          roms[GD_PATH], folder[LIB_NAME], file[LIB_PATH], name[LIB_NAME];
+	/* A zipped DS game's unpacked copy's tag, which names its zip: its
+	 * move's index, 0 for none (src/dscache.h) */
+	int           ds_tag;
 } gr_plan;
 
 /* The plan for naming game `g` `typed`. False, with `why`, when it is

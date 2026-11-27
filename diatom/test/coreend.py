@@ -151,6 +151,10 @@ def two_games(name, core, premap=False):
     err = open(r.err, errors="replace").read().splitlines()
     n_open = sum(bool(re.match(rf"diatom: dlopen +{base} +[0-9.]+ ms$", l)) for l in err)
     n_init = sum(bool(re.match(rf"diatom: retro_init +{base} +[0-9.]+ ms$", l)) for l in err)
+    # and each game's load timed, every time: how long a core that unpacks
+    # its own zip took to (DSperate's .dsperate, src/dscache.h)
+    n_load = sum(bool(re.match(rf"diatom: retro_load_game +{base} +[0-9.]+ ms$", l)) for l in err)
+    check(f"{name}: both games' loads are timed in the log", n_load == 2, n_load)
     return inits(log), n_open, n_init
 
 SIZE = os.path.getsize(STUB)

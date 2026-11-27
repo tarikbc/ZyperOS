@@ -2,12 +2,14 @@
 #include "gamern.h"
 
 #include "db.h"
+#include "dscache.h"
 #include "favorites.h"
 #include "library.h"
 #include "titletext.h"
 
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -202,6 +204,15 @@ static void pair(gr_plan *p, const char *from, const char *to, bool copy, bool m
 	p->n++;
 }
 
+/* A cache file's move: no refusal, the caller has looked */
+static void cache_pair(gr_plan *p, const char *from, const char *to)
+{
+	snprintf(p->from[p->n], GD_PATH, "%s", from);
+	snprintf(p->to[p->n], GD_PATH, "%s", to);
+	p->copy[p->n] = false;
+	p->n++;
+}
+
 static void too_long(gr_plan *p)
 {
 	if (p->why == GR_OK) p->why = GR_TOO_MANY;
@@ -357,6 +368,29 @@ bool gr_plan_make(const gd_card *card, const gd_game *g, const gd_other *others,
 		}
 	}
 
+	/* 2b. A zipped DS game's copy DSperate unpacked, and its tag, in
+	 * .dsperate beside the zip (src/dscache.h): so the next launch maps it
+	 * at once, where under the old name it would be unpacked again and the
+	 * old copy left until DSperate sweeps it. Only a cache, so a file under
+	 * the new name (a copy of a game deleted elsewhere) does not refuse the
+	 * rename: this copy stays behind then, and DSperate sweeps it, and
+	 * rebuilds the other one, whose tag names another zip. */
+	if (!slash && !strcmp(g->tag, "NDS") && dsc_image(romdir, g->file, a, sizeof a) &&
+	    dsc_image(romdir, p->new_file, b, sizeof b)) {
+		char ta[GD_PATH + 8], tb[GD_PATH + 8];
+
+		snprintf(ta, sizeof ta, "%s.tag", a);
+		snprintf(tb, sizeof tb, "%s.tag", b);
+		if (exists(a) && (!exists(b) || same_file(a, b)) && (!exists(tb) || same_file(ta, tb)) &&
+		    p->n + 2 <= GR_MAX) {
+			cache_pair(p, a, b);
+			if (exists(ta)) {
+				p->ds_tag = p->n;
+				cache_pair(p, ta, tb);
+			}
+		}
+	}
+
 	/* 3. Its states and their pictures, the six slots, Auto and Undo Load's, and the
 	 * language a DS game's Auto was left in: by the launch file's base, or
 	 * a hooked shelf's folder name (gd_state_base) */
@@ -484,6 +518,38 @@ static void mkdir_for(const char *path)
 	if ((s = strrchr(d, '/'))) { *s = '\0'; mkdir(d, 0755); }
 }
 
+/* The "archive " line of the tag at `tag` naming `zip` (by its realpath, as
+ * DSperate writes it), written whole beside it and renamed into place. Only
+ * a tag that names a zip already; anything else is left as it is. */
+static void retag(const char *tag, const char *zip)
+{
+	char buf[8192], out[8192 + PATH_MAX + 16], real[PATH_MAX], tmp[GD_PATH + 16];
+	const char *at, *end;
+	size_t n;
+	FILE *f;
+	int w;
+
+	if (!(f = fopen(tag, "rb"))) return;
+	n = fread(buf, 1, sizeof buf - 1, f);
+	fclose(f);
+	buf[n] = '\0';
+	if (!(at = strstr(buf, "\narchive "))) return;
+	at += strlen("\narchive ");
+	if (!(end = strchr(at, '\n'))) return;
+	if (!realpath(zip, real) && snprintf(real, sizeof real, "%s", zip) >= (int)sizeof real) return;
+	w = snprintf(out, sizeof out, "%.*s%s%s", (int)(at - buf), buf, real, end);
+	if (w < 0 || (size_t)w >= sizeof out ||
+	    snprintf(tmp, sizeof tmp, "%s.zyperos-rn", tag) >= (int)sizeof tmp ||
+	    !(f = fopen(tmp, "wb")))
+		return;
+	{
+		bool ok = fwrite(out, 1, (size_t)w, f) == (size_t)w;
+
+		ok = fclose(f) == 0 && ok;
+		if (!ok || rename(tmp, tag) != 0) unlink(tmp);
+	}
+}
+
 void gr_plan_run(const gr_plan *p, gr_done *d)
 {
 	memset(d, 0, sizeof *d);
@@ -499,6 +565,12 @@ void gr_plan_run(const gr_plan *p, gr_done *d)
 		else if (p->copy[i]) d->copied++;
 		else d->moved++;
 	}
+	/* The DS copy's tag names its zip by its whole path (DSperate's
+	 * make_tag: realpath of the zip): the new one now, or DSperate would
+	 * take the copy for another zip's and unpack the game again. Its other
+	 * lines (the zip's size and time, the entry's name, CRC and size) are
+	 * the same after a rename. */
+	if (p->ds_tag > 0) retag(p->to[p->ds_tag], p->to[0]);
 	/* gamelist.xml's entry, with what moved of its */
 	d->es_list = es_list_rename(p->roms, p->folder, p->file, p->name, p->new_file,
 	                            (char (*)[ES_PATH])p->es_rel, (char (*)[ES_PATH])p->es_to, p->nes);
