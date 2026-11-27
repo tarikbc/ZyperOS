@@ -80,7 +80,10 @@ start() {
 	# lost at power-off; MP4's stall report saves a copy to the card
 	daemon syslogd syslogd -n -C64
 	state
-	for m in bluetooth hci_uart xradio_btlpm xradio_btfdi; do
+	# RFCOMM after the core it needs: the headsets' hands-free profile
+	# (bluealsa's hfp-ag) listens on it. Pads need no module: BlueZ reads
+	# them through uhid, built into the kernel
+	for m in bluetooth rfcomm hci_uart xradio_btlpm xradio_btfdi; do
 		grep -q "^$m " /proc/modules || insmod $M/$m.ko || return 1
 	done
 	if ! running $RUN/dbus.pid; then
