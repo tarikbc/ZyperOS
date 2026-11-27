@@ -23,6 +23,7 @@ the boot loader and the closed parts.
 | gcc-final | 15.2.0 | GPL-3.0-with-GCC-exception | https://ftpmirror.gnu.org/gcc/gcc-15.2.0 |
 | glibc | 2.42-67-g4ebd33dd77eabe8d4c45232bed4b42a31d2f9edc | GPL-2.0+ (programs), LGPL-2.1+, BSD-3-Clause, MIT (library) | https://sourceware.org/git/glibc.git |
 | hostapd | 2.11 | BSD-3-Clause | http://w1.fi/releases |
+| hwdog | 1.0 | GPL-3.0+ | plastron, https://github.com/ericreinsmidt/plastron |
 | jackswitch | 1.0 | GPL-3.0+ | plastron, https://github.com/ericreinsmidt/plastron |
 | jpeg-turbo | 3.1.2 | IJG (libjpeg), BSD-3-Clause (TurboJPEG), Zlib (SIMD) | https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/3.1.2 |
 | libcurl | 8.20.0 | curl | https://curl.se/download |
