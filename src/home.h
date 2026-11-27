@@ -122,6 +122,18 @@ int home_jump(int cursor, int count, int dir);
  * when the whole row is one group. Pure: the caller builds `keys` on the press. */
 unsigned char home_group_key(const char *tag, const char *core, const char *name);
 int home_letter_jump(const unsigned char *keys, int count, int cursor, int dir);
+/* The same jump for a direction held down a list: it never goes round, and
+ * stays at the end it reached, as a held step stops at a menu's end
+ * (menu_step_index). MENU > Storage's list in A to Z (DESIGN.md 11.32). */
+int home_letter_held(const unsigned char *keys, int count, int cursor, int dir);
+/* One repeat of Up or Down held down MENU > Storage's list, `held_ms` since
+ * it went down (DESIGN.md 11.32). With `keys` (A to Z) it is home_letter_held,
+ * a letter; with none (Size, Last Played, not in letter order)
+ * HOME_HELD_ROWS rows. Further the longer it is held, as MP4's seek is
+ * (repeat_stage, src/keyrepeat.h): twice from a second, four times from
+ * three. Never round an end: it stops there, as a held step does. */
+#define HOME_HELD_ROWS 5
+int home_held_step(const unsigned char *keys, int count, int cursor, int dir, unsigned held_ms);
 float home_position(const home *h, uint32_t now);
 bool home_moving(const home *h, uint32_t now);
 bool home_song_update(home_song *song, bool active, bool paused, const char *title);

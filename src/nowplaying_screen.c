@@ -7,6 +7,7 @@
 #include "i18n.h"
 #include "keyhints.h"
 #include "keyhints_draw.h"
+#include "keyrepeat.h"   /* repeat_stage: a second, three */
 #include "mp4frame.h"    /* MPF_TOO_BIG, MPF_NO_PICTURE */
 #include "mp4video.h"
 #include "nowplaying_looks.h"
@@ -35,10 +36,10 @@
  * so music is as it was. */
 double seek_step(const in_state *in, in_button b)
 {
+	static const double step[] = { 10, 60, 300 };
 	Uint32 held = SDL_GetTicks() - in->down_since[b];
 
-	if (in->pressed[b] || held < 1000) return 10;
-	return held < 3000 ? 60 : 300;
+	return in->pressed[b] ? step[0] : step[repeat_stage(held)];
 }
 
 void mmss(char *out, size_t n, double sec)
