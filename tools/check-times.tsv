@@ -141,6 +141,7 @@ check-mp4lib	0.4
 check-mp4lock	0.2
 check-mp4look	0.2
 check-mp4queue	0.2
+check-mp4quit	25.0
 check-mp4resume	12.2
 check-mp4size	1.1
 check-mp4views	40.1

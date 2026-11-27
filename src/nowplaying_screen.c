@@ -284,7 +284,9 @@ void mp4_ask_lock(void) { g_lock_asked = true; }
  * and its X (2026-11-18). MP4 closes as SELECT closes it - MP4_CLOSE up
  * through every screen of it to mp4_shelf_screen, which puts back what it
  * was opened over: the home, a menu, a paused game's menu. What plays keeps
- * playing, as it does after SELECT; A pauses it first for silence. */
+ * playing, as it does after SELECT; A pauses it first for silence. What is
+ * paused is let go (mp4_quit): on 1.1.1-test.3 a song paused and quit stayed
+ * in the top bar on the home with MP4 closed (mine, 2026-11-27). */
 static bool g_quit_asked;                /* MENU's Quit, for mp4_menu */
 
 void mp4_ask_quit(void) { g_quit_asked = true; }
@@ -649,6 +651,7 @@ mp4_exit mp4_menu(app *a)
 	if (want_quit || !a->running || g_message_stopped) return MP4_CLOSE;
 	if (g_quit_asked) {
 		g_quit_asked = false;
+		if (mp4c_now()->state == MU_PAUSED) mp4_quit();
 		return MP4_CLOSE;
 	}
 	/* Shuffle All closed it to play: Now Playing, on whatever screen of

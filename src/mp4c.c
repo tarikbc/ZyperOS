@@ -928,6 +928,13 @@ void mp4c_seek_by(double delta)
 void mp4c_stop(void)
 {
 	sendf("STOP");
+	/* Stopped here at once rather than when the daemon says so: what reads
+	 * MP4 as heard (the top bar's mark and track, the menu music held quiet,
+	 * SELECT opening Now Playing) lets go on the next frame, and a STOP with
+	 * no daemon to hear it still stops. Nothing waits to be played either. */
+	g_pending = 0;
+	g_asked = g_start_held = g_held_sent = false;
+	if (g_now.state == MU_PLAYING || g_now.state == MU_PAUSED) g_now.state = MU_STOPPED;
 }
 
 bool mp4c_cover_ask(const char *track, const char *base)

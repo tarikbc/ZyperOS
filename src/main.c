@@ -1737,6 +1737,19 @@ void book_keep(bool now)
 	}
 }
 
+/* MP4's Quit on something paused (DESIGN.md 11.14): MP4 ends, where Quit on
+ * something playing leaves it heard behind the home as SELECT does. A book's
+ * or a video's place is written first, as for any stop, so the next play goes
+ * on from it; the power-off row goes, a player quit being nothing to open at
+ * the next start; and the queue stops, which takes MP4's mark and track out
+ * of the top bar at once. */
+void mp4_quit(void)
+{
+	book_keep(true);
+	resume_clear();
+	mp4c_stop();
+}
+
 /* MP4, polled: what the daemon said, and a book's place kept. Everything that
  * polls MP4 comes through here. */
 void mp4_poll(void)
