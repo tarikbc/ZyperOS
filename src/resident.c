@@ -5,6 +5,7 @@
 #include "levels.h"
 #include "platform.h"
 #include "powerhold.h"
+#include "wdog.h"
 
 #include <dirent.h>
 #include <fcntl.h>
@@ -1086,7 +1087,12 @@ static int diatom_wait(void)
 		 * below the mixer: measured 2026-09-16 by muting a tone played from a
 		 * second process while Diatom held the dmix slave. */
 		plat_mute_poll(false);
+		/* The launcher's loop, while a game has the screen (wdog.h): fed
+		 * here and for each line, as a Diatom that talks without a pause
+		 * keeps this inner loop turning */
+		wdog_feed();
 		while ((l = dline((int)device_game_wait(100)))) {
+			wdog_feed();
 			if      (strncmp(l, "RUNNING", 7) == 0) d_got_running = 1;
 			/* The menu is the launcher's, and so are the levels while it is
 			 * up: taken at PAUSED as at EXIT. Taken only at EXIT, a press in

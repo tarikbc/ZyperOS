@@ -372,6 +372,12 @@
 	status = "okay";
 };
 
+/* The PX30's watchdog, started here (px2.config) so a start that stops
+ * anywhere after U-Boot is reset: the kernel pets it from its probe on */
+&wdt {
+	status = "okay";
+};
+
 &pinctrl {
 	pmic {
 		dc_det: dc-det {

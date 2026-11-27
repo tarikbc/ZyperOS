@@ -40,6 +40,7 @@ int         hotspot_phones(void)   { return g_phones; }
 #include <unistd.h>
 
 #include "wifi.h"
+#include "wdog.h"
 
 #define HOSTAPD   "/usr/sbin/hostapd"
 #define UDHCPD    "/usr/sbin/udhcpd"
@@ -306,7 +307,21 @@ static bool ask_status(void)
 
 bool hotspot_start(void) { return hotspot_start_dns(true); }
 
+static bool hotspot_start_now(bool own_dns);
+
+/* Wi-Fi off first, then hostapd: Wi-Fi's waits have no end of their own, so
+ * a long task to the launcher's watchdog (wdog.h) */
 bool hotspot_start_dns(bool own_dns)
+{
+	bool ok;
+
+	wdog_hold("the hotspot");
+	ok = hotspot_start_now(own_dns);
+	wdog_release();
+	return ok;
+}
+
+static bool hotspot_start_now(bool own_dns)
 {
 	uint8_t rnd[CAPTIVE_PASS_RANDOM];
 	char mac[32], conf[1024];
@@ -456,7 +471,9 @@ void hotspot_stop(void)
 	memset(g_qr, 0, sizeof g_qr);
 	if (was) {
 		fprintf(stderr, "hotspot: stopped, Wi-Fi back on\n");
+		wdog_hold("Wi-Fi");          /* its waits have no end of their own */
 		wifi_up();
+		wdog_release();
 	}
 }
 

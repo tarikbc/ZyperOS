@@ -23,9 +23,15 @@ typedef enum {
 usb_peer plat_usb_peer(void);
 /* The USB link to a computer (the gadget bound to the controller): op 1
  * binds it, 0 lets it go, 2 lets it go and binds it again (a fresh link, as
- * a new plug needs), -1 only asks. True when it is bound (after the op); a
- * device whose link is always on says true. */
+ * a new plug needs), -1 only asks. True when it is bound, or will be once
+ * the work asked is done: it never waits on the controller (gadget.h), the
+ * work goes on in the background and is said in the log. A device whose
+ * link is always on says true. */
 bool plat_usb_link(int op);
+/* Whether the controller says a computer configured the link: 1, 0, or -1
+ * where it cannot tell (the TrimUI Brick's state says "configured" through
+ * unplugs and chargers) */
+int plat_usb_configured(void);
 /* What the device can tell of the cable's link, for File Transfer's steps
  * (linksteps.h): the computer, the controller, usb0's carrier and the
  * computer's address there. While the computer has no address it is asked

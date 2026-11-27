@@ -72,6 +72,7 @@ BR2_PACKAGE_USBROLE=y
 BR2_PACKAGE_USBDRIVE=y
 # The battery on the four lights on the side
 BR2_PACKAGE_GAUGE=y
+BR2_PACKAGE_HWDOG=y
 
 # Sound: ZyperOS, diatom (through SDL2) and jackswitch talk to ALSA directly
 BR2_PACKAGE_ALSA_LIB=y

@@ -585,6 +585,8 @@ typedef struct {
 	 * cable's (the link is the phone's network, as Wi-Fi's is) */
 	bool        phone;
 	bool        hot_failed, ssh_shown;
+	bool        services;       /* the cable's SSH and name, once usb0 has its address */
+	bool        drawn;          /* the page's first frame is up: the cable's services may start */
 	bool        rescan_due;     /* ended behind the shelf with the shelf changed */
 	const char *name;
 	char        pin[32], login[96], addr[96];

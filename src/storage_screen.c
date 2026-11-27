@@ -23,6 +23,7 @@
 #include "zyperdraw.h"
 #include "zypermark.h"
 #include "levels.h"
+#include "wdog.h"
 
 #include <SDL_image.h>
 #include <stdio.h>
@@ -984,7 +985,9 @@ static void store_act(store_view *v)
 		if (!confirm_ask(a, CQ_STORE_UNUSED_ART, q)) break;
 		st_stop();
 		wait_panel(a, T(S_STORAGE_UNUSED_ART), T(S_GAMEMENU_DELETING));
+		wdog_hold("Storage");            /* a whole folder deleted (wdog.h) */
 		b = st_delete_unused_art(&v->paths, &v->sys, v->games, v->ngames, &files);
+		wdog_release();
 		fprintf(stderr, "storage: unused art: %d files, %llu bytes\n", files, b);
 		store_said(a, T(S_STORAGE_UNUSED_ART), b, S_GAMEMENU_DELETED);
 		store_after(v);
@@ -1000,7 +1003,9 @@ static void store_act(store_view *v)
 		if (!confirm_ask(a, CQ_STORE_OLD_STATES, q)) break;
 		st_stop();
 		wait_panel(a, T(S_STORAGE_OLD_STATES), T(S_GAMEMENU_DELETING));
+		wdog_hold("Storage");            /* a whole folder deleted (wdog.h) */
 		b = st_delete_old_states(&v->paths, &v->sys, v->games, v->ngames, (long)time(NULL), &games);
+		wdog_release();
 		fprintf(stderr, "storage: old states: %d games, %llu bytes\n", games, b);
 		store_said(a, T(S_STORAGE_OLD_STATES), b, S_GAMEMENU_DELETED);
 		store_after(v);
@@ -1034,7 +1039,9 @@ static void store_act(store_view *v)
 		if (!confirm_ask(a, CQ_STORE_SYS_SNAPS, q)) break;
 		st_stop();
 		snap_off();
+		wdog_hold("Storage");            /* a whole folder deleted (wdog.h) */
 		b = snaps_delete(P_ROMS, folder);
+		wdog_release();
 		store_said(a, T(S_STORAGE_DELETE_SNAPS), b, S_SNAPS_GIVEN_BACK);
 		store_after(v);
 		break;
@@ -1072,7 +1079,9 @@ static void store_act(store_view *v)
 		 * rule), and its shelf is read again after */
 		snprintf(abs, sizeof abs, "%s/%s/%s", P_CARD, st_media_root((st_media_kind)kind), rel);
 		mp4_before_delete(abs);
+		wdog_hold("Storage");            /* a whole folder deleted (wdog.h) */
 		b = st_delete_media(&v->paths, (st_media_kind)kind, rel);
+		wdog_release();
 		fprintf(stderr, "storage: media %s: %llu bytes\n", rel, b);
 		if (b) {
 			rescan_all(a);
@@ -1096,7 +1105,9 @@ static void store_act(store_view *v)
 		if (!confirm_ask(a, CQ_STORE_ORPHAN_PORT, q)) break;
 		st_stop();
 		wait_panel(a, T(S_GAMEMENU_DELETE), T(S_GAMEMENU_DELETING));
+		wdog_hold("Storage");            /* a whole folder deleted (wdog.h) */
 		b = st_delete_port_folder(&v->paths, &v->sys, v->games, v->ngames, folder);
+		wdog_release();
 		fprintf(stderr, "storage: port folder %s: %llu bytes\n", folder, b);
 		if (b) store_said(a, T(S_GAMEMENU_DELETE), b, S_GAMEMENU_DELETED);
 		else result_message(a, T(S_GAMEMENU_DELETE), T(S_GAMEMENU_DELETE_FAILED));

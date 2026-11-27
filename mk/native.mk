@@ -22,7 +22,7 @@ SRC := $(I18N_TABLES) $(filter-out $(I18N_TABLES),$(wildcard src/*.c)) $(wildcar
        src/device/pixel2_coreopts.c $(filter-out src/device/pixel2_coreopts.c,$(wildcard src/device/*_coreopts.c))
 # Desk mode (src/device/desk.h): the host build's window as a handheld. Here
 # alone: no device builds it.
-SRC += src/device/desk.c src/device/deskface.c
+SRC += src/device/desk.c src/device/deskface.c src/device/deskcable.c
 # src/main.c and the files split from it, which call into one another: the
 # checks that link the rest of src/ leave them all out.
 MAIN_SRC := src/main.c src/about_screen.c src/aout_route.c src/bgm_screen.c \

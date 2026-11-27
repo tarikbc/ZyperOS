@@ -1,0 +1,9 @@
+config BR2_PACKAGE_HWDOG
+	bool "hwdog"
+	help
+	  Pets the PX30's hardware watchdog (/dev/watchdog), which U-Boot
+	  starts and the kernel pets until this opens it: from init's first
+	  step on, every 10 s with a 60 s timeout, locked in RAM and at a
+	  real-time priority, so a long copy to a slow card never makes it
+	  late. A kernel that stops is reset. Stopped by a shutdown's TERM.
+	  zytest=hang or zytest=stall on the kernel's line tests the chain.

@@ -50,6 +50,7 @@
 #include "update_screen.h"
 #include "zyperdraw.h"
 #include "levels.h"
+#include "wdog.h"
 
 #include <SDL.h>
 #include <SDL_image.h>
@@ -543,7 +544,12 @@ static bool splore_join(app *a)
 	unsigned until;
 
 	wait_panel(a, T(S_MENU_WIFI), T(S_WIFI_TURNING_ON));
-	if (!wifi_up()) return false;
+	wdog_hold("Wi-Fi");                 /* its waits have no end of their own */
+	if (!wifi_up()) {
+		wdog_release();
+		return false;
+	}
+	wdog_release();
 	wifi_pref_save(true);
 	until = plat_now_ms() + 15000;
 	while (plat_now_ms() < until && a->running) {

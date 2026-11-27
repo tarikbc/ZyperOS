@@ -351,6 +351,44 @@ int main(void)
 		}
 	}
 
+	/* ---- another had the screen (saver_beat) ---- */
+	{
+		/* The passes as saver_pass makes them: lost? at its start, done at
+		 * its end. Its first clip's snap opening in mp4d takes 900 ms (a
+		 * Pixel 2, 2026-11-21: 213 ends in 40 minutes, each "something else
+		 * had the screen (1 s)"); the next passes at 16 ms */
+		saver_beat b;
+		unsigned t = 50000;
+		int lost = 0;
+
+		saver_beat_clear(&b);
+		CHECK(!saver_beat_lost(&b, t), "lost at its first pass");
+		t += 900;                                   /* the first pass opens the snap */
+		saver_beat_done(&b, t);
+		for (i = 0; i < 200; i++) {
+			t += 16;
+			if (saver_beat_lost(&b, t)) lost++;
+			/* every 50 passes another clip: its snap opens slowly too */
+			t += i % 50 == 49 ? 1200 : 2;
+			saver_beat_done(&b, t);
+		}
+		CHECK(lost == 0, "its own slow snap openings ended it %d times", lost);
+		/* A menu over it for 3 s, then its pass again: lost */
+		t += 3000;
+		CHECK(saver_beat_lost(&b, t), "a menu had the screen for 3 s, and it went on");
+		/* Just under the gap after its end: not lost; at it: lost */
+		saver_beat_done(&b, t);
+		CHECK(!saver_beat_lost(&b, t + SAVER_GAP_MS - 1), "lost under the gap");
+		CHECK(saver_beat_lost(&b, t + SAVER_GAP_MS), "not lost at the gap");
+		/* The clock wraps */
+		saver_beat_done(&b, 0xffffff00u);
+		CHECK(!saver_beat_lost(&b, 0xffffff00u + 300), "lost across the clock's wrap");
+		CHECK(saver_beat_lost(&b, 0xffffff00u + 800), "not lost across the wrap after 800 ms");
+		/* Ended, and started again much later: its first pass is no gap */
+		saver_beat_clear(&b);
+		CHECK(!saver_beat_lost(&b, 0xffffff00u + 900000), "lost at a fresh start's first pass");
+	}
+
 	if (failures) {
 		printf("saver: %d failure(s)\n", failures);
 		return 1;

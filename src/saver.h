@@ -114,6 +114,29 @@ bool saver_show_step(saver_show *s, unsigned now_ms, bool ready, float *alpha);
 /* Whether a frame is wanted though no new picture came: a fade is moving. */
 bool saver_show_moving(const saver_show *s);
 
+/* ---- another had the screen ------------------------------------------------ */
+
+/* The screensaver is a mode of the shelf's loop (saver_screen.c), and a gap
+ * between two of its passes means something else had the screen in between
+ * (a menu, a game, a message): what it drew is not there any more, so it
+ * ends. The gap is from the END of its last pass to the start of this one:
+ * a pass of its own can be long, the first of a clip opening its snap in
+ * mp4d (half a second and more on a Pixel 2), and measured from the pass's
+ * start, the next pass took its own opening for a gap and ended itself, 213
+ * times in 40 minutes, a clip never shown (2026-11-21). */
+#define SAVER_GAP_MS 500u
+typedef struct { unsigned end; bool set; } saver_beat;
+
+/* At a pass's start: whether something else had the screen since the last
+ * pass ended. Never at the first pass. */
+bool saver_beat_lost(const saver_beat *b, unsigned now_ms);
+
+/* At a pass's end, whatever it did and however long it took */
+void saver_beat_done(saver_beat *b, unsigned now_ms);
+
+/* Forgotten: the screensaver ended, and the next one starts fresh */
+void saver_beat_clear(saver_beat *b);
+
 /* ---- which one ------------------------------------------------------------- */
 
 /* The last few shown, so the next is another: indexes into the pool. */

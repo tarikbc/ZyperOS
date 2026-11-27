@@ -27,6 +27,10 @@
 #ifndef USBLINK_H
 #define USBLINK_H
 
+/* Developer Mode's link at a new plug: looked at this long after, and made
+ * fresh only if the computer has not configured it by then (usblink.c) */
+#define USBLINK_SETTLE_MS 3000u
+
 #include <stdbool.h>
 
 #include "db.h"
