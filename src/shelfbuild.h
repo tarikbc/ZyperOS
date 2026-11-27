@@ -59,6 +59,10 @@ void lib_check_free(lib_check *c);
  * (cfg_sort_systems), never per frame. */
 extern bool g_order_release;
 void system_order_load(void);
+/* Game Names, Short or File Name, from the device's database into the
+ * library (lib_names_set), kept under GAME_NAMES_KEY: "short" or "file" */
+#define GAME_NAMES_KEY "names"
+void game_names_load(void);
 void system_order_apply(systems_cfg *s);
 /* PortMaster on the Ports shelf (src/pminstall.h). g_pm_offer: the card's
  * ZyperOS has the installer and PortMaster is not on the card, as the last
