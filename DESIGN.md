@@ -3893,7 +3893,19 @@ a system's page. Each list keeps its order, as Sort By keeps a shelf's: the
 card's, each system's by its tag, each media folder's. Under the list at the
 right, on the more-rows mark's line, X's glyph and the order it is now
 ("Size", "A to Z", "Last Played") in **meta** **text-dim**: the button and
-what it is, as the keyboard's action row names its keys (11.5).
+what it is, as the keyboard's action row names its keys (11.5). A press of
+Up or Down is a row. Held, once it repeats, each repeat goes further: in A to
+Z a letter, the first row of the next initial, or of its own and then the one
+before, as the shelf's letter jump does (`home_letter_held`); in Size and
+Last Played, which are in no letter order, five rows. The clock is every
+list's (90 ms after 300 ms); what a repeat covers grows the longer it is
+held, as MP4's seek does (`repeat_stage`): twice as far from a second, four
+times from three. A held step stops at the end, and the end it comes to
+plays **edge** once, as in every list (`home_held_step`). The
+recommendations, Delete Video Snaps and Other Files are a letter of their
+own. *(2026-11-22: "should skip by letter when pressing and holding up/down
+buttons"; 2026-11-26: "also implement faster scroll when holding down and
+sorted by size. maybe skip 5". Last Played steps as Size does: mine.)*
 
 The page is a base, as MP4's shelf is: MENU's panel leaves over it as it
 opens, and a panel opened on it - a question, "Deleting...", a result - comes

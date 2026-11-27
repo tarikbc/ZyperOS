@@ -6,6 +6,7 @@
 #include "app.h"
 #include "bgm.h"
 #include "gamedel_screen.h"
+#include "home.h"
 #include "i18n.h"
 #include "menumotion.h"
 #include "panel.h"
@@ -1117,6 +1118,35 @@ static void store_close(store_view *v)
 	v->med = NULL;
 }
 
+/* One repeat of Up or Down held (home_held_step): in A to Z a letter, from
+ * the row the cursor is on (the first row of the next initial, or of its own
+ * and then the one before); in Size and Last Played, in no letter order,
+ * five rows. Further the longer it is held, and never round an end. A row
+ * the order keeps in its place, the recommendations and Delete Video Snaps
+ * at the top and Other Files at the foot, is a letter of its own
+ * (2026-11-22: "should skip by letter when pressing and holding up/down
+ * buttons"; 2026-11-26: "also implement faster scroll when holding down and
+ * sorted by size. maybe skip 5") */
+static int store_held(const store_view *v, int dir, unsigned held_ms)
+{
+	unsigned char *keys;
+	int i, to;
+
+	if (v->sort != ST_SORT_AZ) return home_held_step(NULL, v->nrows, v->pg.sel, dir, held_ms);
+	keys = malloc((size_t)v->nrows);
+	if (!keys) return v->pg.sel;
+	for (i = 0; i < v->nrows; i++) {
+		const sp_row *r = &v->rows[i];
+
+		keys[i] = r->kind == SR_ART || r->kind == SR_STATES || r->kind == SR_SNAPS ? 1
+		        : r->kind == SR_REST ? 2
+		        : home_group_key("", "", r->name ? r->name : "");
+	}
+	to = home_held_step(keys, v->nrows, v->pg.sel, dir, held_ms);
+	free(keys);
+	return to;
+}
+
 /* The page as a base, as MP4's shelf is: the screen's, and --storage
  * delete-open's, which holds it to the panel that opens on it */
 int store_base_open(void)
@@ -1183,7 +1213,17 @@ void storage_screen(app *a)
 			in_button b = in_repeat(&a->in, IN_UP) ? IN_UP : in_repeat(&a->in, IN_DOWN) ? IN_DOWN : IN_NONE;
 
 			if (b != IN_NONE) {
-				v->pg.sel = list_step_heard(a, b, v->nrows, v->pg.sel);
+				/* A press a row; held, a letter in A to Z and five rows
+				 * in the others, further the longer it is held */
+				if (!a->in.pressed[b]) {
+					int to = store_held(v, b == IN_DOWN ? 1 : -1,
+					                    SDL_GetTicks() - a->in.down_since[b]);
+
+					step_sound(a, b, v->pg.sel, to);
+					v->pg.sel = to;
+				} else {
+					v->pg.sel = list_step_heard(a, b, v->nrows, v->pg.sel);
+				}
 			}
 			if (a->in.pressed[IN_ACCEPT]) store_act(v);
 			/* X: the list's next order, the cursor kept on its row; a value
