@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include "ingame_screen.h"
+#include "menukeys_screen.h"
 #include "hkstore.h"
 #include "hudmenu_screen.h"
 #include "dmodepreview.h"
@@ -2707,6 +2708,24 @@ void game_reset_ask(app *a)
 		return;
 	}
 	if (yes) plat_resident_line("RESET");
+	gm_resume(a);
+}
+
+/* MENU's lock chord in a game (src/menukeys.h): Diatom paused the game for
+ * it (PAUSED for=lock), and the handheld locks as on every screen, the
+ * screen dark until SELECT and START are held; then back to the game where
+ * it was. Auto Off while it is locked stops the game as POWER over its menu
+ * does (gm_power), and the handheld turns off after it. */
+void game_lock(app *a)
+{
+	if (mk_lock_game(a)) {
+		gm_power(a, NULL);
+		return;
+	}
+	if (want_quit || !a->running) {
+		plat_resident_line("STOP");
+		return;
+	}
 	gm_resume(a);
 }
 

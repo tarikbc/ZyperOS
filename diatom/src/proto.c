@@ -308,6 +308,8 @@ static void parse_line(char *line, diatom_msg *out)
 			snprintf(out->hotkeys, sizeof out->hotkeys, "%s", v);
 		else if (!strcmp(field, "shots"))
 			snprintf(out->shots, sizeof out->shots, "%s", v);
+		else if (!strcmp(field, "menukeys"))
+			snprintf(out->menukeys, sizeof out->menukeys, "%s", v);
 		else if (!strcmp(field, "layout"))
 			snprintf(out->layout, sizeof out->layout, "%s", v);
 		else if (!strcmp(field, "swap")) snprintf(out->swap, sizeof out->swap, "%s", v);
@@ -495,6 +497,14 @@ diatom_msg_kind diatom_proto_poll(diatom_msg *out, int timeout_ms, bool running)
 		 * does, PAUSED for=reset or for=quit, for the launcher to ask or
 		 * to stop. Additive: an old Diatom ignores all of it and keeps the
 		 * shoulders' four, and an old launcher key=shot. */
+		/* RUN menukeys= (later, with SETHOTKEYS): MENU held with a button
+		 * in a game, as on the launcher's screens, "shot:l1,lock:l2"; the
+		 * screenshot says HOTKEY key=shot and SHOT path= as SELECT's does,
+		 * the lock pauses the game as MENU does, PAUSED for=lock, for the
+		 * launcher to lock the handheld and RESUME. The button is never
+		 * the game's while it is MENU's, and MENU then opens nothing.
+		 * Additive: an old Diatom ignores it and MENU's buttons stay the
+		 * game's; an old launcher sends none, and nothing changes. */
 		/* proto=13 moves the speed and adds the quick slot: SELECT+R2 and
 		 * SELECT+L2 step it in halves, so SPEED's x may be "1.5", and MENU+R1
 		 * does nothing; SELECT+R1 and SELECT+L1 send HOTKEY key=save|load,

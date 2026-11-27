@@ -47,6 +47,9 @@ const char *T_en(str_id id);
 
 void i18n_set(lang l);
 lang i18n_lang(void);
+/* Whether the language that is on writes a decimal comma ("0,5 s"): Spanish,
+ * Portuguese, French, German and Italian */
+bool i18n_decimal_comma(void);
 /* "pt-BR" (or "pt-br", "pt") is LANG_PT_BR; anything else, NULL included,
  * is English. "xx" is the pseudo-locale on a host build. */
 lang lang_parse(const char *code);

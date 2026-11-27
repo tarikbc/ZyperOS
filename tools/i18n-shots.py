@@ -382,6 +382,10 @@ EXTRA = {
     # asks MusicBrainz, which no shot can hold still)
     "mp4-menu-art": ("media", "MUSE", ["--screen", "games", "--menu", "Album Art"]),
     "mp4-locked": ("demo", "MUSE", ["--nowplaying", "0", "0", "83", "--locked"]),
+    # MENU+L2's lock on any screen (src/menukeys_screen.h), its unlock held
+    # half way; and MENU+L1's notice over the shelf
+    "menu-locked": ("demo", "PS1", ["--menu-lock", ".5"]),
+    "menu-shot-notice": ("demo", "PS1", ["--screen", "games", "--menu-shot-notice"]),
     "mp4-locked-video": ("demo", "MUSE", ["--nowplaying", "0", "0", "83", "--video", "hidden", "--locked"]),
     "tour-lang": ("demo", "PS1", ["--tour", "lang", "3500"]),
     "tour-lang-ja": ("demo", "PS1", ["--tour", "lang", "3000", "--tour-pick", "6"]),
@@ -390,6 +394,21 @@ EXTRA = {
     "tour-a": ("demo", "PS1", ["--tour", "a", "4000", "300"]),
     "tour-wrong": ("demo", "PS1", ["--tour", "vol", "3000", "--tour-wrong", "select", "420"]),
     "tour-menu": ("demo", "PS1", ["--tour", "menu", "2000"]),
+    # Leave a Game: the in-game menu open over the game, X pressing next;
+    # and X before MENU, his answer that MENU comes first
+    "tour-quit": ("demo", "PS1", ["--tour", "quit", "1900"]),
+    "tour-quit-wrong": ("demo", "PS1", ["--tour", "quit", "3000", "--tour-wrong", "x", "420"]),
+    # ...and the player's MENU counted: its check on, the menu waiting for X
+    "tour-quit-held": ("demo", "PS1", ["--tour", "quit", "2000", "--tour-held", "400"]),
+    # Lock the Screen: the lock's panel on the dark stage; L2 alone (hold
+    # MENU too) and MENU alone (how the chord goes)
+    "tour-lock": ("demo", "PS1", ["--tour", "lock", "2600"]),
+    "tour-lock-wrong": ("demo", "PS1", ["--tour", "lock", "3000", "--tour-wrong", "l2", "420"]),
+    "tour-lock-wrong-menu": ("demo", "PS1", ["--tour", "lock", "3000", "--tour-wrong", "menu", "420"]),
+    # Unlock the Screen: SELECT and START held, the lock's bar filling, and
+    # a wrong press's answer
+    "tour-unlock": ("demo", "PS1", ["--tour", "unlock", "2000", "--tour-held", "1000"]),
+    "tour-unlock-wrong": ("demo", "PS1", ["--tour", "unlock", "3000", "--tour-wrong", "a", "420"]),
     "tour-bright": ("demo", "PS1", ["--tour", "bright", "2000"]),
     "tour-power": ("demo", "PS1", ["--tour", "power", "1800"]),
     "tour-finish": ("demo", "PS1", ["--tour", "finish", "500"]),
@@ -1534,7 +1553,7 @@ for _kind in ("disk_side", "disk_in", "disk_out", "disk_first"):
 EXTRA.setdefault("popup-speed-half", ("demo", "PS1", ["--popup", "speed", "3"]))
 EXTRA.setdefault("popup-speed-whole", ("demo", "PS1", ["--popup", "speed", "4"]))
 # The Hotkeys list (src/hotkeys_screen.h): MENU > System's, at its top and its
-# end (Home, the line under it, Reset Hotkeys); a game's, Applies To on each
+# end (Home, Reset Hotkeys, the footer for MENU's chords); a game's, Applies To on each
 # of its three and All Controls at the end; the capture screen waiting and
 # with SELECT and Y down; the swap question; Reset Hotkeys' question for each
 # scope; and Reset Game's question over the game
@@ -1550,7 +1569,13 @@ for _name, _flags in (
         ("reset-every", ["--hotkeys", "103", "--hk-ask", "2"]),
         ("reset-system", ["--screen", "games", "--hk-game", "--hk-scope", "1", "--hotkeys", "103", "--hk-ask", "2"]),
         ("reset-game", ["--screen", "games", "--hk-game", "--hk-scope", "2", "--hotkeys", "103", "--hk-ask", "2"]),
-        ("reset-ask", ["--screen", "games", "--hk-game", "--hotkeys", "103", "--hk-ask", "3"])):
+        ("reset-ask", ["--screen", "games", "--hk-game", "--hotkeys", "103", "--hk-ask", "3"]),
+        # MENU's chords on every screen (src/menukeys.h): their rows, and
+        # Screenshot's capture with MENU and L1 down
+        ("menu-keys", ["--hotkeys", "109"]),
+        ("menu-capture", ["--hotkeys", "107", "--hk-capture", "1"]),
+        ("menu-capture-keys", ["--hotkeys", "107", "--hk-capture", "2", "--hk-key", "4"]),
+        ("menu-swap", ["--hotkeys", "107", "--hk-ask", "1"])):
     EXTRA.setdefault("hotkeys-" + _name, ("demo", "PS1", _flags))
 # NES Player 2 (src/p2.h): its page over a paused NES game in every state
 # (--player2), the code on the hotspot with nobody yet and its address under

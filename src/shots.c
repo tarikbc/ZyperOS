@@ -15,6 +15,7 @@
 #include "ctltab.h"
 #include "ctltab_screen.h"
 #include "hotkeys_screen.h"
+#include "menukeys_screen.h"
 #include "db.h"
 #include "devmode_screen.h"
 #include "diskpopup.h"
@@ -290,6 +291,14 @@ static void gm_said_preview(app *a, int k)
 
 int shot_controls = -1;
 int shot_hotkeys = -1, shot_hk_scope = -1, shot_hk_capture, shot_hk_key = -1;
+/* --glyph-warm: the button faces a long session has opened asked for first
+ * (src/ui.c, button_font), so a shot shows a glyph as it is drawn after an
+ * hour on the handheld, not as the first screen of a start draws it */
+bool shot_glyph_warm;
+/* MENU's chords (src/menukeys_screen.h): the lock over the screen, its
+ * unlock's hold that far (0 to 1); the screenshot's notice over the shelf */
+float shot_menu_lock = -1;
+bool shot_menu_notice;
 bool shot_hk_game;
 int shot_hk_ask;
 /* --sgdb [0|1|2]: MENU > SteamGridDB with no key, a key that works, or one
@@ -365,6 +374,7 @@ int shot_tour = -2;          /* -2 none, -1 the skip message */
 int shot_tour_ms = 2000, shot_tour_done = -1;
 int shot_tour_wrong = -1, shot_tour_wrong_ms = 300;
 int shot_tour_pick = -1, shot_tour_pick_ms = 5000;
+int shot_tour_held = -1;
 bool shot_tour_music;
 int shot_fn_volume;
 /* The chords a shot draws with: the profile's, or with --fn-volume the
@@ -1936,6 +1946,8 @@ static void shot_compose_once(app *a)
 		menu_draw_caption(a, head, rows, n, -1, menu_std_width(a), MENU_ZYPEROS, NULL, false,
 		                  0, count);
 	}
+	if (shot_menu_lock >= 0) mk_lock_shot(a, shot_menu_lock);
+	if (shot_menu_notice) mk_notice_shot(a);
 	if (shot_hotkeys >= 0) {
 		const system_cfg *hs = NULL;
 		const char *hf = NULL;
@@ -1945,6 +1957,15 @@ static void shot_compose_once(app *a)
 		if (shot_hk_game && sv->list.count > 0) {
 			hs = &a->sys.systems[shelf_owner(a, a->sys_cursor, sv->cursor)];
 			hf = sv->list.items[sv->cursor].file;
+		}
+		if (shot_glyph_warm) {
+			/* The SemiBold sizes the Pixel 2 opened over every screen the
+			 * i18n shots draw (2026-11-26): more than the table of 8 held,
+			 * and none of them the Regular a 112 pill's word is in */
+			static const int warm[] = { 13, 15, 16, 18, 19, 20, 21, 24, 25, 28, 30, 33, 40, 44, 70, 120 };
+			size_t w;
+
+			for (w = 0; w < sizeof warm / sizeof warm[0]; w++) ui_face_at(warm[w], true);
 		}
 		hotkeys_shot(a, hs, hf, shot_hotkeys, shot_hk_capture, shot_hk_key, shot_hk_ask, shot_hk_scope);
 	}
@@ -2938,6 +2959,7 @@ static void shot_tour_draw(app *a)
 			t.kept[tour_choice_of(t.step)] = t.pick[tour_choice_of(t.step)];
 		if (shot_tour_wrong >= 0)
 			tour_pose_wrong(&t, (tour_key)shot_tour_wrong, now, shot_tour_wrong_ms);
+		if (shot_tour_held >= 0) tour_pose_held(&t, now, shot_tour_held);
 		tour_draw(a->r, &t, now, &hk);
 	}
 	if (shot_osd_kind) {

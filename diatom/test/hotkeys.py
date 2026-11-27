@@ -23,6 +23,10 @@ slot's round trip as the launcher drives it.
     where RUN shots= says and answers SHOT path=, SELECT+X says HOTKEY
     key=shader, SELECT+B pauses with PAUSED for=reset, and SELECT+R1 is the
     game's when no hotkey is on R1; SETHOTKEYS changes them while it runs.
+  - RUN menukeys= gives MENU two chords in a game: MENU+L1 a screenshot,
+    MENU+L2 the lock's pause (PAUSED for=lock), the game never reading
+    their L1 or L2 and MENU opening no menu after them; without it MENU+L1
+    is the game's L1, as ever.
   - RUN stick=toggle (the PSP's) with the map's r2:stick: R2 turns the
     d-pad into the left stick and back, says STICK each time, and never
     reaches the game; with no such pair R2 is the game's and turns nothing.
@@ -404,6 +408,29 @@ check("a bad SETHOTKEYS: ok=0, and the keys as they were (SELECT+R1 still saves)
 bits, ax = live_run("selmap", "40:select;44:select+r1;50:select;54:", "SETMAP\tmap=select:start\n", 70)
 check("select:start: SELECT+R1 still says HOTKEY key=save", got.count("HOTKEY\tkey=save") == 1, got)
 check("select:start: the core never reads START", not any(b & START for b in bits), [i for i, b in enumerate(bits) if b & START][:5])
+
+# MENU's chords in a game (RUN menukeys=, chord.h's mchord; ZyperOS's
+# 1.1.1-test.3 notes: the screenshot and the lock work everywhere, in games
+# too): MENU held, then L1, a screenshot as SELECT's (HOTKEY key=shot, SHOT
+# path=); MENU held, then L2, the lock's pause (PAUSED for=lock); MENU let go
+# after either opens no menu, and the game never reads that L1 or L2; L1
+# alone is the game's. With no menukeys= (an old launcher), MENU+L1 is the
+# game's L1 and MENU let go opens the menu, as ever.
+MK_SCRIPT = "40:menu;43:menu+l1;47:menu;50:;70:menu;73:menu+l2;77:menu;80:;100:l1;104:;"
+bits, ax = live_run("mk", MK_SCRIPT, "", 140, f"\tmenukeys=shot:l1,lock:l2\tshots={SHOTS}")
+shot = [l for l in got if l.startswith("SHOT\tpath=")]
+check("menukeys=: MENU+L1 says HOTKEY key=shot and answers SHOT path= under shots=",
+      "HOTKEY\tkey=shot" in got and len(shot) == 1 and shot[0][10:].startswith(SHOTS + " "), got)
+check("menukeys=: MENU+L2 pauses for the lock: PAUSED for=lock", got.count("PAUSED\tfor=lock") == 1, got)
+check("menukeys=: MENU let go after either opens no menu (no PAUSED of MENU's)", "PAUSED" not in got, got)
+check("menukeys=: the game never reads the chords' L1 or L2",
+      not any(bits[i] & (L1 | L2) for i in range(40, 90)), [i for i in range(40, 90) if bits[i] & (L1 | L2)])
+check("menukeys=: L1 alone is the game's", any(bits[i] & L1 for i in range(100, 104)), bits[98:106])
+bits, ax = live_run("nomk", MK_SCRIPT, "", 140, f"\tshots={SHOTS}")
+check("no menukeys=: MENU+L1 is the game's L1, as ever", any(bits[i] & L1 for i in range(43, 47)), bits[40:50])
+check("no menukeys=: no screenshot, no lock", not any(l.startswith("SHOT\t") for l in got) and
+      "PAUSED\tfor=lock" not in got, got)
+check("no menukeys=: MENU let go opens the menu", "PAUSED" in got, got)
 
 if fails:
     print(f"FAIL: {len(fails)} hotkey check(s)")

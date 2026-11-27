@@ -184,6 +184,10 @@ check-homekeys: native
 check-videoview: native
 	@'$(PYIMG)' tools/videoview-check.py
 
+# MENU's chords in desk mode: a screenshot of the screen, the lock
+check-menukeys: native
+	@'$(PYIMG)' tools/menukeys-check.py
+
 # No button read twice by in_repeat in one step (a held one turned round)
 check-inrepeat:
 	@python3 tools/inrepeat-check.py
@@ -1572,11 +1576,12 @@ check-tour: build-native/tour-check
 build-native/tour-check: tools/tour-check.c src/tour.c src/tour.h src/design.h \
                          src/inbutton.h src/zyperrig.c src/zyperrig.h src/config.c \
                          src/config.h src/db.c src/db.h src/atomic.c src/atomic.h \
+                         src/menukeys.c src/menukeys.h src/hotkeys.c src/hotkeys.h \
                          $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
 	      -o $@ tools/tour-check.c src/tour.c src/powerhold.c src/zyperrig.c src/config.c src/db.c \
-	      src/atomic.c $(I18N_SRC) $(DEVICE_PROFILES) -lsqlite3 -lm
+	      src/atomic.c src/menukeys.c src/hotkeys.c $(I18N_SRC) $(DEVICE_PROFILES) -lsqlite3 -lm
 
 # A system's color as a mark (DESIGN.md 3.3): as systems.cfg has it on Salt &
 # Pepper and a quarter toward text on Beard, for every shipped system; no
@@ -1948,15 +1953,16 @@ build-native/remap-check: tools/remap-check.c src/remap.c src/remap.h src/remaps
 
 # The player's hotkeys, pure: SELECT and a button for each action, the swap
 # that loses none, what is kept for Every Game, a system and a game, and
-# Diatom's RUN form (src/hotkeys.h, src/hkstore.h)
+# Diatom's RUN form (src/hotkeys.h, src/hkstore.h); and MENU's chords on every
+# screen, their swap, Hold to Unlock and what is kept (src/menukeys.h)
 check-hotkeys: build-native/hotkeys-check
 	@./build-native/hotkeys-check
 
 build-native/hotkeys-check: tools/hotkeys-check.c src/hotkeys.c src/hotkeys.h src/hkstore.c src/hkstore.h \
-                            src/db.c src/db.h src/atomic.c FORCE
+                            src/menukeys.c src/menukeys.h src/db.c src/db.h src/atomic.c FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/hotkeys-check.c src/hotkeys.c src/hkstore.c src/db.c src/atomic.c -lsqlite3
+	      -o $@ tools/hotkeys-check.c src/hotkeys.c src/hkstore.c src/menukeys.c src/db.c src/atomic.c -lsqlite3
 
 # Rumble's levels, the share a game is sent, and what is kept for a game, a
 # system and MENU (src/rumble.h)
@@ -3279,7 +3285,7 @@ check-tour-colors:
 		  $$(pkg-config --cflags sdl2 SDL2_ttf SDL2_image) -Isrc \
 		  -o build-native/tour-colors-check tools/tour-colors-check.c src/ui.c src/canvas.c src/ds/glyph.c src/ds/button.c src/folderart.c src/roundrect.c \
 		  src/theme.c src/themefile.c src/look.c src/linebreak.c src/blur.c src/cardgen.c src/cardart.c src/cardart_draw.c \
-		  src/sysmark.c src/tour.c src/powerhold.c src/tourdraw.c src/tourdevice.c src/zyperrig.c src/osdbar.c src/db.c $(I18N_SRC) $(DEVICE_PROFILES) \
+		  src/sysmark.c src/tour.c src/powerhold.c src/menukeys.c src/hotkeys.c src/tourdraw.c src/tourdevice.c src/zyperrig.c src/osdbar.c src/db.c $(I18N_SRC) $(DEVICE_PROFILES) \
 		  $$(pkg-config --libs sdl2 SDL2_ttf SDL2_image) -lsqlite3 -lm && \
 		ZYPEROS_HEADLESS=1 SDL_VIDEODRIVER=dummy SDL_RENDER_DRIVER=software \
 		  ./build-native/tour-colors-check; \

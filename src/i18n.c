@@ -48,6 +48,11 @@ void i18n_set(lang l)
 
 lang i18n_lang(void) { return cur; }
 
+bool i18n_decimal_comma(void)
+{
+	return cur == LANG_ES || cur == LANG_PT_BR || cur == LANG_FR || cur == LANG_DE || cur == LANG_IT;
+}
+
 const char *TN(str_id id, long n)
 {
 	bool one = n == 1 || (n == 0 && cur < LANG_COUNT && zero_is_one[cur]);

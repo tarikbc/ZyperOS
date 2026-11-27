@@ -115,6 +115,9 @@ void game_menu(app *a);
 /* Reset Game's hotkey: its question over the paused game, then RESET or
  * not and back to the game (PAUSED for=reset) */
 void game_reset_ask(app *a);
+/* MENU's lock chord over a game Diatom paused for it (PAUSED for=lock):
+ * locked as on every screen, then the game again (src/menukeys.h) */
+void game_lock(app *a);
 /* Next Shader (`shader`) or Next Display, the hotkeys, while the game runs:
  * stepped, kept and sent; the name now on into out, for the pop-up */
 void gm_hotkey_step(app *a, bool shader, char *out, size_t n);

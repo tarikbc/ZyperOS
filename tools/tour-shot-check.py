@@ -166,6 +166,7 @@ MENU_DOT = {"light": (61, 64, 62), "dark": (150, 153, 152)}      # text-soft, te
 INSET = 24                      # **inset**: text from every screen edge
 WORDS = (1024 - INSET, 480, 1024, 660)  # right of the title, line and note
 LIT_SIDE = {"move": "lr", "a": "r", "b": "r", "y": "r", "x": "r", "menu": "r",
+            "quit": "R", "lock": "lr", "unlock": "lr",
             "select": "lr", "vol": "l", "bright": "lr", "power": "r"}
 # The shoulders over the top edge, facing front (10 degrees, 3.55 units a
 # millimetre): L1/R1 outside, L2/R2 inside, where a lit one stands up out of
@@ -173,7 +174,10 @@ LIT_SIDE = {"move": "lr", "a": "r", "b": "r", "y": "r", "x": "r", "menu": "r",
 # rings of its neighbours, which are **accent** too on Salt & Pepper.
 SHOULDERS = {"l1": (30, 104, 70, 118), "r1": (206, 104, 246, 118),
              "l2": (95, 104, 107, 118), "r2": (172, 104, 186, 118)}
-LIT_SHOULDERS = {"move": ("l1", "r1"), "select": ("l2", "r2")}
+LIT_SHOULDERS = {"move": ("l1", "r1"), "select": ("l2", "r2"), "lock": ("l2",)}
+# The lessons tilted back to their shoulders; the lock's lights MENU on the
+# side too, so it faces front with MENU a tab and L2 standing up
+TILTED = ("move", "select")
 # ...and where the lessons that light shoulders have them: tilted back 25
 # degrees (TD_PITCH_DEG), the top showing with the caps standing on it, each
 # box inside a cap's face and top, clear of its neighbours' rings
@@ -217,12 +221,14 @@ def pixel2():
             if img is None:
                 continue
             left, right = count(img, ACCENT, COLUMN_L), count(img, ACCENT, COLUMN_R)
-            ck(("l" in side) == (left > 30) and ("r" in side) == (right > 30),
+            # "R": the right at least, where the turn to MENU's side brings
+            # the face's lit key (Leave a Game's X) to the middle
+            ck(right > 30 if side == "R" else ("l" in side) == (left > 30) and ("r" in side) == (right > 30),
                "%s %s: the lit key is on the %s of the handheld (lit pixels left %d, right %d)"
-               % (th, step, {"l": "left", "r": "right", "lr": "both sides"}[side], left, right))
+               % (th, step, {"l": "left", "r": "right", "R": "right", "lr": "both sides"}[side], left, right))
             # The shoulders its note names stand up lit over the top edge,
             # and no others (Move Around's L1/R1, Music's L2/R2)
-            boxes = TILTED_SHOULDERS if step in LIT_SHOULDERS else SHOULDERS
+            boxes = TILTED_SHOULDERS if step in TILTED else SHOULDERS
             lit = {k: count(img, ACCENT, box) for k, box in boxes.items()}
             want = LIT_SHOULDERS.get(step, ())
             ck(all((lit[k] > 20) == (k in want) for k in SHOULDERS),
@@ -298,6 +304,7 @@ def devices():
 # from the back, turned round, where L1 and L2 are at the right - and the
 # glass only from the front. Its F1 and F2 one ring, MENU the bottom row's.
 BRICK_LIT_SIDE = {"move": "l", "a": "r", "b": "r", "y": "r", "x": "r", "menu": "l",
+                  "quit": "lr", "lock": "c", "unlock": "c",
                   "select": "c", "vol": "l", "bright": "lr", "power": "r"}
 # The lessons whose keys are on the back ledge and the front (the d-pad with
 # L1/R1, SELECT with L2/R2): front first, held there at 2000 ms, then round to
@@ -328,7 +335,8 @@ def smartpro():
 # Where each lesson's lit keys are on the Smart Pro: the d-pad and L/R both
 # ends, A B X Y and START's lesson's SELECT at the right, MENU at the left,
 # the volume keys right of the middle, POWER left of it
-SMARTPRO_LIT_SIDE = {"move": "lr", "a": "r", "y": "r", "menu": "l", "vol": "r", "power": "l"}
+SMARTPRO_LIT_SIDE = {"move": "lr", "a": "r", "y": "r", "menu": "l", "quit": "lr", "lock": "l", "unlock": "r",
+                     "vol": "r", "power": "l"}
 
 
 def brick():
@@ -390,6 +398,7 @@ def brick():
 # d-pad's lesson lights L1 and R1 too, whose paddles stand out past the
 # back, so R1's edge shows on the right: the left half is judged alone.
 R36S_LIT_SIDE = {"move": "L", "a": "r", "b": "r", "y": "r", "x": "r", "menu": "c",
+                 "quit": "cr", "lock": "c", "unlock": "c",
                  "select": "c", "vol": "r", "bright": "cr", "power": "l"}
 
 

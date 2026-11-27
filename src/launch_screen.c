@@ -13,6 +13,7 @@
 #include "dlq.h"
 #include "dsv.h"
 #include "ingame_screen.h"
+#include "menukeys_screen.h"
 #include "cheats_screen.h"
 #include "hudmenu_screen.h"
 #include "mp4c.h"
@@ -1068,6 +1069,18 @@ void launch(app *a)
 					         keys[0] ? "\t" : "", shots);
 			}
 		}
+		/* MENU's chords (src/menukeys.h), which work in a game too: Diatom
+		 * takes the screenshot's button under MENU as SELECT's hotkey does,
+		 * and pauses for the lock (PAUSED for=lock, game_lock). With every
+		 * game, so a key changed in MENU > System > Hotkeys holds at once */
+		{
+			char mk[48];
+
+			mk_run(mk_now(), mk, sizeof mk);
+			if (strlen(keys) + strlen(mk) + 12 <= sizeof keys)
+				snprintf(keys + strlen(keys), sizeof keys - strlen(keys), "%smenukeys=%s",
+				         keys[0] ? "\t" : "", mk);
+		}
 		/* The cheats that are on for this game, handed over as it loads
 		 * (src/cheats_screen.h): cheats= on RUN, none for most games */
 		cheats_game_begin(s, romfile, cheats_without, keys, sizeof keys);
@@ -1402,9 +1415,11 @@ void launch(app *a)
 					levels_game_paused(true);
 					/* A hotkey's pause (src/hotkeys.h): Quit stops the
 					 * game as MENU then X does, Reset Game asks first;
+					 * MENU's lock chord locks over it (src/menukeys.h);
 					 * MENU's opens the menu */
 					if (!strcmp(why, "quit")) gm_quit();
 					else if (!strcmp(why, "reset")) game_reset_ask(a);
+					else if (!strcmp(why, "lock")) game_lock(a);
 					else game_menu(a);
 					levels_game_paused(false);
 					g_ctl_game.paused = false;

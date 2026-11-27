@@ -115,6 +115,7 @@
 #include "menusnap.h"
 #include "mp4c.h"
 #include "mp4lock.h"
+#include "menukeys_screen.h"
 #include "mp4resume.h"   /* MP4 back after a power-off (DESIGN.md 11.67) */
 #include "mp4hand.h"     /* MP4 handed over a program of its own (DESIGN.md 11.55) */
 #include "alsatry.h"     /* --alsa-try: a port's ALSA chain opened as PICO-8 opens it */
@@ -3448,6 +3449,14 @@ static void on_speed(int half)
  * menu's rows do, and named over the game */
 static app *g_hotkey_app;   /* main's, for on_hotkey's steps */
 
+/* What the launcher draws over every screen (plat_set_overlay): the replug
+ * message, and a screenshot's notice (src/menukeys_screen.h) */
+static void every_overlay(SDL_Renderer *r)
+{
+	replug_overlay(r);
+	mk_overlay(r);
+}
+
 static void on_hotkey(const char *key, const char *path)
 {
 	char p[CFG_STR * 2], body[CFG_STR * 2];
@@ -6079,6 +6088,7 @@ void copy_file(const char *from, const char *to)
 const char *const TOUR_STEP_NAMES[TOUR_STEPS] = {
 	[TOUR_LANG] = "lang", [TOUR_WELCOME] = "welcome", [TOUR_MOVE] = "move", [TOUR_A] = "a",
 	[TOUR_B] = "b", [TOUR_X] = "x", [TOUR_Y] = "y", [TOUR_MENU] = "menu",
+	[TOUR_QUIT] = "quit", [TOUR_LOCK] = "lock", [TOUR_UNLOCK] = "unlock",
 	[TOUR_SELECT] = "select", [TOUR_VOL] = "vol", [TOUR_BRIGHT] = "bright",
 	[TOUR_POWER] = "power", [TOUR_THEME] = "theme", [TOUR_HOME] = "home",
 	[TOUR_SOUNDS] = "sounds", [TOUR_MUSIC] = "music", [TOUR_FINISH] = "finish" };
@@ -6908,6 +6918,7 @@ int main(int argc, char *argv[])
 				shot_tour_pick_ms = atoi(argv[++i]);
 		}
 		else if (!strcmp(argv[i], "--tour-music")) shot_tour_music = true;
+		else if (!strcmp(argv[i], "--tour-held") && i + 1 < argc) shot_tour_held = atoi(argv[++i]);
 		/* --port-waiting: with --gamemenu N port, the menu over a program
 		 * still starting (Keep Waiting) */
 		else if (!strcmp(argv[i], "--port-waiting")) g_port_waiting = true;
@@ -7091,11 +7102,16 @@ int main(int argc, char *argv[])
 				shot_sgdb = atoi(argv[++i]);
 		}
 		else if (!strcmp(argv[i], "--hotkeys") && i + 1 < argc) shot_hotkeys = atoi(argv[++i]);
+		/* MENU's chords: the lock over the screen, the unlock held K of
+		 * the way (0 to 1); the screenshot's notice */
+		else if (!strcmp(argv[i], "--menu-lock") && i + 1 < argc) shot_menu_lock = (float)atof(argv[++i]);
+		else if (!strcmp(argv[i], "--menu-shot-notice")) shot_menu_notice = true;
 		else if (!strcmp(argv[i], "--hk-game")) shot_hk_game = true;
 		else if (!strcmp(argv[i], "--hk-ask") && i + 1 < argc) shot_hk_ask = atoi(argv[++i]);
 		else if (!strcmp(argv[i], "--hk-scope") && i + 1 < argc) shot_hk_scope = atoi(argv[++i]);
 		else if (!strcmp(argv[i], "--hk-capture") && i + 1 < argc) shot_hk_capture = atoi(argv[++i]);
 		else if (!strcmp(argv[i], "--hk-key") && i + 1 < argc) shot_hk_key = atoi(argv[++i]);
+		else if (!strcmp(argv[i], "--glyph-warm")) shot_glyph_warm = true;
 		else if (!strcmp(argv[i], "--controls")) {
 			shot_controls = 0;
 			if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '9')
@@ -8031,9 +8047,12 @@ int main(int argc, char *argv[])
 	a.r = plat_renderer();
 	tour_hint_draw_set(keyhints_width, tour_hint);
 	t_mark("renderer");
-	/* The replug message, over every screen (DESIGN.md 11.36) */
-	plat_set_overlay(replug_overlay);
+	/* The replug message, over every screen (DESIGN.md 11.36), and a
+	 * screenshot's notice (src/menukeys.h) */
+	plat_set_overlay(every_overlay);
 	plat_input_init();
+	/* MENU's chords on every screen: a screenshot, the lock */
+	mk_init(&a);
 	t_mark("input");
 	/* Nothing is handed in any more. The two-tier lookup this replaces - a
 	 * shipped default and the player's saved level - is one key each in the
@@ -8577,6 +8596,9 @@ int main(int argc, char *argv[])
 		 * and brought covers and snaps: the shelves take them here, on the
 		 * shelf's own pass, as the page's close does (scraper_screen.c) */
 		scraper_after_run(&a);
+		/* A screenshot MENU+L1 took (src/menukeys_screen.c) on its group,
+		 * read again here on the shelf's own pass, as after a game */
+		if (shots_take_new()) refresh_shots_shelf(&a);
 
 		/* Back on the shelf, so any menu MENU closed is closed: put the flag
 		 * down before anything here can open another. See menu_leaving. And

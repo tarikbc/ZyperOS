@@ -14,6 +14,7 @@
 
 #include "../src/config.h"
 #include "../src/design.h"
+#include "../src/i18n.h"
 #include "../src/tour.h"
 
 /* A device's chords and drawing, as the tutorial is told them: true is the
@@ -36,6 +37,9 @@ static bool near(float a, float b) { return a - b < 0.002f && b - a < 0.002f; }
 static const tour_key RIGHT[TOUR_STEPS] = {
 	[TOUR_WELCOME] = TK_A, [TOUR_MOVE] = TK_RIGHT, [TOUR_A] = TK_A, [TOUR_B] = TK_B,
 	[TOUR_Y] = TK_Y, [TOUR_X] = TK_X, [TOUR_MENU] = TK_MENU, [TOUR_SELECT] = TK_SELECT,
+	/* MENU first, then X (walk presses MENU); the lock's chord, taken by
+	 * the tutorial; the unlock is a hold (walk holds it) */
+	[TOUR_QUIT] = TK_X, [TOUR_LOCK] = TK_LOCK, [TOUR_UNLOCK] = TK_KEYS,
 	[TOUR_VOL] = TK_VOL, [TOUR_BRIGHT] = TK_BRIGHT, [TOUR_POWER] = TK_POWER,
 	[TOUR_THEME] = TK_A, [TOUR_HOME] = TK_A, [TOUR_SOUNDS] = TK_A, [TOUR_MUSIC] = TK_A,
 	[TOUR_FINISH] = TK_A,
@@ -80,7 +84,19 @@ static void walk(bool fn, bool music)
 			now += 200;
 		}
 		ck(tour_takes_power(&t) == (s == TOUR_POWER), "POWER is the tour's in its step only");
-		snd = tour_press(&t, RIGHT[s], now);
+		if (s == TOUR_QUIT) {
+			ck(tour_press(&t, TK_MENU, now) == DS_SOUND_ACCEPT && !t.done,
+			   "Leave a Game: MENU opens the menu, and the step waits for X");
+			now += 200;
+		}
+		if (s == TOUR_UNLOCK) {
+			ck(tour_hold(&t, true, true, now) == TOUR_QUIET && !t.done,
+			   "Unlock the Screen: SELECT and START held start its bar");
+			snd = tour_hold(&t, true, true, now + 2000);
+			now += 2000;
+		} else {
+			snd = tour_press(&t, RIGHT[s], now);
+		}
 		ck(snd == DS_SOUND_REWARD, "the right press is rewarded");
 		ck(t.done, "and ends the step");
 		if (snd == DS_SOUND_REWARD) rewards++;
@@ -161,9 +177,10 @@ static void choices(void)
 
 	tour_start(&t, T0, DEV(false));
 	ck(tour_segments(&t) == TOUR_LESSONS + TOUR_CHOICES - 1 && tour_segment(&t) == -1,
-	   "no menu music: 13 segments, and the welcome has none");
+	   "no menu music: 16 segments, and the welcome has none");
 	tour_set_music(&t, true);
-	ck(tour_segments(&t) == TOUR_LESSONS + TOUR_CHOICES, "with it, 14");
+	ck(tour_segments(&t) == TOUR_LESSONS + TOUR_CHOICES && TOUR_LESSONS + TOUR_CHOICES == 17,
+	   "with it, 17");
 	for (c = TOUR_MOVE; c <= TOUR_MUSIC; c++) {
 		tour_pose(&t, (tour_step)c, T0, 2000, -1, DEV(false));
 		tour_set_music(&t, true);
@@ -265,6 +282,12 @@ static void start_skips(void)
 		tour_pose(&t, s, T0, 249, -1, DEV(false));
 		ck(tour_press(&t, TK_START, T0) == TOUR_QUIET && !t.over, "is deaf with the rest");
 		tour_pose(&t, s, T0, 2000, s == TOUR_WELCOME ? -1 : 300, DEV(false));
+		/* but Unlock the Screen, whose hold START is half of */
+		if (s == TOUR_UNLOCK) {
+			ck(tour_press(&t, TK_START, T0) == TOUR_QUIET && !t.over,
+			   "skips nothing in Unlock the Screen, its hold's half");
+			continue;
+		}
 		ck(tour_press(&t, TK_START, T0) == DS_SOUND_BACK, "skips from any step, the reward too");
 		ck(t.over && t.skipped, "and the tour is over, skipped");
 		ck(t.end_at == T0, "at the press");
@@ -496,7 +519,7 @@ static void keys(void)
 	};
 	static const char *const names[TK_KEYS] = {
 		"Up", "Down", "Left", "Right", "A", "B", "X", "Y", "L1", "R1", "L2", "R2",
-		"START", "SELECT", "MENU", "volume", "brightness", "POWER", "L3", "R3" };
+		"START", "SELECT", "MENU", "volume", "brightness", "POWER", "L3", "R3", "lock" };
 	size_t i;
 	int k;
 
@@ -592,10 +615,67 @@ static void buttons(void)
 	memset(pressed, 0, sizeof pressed);
 	pressed[IN_L2] = true;
 	pressed[IN_R2] = true;
-	ck(tour_buttons(&t, pressed, T0, snd) == 2 && t.wrong,
-	   "even in Music, whose note names them");
+	ck(tour_buttons(&t, pressed, T0, snd) == 2 && t.wrong && !t.done,
+	   "even in Music, whose note names them: its line asks for SELECT, and a shoulder "
+	   "taken there read as right (the Pixel 2 test of 1.1.1-test.3)");
 	ck(!strcmp(tour_step_info(TOUR_SELECT)->note, "L2/R2 play the previous or next song."),
 	   "Music's note says what L2/R2 do");
+}
+
+/* Every key in every lesson, on both handhelds: only the lesson's own lands
+ * it (the Pixel 2 test of 1.1.1-test.3: a shoulder landed Music, whose line
+ * asks for SELECT). START skips, but in Unlock the Screen, whose hold it is
+ * half of; the levels' keys and POWER are the caller's but in their own
+ * lessons; the lock's chord is nothing but in its lesson; every other key
+ * is a wrong press, answered. */
+static void every_key(void)
+{
+	int s, k, fn;
+	tour t;
+
+	printf("every key in every lesson:\n");
+	for (fn = 0; fn < 2; fn++)
+		for (s = TOUR_FIRST_LESSON; s < TOUR_FIRST_LESSON + TOUR_LESSONS; s++)
+			for (k = 0; k < TK_KEYS; k++) {
+				const tour_step st = (tour_step)s;
+				const tour_key key = (tour_key)k;
+				bool lands = false, quiet = false;
+				int want, snd;
+				char what[160];
+
+				switch (st) {
+				case TOUR_MOVE:
+					/* a first move is a move: the step wants two */
+					break;
+				case TOUR_QUIT:   break;       /* MENU opens, below */
+				case TOUR_LOCK:   lands = key == TK_LOCK; break;
+				case TOUR_UNLOCK: quiet = key == TK_SELECT || key == TK_START; break;
+				default:          lands = key == RIGHT[st]; break;
+				}
+				if (key == TK_START && st != TOUR_UNLOCK) quiet = true;
+				if ((key == TK_VOL && st != TOUR_VOL && st != TOUR_BRIGHT) ||
+				    (key == TK_BRIGHT && st != TOUR_BRIGHT) ||
+				    (key == TK_POWER && st != TOUR_POWER) || (key == TK_LOCK && st != TOUR_LOCK))
+					quiet = true;
+				want = lands ? DS_SOUND_REWARD
+				     : key == TK_START && st != TOUR_UNLOCK ? DS_SOUND_BACK
+				     : quiet ? TOUR_QUIET
+				     : st == TOUR_MOVE && (key == TK_UP || key == TK_DOWN || key == TK_LEFT ||
+				                           key == TK_RIGHT || key == TK_L1 || key == TK_R1)
+				       ? -2   /* a move or the edge's sound */
+				     : st == TOUR_QUIT && key == TK_MENU ? DS_SOUND_ACCEPT
+				     : DS_SOUND_DENY;
+				tour_pose(&t, st, T0, 2000, -1, DEV(fn));
+				snd = tour_press(&t, key, T0);
+				snprintf(what, sizeof what, "%s: %s in %s is %s", fn ? "Pixel 2" : "Brick",
+				         tour_key_name(key), tour_step_info(st)->title,
+				         want == DS_SOUND_REWARD ? "its press" : want == DS_SOUND_DENY ? "a wrong press"
+				         : want == DS_SOUND_BACK ? "the skip" : want == DS_SOUND_ACCEPT ? "MENU, waiting for X"
+				         : want == -2 ? "a move" : "nothing");
+				ck(want == -2 ? (snd == DS_SOUND_MOVE || snd == DS_SOUND_EDGE) && !t.done
+				              : snd == want && t.done == lands && t.wrong == (want == DS_SOUND_DENY),
+				   what);
+			}
 }
 
 /* Which glyph part the player's own hand lights, on each device. */
@@ -807,6 +887,165 @@ static void copy(void)
 	ck(DS_MS_TOUR_REWARD == 1100, "a reward is 1.1 s (11.10)");
 }
 
+/* MENU's other two jobs, the lessons after Settings: Leave a Game (MENU,
+ * then X) and Lock the Screen (MENU and its button, taken and opened by
+ * the launcher) */
+static void menu_jobs(void)
+{
+	tour t;
+
+	printf("Leave a Game and Lock the Screen:\n");
+	ck(TOUR_QUIT == TOUR_MENU + 1 && TOUR_LOCK == TOUR_QUIT + 1 && TOUR_UNLOCK == TOUR_LOCK + 1 &&
+	   TOUR_SELECT == TOUR_UNLOCK + 1,
+	   "they come after Settings, the unlock after the lock, before Music");
+	ck(TOUR_LESSONS == 13, "thirteen lessons now");
+	tour_pose(&t, TOUR_QUIT, T0, 2000, -1, DEV(true));
+	ck(tour_step_info(TOUR_QUIT)->glyph == TG_KEYS && !strcmp(tour_step_info(TOUR_QUIT)->label, "MENU, X"),
+	   "Leave a Game's glyph is MENU, a comma and X");
+	ck(!strcmp(tour_step_info(TOUR_QUIT)->line, "In a game, press MENU, then X."), "and its line says so");
+	ck(tour_press(&t, TK_X, T0) == DS_SOUND_DENY && !strcmp(t.hint, "That's X. Press MENU first."),
+	   "X first: MENU comes first");
+	ck(tour_press(&t, TK_A, T0 + 10) == DS_SOUND_DENY && !strcmp(t.hint, "That's A. Try MENU."),
+	   "another button: try MENU");
+	ck(tour_press(&t, TK_L2, T0 + 12) == DS_SOUND_DENY && !strcmp(t.hint, "That's L2. Try MENU.") &&
+	   tour_press(&t, TK_R2, T0 + 14) == DS_SOUND_DENY && !strcmp(t.hint, "That's R2. Try MENU."),
+	   "L2 and R2 too, as in every lesson that asks for another button");
+	ck(tour_press(&t, TK_MENU, T0 + 20) == DS_SOUND_ACCEPT && t.moves == 1 && !t.done && !t.wrong,
+	   "MENU opens the menu over the game, accept");
+	ck(tour_press(&t, TK_A, T0 + 30) == DS_SOUND_DENY && !strcmp(t.hint, "That's A. Try X."),
+	   "with it open, try X");
+	ck(tour_press(&t, TK_B, T0 + 40) == DS_SOUND_BACK && t.moves == 0, "B closes it, back");
+	ck(tour_press(&t, TK_MENU, T0 + 50) == DS_SOUND_ACCEPT && t.moves == 1, "MENU again");
+	ck(tour_press(&t, TK_MENU, T0 + 60) == DS_SOUND_BACK && t.moves == 0, "and MENU closes it too");
+	tour_press(&t, TK_MENU, T0 + 70);
+	ck(tour_quit_menu_in(&t), "MENU counted: its glyph has the check");
+	ck(tour_press(&t, TK_X, T0 + 80) == DS_SOUND_REWARD && t.done, "MENU, then X: the reward");
+	ck(tour_part_press(&t, TP_MENU, T0 + 2000) == 0.0f, "and the loop stops pressing once it is done");
+
+	/* MENU, and no X for 3 s: the menu closes and the lesson starts over
+	 * (the Pixel 2 test of 1.1.1-test.3) */
+	tour_pose(&t, TOUR_QUIT, T0, 2000, -1, DEV(true));
+	ck(!tour_quit_menu_in(&t), "no check before MENU");
+	tour_press(&t, TK_MENU, T0);
+	tour_tick(&t, T0 + TOUR_QUIT_WAIT_MS - 1);
+	ck(t.moves == 1 && tour_quit_menu_in(&t), "the menu waits for X up to 3 s");
+	tour_tick(&t, T0 + TOUR_QUIT_WAIT_MS);
+	ck(TOUR_QUIT_WAIT_MS == 3000 && t.moves == 0 && !tour_quit_menu_in(&t) && !t.done,
+	   "then it closes, its check gone, and the lesson starts over");
+	ck(tour_press(&t, TK_X, T0 + TOUR_QUIT_WAIT_MS + 10) == DS_SOUND_DENY &&
+	   !strcmp(t.hint, "That's X. Press MENU first."), "so X is MENU first again");
+	ck(tour_press(&t, TK_MENU, T0 + TOUR_QUIT_WAIT_MS + 20) == DS_SOUND_ACCEPT &&
+	   tour_press(&t, TK_X, T0 + TOUR_QUIT_WAIT_MS + 30) == DS_SOUND_REWARD,
+	   "and MENU, then X, lands it");
+	tour_pose(&t, TOUR_QUIT, T0, 2000, -1, DEV(true));
+	tour_press(&t, TK_MENU, T0);
+	tour_tick(&t, T0 + 2000);
+	tour_press(&t, TK_X, T0 + 2900);
+	tour_tick(&t, T0 + TOUR_QUIT_WAIT_MS + 100);
+	ck(t.done && t.moves == 1, "an X in time is kept, the wait over");
+
+	tour_pose(&t, TOUR_QUIT, T0, 500 + TOUR_QUIT_MENU_AT + 80, -1, DEV(true));
+	ck(tour_part_press(&t, TP_MENU, T0) > 0.5f && tour_part_press(&t, TP_X, T0) == 0.0f,
+	   "its loop presses MENU");
+	tour_pose(&t, TOUR_QUIT, T0, 500 + TOUR_QUIT_X_AT + 80, -1, DEV(true));
+	ck(tour_part_press(&t, TP_X, T0) > 0.5f && tour_part_press(&t, TP_MENU, T0) == 0.0f,
+	   "and then X");
+
+	tour_menu_keys(IN_L1, IN_L2, "MENU+L1", "MENU+L2");
+	tour_lock_hold(2000);
+	tour_pose(&t, TOUR_LOCK, T0, 2000, -1, DEV(true));
+	ck(tour_step_info(TOUR_LOCK)->glyph == TG_KEYS && !strcmp(tour_step_info(TOUR_LOCK)->label, "MENU+L2"),
+	   "Lock the Screen's glyph is MENU, a plus and L2");
+	ck(!strcmp(tour_step_info(TOUR_LOCK)->line, "Hold MENU, then press L2 to lock."), "its line");
+	ck(!strcmp(tour_step_info(TOUR_LOCK)->note, "On every screen, in a game too."),
+	   "its note: on every screen, in a game too");
+	ck(tour_press(&t, TK_MENU, T0) == DS_SOUND_DENY && !strcmp(t.hint, "Hold MENU, then press L2."),
+	   "MENU alone: how the chord goes");
+	ck(tour_press(&t, TK_L2, T0 + 10) == DS_SOUND_DENY && !strcmp(t.hint, "That's L2. Hold MENU too."),
+	   "L2 alone: hold MENU too");
+	ck(tour_press(&t, TK_A, T0 + 20) == DS_SOUND_DENY && !strcmp(t.hint, "That's A. Try MENU+L2."),
+	   "another button: try MENU+L2");
+	ck(tour_press(&t, TK_R2, T0 + 25) == DS_SOUND_DENY && !strcmp(t.hint, "That's R2. Try MENU+L2."),
+	   "R2 too");
+	ck(tour_press(&t, TK_START, T0 + 30) == DS_SOUND_BACK && t.over, "START still skips");
+	tour_pose(&t, TOUR_LOCK, T0, 2000, -1, DEV(true));
+	ck(tour_press(&t, TK_LOCK, T0) == DS_SOUND_REWARD && t.done,
+	   "the chord, which the tutorial takes in place of the lock: the reward");
+	tour_pose(&t, TOUR_MENU, T0, 2000, -1, DEV(true));
+	ck(tour_press(&t, TK_LOCK, T0) == TOUR_QUIET && !t.wrong && !t.done,
+	   "the chord in another step is nothing, not a wrong press");
+	tour_pose(&t, TOUR_LOCK, T0, 500 + TOUR_LOCK_KEY_AT + 80, -1, DEV(true));
+	ck(tour_part_press(&t, TP_MENU, T0) > 0.5f && tour_part_press(&t, TP_L2, T0) > 0.5f,
+	   "its loop holds MENU over L2");
+	ck(tour_part_press(&t, TP_SELECT, T0) == 0.0f && tour_part_press(&t, TP_START, T0) == 0.0f,
+	   "and holds no SELECT and START: the unlock is a lesson of its own");
+
+	/* Unlock the Screen: SELECT and START held Hold to Unlock's time open
+	 * the stand-in lock (the Pixel 2 test of 1.1.1-test.3) */
+	tour_pose(&t, TOUR_UNLOCK, T0, 2000, -1, DEV(true));
+	ck(tour_step_info(TOUR_UNLOCK)->glyph == TG_KEYS &&
+	   !strcmp(tour_step_info(TOUR_UNLOCK)->label, "SELECT+START"),
+	   "Unlock the Screen's glyph is SELECT, a plus and START");
+	ck(!strcmp(tour_step_info(TOUR_UNLOCK)->line, "Hold SELECT and START 2 s to unlock."),
+	   "its line: Hold to Unlock's seconds");
+	ck(tour_press(&t, TK_START, T0) == TOUR_QUIET && !t.over && tour_press(&t, TK_SELECT, T0) == TOUR_QUIET,
+	   "START is half of its hold and skips nothing there, and SELECT is no wrong press");
+	ck(tour_press(&t, TK_A, T0 + 5) == DS_SOUND_DENY && !strcmp(t.hint, "That's A. Try SELECT+START."),
+	   "another button: try SELECT+START");
+	ck(tour_hold(&t, true, false, T0 + 10) == TOUR_QUIET && tour_unlock_fill(&t, T0 + 500) == 0.0f,
+	   "SELECT alone fills nothing");
+	ck(tour_hold(&t, true, true, T0 + 20) == TOUR_QUIET && near(tour_unlock_fill(&t, T0 + 1020), 0.5f),
+	   "both held: the bar fills in Hold to Unlock's time");
+	ck(tour_part_press(&t, TP_SELECT, T0 + 1020) == 0.0f || t.hand[TP_SELECT].held,
+	   "the loop leaves the keys to the player's hold");
+	ck(tour_hold(&t, true, true, T0 + 1500) == TOUR_QUIET && tour_hold(&t, false, true, T0 + 1600) == TOUR_QUIET &&
+	   tour_unlock_fill(&t, T0 + 1600) == 0.0f && !t.done,
+	   "let go too soon: the bar empties and it stays locked");
+	tour_hold(&t, true, true, T0 + 1700);
+	ck(tour_hold(&t, true, true, T0 + 3699) == TOUR_QUIET && !t.done &&
+	   tour_hold(&t, true, true, T0 + 3700) == DS_SOUND_REWARD && t.done,
+	   "held the whole 2 s: open, the reward");
+	ck(tour_unlock_fill(&t, T0 + 3800) == 1.0f && tour_press(&t, TK_START, T0 + 3800) == TOUR_QUIET && !t.over,
+	   "the bar full, and START still skips nothing in its reward");
+	tour_pose(&t, TOUR_UNLOCK, T0, 100, -1, DEV(true));
+	ck(tour_hold(&t, true, true, T0) == TOUR_QUIET && !t.unlock_from,
+	   "deaf for its first 250 ms, as every step");
+	tour_pose(&t, TOUR_SELECT, T0, 2000, -1, DEV(true));
+	ck(tour_hold(&t, true, true, T0) == TOUR_QUIET && tour_hold(&t, true, true, T0 + 5000) == TOUR_QUIET &&
+	   !t.done, "SELECT and START held in another step open nothing");
+	tour_pose(&t, TOUR_UNLOCK, T0, 500 + TOUR_UNLOCK_HOLD_AT + 300, -1, DEV(true));
+	ck(tour_part_press(&t, TP_SELECT, T0) > 0.5f && tour_part_press(&t, TP_START, T0) > 0.5f,
+	   "its loop holds SELECT and START");
+	tour_lock_hold(500);
+	ck(!strcmp(tour_step_info(TOUR_UNLOCK)->line, "Hold SELECT and START 0.5 s to unlock."),
+	   "half a second, as Hold to Unlock has it");
+	i18n_set(LANG_DE);
+	ck(strstr(tour_step_info(TOUR_UNLOCK)->line, "0,5") != NULL, "with a decimal comma in German");
+	i18n_set(LANG_EN);
+	tour_pose(&t, TOUR_UNLOCK, T0, 2000, -1, DEV(true));
+	tour_hold(&t, true, true, T0);
+	ck(tour_hold(&t, true, true, T0 + 500) == DS_SOUND_REWARD, "and opens in half a second");
+	tour_lock_hold(2000);
+
+	/* the button Hotkeys gives the lock, and its hold */
+	tour_menu_keys(IN_L1, IN_R2, "MENU+L1", "MENU+R2");
+	tour_lock_hold(3000);
+	ck(!strcmp(tour_step_info(TOUR_LOCK)->label, "MENU+R2") &&
+	   !strcmp(tour_step_info(TOUR_LOCK)->line, "Hold MENU, then press R2 to lock.") &&
+	   !strcmp(tour_step_info(TOUR_UNLOCK)->line, "Hold SELECT and START 3 s to unlock."),
+	   "the lock's button and hold as Hotkeys has them");
+	ck(!strcmp(tour_step_info(TOUR_MENU)->note, "MENU+L1 takes a screenshot."),
+	   "Settings' note says the screenshot, the lock being a lesson of its own");
+	tour_menu_word("FN");
+	ck(!strcmp(tour_step_info(TOUR_LOCK)->line, "Hold FN, then press R2 to lock.") &&
+	   !strcmp(tour_step_info(TOUR_QUIT)->line, "In a game, press FN, then X.") &&
+	   !strcmp(tour_step_info(TOUR_MENU)->note, "FN+L1 takes a screenshot."),
+	   "with the R36S's FN for MENU");
+	tour_menu_word("MENU");
+	tour_menu_keys(IN_L1, IN_L2, "MENU+L1", "MENU+L2");
+	tour_lock_hold(2000);
+}
+
 static void saved(void)
 {
 	char dir[] = "/tmp/zyperos-tour-check-XXXXXX", dev[64];
@@ -881,10 +1120,12 @@ int main(void)
 	hand();
 	keys();
 	buttons();
+	every_key();
 	hands();
 	zyper();
 	little();
 	copy();
+	menu_jobs();
 	saved();
 	if (fails) { printf("\n%d tour check(s) FAILED\n", fails); return 1; }
 	printf("ok: the tutorial's steps\n");

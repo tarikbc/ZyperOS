@@ -11,10 +11,13 @@
  * strip fills, the reward sound plays - and the next step comes on by itself.
  * START skips the rest at any point.
  *
- * Ten steps, one per thing to learn, in the order a player needs them: move,
- * open (A), back (B), details (X), favorite (Y, on the details since
+ * Thirteen steps, one per thing to learn, in the order a player needs them:
+ * move, open (A), back (B), details (X), favorite (Y, on the details since
  * 2026-11-08, when Y on the shelf became "from the start"), settings (MENU),
- * music (SELECT), volume, brightness and power. Each is a press, not a reading, so
+ * leaving a game (MENU, then X), locking the screen (MENU and L2; the Pixel 2
+ * test of 1.1.1-test.2) and opening it again (SELECT and START held; its
+ * test of 1.1.1-test.3: the lesson locked the real launcher, and taught no
+ * unlock of its own), music (SELECT), volume, brightness and power. Each is a press, not a reading, so
  * the minute it takes is spent with a thumb on the button rather than on a
  * page of text; MENU > Controls stays the list to look things up in. The
  * shoulders ride on two of them as a note, with no step of their own: L1/R1
@@ -61,7 +64,8 @@ typedef enum {
 	TOUR_LANG,
 	TOUR_WELCOME,
 	TOUR_MOVE, TOUR_A, TOUR_B, TOUR_X, TOUR_Y,
-	TOUR_MENU, TOUR_SELECT, TOUR_VOL, TOUR_BRIGHT, TOUR_POWER,
+	TOUR_MENU, TOUR_QUIT, TOUR_LOCK, TOUR_UNLOCK,
+	TOUR_SELECT, TOUR_VOL, TOUR_BRIGHT, TOUR_POWER,
 	TOUR_THEME, TOUR_HOME, TOUR_SOUNDS, TOUR_MUSIC,
 	TOUR_FINISH,
 	TOUR_STEPS
@@ -80,11 +84,13 @@ typedef enum {
 #define TOUR_LANGS        LANG_COUNT
 #define TOUR_LANG_STEP_MS 1000
 
-/* The ten steps that teach a button. */
+/* The thirteen steps that teach a button, or two pressed one after the
+ * other (Leave a Game, MENU then X), together (Lock the Screen, MENU and
+ * L2) or held together (Unlock the Screen, SELECT and START). */
 #define TOUR_FIRST_LESSON TOUR_MOVE
 #define TOUR_LESSONS      (TOUR_POWER - TOUR_MOVE + 1)
 
-/* The four that ask, after them. The progress strip counts both: 14, or 13
+/* The four that ask, after them. The progress strip counts both: 17, or 16
  * on a card with no menu music. */
 #define TOUR_FIRST_CHOICE TOUR_THEME
 #define TOUR_CHOICES      (TOUR_MUSIC - TOUR_THEME + 1)
@@ -110,6 +116,11 @@ typedef enum {
 	TK_VOL, TK_BRIGHT, TK_POWER,
 	/* The sticks' clicks, a wrong press in every step (the R36S's) */
 	TK_L3, TK_R3,
+	/* The lock's chord (MENU and its button, src/menukeys.h), which the
+	 * tutorial takes in place of the launcher's lock (mk_tour): the lock
+	 * lesson's press, and nothing in any other step. The lesson locks a
+	 * stand-in on its stage, never the handheld. */
+	TK_LOCK,
 	TK_KEYS
 } tour_key;
 
@@ -140,8 +151,10 @@ typedef enum {
 /* What a step's button is drawn as (DESIGN.md 11.9): a face, a pill, the
  * d-pad, the volume rocker, POWER, or the brightness chord, which is the
  * MENU pill, a plus and the rocker on the Pixel 2 and the F1 and F2 pills on
- * the Brick. */
-typedef enum { TG_FACE, TG_PILL, TG_DPAD, TG_ROCKER, TG_CHORD, TG_POWER } tour_glyph;
+ * the Brick; or two keys by name, "MENU, X" one after the other and
+ * "MENU+L2" together, each the handheld's own glyph with the sign between
+ * (TG_KEYS, the label). */
+typedef enum { TG_FACE, TG_PILL, TG_DPAD, TG_ROCKER, TG_CHORD, TG_POWER, TG_KEYS } tour_glyph;
 
 typedef enum { TC_OUT, TC_IN, TC_TURN, TC_FADE } tour_curve;
 
@@ -179,6 +192,51 @@ typedef struct {
 } tour_info;
 
 const tour_info *tour_step_info(tour_step s);
+
+/* Leave a Game's loop, ms into it: the game plays, MENU presses at
+ * TOUR_QUIT_MENU_AT and the in-game menu opens over it, X presses at
+ * TOUR_QUIT_X_AT and the menu closes as the game goes back into its card,
+ * held there until TOUR_QUIT_BACK_AT, when the game fades in again. */
+#define TOUR_QUIT_LOOP_MS  4200
+#define TOUR_QUIT_MENU_AT   600
+#define TOUR_QUIT_X_AT     1900
+#define TOUR_QUIT_BACK_AT  3700
+/* Leave a Game waits this long for X after the player's MENU: then the menu
+ * closes and the lesson starts over, MENU first (the Pixel 2 test of
+ * 1.1.1-test.3) */
+#define TOUR_QUIT_WAIT_MS  3000
+/* Lock the Screen's: MENU down at TOUR_LOCK_MENU_AT, its button at
+ * TOUR_LOCK_KEY_AT and the stage goes dark; the lock's panel shows at
+ * TOUR_LOCK_SHOW_AT, and the stage comes back at TOUR_LOCK_BACK_AT. */
+#define TOUR_LOCK_LOOP_MS  4000
+#define TOUR_LOCK_MENU_AT   450
+#define TOUR_LOCK_KEY_AT    700
+#define TOUR_LOCK_SHOW_AT  1300
+#define TOUR_LOCK_BACK_AT  3300
+/* Unlock the Screen's, on the stage the lock left dark with its panel:
+ * SELECT and START held from TOUR_UNLOCK_HOLD_AT fill the bar until
+ * TOUR_UNLOCK_OPEN_AT, the stage comes back, and goes dark again at
+ * TOUR_UNLOCK_DARK_AT. The player's own hold fills it in Hold to Unlock's
+ * time (tour_unlock_fill). */
+#define TOUR_UNLOCK_LOOP_MS  4000
+#define TOUR_UNLOCK_HOLD_AT   600
+#define TOUR_UNLOCK_OPEN_AT  2100
+#define TOUR_UNLOCK_DARK_AT  3400
+
+/* The glyph part a launcher button presses (TP_PARTS for none) */
+tour_part tour_part_of(in_button b);
+
+/* MENU's chords on every screen (src/menukeys.h), the MENU lesson's note:
+ * the screenshot's and the lock's buttons with MENU, IN_L1 and IN_L2 until
+ * the caller says others (MENU > System > Hotkeys), and their names as the
+ * note writes them ("MENU+L1"). The handheld lights MENU alone: lit with
+ * the shoulders it turned to show them and hid MENU's dots. */
+void tour_menu_keys(in_button shot, in_button lock, const char *shot_said, const char *lock_said);
+in_button tour_menu_key(int i);
+/* How long SELECT and START are held to unlock (MENU > System > Hotkeys'
+ * Hold to Unlock), for the unlock lesson's line and its hold; 2000 until
+ * the caller says */
+void tour_lock_hold(unsigned ms);
 
 /* The little shelf on the stage: five systems by their systems.cfg names
  * and accents, the third (SNES) the one in focus, which opens. Content, not
@@ -256,6 +314,9 @@ typedef struct {
 	 * the language step handed over to it, Zyper already there */
 	uint32_t  say_at;
 	struct { bool ever, held; uint32_t down_at, up_at; } hand[TP_PARTS];
+	/* The unlock lesson: since when SELECT and START have been held
+	 * together, 0 while they are not (tour_hold) */
+	uint32_t  unlock_from;
 } tour;
 
 /* The language that was on when the tutorial started, which the cursor
@@ -288,8 +349,20 @@ int tour_press(tour *t, tour_key k, uint32_t now);
  * with TK_POWER. The sounds they play go into `sounds`; returns how many. */
 int tour_buttons(tour *t, const bool pressed[IN_COUNT], uint32_t now, int sounds[IN_COUNT]);
 
-/* Once a frame: a reward that has held its time moves to the next step. */
+/* Once a frame: a reward that has held its time moves to the next step,
+ * and Leave a Game's menu, open TOUR_QUIT_WAIT_MS with no X, closes. */
 void tour_tick(tour *t, uint32_t now);
+
+/* Once a frame, SELECT and START as they are held (in_state's `down`): in
+ * the unlock lesson, held together for Hold to Unlock's time they open the
+ * stand-in lock, its press. The sound it plays, or TOUR_QUIET. */
+int tour_hold(tour *t, bool select, bool start, uint32_t now);
+/* How full the unlock lesson's bar is, 0 to 1: the player's hold, or 1 once
+ * it has opened */
+float tour_unlock_fill(const tour *t, uint32_t now);
+/* Whether Leave a Game has its MENU and waits for X: MENU's glyph carries
+ * the check, so the press is seen counted */
+bool tour_quit_menu_in(const tour *t);
 
 /* The settings as they are, as each choice's index (tour_choice_name), for
  * the choice steps to start on and a skip to go back to. Out of range is 0. */
@@ -378,6 +451,9 @@ void tour_pose_wrong(tour *t, tour_key k, uint32_t now, int ms);
 /* And, in a choice step, the focus moved to `pick` `ms` ago from the one it
  * started on. */
 void tour_pose_pick(tour *t, int pick, uint32_t now, int ms);
+/* And the player's first half `ms` ago: Leave a Game's MENU pressed (its
+ * check on, the menu open), Unlock the Screen's SELECT and START held. */
+void tour_pose_held(tour *t, uint32_t now, int ms);
 
 /* ---- the setting ------------------------------------------------------------- */
 

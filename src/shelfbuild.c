@@ -840,8 +840,14 @@ typedef struct {
 	unsigned short glen;        /* the game's part, the name's first glen bytes */
 	bool openbor;               /* in OpenBOR's folder, not Screenshots/ */
 	long when;
-	int owner, at;              /* its system, and its game in sys_games or -1 */
+	int owner, at;              /* its system (SHOT_LAUNCHER: the launcher's own,
+	                             * MENU+L1's), and its game in sys_games or -1 */
 } shot_found;
+
+/* A shot of the launcher's own screens (src/menukeys.h, MENU+L1), in
+ * Screenshots/ZyperOS: no system's. On the shelf its owner is the
+ * Screenshots group itself, ZyperOS's lime, and its name ZyperOS. */
+#define SHOT_LAUNCHER (-2)
 
 /* Whether the card had a shot at the last scan, on the shelf or not: Home
  * Systems' row for it (src/homesys_screen.c) */
@@ -973,6 +979,11 @@ static int shots_read(const app *a, shot_found **out, bool any)
 				if (hit->at < 0) hit->at = k;
 		}
 	}
+	/* The launcher's own screens, MENU+L1's (src/menukeys.h) */
+	if (!(any && n)) {
+		snprintf(dir, sizeof dir, "%s/%s/%s", P_CARD, SHOT_DIR, SHOT_LAUNCHER_DIR);
+		shots_read_dir(dir, false, SHOT_LAUNCHER, &f, &n, &cap, any);
+	}
 	*out = f;
 	return n;
 }
@@ -1007,9 +1018,18 @@ static void build_shots_shelf(app *a)
 	owner = calloc((size_t)n, sizeof *owner);
 	if (!items || !owner) { free(items); free(owner); free(f); return; }
 	for (i = 0; i < n; i++) {
-		const system_cfg *sc = &a->sys.systems[f[i].owner];
+		const system_cfg *sc = f[i].owner >= 0 ? &a->sys.systems[f[i].owner] : NULL;
 		game_entry *e = &items[i];
 
+		if (!sc) {
+			/* The launcher's own screen: ZyperOS's, by that name */
+			snprintf(e->name, sizeof e->name, "%s", SHOT_LAUNCHER_DIR);
+			snprintf(e->title, sizeof e->title, "%s", SHOT_LAUNCHER_DIR);
+			snprintf(e->file, sizeof e->file, "%s/%s/%s", SHOT_DIR, SHOT_LAUNCHER_DIR, f[i].file);
+			e->added = f[i].when;
+			owner[i] = f[i].owner;
+			continue;
+		}
 		if (f[i].at >= 0) {
 			const game_entry *g = &sys_games(&a->view[f[i].owner])->items[f[i].at];
 
@@ -1032,8 +1052,10 @@ static void build_shots_shelf(app *a)
 	at = fav > rec ? fav : rec;
 	at = (at > col ? at : col) + 1;
 	shelf_insert(a, at);
+	/* The launcher's own shots are the group's: its name and its lime */
 	for (i = 0; i < n; i++)
-		if (owner[i] >= at) owner[i]++;
+		if (owner[i] == SHOT_LAUNCHER) owner[i] = at;
+		else if (owner[i] >= at) owner[i]++;
 	if (!group_fill(a, at, T(S_LIBRARY_SCREENSHOTS), HOMESYS_SHOT, "SCREENSHOTS.png", items, owner, n))
 		return;
 	a->view[at].sort = sort_index("added");

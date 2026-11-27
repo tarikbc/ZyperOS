@@ -85,6 +85,9 @@ extern int shot_controls;
  * the capture screen waiting, 2 with SELECT and --hk-key K down; --hk-ask
  * 1 the swap question for K, 2 Reset Hotkeys', 3 Reset Game's */
 extern int shot_hotkeys, shot_hk_scope, shot_hk_capture, shot_hk_key;
+extern bool shot_glyph_warm;
+extern float shot_menu_lock;
+extern bool shot_menu_notice;
 extern bool shot_hk_game;
 extern int shot_hk_ask;
 extern int shot_sgdb;
@@ -130,6 +133,7 @@ extern int shot_tour_wrong_ms;
 extern int shot_tour_wrong;
 extern int shot_tour_pick_ms;
 extern int shot_tour_pick;
+extern int shot_tour_held;   /* --tour-held MS: Leave a Game's MENU, the unlock's hold */
 extern bool shot_tour_music;
 extern int shot_fn_volume;
 extern int shot_theme;

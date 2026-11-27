@@ -98,6 +98,8 @@ typedef struct diatom_session {
 	const char   *hotkeys;
 	/* RUN shots=: a screenshot's folder and name, "" for none */
 	const char   *shots;
+	/* RUN menukeys=: MENU's chords (chord.h, mchord), "" for none */
+	const char   *menukeys;
 } diatom_session;
 
 static bool game_msg(const diatom_msg *m);
@@ -2525,19 +2527,24 @@ static uint64_t g_power_calm_us;
 static chord    g_sel;
 static uint32_t g_sel_was, g_sel_pad, g_sel_live, g_sel_took;
 static unsigned g_sel_acts;
+/* MENU's chords (chord.h, mchord), judged at the same polls: the acts they
+ * made for the frame loop, and their keys as the launcher said them */
+static mchord   g_mc;
+static unsigned g_mc_acts;
 
 static uint32_t sel_poll(uint32_t pad, uint32_t pressed, uint32_t *give)
 {
 	const uint32_t view = chord_view(&g_sel, pad, g_sel_pad, pressed, g_sel_live);
 	chord_out o = chord_turn(&g_sel, view, g_sel_was,
 	                         diatom_port_now_us() / 1000, g_sel_live);
+	const uint32_t mine = mchord_poll(&g_mc, pad, pressed, &g_mc_acts);
 
 	g_sel_was = view;
 	g_sel_pad = pad;
 	g_sel_acts |= o.acts;
 	g_sel_took |= o.took;
-	*give = o.give;
-	return o.hide;
+	*give = o.give & ~mine;
+	return o.hide | mine;
 }
 
 /* SELECT's keys for each hotkey (chord.h): the shoulders' four unless the
@@ -2564,7 +2571,27 @@ static void sel_reset(uint32_t pad)
 	g_sel_was = g_sel_pad = pad;
 	g_sel_acts = 0;
 	g_sel_took = 0;
+	mchord_restart(&g_mc, pad);
+	g_mc_acts = 0;
 	diatom_env_poll_hook(sel_poll);
+}
+
+/* The launcher's MENU chords (RUN menukeys=): "" none, MENU's buttons the
+ * game's as ever */
+static void menukeys_set(const char *spec)
+{
+	int key[MCHORD_ACTS];
+
+	mchord_reset(&g_mc, g_sel_pad);
+	if (spec && spec[0]) {
+		if (mchord_keys_parse(spec, key)) {
+			mchord_set_keys(&g_mc, key);
+			printf("diatom: menu keys %s\n", spec);
+			fflush(stdout);
+		} else {
+			diatom_port_log(DIATOM_LOG_WARN, "menukeys: refused, none");
+		}
+	}
 }
 
 /* The launcher's keys: "" the shoulders' four. `say` answers HOTKEYS ok= */
@@ -2735,6 +2762,7 @@ static int run_session_inner(const diatom_session *sn)
 	g_speed_ix = 0;
 	g_sel_states = true;
 	hotkeys_set(sn->hotkeys, false);
+	menukeys_set(sn->menukeys);
 	snprintf(g_shots, sizeof g_shots, "%s", sn->shots ? sn->shots : "");
 	diatom_env_core_quit_reset();
 	g_audio_fast = false;
@@ -3535,8 +3563,9 @@ static int run_session_inner(const diatom_session *sn)
 		 * SELECT to its (sel_took). MENU+L1
 		 * switched the screens too, from before L2 did; it went on
 		 * 2026-11-06, L2 alone being the one way, and L1 under MENU
-		 * is the DS's own L again. The pointer goes to the core on its next
-		 * frame. */
+		 * was the DS's own L again until MENU's chords (mchord) took it
+		 * for the screenshot, where the launcher gives them. The pointer
+		 * goes to the core on its next frame. */
 		{
 			uint32_t sty_mask = 0;
 
@@ -3625,6 +3654,26 @@ static int run_session_inner(const diatom_session *sn)
 			 * Read every frame so `levels_moved` stays current. */
 			if (levels_moved() && (buttons & DIATOM_BIT(DIATOM_BTN_MENU)))
 				menu_chorded = true;
+		}
+
+		/* MENU's chords (chord.h, mchord), judged at the core's polls and
+		 * acted on here, after MENU's own press, so one made in the turn
+		 * MENU went down still leaves MENU opening nothing: the screenshot
+		 * as SELECT's (shot_take: its notice, its shutter), and the lock,
+		 * a pause as MENU's, for the launcher to lock the handheld over
+		 * the game and resume it (PAUSED for=lock) */
+		{
+			const unsigned mc = g_mc_acts;
+
+			g_mc_acts = 0;
+			if (mc) {
+				menu_chorded = true;
+				if (mc & (1u << MCHORD_SHOT)) shot_take();
+				if ((mc & (1u << MCHORD_LOCK)) && diatom_proto_active()) {
+					snprintf(g_pause_for, sizeof g_pause_for, "%s", "lock");
+					g_pause_requested = true;
+				}
+			}
 		}
 
 		/* MENU is Diatom's own key and the ports no longer act on it, because
@@ -4325,6 +4374,7 @@ int main(int argc, char **argv)
 			border_off();
 			sn.hotkeys = m.hotkeys;
 			sn.shots   = m.shots;
+			sn.menukeys = m.menukeys;
 			sn.mode   = start_mode;
 			sn.filter = start_filter;
 			sn.strength = start_strength;
