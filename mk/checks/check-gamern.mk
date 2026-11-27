@@ -3,4 +3,5 @@ CHECKS += check-gamern
 #| set and library rows, beside a `.gbc` that shares its save (copied, not moved); a `.cue` with
 #| its `.sbi`, a disc set's folder and a ScummVM folder; an EmulationStation folder whose pictures,
 #| video and `gamelist.xml` entry follow; a change of case; and the names, collisions, arcade sets
-#| and ports it refuses with nothing moved
+#| and ports it refuses with nothing moved; on those, the name shown only: no file touched, kept over
+#| a download of names and a rescan, cleared by an empty name, gone with the game

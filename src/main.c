@@ -7339,6 +7339,12 @@ int main(int argc, char *argv[])
 			if (i + 1 < argc && argv[i + 1][0] != '-') shot_kb_title = argv[++i];
 		}
 		else if (!strcmp(argv[i], "--kb-ss-user")) shot_kb_ss_user = 1;
+		else if (!strcmp(argv[i], "--kb-rename-shown")) {
+			shot_kb = 1;
+			shot_kb_rename_shown = 1;
+			shot_kb_text = "";
+			if (i + 1 < argc && !strcmp(argv[i + 1], "empty")) { shot_kb_rename_empty = 1; i++; }
+		}
 		/* --kbsel ROW COL puts the keyboard's selection on a key, so the
 		 * action row can be looked at selected key by key. */
 		else if (!strcmp(argv[i], "--kbsel") && i + 2 < argc) {

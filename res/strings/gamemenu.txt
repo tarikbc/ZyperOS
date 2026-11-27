@@ -203,7 +203,7 @@ ja = %s は他のゲームが必要とする BIOS です。削除しません。
 it = %s è un BIOS che serve ad altri giochi. Resta.
 
 [gamemenu.rename]
-note = The game info screen's row above Delete Game: a new name for the game's file and everything named after it, typed on the keyboard (DESIGN.md 11.41). Also the keyboard's title and the heading of its messages. tight: a row label beside no value
+note = The game info screen's row above Delete Game: a new name for the game's file and everything named after it, typed on the keyboard (DESIGN.md 11.41); on an arcade set or a port, the name shown only. Also the keyboard's title and the heading of its messages. tight: a row label beside no value
 en = Rename
 zh-Hans = 重命名
 es = Renombrar
@@ -256,6 +256,28 @@ fr = Renommé, mais certains de ses fichiers ont gardé l'ancien nom.
 de = Umbenannt, aber einige seiner Dateien haben noch den alten Namen.
 ja = 名前を変更しましたが、一部のファイルは古い名前のままです。
 it = Rinominato, ma alcuni suoi file hanno ancora il vecchio nome.
+
+[gamemenu.rename_shown]
+note = The keyboard's title for Rename on a game whose file must keep its name (an arcade set, a Neo Geo set, a port): only the name ZyperOS shows changes (DESIGN.md 11.41). Also the heading of its messages. tight: a panel heading
+en = Rename Shown Name
+zh-Hans = 重命名显示名称
+es = Renombrar nombre mostrado
+pt-BR = Renomear nome exibido
+fr = Renommer le nom affiché
+de = Angezeigten Namen ändern
+ja = 表示名を変更
+it = Rinomina nome mostrato
+
+[gamemenu.rename_shown_note]
+note = On that keyboard, the words that lead its bottom line, before the cursor and cancel hints and in their style (lower case where the hints are): the game's file is not renamed. The way back (an empty field gives the original name) is shown by the original name dimmed in the empty field, so it needs no words here. tight: beside the two hints on one line, about 220 units in Japanese and 270 in German
+en = file keeps its name
+zh-Hans = 文件名不变
+es = archivo intacto
+pt-BR = arquivo intacto
+fr = fichier inchangé
+de = Datei bleibt
+ja = ファイル不変
+it = file invariato
 
 # ---- the in-game menu -------------------------------------------------------
 

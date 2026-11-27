@@ -72,6 +72,9 @@ static void gi_gather(app *a, int owner, const game_entry *g, game_info *gi)
 
 		lib_file_shown(g->file, g->dir, hooked, gi->file, sizeof gi->file);
 		if (discs > 1) snprintf(gi->discs, sizeof gi->discs, "%d", discs);
+		/* A game whose file keeps its name has Rename for the name shown
+		 * (src/gamern.h), when there is a file on the card */
+		if (!is_mp4(s) && gr_shown_only(s->core, g->file, g->dir)) gi->can_rename = true;
 	}
 	/* Collections take every game a favorite can be (src/collect.h) */
 	gi->can_collect = gi->can_favorite && s->folder[0];

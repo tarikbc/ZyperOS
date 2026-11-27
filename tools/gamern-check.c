@@ -13,6 +13,11 @@
  * another file, an arcade set, a BIOS set and a port. A change of case is a
  * rename even where the file system ignores case.
  *
+ * On those last three only the name shown changes (gr_shown_set): their
+ * files stay, a download of names keeps the player's name, a rescan shows
+ * it, an empty name (or the name it had, typed) gives the one before back,
+ * and it goes with the game deleted, or with a file renamed.
+ *
  * In a folder of games (game_entry.dir): the folder stays and only the
  * game's own part takes the name, its file or its disc folder; what its
  * format keeps beside it is looked for in that folder of games; a name
@@ -285,6 +290,101 @@ int main(void)
 	put("Roms/Ports/Celeste.sh", "#!/bin/sh");
 	CHECK(!rename_game(&PRT, "Celeste.sh", "Celeste 2", &why, &done) && why == GR_KEEPS_NAME);
 	CHECK(there("Roms/Arcade/mslug.zip") && there("Roms/Ports/Celeste.sh"));
+
+	printf("the name shown, for a game whose file keeps its name:\n");
+	{
+		char o[256], shown[LIB_NAME];
+		game_meta dl = { 0 }, got;
+		game_list l = { 0 };
+		int k;
+
+		/* The rule: which games rename their file, which only the name */
+		CHECK(gr_shown_only("fbneo", "mslug.zip", 0) && gr_shown_only("mame2003_plus", "galaga.zip", 0) &&
+		      gr_shown_only("port", "Celeste.sh", 0) && gr_shown_only("flycast2021", "ikaruga.zip", 0) &&
+		      gr_shown_only("flycast2021", "NAOMI/ikaruga.zip", 5) && gr_shown_only("mgba", "neogeo.zip", 0));
+		CHECK(!gr_shown_only("mgba", "Tetris (World).gb", 0) && !gr_shown_only("flycast2021", "Crazy Taxi.chd", 0) &&
+		      !gr_shown_only("flycast2021", "Crazy Taxi/ct.zip", 0) && !gr_shown_only("pcsx_rearmed", "Crash (USA).cue", 0));
+		for (k = 0; k < 2; k++) {        /* every game is one or the other */
+			const char *f = k ? "galaga.zip" : "Tetris (World).gb", *c = k ? "mame" : "mgba";
+
+			CHECK(gr_renames(c, f, 0) != gr_shown_only(c, f, 0));
+		}
+		CHECK(!gr_shown_only("fbneo", "../x.zip", 2) && !gr_shown_only("fbneo", "", 0) &&
+		      !gr_shown_only(NULL, "mslug.zip", 0));
+		/* A shown name is a title: what a file's name cannot hold is fine */
+		CHECK(gr_shown_ok("  Metal Slug:  Super Vehicle-001/2 ", o, sizeof o) &&
+		      !strcmp(o, "Metal Slug: Super Vehicle-001/2"));
+		CHECK(gr_shown_ok("", o, sizeof o) && !o[0] && gr_shown_ok("   ", o, sizeof o) && !o[0]);
+		CHECK(!gr_shown_ok("bad \xc3", o, sizeof o));
+
+		/* Named: the file and everything by its name stay; no games row */
+		put("Saves/mslug.srm", "save");
+		put("Roms/Arcade/.media/mslug.png", "png");
+		CHECK(gr_shown_set("Arcade", "mslug.zip", "mslug", "Metal Slug") == GR_OK);
+		lib_display_title(db_lib(), "Arcade", "mslug.zip", "mslug", shown, sizeof shown);
+		CHECK(!strcmp(shown, "Metal Slug"));
+		CHECK(there("Roms/Arcade/mslug.zip") && !there("Roms/Arcade/Metal Slug.zip") &&
+		      there("Saves/mslug.srm") && there("Roms/Arcade/.media/mslug.png"));
+		CHECK(!db_game_get(db_lib(), "Arcade", "mslug.zip", &got) &&
+		      !db_game_title(db_lib(), "Arcade", "mslug.zip", o, sizeof o));
+		CHECK(gr_shown_set("Arcade", "mslug.zip", "mslug", " Metal  Slug ") == GR_SAME);
+		/* The shelf, read again: the scan's names are the player's first */
+		lib_scan(roms, "Arcade", ARC.exts, &l);
+		for (k = 0; k < l.count; k++)
+			if (!strcmp(l.items[k].file, "mslug.zip")) CHECK(!strcmp(l.items[k].title, "Metal Slug"));
+			else if (!strcmp(l.items[k].file, "neogeo.zip")) CHECK(!strcmp(l.items[k].title, "neogeo"));
+		CHECK(l.count == 2);
+		lib_free(&l);
+
+		/* A download of names (db_game_set) writes the title, not the
+		 * player's name: the player's is still the one shown */
+		snprintf(dl.title, sizeof dl.title, "Metal Slug - Super Vehicle-001");
+		snprintf(dl.year, sizeof dl.year, "1996");
+		CHECK(db_game_set(db_lib(), "Arcade", "mslug.zip", &dl));
+		lib_display_title(db_lib(), "Arcade", "mslug.zip", "mslug", shown, sizeof shown);
+		CHECK(!strcmp(shown, "Metal Slug"));
+		CHECK(db_game_title(db_lib(), "Arcade", "mslug.zip", o, sizeof o) &&
+		      !strcmp(o, "Metal Slug - Super Vehicle-001"));
+		lib_scan(roms, "Arcade", ARC.exts, &l);
+		for (k = 0; k < l.count; k++)
+			if (!strcmp(l.items[k].file, "mslug.zip")) CHECK(!strcmp(l.items[k].title, "Metal Slug"));
+		lib_free(&l);
+
+		/* Back: an empty name, the downloaded title shown again */
+		CHECK(gr_shown_set("Arcade", "mslug.zip", "mslug", "") == GR_OK);
+		CHECK(!db_user_title(db_lib(), "Arcade", "mslug.zip", o, sizeof o));
+		lib_display_title(db_lib(), "Arcade", "mslug.zip", "mslug", shown, sizeof shown);
+		CHECK(!strcmp(shown, "Metal Slug - Super Vehicle-001"));
+		CHECK(gr_shown_set("Arcade", "mslug.zip", "mslug", "") == GR_SAME);
+		/* ...or that name typed: nothing of the player's kept */
+		CHECK(gr_shown_set("Arcade", "mslug.zip", "mslug", "MS") == GR_OK);
+		CHECK(gr_shown_set("Arcade", "mslug.zip", "mslug", "Metal Slug - Super Vehicle-001") == GR_OK);
+		CHECK(!db_user_title(db_lib(), "Arcade", "mslug.zip", o, sizeof o));
+
+		/* A port: its script keeps its name; back is the file's name */
+		CHECK(gr_shown_set("Ports", "Celeste.sh", "Celeste", "Celeste Classic") == GR_OK);
+		lib_display_title(db_lib(), "Ports", "Celeste.sh", "Celeste", shown, sizeof shown);
+		CHECK(!strcmp(shown, "Celeste Classic") && there("Roms/Ports/Celeste.sh"));
+		CHECK(gr_shown_set("Ports", "Celeste.sh", "Celeste", "Celeste") == GR_OK);
+		lib_display_title(db_lib(), "Ports", "Celeste.sh", "Celeste", shown, sizeof shown);
+		CHECK(!strcmp(shown, "Celeste") && !db_user_title(db_lib(), "Ports", "Celeste.sh", o, sizeof o));
+
+		/* Deleted (Delete Game's library rows, gd_forget): the name goes */
+		CHECK(gr_shown_set("Ports", "Celeste.sh", "Celeste", "Celeste Classic") == GR_OK);
+		gd_forget("Ports", "PRT", "Celeste.sh");
+		CHECK(!db_user_title(db_lib(), "Ports", "Celeste.sh", o, sizeof o));
+		lib_display_title(db_lib(), "Ports", "Celeste.sh", "Celeste", shown, sizeof shown);
+		CHECK(!strcmp(shown, "Celeste"));
+		/* A file renamed shows its new name, whatever name was kept */
+		CHECK(db_user_title_set(db_lib(), "Game Boy", "Tetris DX Test.gb", "Kept"));
+		CHECK(db_user_title_set(db_lib(), "Game Boy", "Tetris DX Redux.gb", "Stale"));
+		CHECK(rename_game(&GB, "Tetris DX Test.gb", "Tetris DX Redux", &why, &done) && why == GR_OK);
+		CHECK(!db_user_title(db_lib(), "Game Boy", "Tetris DX Test.gb", o, sizeof o) &&
+		      !db_user_title(db_lib(), "Game Boy", "Tetris DX Redux.gb", o, sizeof o));
+		lib_display_title(db_lib(), "Game Boy", "Tetris DX Redux.gb", "Tetris DX Redux", shown, sizeof shown);
+		CHECK(!strcmp(shown, "Tetris DX Redux"));
+		CHECK(rename_game(&GB, "Tetris DX Redux.gb", "Tetris DX Test", &why, &done) && why == GR_OK);
+	}
 
 	printf("a change of case:\n");
 	CHECK(rename_game(&GB, "Tetris DX Test.gb", "TETRIS DX TEST", &why, &done) && why == GR_OK && !done.failed);

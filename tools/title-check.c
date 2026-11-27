@@ -126,6 +126,11 @@ static void upgrade(void)
 		CHECK(!got.title[0] && !strcmp(got.synopsis, "Old prose") && !strcmp(got.year, "1991"));
 		CHECK(db_has(d, "favorite.NES.old.zip") && db_has(d, "sess.1.1.NES\told.zip"));
 		CHECK(!db_game_title(d, "NES", "old.zip", title, sizeof title) && !title[0]);
+		/* The player's names' table, made on the old card: none yet, then
+		 * one, which the next open still has (src/gamern.h, gr_shown_set) */
+		CHECK(!db_user_title(d, "NES", "old.zip", title, sizeof title) == !pass);
+		if (!pass) CHECK(db_user_title_set(d, "NES", "old.zip", "Player's Name"));
+		CHECK(db_user_title(d, "NES", "old.zip", title, sizeof title) && !strcmp(title, "Player's Name"));
 		db_close(d);
 	}
 	CHECK(sqlite3_open(libpath, &raw) == SQLITE_OK);
@@ -136,6 +141,10 @@ static void upgrade(void)
 	strcpy(m.title, "日本語 é 🚀 (Special)"); strcpy(m.year, "2000");
 	CHECK(db_game_set(d, "NES", "old.zip", &m)); db_close(d);
 	d = db_open(libpath, DB_LIBRARY);
+	CHECK(db_game_get(d, "NES", "old.zip", &got) && !strcmp(got.title, m.title));
+	/* A download's title beside the player's name: each kept, the player's shown */
+	CHECK(db_user_title(d, "NES", "old.zip", title, sizeof title) && !strcmp(title, "Player's Name"));
+	CHECK(db_user_title_set(d, "NES", "old.zip", NULL) && !db_user_title(d, "NES", "old.zip", title, sizeof title));
 	CHECK(db_game_get(d, "NES", "old.zip", &got) && !strcmp(got.title, m.title));
 	CHECK(db_game_title(d, "NES", "old.zip", small, sizeof small) && !strcmp(small, "日"));
 	m.title[0] = '\0'; strcpy(m.synopsis, "Updated prose");
