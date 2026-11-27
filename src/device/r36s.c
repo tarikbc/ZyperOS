@@ -13,7 +13,10 @@
  *   jack line read "plugged" with nothing in it and with headphones
  *   (Sylver, 2026-11-26), so the volume keeps the speaker's window and the
  *   status bar shows no headphones. Neither ROCKNIX's R36S nor ArkOS nor
- *   dArkOSRE reads the line either.
+ *   dArkOSRE reads the line either;
+ * - its charging also from the battery's own "Charging" (RK_DC_CHARGING):
+ *   its DC port is watched by a GPIO of its own in its stock tree, which
+ *   mainline's charger does not read.
  *
  * Its panel scans 640x480 as it is seen, so pixel2.c's turn, which follows
  * the panel's mode, is none here. Nothing in this file was run on an R36S
@@ -28,5 +31,6 @@
 #define RK_L2R2_TAPS     0
 #define RK_STICKS        1
 #define RK_JACK          0
+#define RK_DC_CHARGING   1
 
 #include "pixel2.c"

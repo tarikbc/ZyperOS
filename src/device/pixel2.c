@@ -64,6 +64,16 @@
 #ifndef RK_JACK
 #define RK_JACK          1
 #endif
+/* Whether the battery's own "Charging" also says the handheld is on its
+ * charger when the RK817's input says it is not (RK_DC_CHARGING 1): the
+ * R36S charges from a DC port its stock device tree watches on a GPIO of
+ * its own (the BSP charger's dc_det_gpio, gpio0 PB3), which mainline's
+ * rk817_charger does not read, and its charging showed nowhere (Sylver,
+ * 2026-11-27). "Charging" is the charger at work with the current into the
+ * battery, so it never says so off the cable. */
+#ifndef RK_DC_CHARGING
+#define RK_DC_CHARGING   0
+#endif
 
 #include <dirent.h>
 #include <errno.h>
@@ -2360,6 +2370,7 @@ bool plat_charge_read(ch_reading *r)
 		r->full = !strncmp(st, "Full", 4);
 		/* plastron's rk817 says so while the charge limit holds it */
 		r->held = r->online && !strncmp(st, "Not charging", 12);
+		if (RK_DC_CHARGING && !r->online && !strncmp(st, "Charging", 8)) r->online = true;
 	}
 	r->kind = r->online ? charge_kind() : CH_UNKNOWN;
 	return true;
@@ -2423,6 +2434,15 @@ const char *plat_battery_info_path(void)
 	return dir && *dir ? dir : "/sys/class/power_supply/battery";
 }
 
+/* The battery's status reads "Charging" (RK_DC_CHARGING) */
+static bool battery_charging(void)
+{
+	char st[16] = "";
+
+	return file_head("/sys/class/power_supply/battery/status", st, sizeof st) > 0 &&
+	       !strncmp(st, "Charging", 8);
+}
+
 bool plat_battery(int *pct, bool *charging)
 {
 	int fake = read_int("/tmp/zyperos_fake_batt");
@@ -2445,6 +2465,7 @@ bool plat_battery(int *pct, bool *charging)
 		 * and Auto Off powered a plugged-in device down, twice on
 		 * 2026-11-04. */
 		v = read_int("/sys/class/power_supply/rk817-charger/online");
+		if (RK_DC_CHARGING && v == 0 && battery_charging()) v = 1;
 		if (v == 0 || v == 1) {
 			*charging = charging_from(v, NULL);
 			return true;
