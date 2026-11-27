@@ -18,6 +18,7 @@
 #include "levels.h"
 
 #include <SDL.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -169,6 +170,24 @@ static int up_note_lines(TTF_Font *fs, const char *const *notes, int nnotes,
 	return n;
 }
 
+/* What the points' lines are made from: their words and the face (FNV-1a) */
+static unsigned up_notes_key(TTF_Font *f, const char *const *notes, int nnotes)
+{
+	unsigned h = 2166136261u;
+	uintptr_t fp = (uintptr_t)f;
+	int i;
+
+	for (i = 0; i < (int)sizeof fp; i++) h = (h ^ (unsigned char)(fp >> (8 * i))) * 16777619u;
+	h = (h ^ (unsigned)TTF_FontHeight(f)) * 16777619u;
+	for (i = 0; i < nnotes; i++) {
+		const unsigned char *c = (const unsigned char *)notes[i];
+
+		while (*c) h = (h ^ *c++) * 16777619u;
+		h = (h ^ 0xffu) * 16777619u;      /* where one point ends */
+	}
+	return h;
+}
+
 void update_page_draw(app *a, const char *heading, const su_page *p,
                              const char *const *notes, int nnotes, SDL_Texture *icon)
 {
@@ -177,7 +196,6 @@ void update_page_draw(app *a, const char *heading, const su_page *p,
 	TTF_Font *ft = ui_font(UI_F_TITLE), *fl = ui_font(UI_F_LABEL),
 	         *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
 	SDL_Color warn = ui_col(thm->warning, 255);
-	char buf[160];
 	int x, i, w, y;
 	static ds_flex F;
 	SDL_Rect hb, tb, nb, bb, kb;
@@ -253,26 +271,36 @@ void update_page_draw(app *a, const char *heading, const su_page *p,
 	if (p->notes && !p->warn[0] && nnotes > 0) {
 		static char buf[UP_NOTES * UP_NOTE_LINES][LB_LINE];
 		static up_note_line ln[UP_NOTES * UP_NOTE_LINES];
+		static int at[UP_NOTES * UP_NOTE_LINES], n;
+		static unsigned laid;
 		/* Down to the bar's room, or to the buttons' when there is no bar
 		 * and no line where it goes */
 		int note_end = p->bar || p->line[0] ? nb.y + nb.h - UP_LINE_IN : bb.y + bb.h - 56;
 		/* Under a two-line sub, a little lower, so the two read apart */
 		int top = nb.y + UP_LINE_IN + (sub_lines > 1 ? UP_NOTE_GAP : 0);
-		int n = up_note_lines(fs, notes, nnotes, buf, ln, UP_NOTES * UP_NOTE_LINES), fits, k;
+		unsigned key = up_notes_key(fs, notes, nnotes);
+		int fits, k;
 
 		/* Each point drawn whole, in pieces when it wraps */
 		for (k = 0; k < nnotes; k++) ui_fit_drawn(notes[k]);
 
-		/* Each line's place from the first point's top, the air before
-		 * each point after the first counted; the scroll held to what
-		 * shows the last line */
-		static int at[UP_NOTES * UP_NOTE_LINES];
-
-		for (k = 0, y = 0; k < n; k++) {
-			if (k > 0 && ln[k].first) y += UP_NOTE_GAP;
-			at[k] = y;
-			y += UP_NOTE_STEP;
+		/* The points filled onto lines once, and again only when their
+		 * words or the face change. Filled every frame, it measured each
+		 * line a word at a time, about 550 widths a frame, too many for
+		 * ui_text_width's memo: 39 ms a frame on a Mac, and on the Pixel 2
+		 * What's New scrolled in steps while an update downloaded
+		 * (2026-11-22). Each line's place from the first point's top, the
+		 * air before each point after the first counted. */
+		if (key != laid || !n) {
+			n = up_note_lines(fs, notes, nnotes, buf, ln, UP_NOTES * UP_NOTE_LINES);
+			for (k = 0, y = 0; k < n; k++) {
+				if (k > 0 && ln[k].first) y += UP_NOTE_GAP;
+				at[k] = y;
+				y += UP_NOTE_STEP;
+			}
+			laid = key;
 		}
+		/* The scroll held to what shows the last line */
 		for (fits = 0; fits < n && at[n - 1] - at[fits] > note_end - top; fits++) {}
 		if (g_up_scroll > fits) g_up_scroll = fits;
 		if (g_up_scroll < 0) g_up_scroll = 0;
