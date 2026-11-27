@@ -248,4 +248,10 @@ bool mp4c_cover_take(char *base, size_t bn, char *file, size_t fn);
 bool mp4c_artist_ask(const char *dir);
 bool mp4c_artist_take(char *dir, size_t dn, char *name, size_t nn);
 
+/* Ask how long the tracks in `dir` (relative to the music root) play, for
+ * the tape's number (src/mp4d/tags.h); the answer, in seconds, collected
+ * with mp4c_length_take, `dir` as it was asked */
+bool mp4c_length_ask(const char *dir);
+bool mp4c_length_take(char *dir, size_t dn, double *s);
+
 #endif

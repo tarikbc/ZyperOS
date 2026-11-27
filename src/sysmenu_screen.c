@@ -519,6 +519,21 @@ static void smm_look_preview(void *app_, int k, int x, int y, int w, int h)
 	ds_preview_screen_end(a->r, &screen);
 }
 
+/* Tape Style's list (src/mp4look.h): the kept styles in their order, each
+ * its name and what it is, its picture the Cassette look playing in it */
+static mp4t_id g_tape_at[MP4T_COUNT];
+static int g_tape_n;
+
+static void smm_tape_preview(void *app_, int k, int x, int y, int w, int h)
+{
+	app *a = app_;
+	const SDL_Rect screen = { x, y, w, h };
+	const SDL_Rect in = ds_preview_screen_begin(a->r, &screen);
+
+	npl_preview_tape(a, k >= 0 && k < g_tape_n ? g_tape_at[k] : MP4T_DEFAULT, in.x, in.y, in.w, in.h);
+	ds_preview_screen_end(a->r, &screen);
+}
+
 /* MP4's Repeat, videos' own mode (src/sys_menu.h): its values in the row's
  * order, Off first, which is how videos played before it */
 static const muq_mode REPEAT_MODE[3] = { MUQ_IN_ORDER, MUQ_REPEAT_ONE, MUQ_REPEAT_ALL };
@@ -554,7 +569,7 @@ static void pm_rumble_focus(void *app_, int k)
  * the thirteenth, and Card Picture's list said Border's Off and Blur
  * (1.1.0's test run). A new list takes a new name here. */
 enum {
-	PS_SHOW, PS_MSORT, PS_MVIEW, PS_LOOK, PS_REPEAT,   /* MP4's shelf */
+	PS_SHOW, PS_MSORT, PS_MVIEW, PS_LOOK, PS_TAPE, PS_REPEAT,   /* MP4's shelf */
 	PS_PICTURE,                     /* Recents' Card Picture */
 	PS_CORE, PS_DSLANG, PS_SGB, PS_PACE, PS_SORT, PS_CSORT, PS_SSORT, PS_DISPLAY, PS_BORDER, PS_BORDER_COLOR,
 	PS_SHADER, PS_STRENGTH, PS_VIEW,
@@ -628,6 +643,22 @@ static void menu_choices(app *a, int sys, bool games)
 				g_smm_choice[SMM_LOOK].notes = notes;
 				g_smm_choice[SMM_LOOK].preview = smm_look_preview;
 				g_smm_choice[SMM_LOOK].list = true;
+			}
+			{
+				static const char *notes[MP4T_COUNT];
+				int t;
+
+				for (t = 0, g_tape_n = 0, cur = 0; t < MP4T_COUNT; t++) {
+					if (!mp4t_kept((mp4t_id)t)) continue;
+					if ((mp4t_id)t == np_tape()) cur = g_tape_n;
+					g_tape_at[g_tape_n] = (mp4t_id)t;
+					P[PS_TAPE].lab[g_tape_n] = tape_style_name((mp4t_id)t);
+					notes[g_tape_n++] = tape_style_note((mp4t_id)t);
+				}
+				g_smm_choice[SMM_TAPE] = ch_make(&P[PS_TAPE], g_tape_n, cur, false);
+				g_smm_choice[SMM_TAPE].notes = notes;
+				g_smm_choice[SMM_TAPE].preview = smm_tape_preview;
+				g_smm_choice[SMM_TAPE].list = true;
 			}
 			for (i = 0; i < 3; i++) P[PS_REPEAT].lab[i] = T(REPEAT_TEXT[i]);
 			g_smm_choice[SMM_REPEAT] = ch_make(&P[PS_REPEAT], 3, repeat_at(), false);
@@ -965,6 +996,8 @@ int menu_build(app *a, screen_id screen, int sys,
 		u.mp4_both  = u.mp4 && mp4_kinds() > 1;
 		u.mp4_playing = u.mp4 && lock_allowed();
 		u.mp4_look  = u.mp4 ? look_label(np_look()) : NULL;
+		u.mp4_tape  = u.mp4 ? tape_style_name(np_tape()) : NULL;
+		u.mp4_tape_live = u.mp4 && np_look() == MP4L_CASSETTE;
 		u.mp4_repeat = u.mp4 ? T(REPEAT_TEXT[repeat_at()]) : NULL;
 		u.eq         = eq_preset_name(eq_preset_get(eq_out_now()));
 		u.sort       = u.mp4 ? ml_order_label_kind((ml_order)a->view[sys].sort, mp4_kind_shown())
@@ -2247,6 +2280,14 @@ menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 				 * list, the picture the look under the cursor
 				 * (menu_choose) */
 				if (d) np_look_set((mp4l_id)((np_look() + d + MP4L_COUNT) % MP4L_COUNT));
+				return MENU_STAY;
+			} else if (id == SMM_TAPE) {
+				/* Round the kept styles either way, kept at once; A opens
+				 * their list, the picture the tape under the cursor
+				 * (menu_choose). Only while the look is Cassette: the row
+				 * is dim otherwise and says no. */
+				if (np_look() != MP4L_CASSETTE) return MENU_STAY;
+				if (d) np_tape_set(mp4t_step(np_tape(), d));
 				return MENU_STAY;
 			} else if (id == SMM_SHOW) {
 				/* All, then the kinds the card has, round in either

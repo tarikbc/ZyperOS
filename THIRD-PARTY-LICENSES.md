@@ -224,6 +224,14 @@ logo or any brand's art, under ZyperOS's own license.
   of GB 2312 or of JIS X 0208's kanji. The UI's faces in 简体中文 and
   日本語, Lexend having neither, and the faces of Chinese or Japanese text
   in any language.
+- `res/fonts/hand.ttf` - **Caveat** SemiBold, by Impallari Type and The
+  Caveat Project Authors (https://github.com/googlefonts/caveat), from
+  Google Fonts (google/fonts at 82823f5, `ofl/caveat/Caveat[wght].ttf`),
+  SIL Open Font License 1.1; full text in `LICENSES/OFL-Caveat.txt`, which
+  goes on the card's `Licenses/` beside it. tools/handfont.py makes the
+  static SemiBold (600) instance of the variable font and names it so; no
+  glyph is changed. The handwriting on MP4's tape labels (DESIGN.md 4 and
+  11.64).
 - `src/third_party/minimp3.h` - **minimp3**, an MP3 decoder by Lion (lieff)
   and its contributors (https://github.com/lieff/minimp3 at ea99364), CC0 1.0
   public domain dedication (`src/third_party/minimp3-LICENSE.txt`); and

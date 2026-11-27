@@ -2,7 +2,7 @@
 #ifndef ZYPEROS_LOOKART_H
 #define ZYPEROS_LOOKART_H
 
-/* The Player Looks' drawings made once (src/cassette.c, src/vinyl.c): a
+/* The Player Looks' drawings made once (src/vinyl.c): a
  * canvas of straight-alpha floats on the CPU, each shape painted over the
  * last as a signed distance (src/ds/sdf.h) with a one-unit soft edge, then
  * made a texture. Drawn when a theme or an album changes, never a frame. */

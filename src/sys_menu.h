@@ -271,12 +271,16 @@ int sys_menu_coll_rows(bool inside, sm_coll_row *out);
  * Equalizer, over Lock Screen on every kind: the same row and page as
  * MENU's, there while music or a video plays (2026-11-19).
  *
+ * Tape Style, under Player Look wherever it is: the Cassette look's tape
+ * (src/mp4look.h, Pinstripe by default), live only while the look is Cassette
+ * (my pick in the Tape Styles lab, 2026-11-23).
+ *
  * View, under Sort By on every kind: the shelf's Covers, Grid or List, as a
  * system's View row, START's turn of it on the shelf (DESIGN.md 11.67); no
  * Video, which plays a game's snap. */
 typedef enum { SMM_COUNT, SMM_SHOW, SMM_SORT, SMM_SHUFFLE, SMM_LOOK, SMM_EQ, SMM_LOCK, SMM_ART,
-               SMM_RESCAN, SMM_QUIT, SMM_REPEAT, SMM_VIEW } sm_mp4_row;
-#define SM_MP4_ROWS 12
+               SMM_RESCAN, SMM_QUIT, SMM_REPEAT, SMM_VIEW, SMM_TAPE } sm_mp4_row;
+#define SM_MP4_ROWS 13
 
 /* MP4's rows in order, for the kind its shelf shows - 0 music, 1 books,
  * 2 videos, mp4lib.h's ml_kind, and 3 all of them with music among them
@@ -361,6 +365,8 @@ typedef struct {
 	bool mp4_both;          /* and the card has more than one kind */
 	bool mp4_playing;       /* and music is playing, so it can lock */
 	const char *mp4_look;   /* Player Look's value: the look that is on */
+	const char *mp4_tape;   /* Tape Style's value: the style that is on */
+	bool mp4_tape_live;     /* and the look is Cassette, so it does something */
 	const char *mp4_repeat; /* videos' Repeat, as its row says it */
 
 	/* What the device HAS, rather than what state it is in. A radio that is

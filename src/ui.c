@@ -429,6 +429,7 @@ static void digits_free(void);
 static void kin_free(void);
 static void button_fonts_free(void);
 static void bakes_free(void);
+static void hands_free(void);
 
 void ui_quit(void)
 {
@@ -459,6 +460,7 @@ void ui_quit(void)
 	fonts = font_sets[SET_LATIN];
 	if (f_mark) { ui_face_close(f_mark); f_mark = NULL; }
 	kin_free();
+	hands_free();
 	if (face_lock) SDL_LockMutex(face_lock);
 	TTF_Quit();
 	if (face_lock) SDL_UnlockMutex(face_lock);
@@ -868,6 +870,267 @@ static TTF_Font *face_for(TTF_Font *f, const char *s)
 	return f;
 }
 
+/* ---- the handwriting (MP4's tape labels, DESIGN.md 4) ------------------------
+ *
+ * Caveat SemiBold (res/fonts/hand.ttf), opened at a size for the label,
+ * with a fallback for the characters it has not: a line in it is drawn run
+ * by run, each run of characters Caveat lacks in Lexend at the size whose
+ * x-height meets Caveat's, or where it is Chinese or Japanese in Noto (the
+ * set that is on first, then Japanese's where the line has kana, Chinese's
+ * where not), every run on Caveat's baseline. So a song in Cyrillic is
+ * handwritten (Caveat has it), and one in Chinese, Japanese or Greek is
+ * itself and never boxes. Opened outside ui_face_open's records, so the
+ * line is never handed to one face whole (face_for). */
+#define HAND_N 6
+/* Lexend's size for a hand of `pt`: their x-heights, 525 and 400 of an em */
+#define HAND_LEX_K 0.76f
+
+static struct {
+	TTF_Font *f, *lex, *cjk[SETS];
+	int pt;
+	bool bold, cjk_tried[SETS];
+} hands[HAND_N];
+
+TTF_Font *ui_hand_face(int pt, bool bold)
+{
+	char path[512];
+	int i;
+
+	for (i = 0; i < HAND_N && hands[i].f; i++)
+		if (hands[i].pt == pt && hands[i].bold == bold) return hands[i].f;
+	if (i == HAND_N || !font_path_kept[0]) return NULL;
+	{
+		const char *slash = strrchr(font_path_kept, '/');
+		int dir = slash ? (int)(slash - font_path_kept) + 1 : 0;
+
+		snprintf(path, sizeof path, "%.*s%s", dir, font_path_kept, DS_FONT_HAND);
+	}
+	if (face_lock) SDL_LockMutex(face_lock);
+	hands[i].f = TTF_OpenFont(path, pt);
+	if (hands[i].f) {
+		set_path(SET_LATIN, bold, path, sizeof path);
+		hands[i].lex = TTF_OpenFont(path, (int)lroundf((float)pt * HAND_LEX_K));
+	}
+	if (face_lock) SDL_UnlockMutex(face_lock);
+	if (!hands[i].f) {
+		fprintf(stderr, "font: %s: %s; the labels in Lexend\n", DS_FONT_HAND, TTF_GetError());
+		return NULL;
+	}
+	hands[i].pt = pt;
+	hands[i].bold = bold;
+	return hands[i].f;
+}
+
+static int hand_of(TTF_Font *f)
+{
+	for (int i = 0; f && i < HAND_N && hands[i].f; i++)
+		if (hands[i].f == f) return i;
+	return -1;
+}
+
+static void hands_free(void)
+{
+	if (face_lock) SDL_LockMutex(face_lock);
+	for (int i = 0; i < HAND_N; i++) {
+		if (hands[i].f) TTF_CloseFont(hands[i].f);
+		if (hands[i].lex) TTF_CloseFont(hands[i].lex);
+		for (int k = 0; k < SETS; k++)
+			if (hands[i].cjk[k]) TTF_CloseFont(hands[i].cjk[k]);
+	}
+	memset(hands, 0, sizeof hands);
+	if (face_lock) SDL_UnlockMutex(face_lock);
+}
+
+static TTF_Font *hand_cjk(int h, int set)
+{
+	char path[512];
+
+	if (!hands[h].cjk_tried[set]) {
+		hands[h].cjk_tried[set] = true;
+		set_path(set, hands[h].bold, path, sizeof path);
+		if (face_lock) SDL_LockMutex(face_lock);
+		hands[h].cjk[set] = TTF_OpenFont(path, (int)lroundf((float)hands[h].pt * HAND_LEX_K));
+		if (face_lock) SDL_UnlockMutex(face_lock);
+	}
+	return hands[h].cjk[set];
+}
+
+/* One UTF-8 character at s: its code point, *len its bytes */
+static unsigned utf8_at(const char *s, int *len)
+{
+	const unsigned char *u = (const unsigned char *)s;
+
+	if (u[0] < 0x80) { *len = 1; return u[0]; }
+	if ((u[0] & 0xE0) == 0xC0 && (u[1] & 0xC0) == 0x80) { *len = 2; return (u[0] & 0x1Fu) << 6 | (u[1] & 0x3F); }
+	if ((u[0] & 0xF0) == 0xE0 && (u[1] & 0xC0) == 0x80 && (u[2] & 0xC0) == 0x80) {
+		*len = 3;
+		return (u[0] & 0x0Fu) << 12 | (u[1] & 0x3Fu) << 6 | (u[2] & 0x3F);
+	}
+	if ((u[0] & 0xF8) == 0xF0 && (u[1] & 0xC0) == 0x80 && (u[2] & 0xC0) == 0x80 && (u[3] & 0xC0) == 0x80) {
+		*len = 4;
+		return (u[0] & 0x07u) << 18 | (u[1] & 0x3Fu) << 12 | (u[2] & 0x3Fu) << 6 | (u[3] & 0x3F);
+	}
+	*len = 1;
+	return 0xFFFD;
+}
+
+static bool cjk_cp(unsigned c)
+{
+	return (c >= 0x2E80 && c <= 0x9FFF) || (c >= 0xF900 && c <= 0xFAFF) || (c >= 0xFF00 && c <= 0xFFEF);
+}
+
+/* The Chinese or Japanese face a hand's line takes its ideographs and kana
+ * from: the first of the set that is on, then Japanese's where the line has
+ * kana and Chinese's where not, then the other, that has every one of them,
+ * as face_for chooses a whole line's, so a line is not drawn in two; NULL
+ * when none has them all, and then each character's own */
+static TTF_Font *hand_cjk_line(int h, const char *s)
+{
+	int order[3], k;
+
+	if (!has_cjk(s)) return NULL;
+	order[0] = set_on;
+	order[1] = has_kana(s) ? SET_JP : SET_SC;
+	order[2] = order[1] == SET_JP ? SET_SC : SET_JP;
+	for (k = 0; k < 3; k++) {
+		TTF_Font *g;
+
+		if (order[k] == SET_LATIN) continue;
+		g = hand_cjk(h, order[k]);
+		if (g && covers(g, s)) return g;
+	}
+	return NULL;
+}
+
+/* The face character c of line s is drawn in, for hand h; `line` the
+ * line's Chinese or Japanese face (hand_cjk_line) */
+static TTF_Font *hand_face_for(int h, const char *s, unsigned c, TTF_Font *line)
+{
+	TTF_Font *f = hands[h].f;
+	int order[3], k;
+
+	if (TTF_GlyphIsProvided32(f, c)) return f;
+	if (cjk_cp(c) && line) return line;
+	if (!cjk_cp(c) && hands[h].lex && TTF_GlyphIsProvided32(hands[h].lex, c)) return hands[h].lex;
+	order[0] = set_on;
+	order[1] = has_kana(s) ? SET_JP : SET_SC;
+	order[2] = order[1] == SET_JP ? SET_SC : SET_JP;
+	for (k = 0; k < 3; k++) {
+		TTF_Font *g;
+
+		if (order[k] == SET_LATIN) continue;
+		g = hand_cjk(h, order[k]);
+		if (g && TTF_GlyphIsProvided32(g, c)) return g;
+	}
+	return hands[h].lex ? hands[h].lex : f;
+}
+
+/* Line s cut into runs of one face each, a space keeping the face it
+ * follows; `fn` is told of each. Returns the runs. */
+typedef void (*hand_run_fn)(void *ctx, TTF_Font *f, const char *run);
+
+static int hand_runs(int h, const char *s, hand_run_fn fn, void *ctx)
+{
+	char run[512];
+	const char *p = s, *start = s;
+	TTF_Font *cur = NULL, *line = hand_cjk_line(h, s);
+	int n = 0;
+
+	while (*p) {
+		int len;
+		unsigned c = utf8_at(p, &len);
+		TTF_Font *f = (c == ' ' || c == 0xA0 || (c >= 0x2000 && c <= 0x200F)) && cur ? cur
+		              : hand_face_for(h, s, c, line);
+
+		if (cur && f != cur) {
+			snprintf(run, sizeof run, "%.*s", (int)(p - start), start);
+			fn(ctx, cur, run);
+			n++;
+			start = p;
+		}
+		cur = f;
+		p += len;
+	}
+	if (cur && p > start) {
+		snprintf(run, sizeof run, "%.*s", (int)(p - start), start);
+		fn(ctx, cur, run);
+		n++;
+	}
+	return n;
+}
+
+static void hand_w_run(void *ctx, TTF_Font *f, const char *run)
+{
+	int w = 0;
+
+	TTF_SizeUTF8(f, run, &w, NULL);
+	*(int *)ctx += w;
+}
+
+static int hand_width(int h, const char *s)
+{
+	int w = 0;
+
+	hand_runs(h, s, hand_w_run, &w);
+	return w;
+}
+
+typedef struct { SDL_Surface *out; int x, asc; SDL_Color col; } hand_put;
+
+static void hand_put_run(void *ctx, TTF_Font *f, const char *run)
+{
+	hand_put *hp = ctx;
+	SDL_Surface *t = TTF_RenderUTF8_Blended(f, run, hp->col);
+	int w = 0;
+
+	TTF_SizeUTF8(f, run, &w, NULL);
+	if (t) {
+		SDL_SetSurfaceBlendMode(t, SDL_BLENDMODE_BLEND);
+		SDL_BlitSurface(t, NULL, hp->out, &(SDL_Rect){ hp->x, hp->asc - TTF_FontAscent(f), 0, 0 });
+		SDL_FreeSurface(t);
+	}
+	hp->x += w;
+}
+
+/* The line, its runs on the hand's baseline, as tall as the hand's line */
+static SDL_Surface *hand_render(int h, const char *s, SDL_Color col)
+{
+	hand_put hp = { NULL, 0, TTF_FontAscent(hands[h].f), col };
+	int w = hand_width(h, s);
+
+	if (w <= 0) return NULL;
+	hp.out = SDL_CreateRGBSurfaceWithFormat(0, w, TTF_FontHeight(hands[h].f), 32, SDL_PIXELFORMAT_ARGB8888);
+	if (!hp.out) return NULL;
+	/* The ground the line's own color at none, so a soft edge blended onto
+	 * it keeps the color */
+	SDL_FillRect(hp.out, NULL, SDL_MapRGBA(hp.out->format, col.r, col.g, col.b, 0));
+	hand_runs(h, s, hand_put_run, &hp);
+	return hp.out;
+}
+
+/* The runs of a line, for a check: each run's face, 0 the hand, 1 Lexend,
+ * 2 Chinese, 3 Japanese, up to `max`; how many */
+typedef struct { int h, n, max, *faces; } hand_count;
+
+static void hand_count_run(void *ctx, TTF_Font *f, const char *run)
+{
+	hand_count *c = ctx;
+
+	(void)run;
+	if (c->n < c->max)
+		c->faces[c->n] = f == hands[c->h].f ? 0 : f == hands[c->h].lex ? 1 : f == hands[c->h].cjk[SET_SC] ? 2 : 3;
+	c->n++;
+}
+
+int ui_hand_runs(TTF_Font *f, const char *s, int *faces, int max)
+{
+	hand_count c = { hand_of(f), 0, max, faces };
+
+	if (c.h < 0 || !s) return 0;
+	hand_runs(c.h, s, hand_count_run, &c);
+	return c.n;
+}
+
 /* text_width in `f` when `f` is already the face `s` is drawn in (face_for's
  * answer for it): it reads nothing but the face, so a worker drawing a card
  * in faces of its own measures with it (card_face_for), and face_for, which
@@ -903,7 +1166,10 @@ static int width_in(TTF_Font *f, const char *s)
 
 static int text_width(TTF_Font *f, const char *s)
 {
+	int h;
+
 	if (!f || !s) return 0;
+	if ((h = hand_of(f)) >= 0) return hand_width(h, s);
 	return width_in(face_for(f, s), s);
 }
 
@@ -1020,7 +1286,10 @@ static SDL_Surface *render_in(TTF_Font *f, const char *s, SDL_Color col)
 
 SDL_Surface *ui_text_surface(TTF_Font *f, const char *s, SDL_Color col)
 {
+	int h;
+
 	if (!f || !s || !*s) return NULL;
+	if ((h = hand_of(f)) >= 0) return hand_render(h, s, col);
 	return render_in(face_for(f, s), s, col);
 }
 
