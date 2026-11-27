@@ -13,12 +13,25 @@ fi
 # prelude names one (zy_overlay, loaded at zy_ovl_addr) and the file is
 # there, as ROCKNIX's overlays/mipi-panel.dtbo for the R36S's other panels,
 # applied over its device tree
+setenv zy_ovl_ok
 if test -n "${zy_overlay}"; then
 	if load ${devtype} ${devnum}:${distro_bootpart} ${zy_ovl_addr} /${zy_overlay}; then
-		fdt addr ${zy_fdt}
-		fdt resize 8192
-		fdt apply ${zy_ovl_addr}
+		setenv zy_ovl_ok 1
 	fi
+fi
+# None there (no zy_panel= in r36s-boot.txt, no overlays/mipi-panel.dtbo):
+# the default panel's, zy_panel_default (boot-prelude.cmd says why it is 4)
+if test -z "${zy_ovl_ok}"; then
+	if test -n "${zy_panel_default}"; then
+		if load ${devtype} ${devnum}:${distro_bootpart} ${zy_ovl_addr} /overlays/panel-${zy_panel_default}.dtbo; then
+			setenv zy_ovl_ok 1
+		fi
+	fi
+fi
+if test -n "${zy_ovl_ok}"; then
+	fdt addr ${zy_fdt}
+	fdt resize 8192
+	fdt apply ${zy_ovl_addr}
 fi
 # A charger started the handheld while it was off (the Pixel 2's U-Boot sets
 # zy_charge=1: board/px2/u-boot/patches/0005): zycharge=1 on the kernel's
