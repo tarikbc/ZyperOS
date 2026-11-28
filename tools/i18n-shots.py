@@ -550,6 +550,7 @@ EXTRA = {
     "downloads-on-names": ("demo", "PS1", ["--downloads", "25"]),
     "downloads-covers-complete": ("demo", "PS1", ["--downloads", "26"]),
     "downloads-no-accounts": ("demo", "PS1", ["--downloads", "27"]),
+    "downloads-no-games": ("demo", "PS1", ["--downloads", "28"]),
     # A game's Cover and Video (DESIGN.md 11.34) in every state, a tile of
     # each kind and region focused, Delete's question and the message of a
     # download that did not come; and the details row's other value

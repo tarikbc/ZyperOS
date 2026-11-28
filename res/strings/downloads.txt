@@ -160,6 +160,17 @@ de = Erst anmelden
 ja = 先にサインイン
 it = Prima accedi
 
+[downloads.add_games]
+note = The line over the keys when the card has no games yet (the page's second line says No games yet): what to do before anything can be downloaded. A message, a full sentence.
+en = Add games to the card first.
+zh-Hans = 请先在存储卡上添加游戏。
+es = Primero agrega juegos a la tarjeta.
+pt-BR = Primeiro adicione jogos ao cartão.
+fr = Ajoutez d'abord des jeux sur la carte.
+de = Füge zuerst Spiele zur Karte hinzu.
+ja = 先にカードにゲームを追加してください。
+it = Prima aggiungi dei giochi alla scheda.
+
 [downloads.offline_now]
 note = The line over the keys when nothing is left to download, and at the end of a download that went well: covers, videos, names and achievements are on the card and need no network.
 en = It all works offline now

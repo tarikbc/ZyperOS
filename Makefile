@@ -2607,7 +2607,7 @@ build-native/rahash-check: tools/rahash-check.c $(RAHASH_SRC) src/rahashjob.c sr
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g $(LZMA_CFLAGS) \
 	      -o $@ tools/rahash-check.c $(RAHASH_SRC) -lz $(LZMA_LIBS) -lpthread
 
-.PHONY: check-noticeq check-badges check-badge-shots check-radl check-dlq check-dl-recent check-dl-look check-cheatsdl check-cheats check-rasubmit check-lowbatt check-battempty check-powerhold check-homesys check-collect check-shotname check-heat check-charging
+.PHONY: check-noticeq check-badges check-badge-shots check-radl check-dlq check-dl-recent check-dl-look check-dl-empty check-cheatsdl check-cheats check-rasubmit check-lowbatt check-battempty check-powerhold check-homesys check-collect check-shotname check-heat check-charging
 
 # The pop-ups over a game, one after another (src/noticeq.h)
 check-noticeq: build-native/noticeq-check
@@ -2746,6 +2746,15 @@ check-dl-look:
 		$(MAKE) --no-print-directory native || exit 1; \
 	fi
 	@python3 tools/dl-look-check.py
+
+# MENU > Downloads on an empty card, one game and PICO-8 carts alone
+# (src/dl_screen.c, src/dlcount.c), on the real launcher: the page gets its
+# count in a bounded time and an empty card says No games yet, not Counting
+check-dl-empty:
+	@if pkg-config --exists sdl2 SDL2_image SDL2_ttf 2>/dev/null; then \
+		$(MAKE) --no-print-directory native || exit 1; \
+	fi
+	@python3 tools/dl-empty-check.py
 
 # The cheats download (src/cheatsdl.h): a zip made in the check, read, matched,
 # written and counted, with no network

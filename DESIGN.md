@@ -6600,6 +6600,17 @@ one, which on a FAT card walked the folder for every game. The switches are
 read when the totals are made, so Left and Right never count again. The log
 says how long a count took (`downloads: counted 12 systems in 840 ms`).
 
+**No games yet.** A card with no games is counted too, at once, and the page
+says so: the shelf mark and `No games yet` (the empty home's words) as the
+second line, Download and the kinds in **text-dim** with no value and no
+focus, over the keys the transfer mark and "Add games to the card first.",
+and the keys START Settings (the accounts can be set up first) and B Close;
+A, Y, Up, Down, Left and Right play **deny**. MENU's row says `No games`.
+*(Tarik's R36S on 1.1.1-rc.1, an empty card: the page said `Counting…` for
+good. A card with no system was never counted, and the page took its turn
+after a count that had already ended; `make check-dl-empty` holds it, with
+one game and with PICO-8 carts alone.)*
+
 **A kind's page** (A on Covers, Videos, Names and Details): the kind's name
 as the heading, the time under it; each system's icon over a tick (lit when
 it lacks nothing, the icon dim when the system's switch is off; nine at

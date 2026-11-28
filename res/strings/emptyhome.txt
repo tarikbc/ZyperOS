@@ -2,7 +2,7 @@
 # the two ways to add some, and Zyper's cheer when they arrive.
 
 [emptyhome.no_games_yet]
-note = The empty home's heading, beside Zyper.
+note = The empty home's heading, beside Zyper. Also MENU > Downloads' second line under its heading on a card with no games.
 en = No games yet
 zh-Hans = 还没有游戏
 es = Aún no hay juegos

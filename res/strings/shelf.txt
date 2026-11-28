@@ -36,7 +36,7 @@ it.one = %d screenshot
 it.other = %d screenshot
 
 [shelf.no_games]
-note = The home: under a system with no games (Favorites, when empty); and a shelf's title line when it has none.
+note = The home: under a system with no games (Favorites, when empty); and a shelf's title line when it has none; and MENU's Downloads row's value on a card with no games.
 en = No games
 zh-Hans = 没有游戏
 es = Sin juegos
