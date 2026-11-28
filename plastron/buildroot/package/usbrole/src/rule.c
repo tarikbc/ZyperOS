@@ -2,6 +2,8 @@
 /* See rule.h. */
 #include "rule.h"
 
+#include <string.h>
+
 static unsigned nz(unsigned t) { return t ? t : 1; }
 
 int ur_grant(ur_state *s, unsigned plug)
@@ -83,4 +85,52 @@ int ur_decide(ur_state *s, const ur_sense *in, unsigned now, unsigned *again)
 		*again = UR_SETTLE_MS - (now - s->since);
 	}
 	return UR_DEVICE;
+}
+
+const char *ur_fixed_role(const char *text)
+{
+	for (const char *l = text; l && *l; l = strchr(l, '\n') ? strchr(l, '\n') + 1 : NULL) {
+		if (!strncmp(l, "ROLE=host", 9) && (!l[9] || l[9] == '\n'))
+			return "host";
+		if (!strncmp(l, "ROLE=device", 11) && (!l[11] || l[11] == '\n'))
+			return "device";
+	}
+	return NULL;
+}
+
+/* The keys whose values move without a fact changing */
+static int moving(const char *key, unsigned long len)
+{
+	static const char *const part[] = {
+		"_NOW", "_AVG", "CAPACITY", "TEMP", "CHARGE_COUNTER", "CHARGE_FULL", "CHARGE_EMPTY",
+		"ENERGY", "TIME_TO", "CYCLE_COUNT", "_MAX", "_MIN",
+	};
+	char k[64];
+
+	if (len >= sizeof k) return 0;
+	memcpy(k, key, len);
+	k[len] = '\0';
+	for (unsigned i = 0; i < sizeof part / sizeof part[0]; i++)
+		if (strstr(k, part[i])) return 1;
+	return 0;
+}
+
+void ur_uevent_line(const char *uevent, char *out, unsigned long n)
+{
+	unsigned long used = 0;
+
+	if (!n) return;
+	out[0] = '\0';
+	for (const char *l = uevent; l && *l; l = strchr(l, '\n') ? strchr(l, '\n') + 1 : NULL) {
+		const char *end = strchr(l, '\n'), *eq;
+		unsigned long len = end ? (unsigned long)(end - l) : strlen(l);
+
+		if (!len) continue;
+		if (!strncmp(l, "POWER_SUPPLY_", 13)) { l += 13; len -= 13; }
+		eq = memchr(l, '=', len);
+		if (!eq || moving(l, (unsigned long)(eq - l))) continue;
+		if (used && used + 1 < n) out[used++] = ' ';
+		for (unsigned long i = 0; i < len && used + 1 < n; i++) out[used++] = l[i];
+		out[used] = '\0';
+	}
 }

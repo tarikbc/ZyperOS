@@ -81,4 +81,16 @@ int ur_decide(ur_state *s, const ur_sense *in, unsigned now_ms, unsigned *again_
  * when kept. */
 int ur_grant(ur_state *s, unsigned plug);
 
+/* ROLE=host or ROLE=device, a line of its own in /etc/default/usbrole's
+ * text: "host", "device", or NULL for none (the pin is followed). */
+const char *ur_fixed_role(const char *text);
+
+/* A power supply's uevent (KEY=VALUE lines) as one line for the kernel's
+ * log, into out (n bytes, always ended): "POWER_SUPPLY_" taken off each key,
+ * a space between, and the values that move by themselves (voltages,
+ * currents, the charge level and counters, the temperature, the times)
+ * left out, so the line changes only when a fact does: what comes in, what
+ * is online, the charger's type and state. Cut at n - 1. */
+void ur_uevent_line(const char *uevent, char *out, unsigned long n);
+
 #endif

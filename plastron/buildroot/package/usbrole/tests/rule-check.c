@@ -387,8 +387,45 @@ static void never(void)
 	CHECK(!run("no pin reading", no_pin_reading, 1, 30000, 1, 0, NULL), "a failed pin reading went host");
 }
 
+/* /etc/default/usbrole's one role for good, and the facts' lines (rule.c) */
+static void fixed_and_facts(void)
+{
+	char text[4096], out[400];
+	FILE *f;
+	size_t got;
+
+	CHECK(!ur_fixed_role(""), "no file's text is no role");
+	CHECK(!ur_fixed_role("# ROLE=host in a comment\n"), "a comment is no role");
+	CHECK(!ur_fixed_role("ROLE=hosted\n"), "ROLE=hosted is no role");
+	CHECK(ur_fixed_role("# why\nROLE=device\n") && !strcmp(ur_fixed_role("# why\nROLE=device\n"), "device"),
+	      "ROLE=device after a comment");
+	CHECK(ur_fixed_role("ROLE=host") && !strcmp(ur_fixed_role("ROLE=host"), "host"), "ROLE=host at the end");
+	/* The R36S's own: a device for good, so a computer on its cable never
+	 * meets the port's power (test.2 had it a host: 2026-11-28) */
+	f = fopen("plastron/buildroot/board/r36s/rootfs-overlay/etc/default/usbrole", "r");
+	CHECK(f != NULL, "the R36S's /etc/default/usbrole is there (run from the repository's top)");
+	if (f) {
+		got = fread(text, 1, sizeof text - 1, f);
+		fclose(f);
+		text[got] = '\0';
+		CHECK(ur_fixed_role(text) && !strcmp(ur_fixed_role(text), "device"), "the R36S's port is a device for good");
+	}
+	ur_uevent_line("POWER_SUPPLY_NAME=rk817-charger\nPOWER_SUPPLY_TYPE=USB\nPOWER_SUPPLY_ONLINE=1\n"
+	               "POWER_SUPPLY_VOLTAGE_NOW=5012000\nPOWER_SUPPLY_USB_TYPE=[SDP] DCP\n", out, sizeof out);
+	CHECK(!strcmp(out, "NAME=rk817-charger TYPE=USB ONLINE=1 USB_TYPE=[SDP] DCP"),
+	      "a charger's uevent one line, its moving voltage left out: '%s'", out);
+	ur_uevent_line("POWER_SUPPLY_STATUS=Charging\nPOWER_SUPPLY_CAPACITY=63\nPOWER_SUPPLY_TEMP=250\n"
+	               "POWER_SUPPLY_CURRENT_NOW=-120000\nPOWER_SUPPLY_CHARGE_FULL=3380000\n", out, sizeof out);
+	CHECK(!strcmp(out, "STATUS=Charging"), "a battery's line its status alone: '%s'", out);
+	ur_uevent_line("POWER_SUPPLY_NAME=abcdefghijklmnopqrstuvwxyz\n", out, 10);
+	CHECK(strlen(out) == 9 && !strncmp(out, "NAME=abcd", 9), "cut to its room, ended: '%s'", out);
+	ur_uevent_line("", out, sizeof out);
+	CHECK(out[0] == '\0', "nothing is an empty line");
+}
+
 int main(void)
 {
+	fixed_and_facts();
 	mac_replugs();
 	quick_swap();
 	plugged_in_a_game();
@@ -406,6 +443,6 @@ int main(void)
 	}
 	printf("usbrole rule-check: the Mac's plugs of 2026-11-10 never host unanswered; the quick swap and a "
 	       "game's plug asked and powered on the answer; Power Automatically after its settle, fed to the Mac's dropping port at most once; never with "
-	       "power in, a detection, a failed reading or a computer on the bus\n");
+	       "power in, a detection, a failed reading or a computer on the bus; the R36S's port a device for good, and its facts one line each\n");
 	return 0;
 }
