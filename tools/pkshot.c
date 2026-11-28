@@ -31,6 +31,46 @@ void pkshot_pick(const uint8_t *px, int fw, int fh, size_t pitch, const dmode_re
 		}
 }
 
+uint8_t *pkshot_frame(const uint8_t *px, int fw, int fh, size_t pitch, int *w, int *h)
+{
+	const int turned = fh > fw, lw = turned ? fh : fw, lh = turned ? fw : fh;
+	uint8_t *out;
+	int lx, ly;
+
+	if (fw <= 0 || fh <= 0 || !(out = malloc((size_t)lw * lh * 3))) return NULL;
+	for (ly = 0; ly < lh; ly++)
+		for (lx = 0; lx < lw; lx++) {
+			const int x = turned ? ly : lx, y = turned ? lw - 1 - lx : ly;
+			uint8_t *d = out + ((size_t)ly * lw + lx) * 3;
+			uint32_t v;
+
+			memcpy(&v, px + (size_t)y * pitch + (size_t)x * 4, 4);
+			d[0] = (uint8_t)(v >> 16);
+			d[1] = (uint8_t)(v >> 8);
+			d[2] = (uint8_t)v;
+		}
+	*w = lw;
+	*h = lh;
+	return out;
+}
+
+void pkshot_thumb(const uint8_t *rgb, int w, int h, uint8_t out[PKSHOT_BYTES])
+{
+	/* Fitted whole, the rest black: the frame's own shape in the square */
+	const int big = w > h ? w : h;
+	const int tw = big > 0 ? PKSHOT_SIDE * w / big : 0, th = big > 0 ? PKSHOT_SIDE * h / big : 0;
+	const int ox = (PKSHOT_SIDE - tw) / 2, oy = (PKSHOT_SIDE - th) / 2;
+	int i, j;
+
+	memset(out, 0, PKSHOT_BYTES);
+	for (j = 0; j < th; j++)
+		for (i = 0; i < tw; i++) {
+			const int sx = (int)((i + 0.5) * w / tw), sy = (int)((j + 0.5) * h / th);
+
+			memcpy(out + ((size_t)(oy + j) * PKSHOT_SIDE + ox + i) * 3, rgb + ((size_t)sy * w + sx) * 3, 3);
+		}
+}
+
 static void png_u32(uint8_t *p, uint32_t v)
 {
 	p[0] = (uint8_t)(v >> 24); p[1] = (uint8_t)(v >> 16); p[2] = (uint8_t)(v >> 8); p[3] = (uint8_t)v;

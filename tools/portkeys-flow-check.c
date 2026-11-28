@@ -138,6 +138,14 @@ static int hot_dos;
 static int hot_do(unsigned acts) { hot_dos++; hot_done |= acts; return 0; }
 static idle_clock idle_c;
 static bool idle_input, idle_charging, idle_fired;
+/* MENU's chords over a port (outside the extracted code): the screenshot
+ * and the lock, here only counted; locked, the keys go to lock_key */
+static struct { bool on, opened; } LK;
+static int shots_taken, locks, lock_keys;
+static void shot_take(void) { shots_taken++; }
+static void lock_start(void) { locks++; LK.on = true; }
+static void lock_key(uint16_t code, int32_t value) { (void)code; (void)value; lock_keys++; }
+static int lock_tick(long now) { (void)now; return -1; }
 /* The pad PICO-8 reads while portkeys holds the joypad (vpad_*, outside the
  * extracted code): the joypad's events handed to it, in order, and the
  * loop's asks */
@@ -268,6 +276,7 @@ static void reset(void)
 	memset(reads, 0, sizeof reads); memset(menu_down, 0, sizeof menu_down);
 	memset(sel_down, 0, sizeof sel_down);
 	pkhot_init(&HOT); hot_pending = hot_done = 0; hot_dos = 0;
+	pkkeys_menu_keys(&K, IN_L1, IN_L2); LK.on = LK.opened = false; shots_taken = locks = lock_keys = 0;
 	vpad_held = vpad_home = false; vpad_wait = -1; vpad_polls = vpad_resyncs = vpad_gone = vpad_events = 0;
 	idle_c = (idle_clock){ 0 }; idle_input = idle_charging = idle_fired = false;
 	memset(has_menu, 0, sizeof has_menu); memset(has_vol, 0, sizeof has_vol);
@@ -511,6 +520,32 @@ int main(void)
 		put(pad, 1000050, EV_KEY, PK_BTN_MENU, 0);
 		run_loop();
 		ck(menu_shows == 1 && queries == 0, "no menu over this port: nothing resynced");
+
+		/* MENU's chords, by the Pixel 2's table: MENU+L1 the screenshot
+		 * and MENU+L2 the lock, MENU then opening no menu; locked, every
+		 * key is the lock's */
+		reset(); has_menu[pad] = has_vol[vol] = true; ready = 1 << pad;
+		put(pad, 1000000, EV_KEY, PK_BTN_MENU, 1);
+		put(pad, 1000010, EV_KEY, 0x136, 1);
+		put(pad, 1000040, EV_KEY, 0x136, 0);
+		put(pad, 1000050, EV_KEY, PK_BTN_MENU, 0);
+		run_loop();
+		ck(shots_taken == 1 && locks == 0 && menu_shows == 0, "MENU+L1: the screenshot, and no menu");
+
+		reset(); has_menu[pad] = has_vol[vol] = true; ready = 1 << pad;
+		put(pad, 1000000, EV_KEY, PK_BTN_MENU, 1);
+		put(pad, 1000010, EV_KEY, 0x138, 1);
+		put(pad, 1000040, EV_KEY, 0x138, 0);
+		put(pad, 1000050, EV_KEY, PK_BTN_MENU, 0);
+		run_loop();
+		ck(locks == 1 && shots_taken == 0 && menu_shows == 0, "MENU+L2: the lock, and no menu");
+
+		reset(); has_menu[pad] = has_vol[vol] = true; ready = 1 << pad; LK.on = true;
+		put(pad, 1000000, EV_KEY, PK_BTN_MENU, 1);
+		put(pad, 1000050, EV_KEY, PK_BTN_MENU, 0);
+		put(vol, 1000060, EV_KEY, PK_KEY_VOLUMEUP, 1);
+		run_loop();
+		ck(lock_keys == 3 && menu_shows == 0 && steps == 0, "locked: every key the lock's, no menu, no step");
 	}
 	/* A plug in or out is the jack's switch, read with the keys: one change
 	 * of output for the pass that read it, and the boost's clock runs after

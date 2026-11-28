@@ -256,6 +256,9 @@ def launcher(tmp):
         shots = k.get('shots', '')
         check(shots.startswith(f'{card}/Screenshots/PICO-8/') and shots.rsplit('/', 1)[-1].lower().startswith('celeste'),
               f'and where a screenshot goes, the cart by its name ({shots})')
+        lock = [flags / f'zyperos-port-lock-{t}.dtov' for t in ('light', 'dark')]
+        check(all(f.exists() and f.read_bytes()[:4] == b'DTOV' for f in lock),
+              'and MENU\'s lock over it, "Locked" in both themes (PORT_LOCK_LIGHT, _DARK)')
         pad = pad_file.read_text().rstrip('\n') if pad_file.exists() else ''
         check(pad == SWAPPED + '\n' + VSWAPPED,
               f'PICO-8.sh gets the joypad\'s and portkeys\'s pad\'s lines from map.PICO8 ({pad})')
@@ -400,6 +403,22 @@ def launcher(tmp):
         pad = pad_file.read_text().split('\n')[0] if pad_file.exists() else ''
         check(rc == RESTART and restart.exists() and pad.startswith(GUID) and pad != SWAPPED,
               f'the new buttons written for it, asked about once ({rc}, {pad[:60]})')
+
+        print('an OpenBOR game opened, the hand-over:')
+        keys_file.unlink(missing_ok=True)
+        w = start('shelf-openbor', ['--device', 'pixel2'])
+        check(dw.until(lambda: w.sock.exists() and w.state().get('ok')), 'the launcher started')
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        s.settimeout(dw.CEILING)
+        s.connect(str(cdir / 'ctl.sock'))
+        s.sendall(f'open\tpath={card}/Roms/OpenBOR/x.pak\n'.encode())
+        said = s.makefile().readline().strip()
+        s.close()
+        check(said.startswith('ok'), f'it opens ({said[:60]!r})')
+        w.ends()
+        k = lines(keys_file)
+        check('hotkeys' not in k and k.get('shots', '').startswith(f'{card}/Screenshots/OpenBOR/'),
+              f'portkeys gets where MENU\'s screenshot goes, and no SELECT hotkeys ({k})')
 
         print('over OpenBOR:')
         w = start('openbor', ['--port-menu', 'OPENBOR', f'{card}/Roms/OpenBOR/x.pak'])

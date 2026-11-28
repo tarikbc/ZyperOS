@@ -48,6 +48,9 @@ extern bool g_launch_core_named;
  * name the cart by); and the pad's mapping line from the buttons in force,
  * to P8_PAD_FILE for PICO-8.sh. Each written whole and renamed in. */
 void p8_keys_save(const system_cfg *s, const char *file, const char *shots);
+/* Where MENU's screenshot goes over a port that is not your PICO-8, to
+ * PORT_KEYS_FILE for portkeys, its one line */
+void port_shots_save(const char *shots);
 void p8_pad_save(const system_cfg *s, const char *file);
 
 #endif

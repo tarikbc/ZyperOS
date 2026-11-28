@@ -36,6 +36,7 @@
 #include "../src/inmodel.h"
 #include "../src/menukeys.h"
 #include "../src/tour.h"
+#include "../tools/pkkeys.h"
 
 static int fails, checks;
 
@@ -754,6 +755,61 @@ static void tutorial(const device_profile *p)
 	(void)also;
 }
 
+/* ---- portkeys over a port (tools/pkkeys.h) ------------------------------- */
+
+/* MENU's chords as portkeys judges them over a port, by the same table: the
+ * screenshot's and the lock's on every key MENU can take, MENU then opening
+ * nothing, MENU alone the menu, MENU+VOL the backlight where it is MENU's */
+static void portkeys(const device_profile *p)
+{
+	int k, menu = code_of(p, IN_MENU), vol = code_of(p, IN_VOLUP);
+	int64_t t = 0;
+	pk_step s[16];
+	pkkeys pk;
+
+	for (k = 0; k < HK_KEYS; k++) {
+		const in_button b = hk_button(k);
+		const int c = code_of(p, b);
+		pk_key e[4];
+		unsigned acts;
+		int a;
+
+		if (!mk_key_ok(k)) continue;
+		for (a = 0; a < 2; a++) {
+			pkkeys_init(&pk);
+			pkkeys_use(&pk, &p->input);
+			pkkeys_menu_keys(&pk, a == 0 ? b : IN_NONE, a == 1 ? b : IN_NONE);
+			e[0] = (pk_key){ t, (uint16_t)menu, 1 };
+			e[1] = (pk_key){ t + 5000, (uint16_t)c, 1 };
+			e[2] = (pk_key){ t + 9000, (uint16_t)c, 0 };
+			e[3] = (pk_key){ t + 12000, (uint16_t)menu, 0 };
+			pkkeys_pass(&pk, e, 4, INT64_MAX, 0, s, 16);
+			acts = pkkeys_menu_acts(&pk);
+			ck(acts == 1u << (a == 0 ? MK_SHOT : MK_LOCK) && !pkkeys_menu_tapped(&pk),
+			   "%s: portkeys: %s+%s is the %s, and MENU opens nothing", p->id, dev_menu_word(p),
+			   hk_key_name(k), a == 0 ? "screenshot" : "lock");
+		}
+	}
+	pkkeys_init(&pk);
+	pkkeys_use(&pk, &p->input);
+	pkkeys_menu_keys(&pk, IN_L1, IN_L2);
+	{
+		pk_key e[2] = { { t, (uint16_t)menu, 1 }, { t + 80000, (uint16_t)menu, 0 } };
+
+		pkkeys_pass(&pk, e, 2, INT64_MAX, 0, s, 16);
+		ck(pkkeys_menu_tapped(&pk) && !pkkeys_menu_acts(&pk), "%s: portkeys: %s alone is the menu", p->id,
+		   dev_menu_word(p));
+	}
+	if (p->chords.bright == DEV_BRIGHT_MENU_VOL) {
+		pk_key e[4] = { { t, (uint16_t)menu, 1 }, { t + 5000, (uint16_t)vol, 1 },
+		                { t + 9000, (uint16_t)vol, 0 }, { t + 12000, (uint16_t)menu, 0 } };
+		const int m = pkkeys_pass(&pk, e, 4, INT64_MAX, 0, s, 16);
+
+		ck(m == 1 && s[0].kind == PK_BRIGHT && !pkkeys_menu_tapped(&pk) && !pkkeys_menu_acts(&pk),
+		   "%s: portkeys: %s+VOL+ is the backlight, and MENU opens nothing", p->id, dev_menu_word(p));
+	}
+}
+
 int main(void)
 {
 	const device_profile *p;
@@ -771,6 +827,7 @@ int main(void)
 		capture(p);
 		sticks(p);
 		tutorial(p);
+		portkeys(p);
 		printf("  %s\n", fails == before ? "ok" : "FAILED");
 	}
 	ck(i >= 5, "every profile walked (%d)", i);

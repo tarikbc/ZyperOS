@@ -846,7 +846,7 @@ build-native/pkkeys-check: tools/pkkeys-check.c tools/pkkeys.c tools/pkkeys.h sr
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Isrc -Idiatom/src -Idiatom/include \
 	      -o $@ tools/pkkeys-check.c tools/pkkeys.c tools/pkhot.c diatom/src/chord.c tools/pkkbd.c \
 	      tools/pkshot.c tools/pkvpad.c src/p8draw.c src/dmodefit.c src/audioout.c src/rumble.c src/db.c \
-	      tools/pkfeel.c src/uisound.c src/atomic.c $(I18N_SRC) -lsqlite3 -lz -lm
+	      tools/pkfeel.c src/uisound.c src/atomic.c src/menukeys.c src/hotkeys.c $(I18N_SRC) -lsqlite3 -lz -lm
 
 # Which theme is on: MENU > Appearance's three settings, Auto's seven to seven
 # by the handheld's clock and the minute it may be late by, and the file the
@@ -1711,13 +1711,15 @@ check-inmodel: build-native/inmodel-check
 
 build-native/inmodel-check: tools/inmodel-check.c src/inengine.c src/inengine.h src/inmodel.h src/inbutton.h \
                             src/device/devinput.h src/device/profile.h src/stickpad.c src/tour.c src/tour.h \
-                            src/menukeys.c src/hotkeys.c $(wildcard src/device/*_input.h) $(I18N_SRC) FORCE
+                            src/menukeys.c src/hotkeys.c tools/pkkeys.c tools/pkkeys.h \
+                            $(wildcard src/device/*_input.h) $(I18N_SRC) FORCE
 	@mkdir -p build-native
-	$(CC) -std=gnu11 -Wall -Wextra -Werror -Wno-unused-parameter -D_GNU_SOURCE -O1 -g \
+	$(CC) -std=gnu11 -Wall -Wextra -Werror -Wno-unused-parameter -D_GNU_SOURCE -O1 -g -Isrc \
 	      -DZYPEROS_PROFILE=device_profile_desktop -DZYPEROS_PROFILES_ALL \
 	      -o $@ tools/inmodel-check.c src/inengine.c src/stickpad.c src/tour.c src/powerhold.c src/zyperrig.c \
 	      src/config.c src/db.c src/atomic.c src/menukeys.c src/hotkeys.c src/profile.c src/thermal.c \
-	      src/ds/button.c src/canvas.c $(I18N_SRC) $(DEVICE_PROFILES) $(DEVICE_BUILDS) -lsqlite3 -lm
+	      src/ds/button.c src/canvas.c tools/pkkeys.c src/audioout.c src/rumble.c \
+	      $(I18N_SRC) $(DEVICE_PROFILES) $(DEVICE_BUILDS) -lsqlite3 -lm
 
 # The tutorial's steps (DESIGN.md 11.10): what each launcher button is to it
 # and which glyph part the hand lights, every step in order and what each
@@ -2367,7 +2369,7 @@ check-device-compile:
 	echo "  diatom: port/r36s.c (port/pixel2.c with the R36S's keys)"; \
 	$(CC) $$F $$D $$(pkg-config --cflags sdl2 egl glesv2 gbm libdrm) diatom/port/r36s.c; \
 	echo "  portkeys: tools/portkeys.c, the Pixel 2's keys, bar and motor over a port, whole"; \
-	$(CC) $$F -Isrc -Idiatom/src -Idiatom/include tools/portkeys.c tools/pkkeys.c tools/pkfeel.c \
+	$(CC) $$F -Isrc -Idiatom/src -Idiatom/include tools/portkeys.c tools/pkkeys.c tools/pkfeel.c src/menukeys.c src/hotkeys.c \
 		tools/pkshutter.c src/pcm_out.c; \
 	echo "  launcher: every src/*.c and src/ds/*.c as a device builds them (mk/cross.mk, no ZYPEROS_DESK),"; \
 	echo "    a call to an undeclared function an error, as plastron's GCC makes it"; \

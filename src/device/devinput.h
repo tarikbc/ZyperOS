@@ -55,4 +55,24 @@ typedef struct {
 /* No stick */
 #define DEV_NO_STICK { false, 0, 0, IN_NONE, 0 }
 
+/* The button `code` is in `in`, IN_NONE for a code it does not send; and
+ * the code of button `b`, -1 for none */
+static inline in_button dev_button_of_code(const dev_input *in, int code)
+{
+	int i;
+
+	for (i = 0; in && i < in->n_keys; i++)
+		if (in->keys[i].code == code) return in->keys[i].b;
+	return IN_NONE;
+}
+
+static inline int dev_code_of(const dev_input *in, in_button b)
+{
+	int i;
+
+	for (i = 0; in && i < in->n_keys; i++)
+		if (in->keys[i].b == b) return in->keys[i].code;
+	return -1;
+}
+
 #endif
