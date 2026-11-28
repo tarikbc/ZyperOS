@@ -435,6 +435,23 @@ EXTRA = {
     "tour-bright": ("demo", "PS1", ["--tour", "bright", "2000"]),
     "tour-power": ("demo", "PS1", ["--tour", "power", "1800"]),
     "tour-finish": ("demo", "PS1", ["--tour", "finish", "500"]),
+    # Every step's wrong press, Zyper's answer in his bubble beside him: clear
+    # of the step's title, line and note in every language (the note yields
+    # where the answer's bubble would meet it), the longest names chosen
+    "tour-welcome-wrong": ("demo", "PS1", ["--tour", "welcome", "3000", "--tour-wrong", "b", "420"]),
+    "tour-move-wrong": ("demo", "PS1", ["--tour", "move", "3000", "--tour-wrong", "the right stick", "420"]),
+    "tour-a-wrong": ("demo", "PS1", ["--tour", "a", "3000", "--tour-wrong", "b", "420"]),
+    "tour-b-wrong": ("demo", "PS1", ["--tour", "b", "3000", "--tour-wrong", "a", "420"]),
+    "tour-x-wrong": ("demo", "PS1", ["--tour", "x", "3000", "--tour-wrong", "the right stick", "420"]),
+    "tour-y-wrong": ("demo", "PS1", ["--tour", "y", "3000", "--tour-wrong", "a", "420"]),
+    "tour-menu-wrong": ("demo", "PS1", ["--tour", "menu", "3000", "--tour-wrong", "a", "420"]),
+    "tour-select-wrong": ("demo", "PS1", ["--tour", "select", "3000", "--tour-wrong", "l2", "420"]),
+    "tour-bright-wrong": ("demo", "PS1", ["--tour", "bright", "3000", "--tour-wrong", "volume", "420"]),
+    "tour-power-wrong": ("demo", "PS1", ["--tour", "power", "3000", "--tour-wrong", "a", "420"]),
+    "tour-theme-wrong": ("demo", "PS1", ["--tour", "theme", "3000", "--tour-wrong", "b", "420"]),
+    "tour-home-wrong": ("demo", "PS1", ["--tour", "home", "3000", "--tour-wrong", "b", "420"]),
+    "tour-sounds-wrong": ("demo", "PS1", ["--tour", "sounds", "3000", "--tour-wrong", "b", "420"]),
+    "tour-music-wrong": ("demo", "PS1", ["--tour", "music", "3000", "--tour-wrong", "b", "420", "--tour-music"]),
     "lowbatt": ("demo", "PS1", ["--lowbatt", "1500"]),
     "lowbatt-charging": ("demo", "PS1", ["--lowbatt", "1500", "charging"]),
     "charging-hold": ("demo", "PS1", ["--charging", "4000", "hold"]),

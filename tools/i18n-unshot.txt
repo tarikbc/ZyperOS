@@ -429,10 +429,10 @@ tour.cheer.woof
 tour.cheer.perfect
 tour.cheer.good_one
 tour.cheer.saved
-tour.wrong.hold_menu
 tour.wrong.chord
 tour.key.volume
 tour.key.brightness
+tour.key.right_stick
 tour.try.left_right
 tour.try.vol
 tour.try.f1_f2

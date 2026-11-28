@@ -1968,7 +1968,7 @@ for the reward, and a wrong press tilted, nudged and answered.)*
 |---|---|---|---|
 | Language (11.30) | A on the focused row | Zyper says hello in the language under the cursor, which steps a language a second until a press | A on a language; START keeps the one moved to |
 | Welcome | A | Zyper pops in and says "Hi! I'm Zyper." in his bubble | A |
-| Move Around | D-pad, and L1/R1 lit on the handheld | the little shelf steps one card right and back; "L1/R1 jump 3 systems." under the line | two moves, LEFT or RIGHT, the d-pad's or the left stick's; the little shelf follows them as far as it has cards. UP, DOWN, L1, R1, the right stick and every other button are wrong presses: "That's Up. Try LEFT or RIGHT." |
+| Move Around | D-pad, and the d-pad (and the left stick, where there is one) lit on the handheld, no shoulder | the little shelf steps one card right and back; no note, so the step names only what it takes | two moves, LEFT or RIGHT, the d-pad's or the left stick's; the little shelf follows them as far as it has cards. UP, DOWN, L1, R1, the right stick and every other button are wrong presses: "That's Up. Try LEFT or RIGHT." |
 | Open a Game | A | the focused card grows into a playing game | A |
 | Go Back | B | the game shrinks back to its card | B |
 | See the Details | X | the card turns into the details, the info screen in small: the game's name over a rule, Synopsis in focus, Year, and Favorite Off with Y's glyph | X |
@@ -2009,7 +2009,9 @@ and R1 as moves, where its little shelf goes left and right; it takes LEFT
 and RIGHT alone now, the d-pad's or the left stick's, and its line says so.
 Leave a Game's X got no check of its own as it landed, FN's alone showing
 one; both glyphs carry theirs now. `check-inmodel` walks both on every
-handheld.)*
+handheld. Move Around lost its L1/R1 note and its lit shoulders, so it shows
+only what it takes, and a step's note yields to Zyper's answer where the
+answer's bubble would cover it, in every language.)*
 
 *(2026-11-13: Keep a Favorite comes after See the Details, and its line says
 "In the details, press Y to add a favorite." Since 2026-11-08 Y on the
@@ -2095,7 +2097,7 @@ of the player's own goes on from wherever the loop was.
   turns, a key lights or presses, and in the first lesson's fade-in): drawn
   every frame it cost the Pixel 2 a third of the lesson's frame rate, kept
   it costs nothing measurable. `check-tour-shots` holds each lesson's lit key on its side of the
-  handheld, the shoulders lit in Move Around and Music and no others, the
+  handheld, the shoulders lit in Music and no other lesson, the
   figure inside its texture in every frame of every turn
   (`--handheld-box tour`), its words clear of the inset, and the block
   moved and otherwise the Brick's, in both themes.
@@ -2105,8 +2107,7 @@ of the player's own goes on from wherever the loop was.
     each key's light and press) and the theme's colors, into the one kept
     texture, sized for its caller (the model's box for each). The tutorial's look is the Controls tab's: a change to the model
     changes both. Both tilt it back the same 25 degrees for the shoulders
-    (the Controls tab's shoulder rows, the tutorial's Move Around and
-    Music), the top face showing with the shoulders standing on it; every
+    (the Controls tab's shoulder rows, the tutorial's Music), the top face showing with the shoulders standing on it; every
     other pose is level, and a level pose draws as it did before the tilt,
     pixel for pixel.
   - **Drawn** in code from `tools/build-pixel2-model.py`'s millimetres, the
@@ -2161,10 +2162,11 @@ of the player's own goes on from wherever the loop was.
     glyph - the loop's and the player's own, `tour_part_press` - to 92% in
     **press**, a tab back toward the edge. The new step's key lights in
     **quick** and the last one's goes out in **quick**.
-  - **The shoulders** have no step of their own: each pair is a note on
-    the lesson it belongs with and is lit beside that lesson's key, L1/R1
-    with the D-pad in Move Around and L2/R2 with SELECT in Music *(the
-    follow-up to #90, which gave them the jump and the songs)*. Facing
+  - **The shoulders** have no step of their own: L2/R2 are a note on
+    Music and lit beside SELECT *(the follow-up to #90, which gave them the
+    songs)*. Move Around had L1/R1's jump as its note and lit them with the
+    D-pad until the R36S test of 1.1.1-test.3: it takes LEFT and RIGHT
+    alone, so it names and lights no key it turns down. Facing
     front, the shoulders show only their tops over the top edge, so a lit
     one stands up out of it 2.8 mm, as MENU and VOL stand out of theirs as
     tabs for Brightness, its top corners rounded as a tab's; its halo is
@@ -2187,10 +2189,9 @@ of the player's own goes on from wherever the loop was.
     six screws in the back so it reads as one. Its shoulders, L1 L2 R2 R1
     with the USB-C housing between L2 and R2, are blocks on the ledge, which
     the thin part hides from any front view, so a lesson lighting them
-    (Move Around, Music) turns it round 160 degrees, the right side's way,
-    and tilts it back 20, where they stand up 1.6 mm off the ledge, L1 and
-    L2 at the right; the d-pad Move Around also lights is not seen there,
-    and A, B, X and Y show it in the lessons after. F1 and F2 lit together
+    (Music) turns it round 160 degrees, the right side's way, and tilts it
+    back 20, where they stand up 1.6 mm off the ledge, L1 and L2 at the
+    right; A, B, X and Y show it in the lessons after. F1 and F2 lit together
     take one ring, as VOL's does. As tall as the Pixel 2: 2.6 units a
     millimetre facing front, 2.9 turned to a side, 2.45 at the back.
 - **The choices**: after the power step's reward and before the finish,
@@ -2261,14 +2262,19 @@ of the player's own goes on from wherever the loop was.
   and his bubble saying "That's X. Try Y." for **hold-short**, after which he
   goes down. In the power step the bubble says it alone, his place taken by
   the stage's Zyper. A bubble too wide to keep 16 units clear of "START: Skip"
-  takes its second sentence to a second line above. In the brightness step a
+  takes its second sentence to a second line above. Where the bubble would
+  meet the step's note (a long answer, or one of two lines), the note
+  yields: it fades out as the bubble comes in **quick** and back as the
+  bubble goes in **fade-out**, so nothing is drawn over it; a note clear of
+  the bubble stays. `check-i18n-shots` draws every step's wrong press in
+  every language on every handheld. In the brightness step a
   volume key alone says "That's volume. Hold MENU too." ("Try F1 or F2." on
   the Brick), and MENU alone "Hold MENU, then press VOL+." START, POWER and
   the volume and brightness keys are not wrong presses, and a press in the
   first 250 ms of a step, of any key, is the last step's thumb and is not
-  heard. L1/R1 are wrong presses in every lesson, Move Around's too, whose
-  note names them: its line asks for LEFT or RIGHT, and UP and DOWN are
-  wrong there as well *(the R36S test of 1.1.1-test.3)*. In Leave a Game and Lock the Screen Zyper says how the pair goes
+  heard. L1/R1 are wrong presses in every lesson, Move Around's too: its line
+  asks for LEFT or RIGHT, and UP and DOWN are wrong there as well *(the R36S
+  test of 1.1.1-test.3)*. In Leave a Game and Lock the Screen Zyper says how the pair goes
   (the table above); the lock's chord, in any other step, is nothing, and
   never locks the handheld while the tutorial runs. In Unlock the Screen
   SELECT and START are its hold, any other button a wrong press ("That's A.

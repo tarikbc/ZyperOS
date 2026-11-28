@@ -395,6 +395,31 @@ static const char *second_sentence(const char *s, int *first_len)
  * than `room` takes its second sentence to a second line above the bottom
  * one's place, growing upward, so it stays clear of what is at its right:
  * "That's SELECT. Try VOL+ or VOL-." beside "START: skip". */
+/* Where bubble() draws `s` at (x, cy) in `room`: its box, top `*top`,
+ * `*w` wide and `*h` high, one line or two */
+static void bubble_box(const char *s, float x, float cy, float room, float *top, float *w, float *h)
+{
+	const float pitch = (float)ui_font_line(UI_F_META) * 1.25f;
+	int cut = 0;
+	const char *rest = second_sentence(s, &cut);
+
+	(void)x;
+	*w = words_w(UI_F_META, s) + 48.0f;
+	*top = cy - 30.0f;
+	*h = 60.0f;
+	if (*w > room && rest) {
+		char first[128];
+		float w1, w2;
+
+		snprintf(first, sizeof first, "%.*s", cut, s);
+		w1 = words_w(UI_F_META, first);
+		w2 = words_w(UI_F_META, rest);
+		*w = (w1 > w2 ? w1 : w2) + 48.0f;
+		*top -= pitch;
+		*h += pitch;
+	}
+}
+
 static void bubble(SDL_Renderer *r, const char *s, float x, float cy, float op, float room)
 {
 	const ds_theme *t = theme();
@@ -1371,27 +1396,20 @@ static const char *cheer_of(tour_step s)
 
 /* Zyper's corner, his bubble and "START: skip", where they are in every
  * step, a lesson's or a choice's. */
-static void step_corner(SDL_Renderer *r, const tour *t, uint32_t now, const tour_hooks *hk)
+/* His bubble in the corner at `now`: what it says, NULL for none, where its
+ * middle is and how far it is in, 0 to 1 (`*in`), and its opacity */
+typedef struct { const char *say; float cy, in, op; } corner_say;
+
+static corner_say corner_say_now(const tour *t, uint32_t now)
 {
 	const int in_step = since(now, t->step_at);
 	const bool wrong_on = tour_wrong_on(t, now);
 	const tour_zyper_at z = tour_zyper_now(t, now);
+	const float dy = z.corner ? CORNER_DROP * z.drop : 0.0f;
+	corner_say out = { NULL, 0.0f, 0.0f, 0.0f };
 	const char *say = NULL;
 	uint32_t say_at = 0, say_end = 0;
 	bool say_held = false;
-	float dy = 0.0f;
-
-	g_op = 1.0f;
-	g_ox = g_oy = 0.0f;
-
-	/* Zyper, only for the reward and a wrong press: up from under the
-	 * bottom edge in move, and down in exit when it is over, from wherever
-	 * he is (tour_zyper_now). One Zyper at a time (section 10): in the power
-	 * step the stage's is the one, until the press. */
-	if (z.corner) {
-		dy = CORNER_DROP * z.drop;
-		zyper(hk, CORNER_X, CORNER_Y + dy, CORNER_H, &z.pose, 1.0f, 0.0f);
-	}
 
 	/* His bubble: the cheer, the last step's going, or which button that
 	 * was and which to try. */
@@ -1411,13 +1429,61 @@ static void step_corner(SDL_Renderer *r, const tour *t, uint32_t now, const tour
 	/* With him, or in the power step, where he is on the stage, alone: every
 	 * wrong press gets its answer. */
 	if (say && (z.corner || (t->step == TOUR_POWER && wrong_on))) {
-		float in = tour_ease(TC_OUT, now, say_at, DS_MS_QUICK);
-		float op = in * (say_held ? 1.0f
-		                 : 1.0f - clampf((float)since(now, say_end) / DS_MS_FADE_OUT, 0.0f, 1.0f));
-
-		bubble(r, say, BUBBLE_X, CORNER_Y + 2.0f + dy + 6.0f * (1.0f - in), op,
-		       legend_left() - LEGEND_GAP - BUBBLE_X);
+		out.say = say;
+		out.in = tour_ease(TC_OUT, now, say_at, DS_MS_QUICK);
+		out.op = out.in * (say_held ? 1.0f
+		                   : 1.0f - clampf((float)since(now, say_end) / DS_MS_FADE_OUT, 0.0f, 1.0f));
+		out.cy = CORNER_Y + 2.0f + dy + 6.0f * (1.0f - out.in);
 	}
+	return out;
+}
+
+/* The room the corner's bubble has, to "START: Skip" */
+static float bubble_room(void)
+{
+	return legend_left() - LEGEND_GAP - BUBBLE_X;
+}
+
+/* A lesson's note, which yields to his bubble: where the bubble's box would
+ * meet the note's ink, the note fades as the bubble comes and back as it
+ * goes, in the bubble's own motion, so his answer never lies over it (in a
+ * language whose answer is two lines or a long one, the note's row is the
+ * bubble's) */
+static void lesson_note(SDL_Renderer *r, const tour *t, uint32_t now, const char *s, ds_rgb c)
+{
+	const corner_say b = corner_say_now(t, now);
+	float yield = 0.0f;
+
+	if (!s) return;
+	if (b.say && b.op > 0.0f) {
+		const float nw = words_w(UI_F_META, s), nh = (float)ui_font_line(UI_F_META);
+		const float ncx = fminf(512.0f, CANVAS_W - DS_INSET - g_ox - nw / 2.0f) + g_ox;
+		float top, bw, bh;
+
+		bubble_box(b.say, BUBBLE_X, b.cy, bubble_room(), &top, &bw, &bh);
+		/* 8 units clear, the room a word keeps from a key's glyph (11.4) */
+		if (BUBBLE_X + bw + 8.0f > ncx - nw / 2.0f && top - 8.0f < NOTE_Y + g_oy + nh / 2.0f)
+			yield = b.op;
+	}
+	if (yield >= 1.0f) return;
+	words(r, UI_F_META, s, fminf(512.0f, CANVAS_W - DS_INSET - g_ox - words_w(UI_F_META, s) / 2.0f),
+	      NOTE_Y, 0, c, 1.0f - yield);
+}
+
+static void step_corner(SDL_Renderer *r, const tour *t, uint32_t now, const tour_hooks *hk)
+{
+	const tour_zyper_at z = tour_zyper_now(t, now);
+	const corner_say b = corner_say_now(t, now);
+
+	g_op = 1.0f;
+	g_ox = g_oy = 0.0f;
+
+	/* Zyper, only for the reward and a wrong press: up from under the
+	 * bottom edge in move, and down in exit when it is over, from wherever
+	 * he is (tour_zyper_now). One Zyper at a time (section 10): in the power
+	 * step the stage's is the one, until the press. */
+	if (z.corner) zyper(hk, CORNER_X, CORNER_Y + CORNER_DROP * z.drop, CORNER_H, &z.pose, 1.0f, 0.0f);
+	if (b.say) bubble(r, b.say, BUBBLE_X, b.cy, b.op, bubble_room());
 	/* Not in Unlock the Screen, whose START is half of its hold and skips
 	 * nothing there (tour_press) */
 	if (t->step != TOUR_UNLOCK) legend(r);
@@ -1474,7 +1540,7 @@ static void lesson(SDL_Renderer *r, const tour *t, uint32_t now, const tour_hook
 	lesson_words(r, UI_F_META, t->bright == DEV_BRIGHT_MENU_VOL && st->line_fn ? st->line_fn : st->line, LINE_Y,
 	             th->text_soft);
 	note = t->done && st->note_done ? st->note_done : st->note;
-	lesson_words(r, UI_F_META, note, NOTE_Y, th->text_dim);
+	lesson_note(r, t, now, note, th->text_dim);
 	g_op = 1.0f;
 	/* Zyper's corner, his bubble and "START: skip" stay where they are */
 	step_corner(r, t, now, hk);
@@ -1957,7 +2023,7 @@ static void choice(SDL_Renderer *r, const tour *t, uint32_t now, const tour_hook
 
 	lesson_words(r, UI_F_TITLE, st->title, TITLE_Y, th->text);
 	lesson_words(r, UI_F_META, st->line, LINE_Y, th->text_soft);
-	lesson_words(r, UI_F_META, st->note, NOTE_Y, th->text_dim);
+	lesson_note(r, t, now, st->note, th->text_dim);
 	step_corner(r, t, now, hk);
 }
 

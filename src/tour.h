@@ -20,9 +20,9 @@
  * unlock of its own), music (SELECT), volume, brightness and power. Each is a press, not a reading, so
  * the minute it takes is spent with a thumb on the button rather than on a
  * page of text; MENU > Controls stays the list to look things up in. The
- * shoulders ride on two of them as a note, with no step of their own: L1/R1
- * jump in Move Around and L2/R2 change the song in Music, each pair a wrong
- * press there as anywhere: Move Around takes LEFT and RIGHT alone.
+ * shoulders have no step of their own: L2/R2 ride on Music as a note,
+ * changing the song, and are a wrong press there as anywhere; Move Around
+ * takes LEFT and RIGHT alone, and names and lights no shoulder.
  *
  * Then four choices make the handheld the player's (2026-11-06, and
  * his picks in the onboarding lab): the theme, the home screen's layout, the
@@ -144,7 +144,7 @@ const char *tour_key_name(tour_key k);
 /* The parts of the glyphs that can be seen pressed, by the demonstration or
  * by the player's own hand. The shoulders have no glyph: the handheld's are
  * what shows them pressed (src/tourdevice.h), lit in the lessons whose notes
- * name them - L1/R1 in Move Around, L2/R2 in Music. */
+ * name them - L2/R2 in Music. */
 typedef enum {
 	TP_UP, TP_DOWN, TP_LEFT, TP_RIGHT,
 	TP_A, TP_B, TP_X, TP_Y,

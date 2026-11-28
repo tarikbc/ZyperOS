@@ -65,17 +65,6 @@ de = LINKS/RECHTS zum Bewegen.
 ja = 左か右で一覧を移動します。
 it = SINISTRA/DESTRA per scorrere l'elenco.
 
-[tour.move.note]
-note = L1/R1 jump 3 systems at a time on the home.
-en = L1/R1 jump 3 systems.
-zh-Hans = L1/R1 一次跳 3 个系统。
-es = L1/R1 saltan 3 sistemas.
-pt-BR = L1/R1 pulam 3 sistemas.
-fr = L1/R1 sautent 3 systèmes.
-de = L1/R1 springen 3 Systeme.
-ja = L1/R1 で 3 システムずつ移動。
-it = L1/R1 saltano 3 sistemi.
-
 [tour.a.title]
 en = Open a Game
 zh-Hans = 打开游戏

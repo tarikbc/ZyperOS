@@ -95,13 +95,14 @@ static const step_def STEPS[TOUR_STEPS] = {
 	/* The welcome's and the finish's lines are two, "\n" between */
 	[TOUR_WELCOME] = { S_TOUR_WELCOME_TITLE, S_TOUR_WELCOME_LINES,
 	                   NO_TEXT, NO_TEXT, NO_TEXT, TG_FACE, "A", NO_TEXT, "A", NULL, NULL },
-	/* The shoulders as a note on the two lessons they belong with, each
-	 * pair lit on the handheld (my follow-up to #90): L1/R1 jump on the
-	 * home, L2/R2 change the song - MP4's while it plays, the menu music's
-	 * otherwise. Neither pair answers its lesson: Move Around's line asks
-	 * for LEFT or RIGHT, as Music's asks for SELECT. */
+	/* Move Around shows what it takes and nothing else: LEFT and RIGHT,
+	 * with no note and no shoulder lit (the R36S test of 1.1.1-test.3: its
+	 * L1/R1 note, and the shoulders lit, taught keys the step turns down).
+	 * L2/R2 ride on Music as a note, lit on the handheld (my follow-up to
+	 * #90): they change the song, MP4's while it plays, the menu music's
+	 * otherwise, and Music takes SELECT alone. */
 	[TOUR_MOVE]    = { S_TOUR_MOVE_TITLE, S_TOUR_MOVE_LINE,
-	                   NO_TEXT, S_TOUR_MOVE_NOTE, NO_TEXT, TG_DPAD, NULL, S_TOUR_TRY_LEFT_RIGHT, NULL,
+	                   NO_TEXT, NO_TEXT, NO_TEXT, TG_DPAD, NULL, S_TOUR_TRY_LEFT_RIGHT, NULL,
 	                   NULL, NULL },
 	[TOUR_A]       = { S_TOUR_A_TITLE, S_TOUR_A_LINE,
 	                   NO_TEXT, NO_TEXT, NO_TEXT, TG_FACE, "A", NO_TEXT, "A", NULL, &LOOP_A },

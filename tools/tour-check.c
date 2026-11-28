@@ -441,8 +441,8 @@ static void moves(void)
 		ck(tour_press(&t, TK_RIGHT, T0 + 20) == DS_SOUND_MOVE && !t.done && t.moves == 1,
 		   "after them a RIGHT is the first move still");
 	}
-	ck(!strcmp(tour_step_info(TOUR_MOVE)->note, "L1/R1 jump 3 systems."),
-	   "its note names L1/R1, as MENU > Controls writes the pair");
+	ck(tour_step_info(TOUR_MOVE)->note == NULL,
+	   "it has no note: it names no key it does not take, L1/R1's jump included");
 	tour_pose(&t, TOUR_A, T0, 2000, -1, DEV(false));
 	ck(tour_press(&t, TK_R1, T0) == DS_SOUND_DENY && t.wrong,
 	   "anywhere else L1/R1 are a wrong press, as before");
