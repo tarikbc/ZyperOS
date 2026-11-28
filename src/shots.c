@@ -2293,16 +2293,16 @@ static void shot_compose_once(app *a)
 		if (xs_way_hint(h)) {
 			n = xs_step_rows(a, rows, lines, hint, sizeof hint, &st, h, cable,
 			                 b_legend(S_KEYHINT_CLOSE));
-			menu_draw(a, head, rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
+			xs_view_draw(a, XS_VIEW_STEPS, head, rows, n, 0.0f);
 		} else {
 			xs_way_set(cable, phone, name, shot_steps_addr ? shot_steps_addr : addr, "4071");
 			n = xs_way_rows(rows, &st, cable || phone, b_legend(S_KEYHINT_CLOSE));
 			/* over the cable, before the address: the loading bar, its
 			 * step waited on for a second and a half */
 			if (cable && st.step < LS_BROWSER)
-				xs_load_draw(a, rows, n, xs_load_target(&st, 1500));
+				xs_view_draw(a, XS_VIEW_LOAD, head, rows, n, xs_load_target(&st, 1500));
 			else
-				xs_way_draw(a, rows, n);
+				xs_view_draw(a, XS_VIEW_IN, head, rows, n, 0.0f);
 		}
 	}
 	if (shot_hare || (shot_hot && shot_hot_in)) {
