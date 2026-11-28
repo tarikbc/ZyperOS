@@ -48,20 +48,24 @@ cmp -s "$T/want" "$T/have" && ok "boot-slot.cmd is the Brick's with smartpro.dtb
 cmp -s $B/board/brick/boot-prelude.cmd $B/board/smartpro/boot-prelude.cmd &&
 	ok "boot-prelude.cmd is the Brick's" || bad "boot-prelude.cmd is not the Brick's"
 
-# 4. The boot loader's memory: boot0's values, LPDDR4 at 792 MHz, DCDC3 at 1.1 V
+# 4. The boot loader's memory, LPDDR4 at 792 MHz, DCDC3 at 1.1 V: the values
+# boot0 leaves on a running Smart Pro (TPR1, TPR11, TPR12 and TPR13 after its
+# own setup and training), never its header's untrained TPR11 and TPR12
 P=$B/board/smartpro/u-boot/patches/0001-trimui-smartpro-board.patch
 for v in CONFIG_DRAM_CLK=792 CONFIG_SUNXI_DRAM_A133_LPDDR4=y CONFIG_AXP_DCDC3_VOLT=1100 \
 	CONFIG_DRAM_SUNXI_DX_ODT=0x07070707 CONFIG_DRAM_SUNXI_DX_DRI=0x0d0d0d0d CONFIG_DRAM_SUNXI_CA_DRI=0x0e0e \
 	CONFIG_DRAM_SUNXI_PARA0=0x0d0a050c CONFIG_DRAM_SUNXI_MR11=0x4 CONFIG_DRAM_SUNXI_MR12=0x72 \
 	CONFIG_DRAM_SUNXI_MR14=0x7 CONFIG_DRAM_SUNXI_MR22=0x26 CONFIG_DRAM_SUNXI_TPR0=0x06060606 \
-	CONFIG_DRAM_SUNXI_TPR1=0x04040404 CONFIG_DRAM_SUNXI_TPR6=0x48010101 CONFIG_DRAM_SUNXI_TPR10=0x273333 \
-	CONFIG_DRAM_SUNXI_TPR11=0x241f1923 CONFIG_DRAM_SUNXI_TPR12=0x14151313 CONFIG_DRAM_SUNXI_TPR13=0x81d20 \
+	CONFIG_DRAM_SUNXI_TPR1=0x84040404 CONFIG_DRAM_SUNXI_TPR6=0x48010101 CONFIG_DRAM_SUNXI_TPR10=0x273333 \
+	CONFIG_DRAM_SUNXI_TPR11=0x211b151e CONFIG_DRAM_SUNXI_TPR12=0x14141312 CONFIG_DRAM_SUNXI_TPR13=0x7521 \
 	CONFIG_DRAM_SUNXI_TPR14=0x2023211f; do
 	grep -qx "+$v" "$P" || bad "the boot loader's defconfig has no $v"
 done
 grep -q '^+CONFIG_SUNXI_DRAM_A133_LPDDR3' "$P" && bad "the boot loader's defconfig asks for LPDDR3"
+grep -q -e '^+CONFIG_DRAM_SUNXI_TPR11=0x241f1923' -e '^+CONFIG_DRAM_SUNXI_TPR12=0x14151313' "$P" &&
+	bad "the boot loader's defconfig has boot0's header's untrained DX delays"
 grep -q 'a/smartpro.dtb' "$P" && ! grep -q 'a/brick.dtb' "$P" &&
-	ok "the boot loader: boot0's memory values, DCDC3 at 1.1 V, smartpro.dtb in its fallback" ||
+	ok "the boot loader: the memory values boot0 leaves, DCDC3 at 1.1 V, smartpro.dtb in its fallback" ||
 	bad "the boot loader's fallback does not load smartpro.dtb"
 
 # 5. Its start: sppad, never brick-pad, on a Smart Pro
