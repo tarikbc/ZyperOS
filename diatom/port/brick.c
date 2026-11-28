@@ -40,6 +40,8 @@
 #include <fcntl.h>
 #include <linux/fb.h>
 #include <linux/input.h>
+#include "padmap.h"   /* the keys as Diatom's buttons, from the launcher's table */
+#include "../../src/device/brick_input.h"
 #include <math.h>
 #include <pthread.h>
 #include <stdarg.h>
@@ -2746,43 +2748,44 @@ size_t diatom_port_audio_queued(void)
 	return SDL_GetQueuedAudioSize(g_audio) / AUDIO_FRAME_BYTES;
 }
 
-/* Kernel code -> Diatom button. brick-pad sends the GKD Pixel 2's codes, so
- * this is the Pixel's table: the caps marked A, B, X, Y send SOUTH, EAST,
- * NORTH, WEST, named for their labels, which puts the right-hand button on the
- * game's A as on a SNES pad; L2 and R2 are keys, the d-pad four keys. MENU is
- * the Brick's own (BTN_MODE). */
-static const struct { int code; int btn; } keymap[] = {
-	{ BTN_DPAD_UP,    DIATOM_BTN_UP },    { BTN_DPAD_DOWN,  DIATOM_BTN_DOWN },
-	{ BTN_DPAD_LEFT,  DIATOM_BTN_LEFT },  { BTN_DPAD_RIGHT, DIATOM_BTN_RIGHT },
-	{ BTN_SOUTH,      DIATOM_BTN_A },     { BTN_EAST,       DIATOM_BTN_B },
-	{ BTN_NORTH,      DIATOM_BTN_X },     { BTN_WEST,       DIATOM_BTN_Y },
-	{ BTN_TL,         DIATOM_BTN_L1 },    { BTN_TR,         DIATOM_BTN_R1 },
-	{ BTN_TL2,        DIATOM_BTN_L2 },    { BTN_TR2,        DIATOM_BTN_R2 },
-	{ BTN_SELECT,     DIATOM_BTN_SELECT },{ BTN_START,      DIATOM_BTN_START },
-	{ BTN_MODE,       DIATOM_BTN_MENU },
-};
+/* Kernel code -> Diatom button: the launcher's table of the Brick's keys
+ * (ZyperOS's src/device/brick_input.h: brick-pad sends the Pixel 2's codes,
+ * MENU BTN_MODE, the two front keys BTN_THUMBL and BTN_THUMBR; the Smart
+ * Pro's reader sends the same codes and no front keys), its game buttons as
+ * port/padmap.h has them. */
+static padmap_row keymap[sizeof BRICK_KEYS / sizeof BRICK_KEYS[0]];
+static size_t keymap_n;
 
 /* The four level buttons, as level keys: volume on its own two, brightness on
- * the two front keys (BTN_THUMBL and BTN_THUMBR), all on the gamepad. Never
+ * the two front keys, all on the gamepad, from the same table. Never
  * reported as buttons, so no brightness press reaches a core. A press is
  * latched until the host has read it, so a tap between two frames counts; a
  * key the events say is held is checked against the kernel, so a release this
  * port never saw cannot leave the host repeating. The stepping and the repeat
  * are the host's. */
-static const struct { int code; uint32_t key; } level_buttons[] = {
-	{ KEY_VOLUMEUP,   DIATOM_LEVEL_KEY_VOLUME_UP },
-	{ KEY_VOLUMEDOWN, DIATOM_LEVEL_KEY_VOLUME_DOWN },
-	{ BTN_THUMBR,     DIATOM_LEVEL_KEY_BRIGHTNESS_UP },
-	{ BTN_THUMBL,     DIATOM_LEVEL_KEY_BRIGHTNESS_DOWN },
-};
-#define LEVEL_BUTTONS (sizeof level_buttons / sizeof level_buttons[0])
+static struct { int code; uint32_t key; } level_buttons[sizeof BRICK_KEYS / sizeof BRICK_KEYS[0]];
+static size_t level_n;
+#define LEVEL_BUTTONS level_n
+
+/* Both from the table, once */
+static void keymap_ready(void)
+{
+	size_t i;
+
+	if (keymap_n) return;
+	keymap_n = padmap_build(BRICK_KEYS, sizeof BRICK_KEYS / sizeof BRICK_KEYS[0], keymap);
+	for (i = 0; i < sizeof BRICK_KEYS / sizeof BRICK_KEYS[0]; i++)
+		if (padmap_level(BRICK_KEYS[i].b))
+			level_buttons[level_n++] = (__typeof__(level_buttons[0])){ BRICK_KEYS[i].code,
+			                                                          padmap_level(BRICK_KEYS[i].b) };
+}
 static uint32_t g_level_down;      /* held, by the events */
 static uint32_t g_level_pressed;   /* went down since the host last asked */
 
 /* The volume keys on their own node (g_keys_fd, the Smart Pro's): with MENU
  * held they are brightness, as on the Pixel 2, the Smart Pro having no
  * brightness keys (its profile's DEV_BRIGHT_MENU_VOL), and as the launcher
- * reads them (src/device/menuvol.h). The host sees the level move under MENU
+ * reads them (src/inengine.h). The host sees the level move under MENU
  * and takes MENU's release as the end of a chord. Each key is what it went
  * down as until it comes up. */
 static const int level_codes[2] = { KEY_VOLUMEUP, KEY_VOLUMEDOWN };
@@ -2818,7 +2821,8 @@ static void pad_resync(void)
 	memset(keys, 0, sizeof keys);
 	if (ioctl(g_pad_fd, EVIOCGKEY(sizeof keys), keys) < 0) return;
 	g_buttons = 0;
-	for (i = 0; i < sizeof keymap / sizeof keymap[0]; i++)
+	keymap_ready();
+	for (i = 0; i < keymap_n; i++)
 		if (BIT_IS_SET(keys, keymap[i].code))
 			g_buttons |= DIATOM_BIT(keymap[i].btn);
 }
@@ -2875,8 +2879,9 @@ void diatom_port_input_poll(void)
 			}
 			/* Volume and brightness are the port's, and stop here: during
 			 * a game nothing else sees them, the device UI not running. */
+			keymap_ready();
 			if (level_button(ev[i].code, ev[i].value != 0)) continue;
-			for (k = 0; k < sizeof keymap / sizeof keymap[0]; k++) {
+			for (k = 0; k < keymap_n; k++) {
 				if (keymap[k].code != ev[i].code) continue;
 				if (ev[i].value) {
 					g_buttons |= DIATOM_BIT(keymap[k].btn);

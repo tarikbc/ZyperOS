@@ -3,7 +3,8 @@
  * ROCKNIX's R36S device tree sends them (the A cap BTN_EAST, the B cap
  * BTN_SOUTH, FN BTN_MODE) and its folder on the card. Its panel scans
  * 640x480 as it is seen, so pixel2.c's turn, which follows the panel's mode,
- * is none here.
+ * is none here. Its keys are the launcher's own table of them (ZyperOS's
+ * src/device/r36s_input.h).
  *
  * Its two sticks (RK_STICKS): the joypad reports ABS_X, ABS_Y, ABS_RX and
  * ABS_RY, read as the RetroPad's analog sticks, and L3 and R3 as BTN_THUMBL
@@ -12,12 +13,9 @@
  * No headphone jack read (RK_JACK 0): its device tree's line read "plugged"
  * whatever was in the jack on board R36S-V12, so the volume keeps the
  * speaker's window, as ZyperOS's launcher does (its src/device/r36s.c). */
-#include <linux/input.h>
-
 #define RK_PORT          "r36s"
-#define RK_CODE_A        BTN_EAST
-#define RK_CODE_B        BTN_SOUTH
-#define RK_CODE_FUNCTION BTN_MODE
+#include "../../src/device/r36s_input.h"
+#define RK_KEYS          R36S_KEYS
 #define RK_STICKS        1
 #define RK_JACK          0
 
