@@ -233,6 +233,7 @@ something once broke in a way nothing noticed:
 | `check-idle` | the Auto Off clock, including the charger case and the counter wrapping |
 | `check-importers` | the computer-side importers (--meta, --titles) on a scratch card: a title written over a game's details keeps them (builds the host launcher) |
 | `check-ingame-colors` | Screen Colors in a game (DESIGN.md 11.42): the real launcher in desk mode's dummy window, as the Pixel 2 and as the Brick, started back into a game against a Diatom of the check's own, the menu up: R1's Display tab has a Screen Colors row, A on it (right over On-Screen Stats) opens MENU's own page over the paused game, Right on its Look keeps Vivid in the database and puts it on the panel (desk mode's stand-in for the table, `tools/desk state`'s `colors`) with the game still paused and told nothing, B is back on the menu and B again resumes the game; as the host's own profile, which has no table, no row; and over your PICO-8, as portkeys starts the menu (`--port-menu PICO8 CART --device pixel2|brick`): its Display tab's Screen Colors right over On-Screen Stats, A the same page over the cart, Right on its Look Vivid kept and on the panel, B back on the row and B again Continue (10); as the host's own profile no row; and over OpenBOR, whose picture is its own, Screen Colors its Display tab's one row, A the page, a step kept, B back on the row and B again Continue |
+| `check-inmodel` | the input model, for every device profile through its own codes and sticks (`src/inmodel.h`, `src/inengine.h`, `src/device/<id>_input.h`): the logical buttons' one table, each profile's table whole (every code once, every printed button sent and every sent one printed), every code's hand and press (MENU and the Pixel 2's L2 and R2 as they are let go), MENU's chords on every key and moved, MENU+VOL, L2+R2, both hotkeys capture screens catching every key, both sticks still at rest and each push its own button, and every tutorial lesson with every code, stick direction and chord: exactly the right ones pass, every wrong one named as printed (FN on the R36S), and the glyph lit for a press the button the answer saw; built with `-Werror` (no SDL) |
 | `check-inrepeat` | no button read twice by `in_repeat` in one step in `src/`: a repeat is true once a frame, so the second read of a held button is false, and "either is due, then which one" turned a held direction round (the home, the in-game save slots, File Transfer's and the USB questions did); each is read once (`in_repeat_axis`). A reading of the source, its rule tried on a bad and a good snippet first |
 | `check-installer` | ZyperOS Installer's version is ZyperOS's, and its page wears this repository's colors, fonts and Zyper (its Rust tests run in CI) |
 | `check-kbnav` | the on-screen keyboard's d-pad: onto and off the action row, the wraps at every edge, and the action keys' labels on each layer; a name's keyboard Shift for its first letter only (kb_layer_typed) |
@@ -654,6 +655,16 @@ build links all of them and wears `desktop` unless told:
     build-native/zyperos --shot /tmp/tour.png --device pixel2 --tour menu 2000
     build-native/zyperos --shot /tmp/tour.png --device brick --tour menu 2000
     build-native/zyperos --shot /tmp/tour.png --device r36s --tour menu 2000
+
+Its controls as it sends them are one table, `src/device/<id>_input.h`
+(`src/device/devinput.h`): each key code and the logical button it is
+(`src/inmodel.h`), and each stick by its axes, with the buttons its pushes
+are and its dead middle; the profile carries it (`.input = <ID>_INPUT`) and
+Diatom's port reads the same table. One engine (`src/inengine.h`) turns
+what any device reports into presses, chords and what the hand holds, so a
+new handheld's buttons need that table and nothing else; `make
+check-inmodel` walks every code, stick, chord and tutorial lesson of every
+profile through it (DESIGN.md 11.9, "One input model").
 
 `desktop` answers as the host always has, so every shot taken before
 profiles is taken the same. `make check-devices` holds each profile whole and

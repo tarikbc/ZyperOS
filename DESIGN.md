@@ -1891,6 +1891,57 @@ its middle (the tutorial's pulse after a wrong press) and faded (with the
 line it belongs to). At rest it is drawn by the same rule as before, pixel for
 pixel.
 
+**One input model** *(2026-11-28: "Our button detection system should be
+modular for every device, and scalable. make sure the code is tight and
+bulletproof.")*. Three handhelds had drifted the same way: the Brick's MENU
+skipped the chord rule (#496), the Pixel 2's capture screen lost MENU's glyph
+(#464), and the R36S's L2, a plain key there, skipped it too, so FN+L2 lit
+both glyphs in the lock lesson while Zyper said "That's L2. Hold FN too.",
+and Hotkeys never caught FN+L2 or FN+R2; its right stick was never read at
+all. Each device file had its own key map and its own share of the rules.
+Now:
+
+- **The logical buttons** are one table, src/inmodel.h: every button's name
+  as screens write it (ds/button.h's "A", "SELECT", "F1"), desk mode's word
+  for it, its kind and the handheld's key it lights. The right stick's four
+  pushes are buttons of their own (IN_RS_*), as the left stick's are the
+  d-pad's.
+- **What a device reports** is one table a device, src/device/<id>_input.h
+  (devinput.h): each key code and the button it is, and each stick by its
+  two axes, the button its first direction is (the d-pad's LEFT, or the
+  right stick's own) and its dead middle. Its profile carries it
+  (`.input`), and Diatom's port of it reads the same table
+  (diatom/port/padmap.h), so a key is the same button over a game as on the
+  shelf.
+- **One engine**, src/inengine.h, turns what any device reports into
+  presses, from those tables and the profile's chords: what the hand holds
+  (in_state's `held`), MENU held and pressed as it is let go, a button under
+  it MENU's chord when the launcher takes it, the volume keys under it
+  brightness where the profile says so, the Pixel 2's L2 and R2 as taps let
+  go (both together the battery's lights), and each stick's four at
+  stickpad's lines past its dead middle. Device files read their nodes and
+  give the engine every event; a keyboard, desk mode and the Simulator give
+  it buttons. No device file decides anything about a button.
+- **No consumer reads a code.** The tutorial's answers read in_state's
+  presses and its glyphs what the hand holds, the same engine's; the hotkeys'
+  capture screens, MENU's chords, the Controls pages and desk mode read the
+  logical buttons. Every switch over the buttons names each one and has no
+  default, and the tables' sizes are static asserts, so a button left out
+  does not build.
+- **A new handheld adds itself** with one table, src/device/<id>_input.h,
+  and its profile's line `.input = <ID>_INPUT`; `make check-inmodel` then
+  walks every one of its codes, both sticks, MENU's chords and both capture
+  screens through the engine, and every tutorial lesson with every code,
+  stick direction and chord: exactly the right ones pass, every wrong one is
+  answered with the button's own name (FN on the R36S, "the right stick"),
+  and the glyph lit for a press is the button the answer saw.
+
+The R36S's right stick (ABS_RX, ABS_RY) is read now: a wrong press in every
+lesson, Move Around's too, as no screen moves with it (L1 and R1 page, and a
+thumb resting on it under A B X Y would move the cursor). Both its sticks
+take the stock dArkOSen tree's dead middle, 384 of 1800, where ours gives the
+driver 64.
+
 ### 11.10 Tutorial
 It runs once, the first time the launcher starts on a handheld whose device
 database has `tour.done` at 0 (seeded so), before the shelf is first drawn,
@@ -2227,9 +2278,9 @@ of the player's own goes on from wherever the loop was.
   over the shelf; any press puts it away.
 - The sounds: **accept** for the welcome's and the finish's A, **move** (or
   **edge**) for the first move, **reward**, **deny**, **back** for START.
-- On the GKD Pixel 2 MENU is the FUNCTION key, reported on its release, so
-  the Settings step answers there; its glyph lights while it is held
-  (`plat_menu_held`). Its brightness chord is MENU+VOL in the tutorial and in
+- MENU is pressed as it is let go on every handheld, so the Settings step
+  answers there; its glyph lights while it is held (in_state's `held`, 11.9
+  "One input model"). The Pixel 2's brightness chord is MENU+VOL in the tutorial and in
   MENU > Controls alike, the names its glyphs carry. Go Back's loop shrinks a game back to its card, as this
   table always said, though in a game B is the game's and MENU leaves it; a
   truer loop would be the games shelf stepping back to the systems row, which
