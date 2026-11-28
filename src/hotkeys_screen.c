@@ -62,11 +62,12 @@ typedef struct {
 	char              foot[160];
 } hk_page;
 
-static const str_id ACT_LABEL[HK_ACTS] = {
+static const str_id ACT_LABEL[] = {
 	S_HOTKEYS_QUICK_SAVE, S_HOTKEYS_QUICK_LOAD, S_CONTROLS_FASTER, S_CONTROLS_SLOWER,
-	S_HOTKEYS_SHOT, S_HOTKEYS_SHADER, S_HOTKEYS_DISPLAY, S_HOTKEYS_RESET, S_GAMEMENU_QUIT,
+	S_HOTKEYS_SHADER, S_HOTKEYS_DISPLAY, S_HOTKEYS_RESET, S_GAMEMENU_QUIT,
 	S_HOTKEYS_FFWD
 };
+_Static_assert(sizeof ACT_LABEL / sizeof ACT_LABEL[0] == HK_ACTS, "a name for every hotkey");
 
 
 /* ---- what is shown --------------------------------------------------------- */
@@ -628,7 +629,7 @@ void hotkeys_shot(app *a, const system_cfg *s, const char *file, int sel, int ca
 		/* A MENU chord's row's capture (sel its row's id) */
 		g_cap.menu = sel == HKR_MK_SHOT || sel == HKR_MK_LOCK;
 		if (g_cap.menu) capture_draw_as(a, &p, mk_label(sel == HKR_MK_SHOT ? MK_SHOT : MK_LOCK), 1.0f);
-		else capture_draw(a, &p, sel >= 0 && sel < HK_ACTS ? (hk_act)sel : HK_SHOT, 1.0f);
+		else capture_draw(a, &p, sel >= 0 && sel < HK_ACTS ? (hk_act)sel : HK_SAVE, 1.0f);
 		g_cap.menu = false;
 		return;
 	}
@@ -662,7 +663,7 @@ void hotkeys_shot(app *a, const system_cfg *s, const char *file, int sel, int ca
 		hk_table t, back;
 		char q[320], chord[24], was[24];
 		int other;
-		const hk_act act = sel >= 0 && sel < HK_ACTS ? (hk_act)sel : HK_SHOT;
+		const hk_act act = sel >= 0 && sel < HK_ACTS ? (hk_act)sel : HK_SAVE;
 		shown(&p, &t, &back, NULL);
 		other = hk_act_on(&t, k, act);
 		if (other < 0) other = HK_FASTER;

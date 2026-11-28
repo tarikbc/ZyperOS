@@ -1653,7 +1653,7 @@ for _name, _flags in (
 # Fast Forward and its speed under it (src/hotkeys.h): as they come, None and
 # 2x; set, SELECT+Y and Max, both in the accent-ink, in MENU > System's and a
 # game's; and its capture screen
-EXTRA.setdefault("hotkeys-ffwd", ("demo", "PS1", ["--hotkeys", "9"]))
+EXTRA.setdefault("hotkeys-ffwd", ("demo", "PS1", ["--hotkeys", "8"]))
 EXTRA.setdefault("hotkeys-ff-speed", ("demo", "PS1", ["--hotkeys", "120"]))
 EXTRA.setdefault("hotkeys-ff-set", ("demo", "PS1", ["--hotkeys", "120"]))
 SHOT_LIB["hotkeys-ff-set"] = {"hotkeys": "1;ffwd:y,ffspeed:max"}

@@ -7589,7 +7589,6 @@ before. An action has one chord and a chord does one action.
 | Quick Save, Quick Load | SELECT+R1, SELECT+L1 | the quick slot, as they always did |
 | Faster, Slower | SELECT+R2, SELECT+L2 | the speed's steps: 1x, 1.5x, 2x, 3x, Max |
 | Fast Forward | None | one press from 1x to its speed, one from any fast step back to 1x (below) |
-| Screenshot | None | the game's frame to `Screenshots/<System>/<Game> 2026-11-18 21.40.05.png` |
 | Next Shader, Next Display | None | the system's next shader or display mode, kept as the menu's rows keep them; a pop-up names it ("Shader / CRT Curved") |
 | Reset Game | None | asks first (below) |
 | Quit | None | leaves at once, as MENU then X; the resume point is kept |
@@ -7697,9 +7696,10 @@ goes back to it where it was. **Quit** pauses the same way (`for=quit`) and
 stops the game as the menu's Quit does.
 
 **Over your PICO-8** the same hotkeys, judged in portkeys by the same chord
-rule (11.55): Screenshot, Reset Game (asked first), Quit, Next Shader and Next
-Display, the first four and Fast Forward doing nothing, as PICO-8 has no
-states and no speed.
+rule (11.55): Reset Game (asked first), Quit, Next Shader and Next Display,
+the first four and Fast Forward doing nothing, as PICO-8 has no states and
+no speed. The Screenshot, MENU's chord now (below), waits there for
+portkeys to read MENU's chords as Diatom does.
 
 **The screenshot** is the game's own frame at its own size, as a save's
 picture is, not the screen with its shader and border: Diatom keeps that
@@ -7741,6 +7741,21 @@ with no folder) is neither felt nor heard.
   key=shot as it takes the frame and the launcher plays it; over your PICO-8
   portkeys plays it itself, on a thread of its own, the launcher being gone
   (tools/pkshutter.h). `check-shotfeel` holds both.
+
+**One Screenshot** *(2026-11-28: the Hotkeys page showed two
+Screenshot rows, one in a game and one on every screen; "there must be just
+one Screenshot hotkey that works anywhere")*. The Screenshot is MENU's
+chord alone (below, MENU+L1 from the start): on every screen of the
+launcher, and in a game, where Diatom takes the game's own frame
+(`Screenshots/<System>/<Game> 2026-11-18 21.40.05.png`). It is one row of
+MENU > System > Hotkeys, under the rule with Lock Screen; a game's Hotkeys
+list has no Screenshot of its own. Kept from before, once (`mk_merge_shot`,
+the device database's `menukeys.shot_merged`): a MENU chord the player set
+stays; else Every Game's Screenshot of before, SELECT and a key, becomes
+MENU and that key where MENU can take it (not START, which is Home with it,
+nor the lock's key); with both set and different the every-screen one stays,
+and the log says what was done. A Screenshot a system or a game kept of its
+own is passed over as its table is read.
 
 **MENU and a button, on every screen** *(2026-11-22: "Ability to screenshot
 on all screens, maybe menu+l1 (add to tutorial)", "Ability to lock device

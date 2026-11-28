@@ -399,6 +399,23 @@ static void run(in_state *st, in_button b)
 	}
 }
 
+/* The one Screenshot, once (mk_merge_shot): Every Game's Screenshot of
+ * before, SELECT and a key, made MENU's where it can be. A system's or a
+ * game's own were the same action, which hk_load now passes over. */
+#define MK_MERGED_KEY "menukeys.shot_merged"
+
+static void merge_shot(void)
+{
+	char hk[256] = "", why[200];
+	mk_table t = g_mk;
+
+	if (db_get_int(db_dev(), MK_MERGED_KEY, 0)) return;
+	db_get_str(db_lib(), "hotkeys", hk, sizeof hk, "");
+	if (mk_merge_shot(&t, hk_stored_shot(hk), why, sizeof why)) mk_put(&t);
+	if (why[0]) fprintf(stderr, "menukeys: %s\n", why);
+	db_set_int(db_dev(), MK_MERGED_KEY, 1);
+}
+
 void mk_init(app *a)
 {
 	char s[96] = "";
@@ -406,5 +423,6 @@ void mk_init(app *a)
 	g_app = a;
 	db_get_str(db_dev(), MK_DB_KEY, s, sizeof s, "");
 	if (!mk_load(s, &g_mk)) fprintf(stderr, "menukeys: '%s' not read, ZyperOS's own\n", s);
+	merge_shot();
 	plat_set_menu_keys(take, run);
 }

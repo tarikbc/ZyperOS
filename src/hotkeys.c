@@ -14,16 +14,18 @@ static const in_button KEY_IN[HK_KEYS] = {
 	IN_ACCEPT, IN_BACK, IN_X, IN_Y, IN_L1, IN_R1, IN_L2, IN_R2, IN_START
 };
 static const char *const ACT_NAME[HK_ACTS] = {
-	"save", "load", "faster", "slower", "shot", "shader", "display", "reset", "quit", "ffwd"
+	"save", "load", "faster", "slower", "shader", "display", "reset", "quit", "ffwd"
 };
 static const char *const FF_WORD[HK_FF_STEPS] = { "1.5", "2", "3", "max" };
 static const int FF_HALF[HK_FF_STEPS] = { 3, 4, 6, 0 };
 /* Fast Forward's speed in the store: a pair as an action's, not an action */
 #define FF_PAIR "ffspeed"
+/* The game's own Screenshot until 1.1.1, now MENU's chord: passed over */
+#define SHOT_PAIR "shot"
 
 const hk_act hk_order[HK_ACTS] = {
 	HK_SAVE, HK_LOAD, HK_FASTER, HK_SLOWER, HK_FFWD,
-	HK_SHOT, HK_SHADER, HK_DISPLAY, HK_RESET, HK_QUIT
+	HK_SHADER, HK_DISPLAY, HK_RESET, HK_QUIT
 };
 
 void hk_default(hk_table *t)
@@ -171,6 +173,11 @@ bool hk_load(const char *stored, hk_table *out)
 			p = end + 1;
 			continue;
 		}
+		if ((size_t)(colon - p) == strlen(SHOT_PAIR) && !strncmp(p, SHOT_PAIR, strlen(SHOT_PAIR))) {
+			if (!end) break;
+			p = end + 1;
+			continue;
+		}
 		a = index_of(ACT_NAME, HK_ACTS, p, (size_t)(colon - p));
 		if (a < 0) return false;
 		if ((size_t)(p + len - colon - 1) == 4 && !strncmp(colon + 1, "none", 4)) k = HK_NONE;
@@ -197,6 +204,21 @@ bool hk_load(const char *stored, hk_table *out)
 	}
 	*out = next;
 	return true;
+}
+
+int hk_stored_shot(const char *stored)
+{
+	const char *p = stored && !strncmp(stored, "1;", 2) ? stored + 2 : NULL;
+
+	while (p && *p) {
+		const char *end = strchr(p, ',');
+		const size_t len = end ? (size_t)(end - p) : strlen(p), name = strlen(SHOT_PAIR);
+
+		if (len > name && !strncmp(p, SHOT_PAIR, name) && p[name] == ':')
+			return key_by_word(p + name + 1, len - name - 1);
+		p = end ? end + 1 : NULL;
+	}
+	return HK_NONE;
 }
 
 void hk_run(const hk_table *t, char *out, size_t n)

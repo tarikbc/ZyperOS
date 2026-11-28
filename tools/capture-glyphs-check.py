@@ -35,7 +35,7 @@ DEVICES = ["pixel2", "brick"] + [d for d in ("smartpro", "r36s")
                                  if (ROOT / "src/device" / (d + "_profile.c")).exists()]
 # src/hotkeys.h's keys: L1, R1, L2, R2
 SHOULDERS = {4: "L1", 5: "R1", 6: "L2", 7: "R2"}
-# The rows whose capture is shot: Screenshot (SELECT and a key) and MENU's
+# The rows whose capture is shot: Next Shader (SELECT and a key) and the
 # Screenshot (MENU and a key), src/hotkeys_screen.c's ids
 ROWS = {"select": 4, "menu": 107}
 

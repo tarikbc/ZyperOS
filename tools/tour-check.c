@@ -1036,12 +1036,12 @@ static void menu_jobs(void)
 	   !strcmp(tour_step_info(TOUR_LOCK)->line, "Hold MENU, then press R2 to lock.") &&
 	   !strcmp(tour_step_info(TOUR_UNLOCK)->line, "Hold SELECT and START 3 s to unlock."),
 	   "the lock's button and hold as Hotkeys has them");
-	ck(!strcmp(tour_step_info(TOUR_MENU)->note, "MENU+L1 takes a screenshot."),
+	ck(!strcmp(tour_step_info(TOUR_MENU)->note, "MENU+L1 takes a screenshot, in a game too."),
 	   "Settings' note says the screenshot, the lock being a lesson of its own");
 	tour_menu_word("FN");
 	ck(!strcmp(tour_step_info(TOUR_LOCK)->line, "Hold FN, then press R2 to lock.") &&
 	   !strcmp(tour_step_info(TOUR_QUIT)->line, "In a game, press FN, then X.") &&
-	   !strcmp(tour_step_info(TOUR_MENU)->note, "FN+L1 takes a screenshot."),
+	   !strcmp(tour_step_info(TOUR_MENU)->note, "FN+L1 takes a screenshot, in a game too."),
 	   "with the R36S's FN for MENU");
 	tour_menu_word("MENU");
 	tour_menu_keys(IN_L1, IN_L2, "MENU+L1", "MENU+L2");

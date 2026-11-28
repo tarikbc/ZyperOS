@@ -25,6 +25,8 @@ static void ck(int ok, const char *what)
 	if (!ok) fails++;
 }
 
+static void merge(void);
+
 static void rules(void)
 {
 	hk_table t, u;
@@ -33,36 +35,46 @@ static void rules(void)
 	printf("the rules\n");
 	hk_default(&t);
 	ck(t.key[HK_SAVE] == HK_R1 && t.key[HK_LOAD] == HK_L1 && t.key[HK_FASTER] == HK_R2 &&
-	   t.key[HK_SLOWER] == HK_L2 && t.key[HK_SHOT] == HK_NONE && t.key[HK_QUIT] == HK_NONE,
+	   t.key[HK_SLOWER] == HK_L2 && t.key[HK_RESET] == HK_NONE && t.key[HK_QUIT] == HK_NONE,
 	   "ZyperOS's own: the shoulders' four, the rest None");
 	hk_store(&t, s, sizeof s);
 	ck(s[0] == '\0', "ZyperOS's own is stored as nothing");
 	hk_run(&t, s, sizeof s);
 	ck(!strcmp(s, "save:r1,load:l1,faster:r2,slower:l2"), "Diatom's form of ZyperOS's own");
-	hk_set(&t, HK_SHOT, HK_Y);
-	ck(t.key[HK_SHOT] == HK_Y && hk_act_on(&t, HK_Y, -1) == HK_SHOT, "Screenshot on Y");
-	hk_chord(&t, HK_SHOT, s, sizeof s);
+	hk_set(&t, HK_RESET, HK_Y);
+	ck(t.key[HK_RESET] == HK_Y && hk_act_on(&t, HK_Y, -1) == HK_RESET, "Reset Game on Y");
+	hk_chord(&t, HK_RESET, s, sizeof s);
 	ck(!strcmp(s, "SELECT+Y"), "said SELECT+Y");
 	hk_chord(&t, HK_QUIT, s, sizeof s);
 	ck(s[0] == '\0', "Quit None says nothing");
-	/* a clash is a swap: Screenshot on R2 hands Faster Y */
-	hk_swap(&t, HK_SHOT, HK_R2);
-	ck(t.key[HK_SHOT] == HK_R2 && t.key[HK_FASTER] == HK_Y, "the swap: Faster takes Screenshot's Y");
+	/* a clash is a swap: Reset Game on R2 hands Faster Y */
+	hk_swap(&t, HK_RESET, HK_R2);
+	ck(t.key[HK_RESET] == HK_R2 && t.key[HK_FASTER] == HK_Y, "the swap: Faster takes Reset Game's Y");
 	/* from None: the other goes None */
 	hk_swap(&t, HK_QUIT, HK_L2);
 	ck(t.key[HK_QUIT] == HK_L2 && t.key[HK_SLOWER] == HK_NONE, "from None: Slower goes None");
 	hk_store(&t, s, sizeof s);
-	ck(!strcmp(s, "1;faster:y,slower:none,shot:r2,quit:l2"), "stored as the pairs that differ");
+	ck(!strcmp(s, "1;faster:y,slower:none,reset:r2,quit:l2"), "stored as the pairs that differ");
 	ck(hk_load(s, &u) && hk_equal(&t, &u), "and read back as it was");
 	hk_run(&t, s, sizeof s);
-	ck(!strcmp(s, "save:r1,load:l1,faster:y,shot:r2,quit:l2"), "Diatom's form, None left out");
-	ck(!hk_load("2;shot:y", &u) && !hk_load("1;shot:select", &u) && !hk_load("1;zoom:y", &u) &&
+	ck(!strcmp(s, "save:r1,load:l1,faster:y,reset:r2,quit:l2"), "Diatom's form, None left out");
+	ck(!hk_load("2;reset:y", &u) && !hk_load("1;reset:select", &u) && !hk_load("1;zoom:y", &u) &&
 	   !hk_load("1;shot", &u), "another version, SELECT, an act or a pair it does not know: refused");
 	hk_default(&t);
 	ck(hk_equal(&u, &t), "and read as ZyperOS's own");
 	/* a default's key given to another, its own pair unchanged: one chord */
-	ck(hk_load("1;shot:r1", &u) && u.key[HK_SHOT] == HK_R1 && u.key[HK_SAVE] == HK_NONE,
-	   "shot:r1 stored: Quick Save, whose R1 it is from the start, goes None");
+	ck(hk_load("1;quit:r1", &u) && u.key[HK_QUIT] == HK_R1 && u.key[HK_SAVE] == HK_NONE,
+	   "quit:r1 stored: Quick Save, whose R1 it is from the start, goes None");
+	/* The game's own Screenshot of before 1.1.1, now MENU's chord alone:
+	 * passed over, and found for the merge */
+	hk_default(&t);
+	ck(hk_load("1;shot:y,quit:x", &u) && u.key[HK_QUIT] == HK_X && hk_act_on(&u, HK_Y, -1) < 0,
+	   "a stored Screenshot is passed over, the rest read");
+	ck(hk_load("1;shot:r1", &u) && hk_equal(&u, &t), "and takes no key from another");
+	ck(hk_stored_shot("1;quit:x,shot:y") == HK_Y && hk_stored_shot("1;shot:none") == HK_NONE &&
+	   hk_stored_shot("1;quit:x") == HK_NONE && hk_stored_shot("") == HK_NONE &&
+	   hk_stored_shot(NULL) == HK_NONE && hk_stored_shot("2;shot:y") == HK_NONE,
+	   "the stored Screenshot's key, found");
 	for (int i = 0; i < HK_ACTS; i++) t.key[i] = HK_NONE;
 	hk_run(&t, s, sizeof s);
 	ck(!strcmp(s, "none"), "no hotkey at all: none");
@@ -79,7 +91,7 @@ static void fastforward(void)
 	hk_default(&t);
 	ck(t.key[HK_FFWD] == HK_NONE && t.ff == HK_FF_2 && !strcmp(hk_ff_word(t.ff), "2") &&
 	   hk_ff_half(t.ff) == 4, "None from the start, its speed 2x");
-	ck(hk_order[3] == HK_SLOWER && hk_order[4] == HK_FFWD && hk_order[5] == HK_SHOT,
+	ck(hk_order[3] == HK_SLOWER && hk_order[4] == HK_FFWD && hk_order[5] == HK_SHADER,
 	   "listed after Slower, beside the speed's steps");
 	ck(hk_ff_half(HK_FF_15) == 3 && hk_ff_half(HK_FF_3) == 6 && hk_ff_half(HK_FF_MAX) == 0 &&
 	   !strcmp(hk_ff_word(HK_FF_MAX), "max"), "1.5x, 3x and Max as SPEED says them");
@@ -118,17 +130,17 @@ static void scopes(void)
 	printf("the scopes\n");
 	hk_default(&def);
 	ck(!hks_get(HKS_GAME, "NES", "a.nes", &t) && hk_equal(&t, &def), "nothing kept: ZyperOS's own");
-	hk_set(&t, HK_SHOT, HK_Y);
+	hk_set(&t, HK_RESET, HK_Y);
 	hks_put(HKS_EVERY, NULL, NULL, &t);
-	ck(db_get_str(db_lib(), "hotkeys", v, sizeof v, NULL) && !strcmp(v, "1;shot:y"), "Every Game kept");
-	ck(!hks_get(HKS_GAME, "NES", "a.nes", &t) && t.key[HK_SHOT] == HK_Y, "a game falls back to it");
+	ck(db_get_str(db_lib(), "hotkeys", v, sizeof v, NULL) && !strcmp(v, "1;reset:y"), "Every Game kept");
+	ck(!hks_get(HKS_GAME, "NES", "a.nes", &t) && t.key[HK_RESET] == HK_Y, "a game falls back to it");
 	hk_set(&t, HK_SHADER, HK_X);
 	hks_put(HKS_SYSTEM, "NES", NULL, &t);
 	ck(db_get_str(db_lib(), "hotkeys.NES", v, sizeof v, NULL), "the system's kept");
-	ck(hks_get(HKS_SYSTEM, "NES", NULL, &t) && t.key[HK_SHADER] == HK_X && t.key[HK_SHOT] == HK_Y,
+	ck(hks_get(HKS_SYSTEM, "NES", NULL, &t) && t.key[HK_SHADER] == HK_X && t.key[HK_RESET] == HK_Y,
 	   "the system's: its own");
 	ck(!hks_get(HKS_GAME, "NES", "a.nes", &t) && t.key[HK_SHADER] == HK_X, "a game of it: the system's");
-	ck(!hks_get(HKS_GAME, "SNES", "b.sfc", &t) && t.key[HK_SHADER] == HK_NONE && t.key[HK_SHOT] == HK_Y,
+	ck(!hks_get(HKS_GAME, "SNES", "b.sfc", &t) && t.key[HK_SHADER] == HK_NONE && t.key[HK_RESET] == HK_Y,
 	   "another system's game: Every Game's");
 	/* This Game: copied at its first change, deleted when back to the system's */
 	hks_get(HKS_GAME, "NES", "a.nes", &t);
@@ -205,6 +217,38 @@ static void menukeys(void)
 	   "two on one key: not read, MENU's own");
 	ck(!mk_load("1;shot:start", &back) && !mk_load("1;hold:2500", &back) && !mk_load("2;x", &back),
 	   "START, a hold not offered, another version: not read");
+	merge();
+}
+
+/* The one Screenshot (2026-11-28): the game's own of before, SELECT and a
+ * key, merged once into MENU's, which works on every screen and in a game */
+static void merge(void)
+{
+	mk_table t, def;
+	char why[200];
+
+	printf("the one Screenshot\n");
+	mk_default(&def);
+	t = def;
+	ck(!mk_merge_shot(&t, HK_NONE, why, sizeof why) && !why[0] && t.key[MK_SHOT] == HK_L1,
+	   "none set: MENU+L1 as it was, nothing said");
+	ck(mk_merge_shot(&t, HK_Y, why, sizeof why) && t.key[MK_SHOT] == HK_Y && strstr(why, "MENU+Y"),
+	   "the game's SELECT+Y: MENU+Y is the one");
+	t = def;
+	t.key[MK_SHOT] = HK_R1;
+	ck(!mk_merge_shot(&t, HK_Y, why, sizeof why) && t.key[MK_SHOT] == HK_R1 && strstr(why, "SELECT+Y") &&
+	   strstr(why, "MENU+R1"), "both set and different: every screen's MENU+R1 kept, and said");
+	t = def;
+	t.key[MK_SHOT] = HK_R1;
+	ck(!mk_merge_shot(&t, HK_R1, why, sizeof why) && t.key[MK_SHOT] == HK_R1, "both on R1: MENU+R1");
+	t = def;
+	ck(!mk_merge_shot(&t, HK_START, why, sizeof why) && t.key[MK_SHOT] == HK_L1 && why[0],
+	   "SELECT+START, which MENU cannot take (Home): MENU+L1, and said");
+	t = def;
+	ck(!mk_merge_shot(&t, HK_L2, why, sizeof why) && t.key[MK_SHOT] == HK_L1 && t.key[MK_LOCK] == HK_L2,
+	   "SELECT+L2, the lock's key: MENU+L1, the lock untouched");
+	t = def;
+	ck(!mk_merge_shot(&t, HK_L1, why, sizeof why) && t.key[MK_SHOT] == HK_L1, "SELECT+L1: MENU+L1 already");
 }
 
 int main(void)

@@ -17,11 +17,17 @@
  * quick load, +R2 faster, +L2 slower); the rest are None until set. Home
  * (MENU+START held) and POWER are no hotkeys here: they never change.
  *
- * Fast Forward (2026-11-23, asked for on the Discord) is last here, so the
- * actions keep their numbers, and listed after Slower (hk_order). */
+ * Fast Forward (2026-11-23, asked for on the Discord) is last here, and
+ * listed after Slower (hk_order).
+ *
+ * The Screenshot is no hotkey of these (2026-11-28: "there must be
+ * just one Screenshot hotkey that works anywhere"): it is MENU's chord
+ * (src/menukeys.h, MENU+L1 from the start), on every screen and in a game,
+ * Diatom's too. A table stored with a "shot" pair from before reads as if
+ * it had none (hk_stored_shot finds it, for mk_merge_shot). */
 typedef enum {
 	HK_SAVE, HK_LOAD, HK_FASTER, HK_SLOWER,
-	HK_SHOT, HK_SHADER, HK_DISPLAY, HK_RESET, HK_QUIT,
+	HK_SHADER, HK_DISPLAY, HK_RESET, HK_QUIT,
 	HK_FFWD,
 	HK_ACTS
 } hk_act;
@@ -62,7 +68,7 @@ const char *hk_key_map(int key);
 in_button hk_button(int key);
 int hk_key_of(in_button b);
 
-/* An action as Diatom names it ("save", "shot") */
+/* An action as Diatom names it ("save", "quit") */
 const char *hk_act_name(hk_act a);
 
 /* Fast Forward's speed as Diatom's RUN ffspeed= and SETHOTKEYS ffspeed=
@@ -83,17 +89,20 @@ void hk_set(hk_table *t, hk_act a, int key);
 void hk_swap(hk_table *t, hk_act a, int key);
 
 /* What is kept for a scope: "1;" and the actions where t differs from
- * ZyperOS's own, "shot:y,save:none", and Fast Forward's speed where it does,
+ * ZyperOS's own, "quit:y,save:none", and Fast Forward's speed where it does,
  * "ffspeed:max"; "" when t is ZyperOS's own */
 void hk_store(const hk_table *t, char *out, size_t n);
 
 /* ZyperOS's own with a stored string over it. False, out = ZyperOS's own,
  * for another version or a bad pair; nothing stored ("" or NULL) is true. A
- * key given twice keeps the first action's. */
+ * key given twice keeps the first action's. A "shot" pair, the game's own
+ * Screenshot until 1.1.1, is passed over. */
 bool hk_load(const char *stored, hk_table *out);
+/* That "shot" pair's key in a stored string, HK_NONE for none (or "none") */
+int hk_stored_shot(const char *stored);
 
 /* Diatom's RUN hotkeys= and SETHOTKEYS keys=: every action with a key,
- * "save:r1,load:l1,shot:y", or "none" for none at all */
+ * "save:r1,load:l1,quit:y", or "none" for none at all */
 void hk_run(const hk_table *t, char *out, size_t n);
 
 /* "SELECT+R1", the action's chord as the pages and glyphs write it, into

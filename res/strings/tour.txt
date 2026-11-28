@@ -180,15 +180,15 @@ ja = %s でどこでも設定を開けます。
 it = Premi %s per le impostazioni, ovunque.
 
 [tour.menu.note]
-note = The MENU lesson's note, beside Zyper's corner: MENU held with a button, on every screen and in a game too, takes a screenshot. %s is the keys as printed, "MENU+L1" ("FN+L1" on the R36S); the lock, MENU's other chord, is the lesson after (tour.lock). Keep it about as long as English's.
-en = %s takes a screenshot.
-zh-Hans = %s 截图。
-es = %s hace una captura.
-pt-BR = %s tira uma captura.
-fr = %s fait une capture.
-de = %s: Bildschirmfoto.
-ja = %s でスクショ。
-it = %s fa uno screenshot.
+note = The MENU lesson's note, beside Zyper's corner: MENU held with a button takes a screenshot on every screen and in a game too, the one Screenshot hotkey there is. %s is the keys as printed, "MENU+L1" ("FN+L1" on the R36S); the lock, MENU's other chord, is the lesson after (tour.lock). Keep it about as long as English's.
+en = %s takes a screenshot, in a game too.
+zh-Hans = %s 截图，游戏中也可。
+es = %s hace una captura, en juego también.
+pt-BR = %s tira uma captura, no jogo também.
+fr = %s fait une capture, en jeu aussi.
+de = %s: Bildschirmfoto, auch im Spiel.
+ja = %s でスクショ。ゲーム中も。
+it = %s fa uno screenshot, anche in gioco.
 
 [tour.quit.title]
 note = The lesson after Settings: leaving a game, MENU and then X (the in-game menu's Quit, whose X does it from anywhere on the menu). Short, as the other lessons' titles.
