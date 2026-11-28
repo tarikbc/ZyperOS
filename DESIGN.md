@@ -1488,6 +1488,18 @@ Headset**, "Forget WH-1000XM4? Pair it again to use it.", Cancel and
 at once until 1.1.0; Tarik's, 2026-11-23, after the confirm panels lab
 listed it: it asks as Wi-Fi's does.)*
 
+**A headset's sound follows the Bluetooth screen.** A headset connected
+there takes the sound at once, MP4's and a game's, whether Bluetooth was on
+at the start or turned on there: the loop that keeps a remembered headset
+connected and says where the sound goes (`bt_reconnect`, sd/zyperos/bt-alsa.sh)
+runs from either, one of it. A headset **disconnected** there stays so: it
+is not dialed again until it is connected there again, forgotten, or the
+handheld restarts (`/tmp/zyperos_bthold`, src/bt.h). "It did not connect"
+waits up to five seconds for BlueZ to say the headset is connected.
+*(2026-11-27, a Brick on 1.1.1-rc.1: the sound stayed on the speakers until
+a restart, a headset disconnected came back by itself, and the failure
+showed over a headset that connected.)*
+
 A row added to MENU goes into `pm_row` where its tab's rows are and into
 `sys_menu_tab_of`, whose switch the compiler holds to every row.
 

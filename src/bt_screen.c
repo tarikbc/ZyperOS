@@ -172,6 +172,12 @@ void bt_screen(app *a)
 					if (want && u.state == BT_NO_ADAPTER)
 						bt_asoundrc(P_ROOT, P_USERDATA);
 					bt_power(want);
+					/* and the loop that says where the sound goes,
+					 * which only a boot with Bluetooth on started:
+					 * without it a headset connected now stayed off
+					 * the sound until a restart. One of it at most
+					 * (bt.h) */
+					if (want) bt_loop_start(P_ROOT);
 					if (!want) bt_down();
 					snprintf(u.note, sizeof u.note, "%s", want ? T(S_BT_ON) : T(S_BT_OFF));
 				}
@@ -186,6 +192,11 @@ void bt_screen(app *a)
 				wdog_hold("Bluetooth");
 				if (d->connected) {
 					wait_panel(a, "Bluetooth", T(S_BT_DISCONNECTING));
+					/* Let go, and kept so: the reconnect loop dials no
+					 * headset in the hold until it is connected here
+					 * again (bt.h). Before the disconnect, so no pass
+					 * between the two dials it back. */
+					bt_hold_edit(BT_HOLD_FILE, d->mac, true);
 					if (bt_disconnect(d->mac)) d->connected = false;
 					snprintf(u.note, sizeof u.note, "%s", T(S_BT_DISCONNECTED)); note_until = now + 4000;
 				} else {
@@ -206,6 +217,8 @@ void bt_screen(app *a)
 					}
 					if (ok) {
 						wait_panel(a, "Bluetooth", T(S_BT_CONNECTING));
+						/* Chosen again: the loop may keep it connected */
+						bt_hold_edit(BT_HOLD_FILE, d->mac, false);
 						if (bt_connect(d->mac, err, sizeof err)) {
 							/* Connecting one here is choosing it, so any other
 							 * goes back to paired: "connected" on this screen then
@@ -247,6 +260,7 @@ void bt_screen(app *a)
 			wait_panel(a, "Bluetooth", T(S_BT_FORGETTING));
 			wdog_hold("Bluetooth");
 			if (bt_forget(u.dev[u.cursor].mac)) {
+				bt_hold_edit(BT_HOLD_FILE, u.dev[u.cursor].mac, false);
 				bt_asoundrc(P_ROOT, P_USERDATA);
 				snprintf(u.note, sizeof u.note, "%s", T(S_BT_FORGOTTEN)); note_until = now + 4000;
 			} else {
