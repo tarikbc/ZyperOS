@@ -140,3 +140,34 @@ void mk_chord(const mk_table *t, mk_act a, char *out, size_t n)
 	if ((unsigned)a >= MK_ACTS || !mk_key_ok(t->key[a])) out[0] = '\0';
 	else snprintf(out, n, "MENU+%s", hk_key_name(t->key[a]));
 }
+
+bool mk_merge_shot(mk_table *t, int game_key, char *why, size_t n)
+{
+	mk_table def;
+
+	if (n) why[0] = '\0';
+	if (game_key < 0) return false;
+	mk_default(&def);
+	if (t->key[MK_SHOT] != def.key[MK_SHOT]) {
+		if (game_key != t->key[MK_SHOT] && n)
+			snprintf(why, n, "the game's Screenshot was SELECT+%s and every screen's MENU+%s: "
+			         "MENU+%s is the one Screenshot", hk_key_name(game_key),
+			         hk_key_name(t->key[MK_SHOT]), hk_key_name(t->key[MK_SHOT]));
+		else if (n)
+			snprintf(why, n, "the game's Screenshot was SELECT+%s, as MENU+%s is: the one Screenshot",
+			         hk_key_name(game_key), hk_key_name(t->key[MK_SHOT]));
+		return false;
+	}
+	if (!mk_key_ok(game_key) || game_key == t->key[MK_LOCK]) {
+		if (n)
+			snprintf(why, n, "the game's Screenshot was SELECT+%s, which MENU cannot take: "
+			         "MENU+%s is the one Screenshot", hk_key_name(game_key), hk_key_name(t->key[MK_SHOT]));
+		return false;
+	}
+	if (n)
+		snprintf(why, n, "the game's Screenshot was SELECT+%s: MENU+%s is the one Screenshot now",
+		         hk_key_name(game_key), hk_key_name(game_key));
+	if (game_key == t->key[MK_SHOT]) return false;
+	t->key[MK_SHOT] = (signed char)game_key;
+	return true;
+}

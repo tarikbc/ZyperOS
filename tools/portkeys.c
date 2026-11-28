@@ -134,6 +134,9 @@
 #include "panelgamma.h"
 #include "p8draw.h"
 #include "p8fx.h"
+#include "hotkeys.h"
+#include "menukeys.h"
+#include "device/pixel2_input.h"
 #include "pkhot.h"
 #include "pkkbd.h"
 #include "pkkeys.h"
@@ -893,6 +896,20 @@ static struct {
 	int own_w, own_h;
 } N;
 
+/* MENU's lock over the port (lock_start, below): its pop-up in each theme,
+ * held up while it is locked, the devices held, and SELECT and START */
+static struct {
+	uint32_t *px[DS_THEMES];
+	int       w[DS_THEMES], h[DS_THEMES];
+	bool      on, grabbed[8], sel, start;
+	bool      opened;                /* just opened: what is down is read again */
+	long      both_since;            /* SELECT and START both down since, 0 not */
+} LK;
+/* The devices and the keys' judge, defined with the devices below */
+static struct pollfd fds[10];
+static int n;
+static pkkeys K;
+
 /* The chip's temperature in mC, as the launcher reads it (plat_chip_temp):
  * /tmp/zyperos_fake_temp (C or mC) standing in, else the hotter of the
  * soc-thermal and gpu-thermal zones */
@@ -1010,6 +1027,8 @@ static size_t notice_bytes(void)
 		size_t n = (size_t)((N.h[t] + 15) / 16 * 16) * 4 * (size_t)N.w[t];
 
 		if (N.px[t] && n > most) most = n;
+		n = (size_t)((LK.h[t] + 15) / 16 * 16) * 4 * (size_t)LK.w[t];
+		if (LK.px[t] && n > most) most = n;
 	}
 	return most;
 }
@@ -2485,6 +2504,26 @@ static idle_clock idle_c;
 static bool idle_input, idle_charging, idle_fired;
 static void vpad_update(void);
 
+/* The shutter of every voice, read now so a shot reads no card
+ * (shot_feel): res/sounds beside this program, as the launcher's; once */
+static void shutter_load(void)
+{
+	static bool loaded;
+	char dir[600];
+	ssize_t len;
+	char *slash;
+
+	if (loaded) return;
+	loaded = true;
+	len = readlink("/proc/self/exe", dir, sizeof dir - 16);
+	slash = len > 0 ? (dir[len] = '\0', strrchr(dir, '/')) : NULL;
+	if (slash) snprintf(slash, sizeof dir - (size_t)(slash - dir), "/res/sounds");
+	if (!slash || !pkshutter_load(dir))
+		fprintf(stderr, "portkeys: no shutter for a screenshot (%s)\n", slash ? dir : "no path");
+}
+
+static void mk_keys_load(void);
+
 static void keys_load(void)
 {
 	char line[1100], run[256] = "";
@@ -2493,7 +2532,8 @@ static void keys_load(void)
 	pkhot_set(&HOT, NULL);
 	idle_c.seconds = 0;
 	shots[0] = '\0';
-	if (!menu_tag || !port_hotkeys(menu_tag)) return;
+	/* MENU's chords over every port, and where their screenshot goes */
+	mk_keys_load();
 	if ((f = fopen(PORT_KEYS_FILE, "r"))) {
 		while (fgets(line, sizeof line, f)) {
 			line[strcspn(line, "\n")] = '\0';
@@ -2502,19 +2542,14 @@ static void keys_load(void)
 		}
 		fclose(f);
 	}
+	if (!menu_tag || !port_hotkeys(menu_tag)) {
+		run[0] = '\0';
+		if (shots[0]) shutter_load();
+		return;
+	}
 	if (run[0] && !pkhot_set(&HOT, run))
 		fprintf(stderr, "portkeys: hotkeys \"%s\" not read; none\n", run);
-	/* The shutter of every voice, read now so a shot reads no card
-	 * (shot_feel): res/sounds beside this program, as the launcher's */
-	if (shots[0]) {
-		char dir[600];
-		ssize_t n = readlink("/proc/self/exe", dir, sizeof dir - 16);
-		char *slash = n > 0 ? (dir[n] = '\0', strrchr(dir, '/')) : NULL;
-
-		if (slash) snprintf(slash, sizeof dir - (size_t)(slash - dir), "/res/sounds");
-		if (!slash || !pkshutter_load(dir))
-			fprintf(stderr, "portkeys: no shutter for a screenshot (%s)\n", slash ? dir : "no path");
-	}
+	if (shots[0]) shutter_load();
 	/* The launcher's MENU > Auto Off: two minutes until the player sets it
 	 * (src/main.c's auto_off_load) */
 	idle_c.seconds = pk_db_get(db, "autooff", 120);
@@ -2614,10 +2649,14 @@ static void shot_take(void)
 	time_t now = time(NULL);
 	struct tm tm;
 	frame_map m;
-	uint8_t *png;
+	uint8_t *png, *whole = NULL;
 	size_t len = 0;
 	bool mine, ok;
-	int fd;
+	int fd, w = 0, h = 0;
+	/* Your PICO-8's own 128 x 128 picture, as Diatom writes fake08's; over
+	 * any other port the whole frame, turned back to landscape, as a game's
+	 * shot is the game's own frame */
+	const bool p8 = menu_tag && port_hotkeys(menu_tag);
 
 	if (!shots[0]) {
 		fprintf(stderr, "portkeys: screenshot: no folder handed over\n");
@@ -2633,7 +2672,13 @@ static void shot_take(void)
 	c.crtc_id = G.crtc;
 	ok = ioctl(G.fd, DRM_IOCTL_MODE_GETCRTC, &c) == 0 && c.fb_id && frame_open(c.fb_id, &m);
 	if (ok) {
-		shot_pick(&m);
+		if (p8) {
+			shot_pick(&m);
+		} else if ((whole = pkshot_frame(m.px, (int)m.w, (int)m.h, m.pitch, &w, &h))) {
+			pkshot_thumb(whole, w, h, g_shot);
+		} else {
+			ok = false;
+		}
 		frame_close(&m);
 	}
 	if (mine) release(false);
@@ -2644,7 +2689,8 @@ static void shot_take(void)
 	snprintf(path, sizeof path, "%s %s.png", shots, when);
 	snprintf(tmp, sizeof tmp, "%s.tmp", path);
 	make_dirs(path);
-	png = pkshot_png(g_shot, P8_SCREEN, P8_SCREEN, &len);
+	png = p8 ? pkshot_png(g_shot, P8_SCREEN, P8_SCREEN, &len) : pkshot_png(whole, w, h, &len);
+	free(whole);
 	fd = png ? open(tmp, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644) : -1;
 	ok = fd >= 0 && write_all(fd, png, len);
 	if (fd >= 0 && close(fd)) ok = false;
@@ -2653,6 +2699,100 @@ static void shot_take(void)
 	free(png);
 	fprintf(stderr, "portkeys: screenshot %s %s\n", ok ? "written" : "failed", path);
 	if (ok) shot_popup();
+}
+
+/* ---- MENU's chords over a port (src/menukeys.h, DESIGN.md 11.61) ----------
+ *
+ * MENU held and one more button, as on every screen and in a game: MENU+L1
+ * the screenshot (shot_take), MENU+L2 the lock, until the player gives them
+ * others (MENU > System > Hotkeys, the launcher's database). pkkeys judges
+ * them by the handheld's own table (src/device/pixel2_input.h), so MENU
+ * then opens nothing as it is let go, and MENU alone still opens the menu.
+ *
+ * The lock: every input device held (EVIOCGRAB, so the port sees no key),
+ * "Locked" and how to open it held over the port (PORT_LOCK_LIGHT), and
+ * SELECT and START held together for Hold to Unlock's time give it all back.
+ * POWER still turns the handheld off. */
+static const dev_input PX2_IN = PIXEL2_INPUT;
+static unsigned mk_hold_ms = MK_HOLD_DEFAULT;
+
+/* The chords' keys and Hold to Unlock, as the launcher keeps them */
+static void mk_keys_load(void)
+{
+	mk_table t;
+
+	pk_menu_keys_load(db, &t);
+	pkkeys_use(&K, &PX2_IN);
+	pkkeys_menu_keys(&K, hk_button(t.key[MK_SHOT]), hk_button(t.key[MK_LOCK]));
+	mk_hold_ms = t.hold_ms;
+	fprintf(stderr, "portkeys: MENU's chords: +%s the screenshot, +%s the lock, %u ms to unlock\n",
+	        hk_key_name(t.key[MK_SHOT]), hk_key_name(t.key[MK_LOCK]), t.hold_ms);
+}
+
+static void lock_notice_load(void)
+{
+	LK.px[DS_LIGHT] = dtov_read(PORT_LOCK_LIGHT, &LK.w[DS_LIGHT], &LK.h[DS_LIGHT], NULL);
+	LK.px[DS_DARK] = dtov_read(PORT_LOCK_DARK, &LK.w[DS_DARK], &LK.h[DS_DARK], NULL);
+}
+
+/* The lock's pop-up held up, at the theme the bar would be in now */
+static void lock_show(void)
+{
+	const int t = pkset_bar_theme(appearance_read ? appearance_word : NULL, time(NULL), THEME_FILE);
+
+	if (LK.px[t]) notice_show(LK.px[t], LK.w[t], LK.h[t], 60000);
+}
+
+static void lock_start(void)
+{
+	int i;
+
+	if (LK.on) return;
+	LK.on = true;
+	LK.sel = LK.start = false;
+	LK.both_since = 0;
+	for (i = 0; i < n && i < 8; i++)
+		LK.grabbed[i] = ioctl(fds[i].fd, EVIOCGRAB, 1) == 0;
+	fprintf(stderr, "portkeys: MENU's lock: locked over the port\n");
+	lock_show();
+}
+
+static void lock_end(void)
+{
+	int i;
+
+	for (i = 0; i < n && i < 8; i++)
+		if (LK.grabbed[i]) ioctl(fds[i].fd, EVIOCGRAB, 0);
+	memset(LK.grabbed, 0, sizeof LK.grabbed);
+	LK.on = false;
+	LK.opened = true;
+	notice_show(NULL, 0, 0, 0);
+	fprintf(stderr, "portkeys: MENU's lock: open again\n");
+}
+
+/* A key while locked: SELECT and START, by the table, toward the unlock */
+static void lock_key(uint16_t code, int32_t value)
+{
+	const in_button b = dev_button_of_code(&PX2_IN, code);
+
+	if (value == 2) return;
+	if (b == IN_SELECT) LK.sel = value != 0;
+	else if (b == IN_START) LK.start = value != 0;
+	else return;
+	LK.both_since = LK.sel && LK.start ? (LK.both_since ? LK.both_since : now_ms()) : 0;
+}
+
+/* Once a pass while locked: held long enough, open; the pop-up kept up.
+ * How long until then, -1 for nothing to wait for */
+static int lock_tick(long now)
+{
+	if (!LK.on) return -1;
+	if (LK.both_since && now - LK.both_since >= (long)mk_hold_ms) {
+		lock_end();
+		return -1;
+	}
+	if (!N.live) lock_show();
+	return LK.both_since ? (int)(LK.both_since + (long)mk_hold_ms - now) : 1000;
 }
 
 /* Next Shader over your PICO-8: the shader its library draws (src/p8fx.h)
@@ -3271,8 +3411,14 @@ static bool read_device(int i, pk_key *keys, int *nk, bool *unreliable, bool *pl
 				*plugged = true;
 				continue;
 			}
+			/* Locked (MENU's lock): SELECT and START toward the unlock,
+			 * and nothing else is anyone's */
+			if (LK.on) {
+				if (ev[k].type == EV_KEY) lock_key(ev[k].code, ev[k].value);
+				continue;
+			}
 			if (ev[k].type == EV_KEY) key_seen(i, &ev[k]);
-			if (ev[k].type != EV_KEY || !pkkeys_relevant(ev[k].code, ev[k].value)) continue;
+			if (ev[k].type != EV_KEY || !pkkeys_relevant(&K, ev[k].code, ev[k].value)) continue;
 			if (*nk == PK_PASS_MAX) {
 				*unreliable = true;
 				continue;
@@ -3291,7 +3437,7 @@ static bool read_device(int i, pk_key *keys, int *nk, bool *unreliable, bool *pl
  * synthesizes a press or repeat. A failed query removes that input. */
 static void resync_devices(bool *plugged)
 {
-	pkkeys_init(&K);
+	pkkeys_reset(&K);
 	for (int i = 0; i < n; i++) {
 		unsigned long down[NLONGS(KEY_MAX + 1)] = { 0 };
 
@@ -3418,7 +3564,8 @@ int main(int argc, char **argv)
 	/* Over your PICO-8: the hotkeys and Auto Off's time, and the
 	 * screenshot's pop-up the launcher left (keys_load, shot_take) */
 	keys_load();
-	if (menu_tag && port_hotkeys(menu_tag)) shot_notice_load();
+	shot_notice_load();
+	lock_notice_load();
 
 	/* Every event device with a volume key or MENU (BTN_TRIGGER_HAPPY1, on
 	 * the joypad), and the headphone switch: found by what they report
@@ -3594,6 +3741,16 @@ int main(int argc, char **argv)
 			power_drain();
 			resync_devices(&plugged);
 		}
+		/* MENU's chords (src/menukeys.h): the screenshot, the lock */
+		{
+			const unsigned mk = pkkeys_menu_acts(&K);
+
+			if (mk & (1u << MK_SHOT)) {
+				fprintf(stderr, "portkeys: MENU's chord, Screenshot\n");
+				shot_take();
+			}
+			if (mk & (1u << MK_LOCK)) lock_start();
+		}
 		/* SELECT's hotkeys over your PICO-8 (hot_do): Reset Game's question
 		 * is a menu too, after which the keys start again in the same way */
 		if (hot_pending) {
@@ -3610,6 +3767,17 @@ int main(int argc, char **argv)
 		 * the joypad held or let go of (vpad_poll); its next look bounds
 		 * the next poll's wait */
 		vpad_wait = vpad_poll(now_ms(), cutoff / 1000, joypad_fd(), ev_clock);
+		/* MENU's lock: open once SELECT and START have been held long
+		 * enough, its pop-up kept up; its next look bounds the wait too */
+		{
+			const int lw = lock_tick(now_ms());
+
+			if (lw >= 0 && (vpad_wait < 0 || lw < vpad_wait)) vpad_wait = lw;
+			if (LK.opened) {
+				LK.opened = false;
+				resync_devices(&plugged);
+			}
+		}
 
 		if (plugged) plug_changed();
 

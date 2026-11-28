@@ -78,8 +78,13 @@ void paths_init(void);
 #include "inbutton.h"   /* in_button: the buttons, with no SDL */
 
 typedef struct {
-	bool   down[IN_COUNT];
+	bool   down[IN_COUNT];      /* what each button does: held as itself */
 	bool   pressed[IN_COUNT];   /* this frame only */
+	/* What the hand holds, whatever the button does with it (src/
+	 * inengine.h): MENU held, L2 held where it is a tap let go (the Pixel
+	 * 2's), a volume key held as brightness, a chord's button. The glyphs
+	 * light from this, on every handheld alike. */
+	bool   held[IN_COUNT];
 	Uint32 down_since[IN_COUNT];
 	Uint32 last_repeat[IN_COUNT];
 	bool   quit_requested;
@@ -685,18 +690,6 @@ bool plat_has_wifi(void);
 /* plat_has_bluetooth, plat_gpu_shaders, plat_speaker_mono,
  * plat_brightness_on_volume, plat_battery_lights and plat_player2: facts
  * about the handheld, answered from its profile (src/device/profile.h). */
-/* Whether MENU is held down this moment where the button itself cannot say:
- * on the Pixel 2 MENU is FUNCTION, reported as IN_MENU only on its release
- * (src/device/pixel2.c), so in_state never sees it held. The tutorial lights
- * its MENU glyph from this while the player holds it. False where IN_MENU's
- * own `down` says it, as on the Brick. */
-bool plat_menu_held(void);
-/* The same for L2 and R2 (`b` IN_L2 or IN_R2): on the Pixel 2 each is a tap
- * reported as it is let go, so that L2+R2 together can be the battery level
- * instead, and in_state never sees one held. The tutorial's handheld shows
- * them pressed from this. False for any other button, and where their own
- * `down` says it, as on the Brick. */
-bool plat_tap_held(in_button b);
 
 /* MENU > Side Lights (src/sidelights.h), where plat_battery_lights says there
  * are lights: the parts that are on, read from where the device keeps them,

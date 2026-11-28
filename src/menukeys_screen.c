@@ -40,24 +40,9 @@ static bool g_cap, g_locked, g_tour;
 static int g_caught = -1;
 static unsigned g_unlocks, g_tour_locks;
 
-/* src/hotkeys.h's keys as the handheld's buttons, in its order */
-static const in_button KEY_IN[HK_KEYS] = {
-	IN_ACCEPT, IN_BACK, IN_X, IN_Y, IN_L1, IN_R1, IN_L2, IN_R2, IN_START
-};
-
-int mk_key_of(in_button b)
-{
-	int k;
-
-	for (k = 0; k < HK_KEYS; k++)
-		if (KEY_IN[k] == b) return k;
-	return -1;
-}
-
-in_button mk_in_of(int key)
-{
-	return key >= 0 && key < HK_KEYS ? KEY_IN[key] : IN_NONE;
-}
+/* src/hotkeys.h's keys as the handheld's buttons, its one table */
+int mk_key_of(in_button b) { return hk_key_of(b); }
+in_button mk_in_of(int key) { return hk_button(key); }
 
 const mk_table *mk_now(void) { return &g_mk; }
 
@@ -414,6 +399,23 @@ static void run(in_state *st, in_button b)
 	}
 }
 
+/* The one Screenshot, once (mk_merge_shot): Every Game's Screenshot of
+ * before, SELECT and a key, made MENU's where it can be. A system's or a
+ * game's own were the same action, which hk_load now passes over. */
+#define MK_MERGED_KEY "menukeys.shot_merged"
+
+static void merge_shot(void)
+{
+	char hk[256] = "", why[200];
+	mk_table t = g_mk;
+
+	if (db_get_int(db_dev(), MK_MERGED_KEY, 0)) return;
+	db_get_str(db_lib(), "hotkeys", hk, sizeof hk, "");
+	if (mk_merge_shot(&t, hk_stored_shot(hk), why, sizeof why)) mk_put(&t);
+	if (why[0]) fprintf(stderr, "menukeys: %s\n", why);
+	db_set_int(db_dev(), MK_MERGED_KEY, 1);
+}
+
 void mk_init(app *a)
 {
 	char s[96] = "";
@@ -421,5 +423,6 @@ void mk_init(app *a)
 	g_app = a;
 	db_get_str(db_dev(), MK_DB_KEY, s, sizeof s, "");
 	if (!mk_load(s, &g_mk)) fprintf(stderr, "menukeys: '%s' not read, ZyperOS's own\n", s);
+	merge_shot();
 	plat_set_menu_keys(take, run);
 }

@@ -27,7 +27,7 @@ ja = 選択
 it = Scegli
 
 [keyhint.close_tiles]
-note = Beside B under a question in tiles (the Link Cable page's Host and Join), with keyhint.move and keyhint.choose: it closes the page. A hint's capitals, as Move and Choose (Title Case in English); keyhint.close is a panel foot's lowercase word.
+note = Beside B under a question in tiles (the Link Cable page's Host and Join), with keyhint.move and keyhint.choose: it closes the page. A hint's capitals, as Move and Choose (Title Case in English, DESIGN.md 11.4), as keyhint.close's in a panel's foot.
 en = Close
 zh-Hans = 关闭
 es = Cerrar
@@ -72,232 +72,232 @@ it = Non ora
 
 
 [keyhint.close]
-note = A button hint's word, beside its button's glyph (src/keyhints.h): B closes the panel or the screen. Short, as each language writes a hint's word (English's lowercase).
-en = close
+note = A button hint's word, beside its button's glyph (src/keyhints.h): B closes the panel or the screen. Short, as each language writes a hint's word (a capital first, Title Case in English: DESIGN.md 11.4).
+en = Close
 zh-Hans = 关闭
-es = cerrar
-pt-BR = fechar
-fr = fermer
-de = schließen
+es = Cerrar
+pt-BR = Fechar
+fr = Fermer
+de = Schließen
 ja = 閉じる
-it = chiudi
+it = Chiudi
 
 [keyhint.turn_on]
-note = A button hint's word, beside its button's glyph (src/keyhints.h): Bluetooth: A turns the radio on. Short, as each language writes a hint's word (English's lowercase).
-en = turn on
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Bluetooth: A turns the radio on. Short, as each language writes a hint's word (a capital first, Title Case in English: DESIGN.md 11.4).
+en = Turn On
 zh-Hans = 开启
-es = activar
-pt-BR = ativar
-fr = activer
-de = einschalten
+es = Activar
+pt-BR = Ativar
+fr = Activer
+de = Einschalten
 ja = オンにする
-it = attiva
+it = Attiva
 
 [keyhint.turn_on_boot]
-note = A button hint's word, beside its button's glyph (src/keyhints.h): Bluetooth: A turns it on at the next start. Short, as each language writes a hint's word (English's lowercase).
-en = turn on at the next boot
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Bluetooth: A turns it on at the next start. Short, as each language writes a hint's word (a capital first, Title Case in English: DESIGN.md 11.4).
+en = Turn On at the Next Boot
 zh-Hans = 下次开机时开启
-es = activar al próximo inicio
-pt-BR = ativar na próxima inicialização
-fr = activer au prochain démarrage
-de = beim nächsten Start einschalten
+es = Activar al próximo inicio
+pt-BR = Ativar na próxima inicialização
+fr = Activer au prochain démarrage
+de = Beim nächsten Start einschalten
 ja = 次回起動時にオン
-it = attiva al prossimo avvio
+it = Attiva al prossimo avvio
 
 [keyhint.search]
-note = A button hint's word, beside its button's glyph (src/keyhints.h): Bluetooth: Y searches for headsets. Short, as each language writes a hint's word (English's lowercase).
-en = search
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Bluetooth: Y searches for headsets. Short, as each language writes a hint's word (a capital first, Title Case in English: DESIGN.md 11.4).
+en = Search
 zh-Hans = 搜索
-es = buscar
-pt-BR = procurar
-fr = chercher
-de = suchen
+es = Buscar
+pt-BR = Procurar
+fr = Chercher
+de = Suchen
 ja = 検索
-it = cerca
+it = Cerca
 
 [keyhint.turn_off]
-note = A button hint's word, beside its button's glyph (src/keyhints.h): Bluetooth: A turns the radio off. Short, as each language writes a hint's word (English's lowercase).
-en = turn off
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Bluetooth: A turns the radio off. Short, as each language writes a hint's word (a capital first, Title Case in English: DESIGN.md 11.4).
+en = Turn Off
 zh-Hans = 关闭
-es = desactivar
-pt-BR = desativar
-fr = désactiver
-de = ausschalten
+es = Desactivar
+pt-BR = Desativar
+fr = Désactiver
+de = Ausschalten
 ja = オフにする
-it = disattiva
+it = Disattiva
 
 [keyhint.disconnect]
-note = A button hint's word, beside its button's glyph (src/keyhints.h): Bluetooth: A disconnects the headset. Short, as each language writes a hint's word (English's lowercase).
-en = disconnect
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Bluetooth: A disconnects the headset. Short, as each language writes a hint's word (a capital first, Title Case in English: DESIGN.md 11.4).
+en = Disconnect
 zh-Hans = 断开
-es = desconectar
-pt-BR = desconectar
-fr = déconnecter
-de = trennen
+es = Desconectar
+pt-BR = Desconectar
+fr = Déconnecter
+de = Trennen
 ja = 切断
-it = disconnetti
+it = Disconnetti
 
 [keyhint.unpair]
-note = A button hint's word, beside its button's glyph (src/keyhints.h): Bluetooth: X forgets (unpairs) the headset. Short, as each language writes a hint's word (English's lowercase).
-en = forget
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Bluetooth: X forgets (unpairs) the headset. Short, as each language writes a hint's word (a capital first, Title Case in English: DESIGN.md 11.4).
+en = Forget
 zh-Hans = 忘记
-es = olvidar
-pt-BR = esquecer
-fr = oublier
-de = entfernen
+es = Olvidar
+pt-BR = Esquecer
+fr = Oublier
+de = Entfernen
 ja = 登録解除
-it = dissocia
+it = Dissocia
 
 [keyhint.connect]
-note = A button hint's word, beside its button's glyph (src/keyhints.h): Bluetooth: A connects the headset. Short, as each language writes a hint's word (English's lowercase).
-en = connect
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Bluetooth: A connects the headset. Short, as each language writes a hint's word (a capital first, Title Case in English: DESIGN.md 11.4).
+en = Connect
 zh-Hans = 连接
-es = conectar
-pt-BR = conectar
-fr = connecter
-de = verbinden
+es = Conectar
+pt-BR = Conectar
+fr = Connecter
+de = Verbinden
 ja = 接続
-it = connetti
+it = Connetti
 
 [keyhint.pair]
-note = A button hint's word, beside its button's glyph (src/keyhints.h): Bluetooth: A pairs the headset. Short, as each language writes a hint's word (English's lowercase).
-en = pair
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Bluetooth: A pairs the headset. Short, as each language writes a hint's word (a capital first, Title Case in English: DESIGN.md 11.4).
+en = Pair
 zh-Hans = 配对
-es = vincular
-pt-BR = parear
-fr = associer
-de = koppeln
+es = Vincular
+pt-BR = Parear
+fr = Associer
+de = Koppeln
 ja = ペアリング
-it = associa
+it = Associa
 
 [keyhint.rescan]
-note = A button hint's word, beside its button's glyph (src/keyhints.h): Wi-Fi: Y looks for networks again. Short, as each language writes a hint's word (English's lowercase).
-en = rescan
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Wi-Fi: Y looks for networks again. Short, as each language writes a hint's word (a capital first, Title Case in English: DESIGN.md 11.4).
+en = Rescan
 zh-Hans = 重新扫描
-es = buscar de nuevo
-pt-BR = buscar de novo
-fr = relancer
-de = neu suchen
+es = Buscar de nuevo
+pt-BR = Buscar de novo
+fr = Relancer
+de = Neu suchen
 ja = 再スキャン
-it = cerca di nuovo
+it = Cerca di nuovo
 
 [keyhint.forget]
-note = A button hint's word, beside its button's glyph (src/keyhints.h): Wi-Fi: X forgets the saved network. Short, as each language writes a hint's word (English's lowercase).
-en = forget
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Wi-Fi: X forgets the saved network. Short, as each language writes a hint's word (a capital first, Title Case in English: DESIGN.md 11.4).
+en = Forget
 zh-Hans = 忘记
-es = olvidar
-pt-BR = esquecer
-fr = oublier
-de = entfernen
+es = Olvidar
+pt-BR = Esquecer
+fr = Oublier
+de = Entfernen
 ja = 削除
-it = dimentica
+it = Dimentica
 
 [keyhint.go]
-note = A button hint's word, beside its button's glyph (src/keyhints.h): Play Time: A goes to the game or the system. Short, as each language writes a hint's word (English's lowercase).
-en = go
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Play Time: A goes to the game or the system. Short, as each language writes a hint's word (a capital first, Title Case in English: DESIGN.md 11.4).
+en = Go
 zh-Hans = 前往
-es = ir
-pt-BR = ir
-fr = aller
-de = öffnen
+es = Ir
+pt-BR = Ir
+fr = Aller
+de = Öffnen
 ja = 移動
-it = vai
+it = Vai
 
 [keyhint.by_game]
-note = A button hint's word, beside its button's glyph (src/keyhints.h): Play Time: Y lists by game. Short, as each language writes a hint's word (English's lowercase).
-en = by game
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Play Time: Y lists by game. Short, as each language writes a hint's word (a capital first, Title Case in English: DESIGN.md 11.4).
+en = By Game
 zh-Hans = 按游戏
-es = por juego
-pt-BR = por jogo
-fr = par jeu
-de = nach Spiel
+es = Por juego
+pt-BR = Por jogo
+fr = Par jeu
+de = Nach Spiel
 ja = ゲーム別
-it = per gioco
+it = Per gioco
 
 [keyhint.window]
-note = A button hint's word, beside its button's glyph (src/keyhints.h): Play Time: L1/R1 change the window of time. Short, as each language writes a hint's word (English's lowercase).
-en = window
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Play Time: L1/R1 change the window of time. Short, as each language writes a hint's word (a capital first, Title Case in English: DESIGN.md 11.4).
+en = Window
 zh-Hans = 时段
-es = período
-pt-BR = período
-fr = période
+es = Período
+pt-BR = Período
+fr = Période
 de = Zeitraum
 ja = 期間
-it = periodo
+it = Periodo
 
 [keyhint.by_system]
-note = A button hint's word, beside its button's glyph (src/keyhints.h): Play Time: Y lists by system. Short, as each language writes a hint's word (English's lowercase).
-en = by system
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Play Time: Y lists by system. Short, as each language writes a hint's word (a capital first, Title Case in English: DESIGN.md 11.4).
+en = By System
 zh-Hans = 按系统
-es = por sistema
-pt-BR = por sistema
-fr = par système
-de = nach System
+es = Por sistema
+pt-BR = Por sistema
+fr = Par système
+de = Nach System
 ja = システム別
-it = per sistema
+it = Per sistema
 
 [keyhint.change]
-note = A button hint's word, beside its button's glyph (src/keyhints.h): Left and right change the row's value (Date & Time). Short, as each language writes a hint's word (English's lowercase).
-en = change
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Left and right change the row's value (Date & Time). Short, as each language writes a hint's word (a capital first, Title Case in English: DESIGN.md 11.4).
+en = Change
 zh-Hans = 更改
-es = cambiar
-pt-BR = alterar
-fr = modifier
-de = ändern
+es = Cambiar
+pt-BR = Alterar
+fr = Modifier
+de = Ändern
 ja = 変更
-it = cambia
+it = Cambia
 
 [keyhint.stop]
-note = A button hint's word, beside its button's glyph (src/keyhints.h): B stops what is running (a download, a look). Short, as each language writes a hint's word (English's lowercase).
-en = stop
+note = A button hint's word, beside its button's glyph (src/keyhints.h): B stops what is running (a download, a look). Short, as each language writes a hint's word (a capital first, Title Case in English: DESIGN.md 11.4).
+en = Stop
 zh-Hans = 停止
-es = detener
-pt-BR = parar
-fr = arrêter
-de = stoppen
+es = Detener
+pt-BR = Parar
+fr = Arrêter
+de = Stoppen
 ja = 停止
-it = interrompi
+it = Interrompi
 
 [keyhint.keep_going_or_stop]
-note = A button hint's word, beside its button's glyph (src/keyhints.h): File Transfer while files move: B asks whether to keep going behind the shelf or stop. Short, as each language writes a hint's word (English's lowercase).
-en = keep going or stop
+note = A button hint's word, beside its button's glyph (src/keyhints.h): File Transfer while files move: B asks whether to keep going behind the shelf or stop. Short, as each language writes a hint's word (a capital first, Title Case in English: DESIGN.md 11.4).
+en = Keep Going or Stop
 zh-Hans = 继续或停止
-es = continuar o detener
-pt-BR = continuar ou parar
-fr = continuer ou arrêter
-de = weitermachen oder stoppen
+es = Continuar o detener
+pt-BR = Continuar ou parar
+fr = Continuer ou arrêter
+de = Weitermachen oder stoppen
 ja = 続行または停止
-it = continua o interrompi
+it = Continua o interrompi
 
 [keyhint.hide]
-note = A button hint's word, beside its button's glyph (src/keyhints.h): File Transfer closing after the file on its way: B hides it. Short, as each language writes a hint's word (English's lowercase).
-en = hide
+note = A button hint's word, beside its button's glyph (src/keyhints.h): File Transfer closing after the file on its way: B hides it. Short, as each language writes a hint's word (a capital first, Title Case in English: DESIGN.md 11.4).
+en = Hide
 zh-Hans = 隐藏
-es = ocultar
-pt-BR = ocultar
-fr = masquer
-de = ausblenden
+es = Ocultar
+pt-BR = Ocultar
+fr = Masquer
+de = Ausblenden
 ja = 隠す
-it = nascondi
+it = Nascondi
 
 [keyhint.back_to_shelf]
-note = A button hint's word, beside its button's glyph (src/keyhints.h): File Transfer: B goes back to the shelf, the transfer going on behind it. Short, as each language writes a hint's word (English's lowercase).
-en = back to the shelf
+note = A button hint's word, beside its button's glyph (src/keyhints.h): File Transfer: B goes back to the shelf, the transfer going on behind it. Short, as each language writes a hint's word (a capital first, Title Case in English: DESIGN.md 11.4).
+en = Back to the Shelf
 zh-Hans = 返回游戏列表
-es = volver a la lista de juegos
-pt-BR = voltar à lista de jogos
-fr = retour à la liste des jeux
-de = zurück zur Spieleliste
+es = Volver a la lista de juegos
+pt-BR = Voltar à lista de jogos
+fr = Retour à la liste des jeux
+de = Zurück zur Spieleliste
 ja = ゲーム一覧に戻る
-it = torna all'elenco giochi
+it = Torna all'elenco giochi
 
 [keyhint.skip]
-note = A button hint's word, beside its button's glyph (src/keyhints.h): The tutorial: START skips the rest. Short, as each language writes a hint's word (English's lowercase).
-en = skip
+note = A button hint's word, beside its button's glyph (src/keyhints.h): The tutorial: START skips the rest. Short, a hint's capitals as the tiles' hints have them (Move, Choose, Close; Title Case in English).
+en = Skip
 zh-Hans = 跳过
-es = omitir
-pt-BR = pular
-fr = passer
-de = beenden
+es = Omitir
+pt-BR = Pular
+fr = Passer
+de = Beenden
 ja = スキップ
-it = salta
+it = Salta

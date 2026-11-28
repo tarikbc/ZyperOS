@@ -249,9 +249,9 @@ int main(void)
 	}
 
 	printf("labels:\n");
-	ck(streq(kb_action_label(KB_ACT_SHIFT, 0), "shift"), "X's key is shift on the letters");
-	ck(streq(kb_action_label(KB_ACT_SHIFT, 1), "unshift"), "and unshift on the capitals");
-	ck(streq(kb_action_label(KB_ACT_SHIFT, 2), "shift"), "and shift on the symbols");
+	ck(streq(kb_action_label(KB_ACT_SHIFT, 0), "Shift"), "X's key is shift on the letters");
+	ck(streq(kb_action_label(KB_ACT_SHIFT, 1), "Unshift"), "and unshift on the capitals");
+	ck(streq(kb_action_label(KB_ACT_SHIFT, 2), "Shift"), "and shift on the symbols");
 	ck(streq(kb_action_label(KB_ACT_SYMBOLS, 0), "#+="), "Y's key is #+= on the letters");
 	ck(streq(kb_action_label(KB_ACT_SYMBOLS, 1), "#+="), "and on the capitals");
 	ck(streq(kb_action_label(KB_ACT_SYMBOLS, 2), "abc"), "and abc on the symbols");
@@ -259,8 +259,8 @@ int main(void)
 		snprintf(what, sizeof what, "space has no word on layer %d: it is the mark", r);
 		ck(streq(kb_action_label(KB_ACT_SPACE, r), ""), what);
 		snprintf(what, sizeof what, "delete and done are the same on layer %d", r);
-		ck(streq(kb_action_label(KB_ACT_DELETE, r), "delete") &&
-		   streq(kb_action_label(KB_ACT_DONE, r), "done"), what);
+		ck(streq(kb_action_label(KB_ACT_DELETE, r), "Delete") &&
+		   streq(kb_action_label(KB_ACT_DONE, r), "Done"), what);
 	}
 	ck(streq(kb_action_button(KB_ACT_SHIFT), "X"), "shift is X");
 	ck(streq(kb_action_button(KB_ACT_SYMBOLS), "Y"), "symbols is Y");

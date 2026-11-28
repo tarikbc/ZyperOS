@@ -24,13 +24,13 @@
  */
 /* What tells this port's RK3326 handhelds apart, for the ones that build it
  * with their own (port/r36s.c): the name its log lines start with, the
- * card's folder, and the codes the A and B caps and the MENU key send. The
- * Pixel 2's here. */
+ * card's folder, and its keys, the launcher's own table of them (ZyperOS's
+ * src/device/pixel2_input.h, r36s_input.h; port/padmap.h). The Pixel 2's
+ * here. */
 #ifndef RK_PORT
 #define RK_PORT          "pixel2"
-#define RK_CODE_A        BTN_SOUTH
-#define RK_CODE_B        BTN_EAST
-#define RK_CODE_FUNCTION BTN_TRIGGER_HAPPY1
+#include "../../src/device/pixel2_input.h"
+#define RK_KEYS          PIXEL2_KEYS
 #endif
 /* Whether the handheld has sticks to read (the R36S's two, and their clicks
  * as L3 and R3). None on the Pixel 2: its pad is read as it always was. */
@@ -58,6 +58,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/input.h>
+#include "padmap.h"   /* the keys as Diatom's buttons, from the launcher's table */
 #include <math.h>
 #include <poll.h>
 #include <pthread.h>
@@ -286,32 +287,18 @@ static uint32_t g_buttons;
 static uint32_t g_pressed;          /* went down during the last poll */
 static bool     g_input_debug;
 
-/* Kernel code -> Diatom button.
- *
- * The codes are the device tree's (ROCKNIX's rk3326s-gkd-pixel2.dts), and the
- * labels are MEASURED: every key pressed in a known order on 2026-10-01 with a
- * logger reading the kernel's events. The caps marked A, B, X, Y send SOUTH,
- * EAST, NORTH, WEST - not the Brick's arrangement, where X and Y were the
- * other way round from position. The codes are named for the labels, not for
- * where the caps sit: A is on the right and B at the bottom, so the A cap
- * sends SOUTH. Mapping by label is what puts the right-hand button on the
- * game's A, as on a SNES pad. L2 and R2 are real keys, the d-pad is four
- * keys rather than a hat, and the key the device calls FUNCTION
- * (BTN_TRIGGER_HAPPY1) is MENU. */
-static const struct { int code; int btn; } keymap[] = {
-	{ BTN_DPAD_UP,    DIATOM_BTN_UP },    { BTN_DPAD_DOWN,  DIATOM_BTN_DOWN },
-	{ BTN_DPAD_LEFT,  DIATOM_BTN_LEFT },  { BTN_DPAD_RIGHT, DIATOM_BTN_RIGHT },
-	{ RK_CODE_A,      DIATOM_BTN_A },     { RK_CODE_B,      DIATOM_BTN_B },
-	{ BTN_NORTH,      DIATOM_BTN_X },     { BTN_WEST,       DIATOM_BTN_Y },
-	{ BTN_TL,         DIATOM_BTN_L1 },    { BTN_TR,         DIATOM_BTN_R1 },
-	{ BTN_TL2,        DIATOM_BTN_L2 },    { BTN_TR2,        DIATOM_BTN_R2 },
-	{ BTN_SELECT,     DIATOM_BTN_SELECT },{ BTN_START,      DIATOM_BTN_START },
-	{ RK_CODE_FUNCTION, DIATOM_BTN_MENU },
-#if RK_STICKS
-	/* The sticks' clicks, on a handheld with sticks (the R36S's) */
-	{ BTN_THUMBL,     DIATOM_BTN_L3 },    { BTN_THUMBR,     DIATOM_BTN_R3 },
-#endif
-};
+/* Kernel code -> Diatom button: the launcher's table of the handheld's keys
+ * (RK_KEYS; ZyperOS's src/device/pixel2_input.h says how the Pixel 2's were
+ * measured), its game buttons as port/padmap.h has them. The volume keys,
+ * on a node of their own, are level keys below. */
+static padmap_row keymap[sizeof RK_KEYS / sizeof RK_KEYS[0]];
+static size_t keymap_n;
+
+/* The table's game buttons, once */
+static void keymap_ready(void)
+{
+	if (!keymap_n) keymap_n = padmap_build(RK_KEYS, sizeof RK_KEYS / sizeof RK_KEYS[0], keymap);
+}
 
 /* ---------- audio ----------------------------------------------------------- */
 
@@ -1221,7 +1208,8 @@ static void pad_resync(void)
 	memset(keys, 0, sizeof keys);
 	if (ioctl(g_pad_fd, EVIOCGKEY(sizeof keys), keys) < 0) return;
 	g_buttons = 0;
-	for (i = 0; i < sizeof keymap / sizeof keymap[0]; i++)
+	keymap_ready();
+	for (i = 0; i < keymap_n; i++)
 		if (BIT_IS_SET(keys, keymap[i].code))
 			g_buttons |= DIATOM_BIT(keymap[i].btn);
 }
@@ -1277,7 +1265,8 @@ void diatom_port_input_poll(void)
 			if (ev[i].type != EV_KEY || ev[i].value == 2) continue;
 			if (g_input_debug)
 				port_logf(DIATOM_LOG_DEBUG, "key %d -> %d", ev[i].code, ev[i].value);
-			for (k = 0; k < sizeof keymap / sizeof keymap[0]; k++) {
+			keymap_ready();
+			for (k = 0; k < keymap_n; k++) {
 				if (keymap[k].code != ev[i].code) continue;
 				if (ev[i].value) {
 					g_buttons |= DIATOM_BIT(keymap[k].btn);

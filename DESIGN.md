@@ -1531,7 +1531,11 @@ screen's foot (Now Playing's grows upward from its line). The d-pad's
 Left/Right ("< >", `KEYHINT_LEFT_RIGHT`) is the d-pad itself, the tutorial's
 cross a quarter larger than a face's glyph, its left and right arms a step
 darker with their arrows (since 1.0.6; a pill with the signs before). Words are res/strings' keyhint.*
-or a screen's own, a hint's capitals (Title Case in English). Under every
+or a screen's own. **Every hint's word starts with a capital**, everywhere:
+"Close", "Stop", "Turn On", "Skip", Title Case in English and a capital
+first in every language that has capitals (2026-11-28, after a lowercase
+"close" on the Link Cable page; `legend_form` in tools/legend.h holds the
+checks to it). This is the one statement of the rule. Under every
 question in tiles (11.18, 11.23, 11.36) and Now Playing's foot. *(I asked
 for one component to use across the UI.)*
 
@@ -1542,7 +1546,7 @@ fixed places (B 64, Y 432, X 832), with no room kept for a fourth.
 
 Since 2026-11-11 every legend is one: a panel's foot (Wi-Fi, Bluetooth,
 Play Time, Date & Time, Developer Mode, Album Art, File Transfer, every "B
-close" and "B stop"), the hotspot's page and the tutorial's "(START) skip".
+Close" and "B Stop"), the hotspot's page and the tutorial's "(START) Skip".
 A screen hands a panel its list packed as a row's label
 (`keyhints_legend`), and the panel draws it centered on that row; the
 checks read it back as text (tools/legend.h, `legend_text`). The words are
@@ -1891,6 +1895,57 @@ its middle (the tutorial's pulse after a wrong press) and faded (with the
 line it belongs to). At rest it is drawn by the same rule as before, pixel for
 pixel.
 
+**One input model** *(2026-11-28: "Our button detection system should be
+modular for every device, and scalable. make sure the code is tight and
+bulletproof.")*. Three handhelds had drifted the same way: the Brick's MENU
+skipped the chord rule (#496), the Pixel 2's capture screen lost MENU's glyph
+(#464), and the R36S's L2, a plain key there, skipped it too, so FN+L2 lit
+both glyphs in the lock lesson while Zyper said "That's L2. Hold FN too.",
+and Hotkeys never caught FN+L2 or FN+R2; its right stick was never read at
+all. Each device file had its own key map and its own share of the rules.
+Now:
+
+- **The logical buttons** are one table, src/inmodel.h: every button's name
+  as screens write it (ds/button.h's "A", "SELECT", "F1"), desk mode's word
+  for it, its kind and the handheld's key it lights. The right stick's four
+  pushes are buttons of their own (IN_RS_*), as the left stick's are the
+  d-pad's.
+- **What a device reports** is one table a device, src/device/<id>_input.h
+  (devinput.h): each key code and the button it is, and each stick by its
+  two axes, the button its first direction is (the d-pad's LEFT, or the
+  right stick's own) and its dead middle. Its profile carries it
+  (`.input`), and Diatom's port of it reads the same table
+  (diatom/port/padmap.h), so a key is the same button over a game as on the
+  shelf.
+- **One engine**, src/inengine.h, turns what any device reports into
+  presses, from those tables and the profile's chords: what the hand holds
+  (in_state's `held`), MENU held and pressed as it is let go, a button under
+  it MENU's chord when the launcher takes it, the volume keys under it
+  brightness where the profile says so, the Pixel 2's L2 and R2 as taps let
+  go (both together the battery's lights), and each stick's four at
+  stickpad's lines past its dead middle. Device files read their nodes and
+  give the engine every event; a keyboard, desk mode and the Simulator give
+  it buttons. No device file decides anything about a button.
+- **No consumer reads a code.** The tutorial's answers read in_state's
+  presses and its glyphs what the hand holds, the same engine's; the hotkeys'
+  capture screens, MENU's chords, the Controls pages and desk mode read the
+  logical buttons. Every switch over the buttons names each one and has no
+  default, and the tables' sizes are static asserts, so a button left out
+  does not build.
+- **A new handheld adds itself** with one table, src/device/<id>_input.h,
+  and its profile's line `.input = <ID>_INPUT`; `make check-inmodel` then
+  walks every one of its codes, both sticks, MENU's chords and both capture
+  screens through the engine, and every tutorial lesson with every code,
+  stick direction and chord: exactly the right ones pass, every wrong one is
+  answered with the button's own name (FN on the R36S, "the right stick"),
+  and the glyph lit for a press is the button the answer saw.
+
+The R36S's right stick (ABS_RX, ABS_RY) is read now: a wrong press in every
+lesson, Move Around's too, as no screen moves with it (L1 and R1 page, and a
+thumb resting on it under A B X Y would move the cursor). Both its sticks
+take the stock dArkOSen tree's dead middle, 384 of 1800, where ours gives the
+driver 64.
+
 ### 11.10 Tutorial
 It runs once, the first time the launcher starts on a handheld whose device
 database has `tour.done` at 0 (seeded so), before the shelf is first drawn,
@@ -1913,15 +1968,15 @@ for the reward, and a wrong press tilted, nudged and answered.)*
 |---|---|---|---|
 | Language (11.30) | A on the focused row | Zyper says hello in the language under the cursor, which steps a language a second until a press | A on a language; START keeps the one moved to |
 | Welcome | A | Zyper pops in and says "Hi! I'm Zyper." in his bubble | A |
-| Move Around | D-pad, and L1/R1 lit on the handheld | the little shelf steps one card right and back; "L1/R1 jump 3 systems." under the line | two moves, any direction, L1/R1 counting as jumps; the little shelf follows them, a jump as far as it has cards |
+| Move Around | D-pad, and L1/R1 lit on the handheld (and the left stick, where there is one) | the little shelf steps one card right and back; "L1/R1 jump 3 systems." under the line | two moves, LEFT or RIGHT, the d-pad's or the left stick's; the little shelf follows them as far as it has cards. L1/R1 jump it 3 cards as on the home, as far as it has cards (edge at its end), and are neither a wrong press nor a move. UP, DOWN, the right stick and every other button are wrong presses: "That's Up. Try LEFT or RIGHT." |
 | Open a Game | A | the focused card grows into a playing game | A |
 | Go Back | B | the game shrinks back to its card | B |
 | See the Details | X | the card turns into the details, the info screen in small: the game's name over a rule, Synopsis in focus, Year, and Favorite Off with Y's glyph | X |
 | Keep a Favorite | Y | in those details Favorite turns from Off to On, the row's own Y pressing with the glyph; the line says Y does it in the details | Y |
 | Settings | MENU | a menu panel opens over the shelf; "MENU+L1 takes a screenshot." under the line | MENU, which opens nothing here |
-| Leave a Game | MENU, a comma and X (11.9's "one after the other"), MENU and X lit on the handheld | the stand-in game plays, MENU opens the in-game menu over it (its last row Quit, X's glyph at its right), X closes it as the game goes back into its card; "It picks up there next time." under the line | MENU, then X: MENU opens the menu on the stage (accept), puts the reward's check in small on the MENU glyph's top-left corner, and holds the menu for X; MENU or B closes it again (back), and so does 3 s with no X, the lesson starting over at MENU; X first is "That's X. Press MENU first." |
+| Leave a Game | MENU, a comma and X (11.9's "one after the other"), MENU and X lit on the handheld | the stand-in game plays, MENU opens the in-game menu over it (its last row Quit, X's glyph at its right), X closes it as the game goes back into its card; "It picks up there next time." under the line | MENU, then X: MENU opens the menu on the stage (accept), puts the reward's check in small on the MENU glyph's top-left corner, and holds the menu for X, which lands the lesson and puts the same check on the X glyph's top-left corner, both glyphs checked through the reward; MENU or B closes it again (back), and so does 3 s with no X, the lesson starting over at MENU; X first is "That's X. Press MENU first." |
 | Lock the Screen | MENU, a plus and L2 (the lock's button as Hotkeys has it), both lit on the handheld | the shelf goes dark at the chord and the lock's panel shows in small (the padlock, its bar), then the shelf comes back; "On every screen, in a game too." under the line | the chord, which the tutorial takes in place of the lock: the stage goes dark with the lock's panel and stays so for the next lesson; the handheld is never locked. MENU alone is "Hold MENU, then press L2.", L2 alone "That's L2. Hold MENU too." |
-| Unlock the Screen | SELECT, a plus and START, both lit on the handheld | on the stage the lock left, SELECT and START held fill the panel's bar and the shelf comes back; the line is "Hold SELECT and START 2 s to unlock." (Hold to Unlock's seconds, "0.5" or "0,5" as the language writes) | SELECT and START held together for Hold to Unlock's time, the bar filling as they are held and emptying when one is let go; START skips nothing in this step, and "START: skip" is not drawn |
+| Unlock the Screen | SELECT, a plus and START, both lit on the handheld | on the stage the lock left, SELECT and START held fill the panel's bar and the shelf comes back; the line is "Hold SELECT and START 2 s to unlock." (Hold to Unlock's seconds, "0.5" or "0,5" as the language writes) | SELECT and START held together for Hold to Unlock's time, the bar filling as they are held and emptying when one is let go; START skips nothing in this step, and "START: Skip" is not drawn |
 | Music | SELECT, and L2/R2 lit on the handheld | MP4's Now Playing fades in; "L2/R2 play the previous or next song." under the line | SELECT, which opens nothing here |
 | Volume | the VOL rocker | a stand-in bar slides onto the stage and steps up | VOL+ or VOL-, which change the real volume and show the real bar |
 | Brightness | MENU+VOL: the MENU pill, a plus and the rocker (F1 and F2 on the Brick) | the stand-in bar's sun steps up | the chord, which changes the real brightness |
@@ -1948,6 +2003,16 @@ closes after 3 s with no X. And a lesson takes its own button and no other:
 Music, whose line asks for SELECT, had taken L2 and R2 too (from the Smart
 Pro kit's notes), and a shoulder there read as a right answer;
 `check-tour` presses every key in every lesson.)*
+
+*(2026-11-28, the R36S test of 1.1.1-test.3: Move Around took UP, DOWN, L1
+and R1 as moves, where its little shelf goes left and right; LEFT and RIGHT
+alone count now, the d-pad's or the left stick's, and its line says so.
+Leave a Game's X got no check of its own as it landed, FN's alone showing
+one; both glyphs carry theirs now. `check-inmodel` walks both on every
+handheld. L1/R1 keep Move Around's note and their light: they jump its
+little shelf with no wrong press and count as no move (my call). A step's
+note yields to Zyper's answer where the answer's bubble would cover it, in
+every language.)*
 
 *(2026-11-13: Keep a Favorite comes after See the Details, and its line says
 "In the details, press Y to add a favorite." Since 2026-11-08 Y on the
@@ -2010,9 +2075,9 @@ of the player's own goes on from wherever the loop was.
   side keys as tabs on its edges; `docs/design/mock/tutorial-buttons-lab.html`.)*
   For it the lesson block - progress, stage, check, glyph, title and lines -
   moves right 104 units, so every x above is 104 more; Zyper's corner, his
-  bubble and "START: skip" stay. A title, line or note wider than that
+  bubble and "START: Skip" stay. A title, line or note wider than that
   leaves keeps the **inset** from the right edge instead, ending where
-  "START: skip" ends (Music's line, wider than the stage, sits a little
+  "START: Skip" ends (Music's line, wider than the stage, sits a little
   left of the stage's middle). On a device with no drawing (the host's
   own, beside F1 and F2) nothing moves and there is no handheld.
   src/tourdevice.c draws it in code, no image files,
@@ -2198,14 +2263,21 @@ of the player's own goes on from wherever the loop was.
   the rig's failure, the right glyph pulsing twice (6%, in **tour-pulse**),
   and his bubble saying "That's X. Try Y." for **hold-short**, after which he
   goes down. In the power step the bubble says it alone, his place taken by
-  the stage's Zyper. A bubble too wide to keep 16 units clear of "START: skip"
-  takes its second sentence to a second line above. In the brightness step a
+  the stage's Zyper. A bubble too wide to keep 16 units clear of "START: Skip"
+  takes its second sentence to a second line above. Where the bubble would
+  meet the step's note (a long answer, or one of two lines), the note
+  yields: it fades out as the bubble comes in **quick** and back as the
+  bubble goes in **fade-out**, so nothing is drawn over it; a note clear of
+  the bubble stays. `check-i18n-shots` draws every step's wrong press in
+  every language on every handheld. In the brightness step a
   volume key alone says "That's volume. Hold MENU too." ("Try F1 or F2." on
   the Brick), and MENU alone "Hold MENU, then press VOL+." START, POWER and
   the volume and brightness keys are not wrong presses, and a press in the
   first 250 ms of a step, of any key, is the last step's thumb and is not
-  heard. L1/R1 are wrong presses everywhere but Move Around, where they are
-  moves. In Leave a Game and Lock the Screen Zyper says how the pair goes
+  heard. L1/R1 are wrong presses in every lesson but Move Around, whose note
+  names them: there they jump its little shelf and count as no move, as its
+  line asks for LEFT or RIGHT, and UP and DOWN are wrong *(the R36S test of
+  1.1.1-test.3)*. In Leave a Game and Lock the Screen Zyper says how the pair goes
   (the table above); the lock's chord, in any other step, is nothing, and
   never locks the handheld while the tutorial runs. In Unlock the Screen
   SELECT and START are its hold, any other button a wrong press ("That's A.
@@ -2221,15 +2293,15 @@ of the player's own goes on from wherever the loop was.
   else, and a second press during that reward, it turns the handheld off.
 - **START** skips at any point but Unlock the Screen, whose hold it is half
   of (pressed a moment before SELECT it would end the tutorial), "START:
-  skip" in **meta** **text-dim** at the bottom right, its right edge at
+  Skip" in **meta** **text-dim** at the bottom right, its right edge at
   1000, not drawn in that step. After a skip at the first start, a
   one-line message (11.8), "Show Tutorial is in MENU.", holds **hold-short**
   over the shelf; any press puts it away.
 - The sounds: **accept** for the welcome's and the finish's A, **move** (or
   **edge**) for the first move, **reward**, **deny**, **back** for START.
-- On the GKD Pixel 2 MENU is the FUNCTION key, reported on its release, so
-  the Settings step answers there; its glyph lights while it is held
-  (`plat_menu_held`). Its brightness chord is MENU+VOL in the tutorial and in
+- MENU is pressed as it is let go on every handheld, so the Settings step
+  answers there; its glyph lights while it is held (in_state's `held`, 11.9
+  "One input model"). The Pixel 2's brightness chord is MENU+VOL in the tutorial and in
   MENU > Controls alike, the names its glyphs carry. Go Back's loop shrinks a game back to its card, as this
   table always said, though in a game B is the game's and MENU leaves it; a
   truer loop would be the games shelf stepping back to the systems row, which
@@ -2837,7 +2909,7 @@ its value in **menu** **text** (the PIN in **title**), digits tabular. Under
 the column at 584 and 632, two **meta** lines, the name **text-soft** and the
 value right-aligned **text-dim** at 976: Phones (`waiting`, `1 joined`) and
 Now, the transfer's news, which scrolls when it is too wide (principle 8).
-The key legend "B: close" is centered at the foot (11.4), at a page's foot
+The key legend "B: Close" is centered at the foot (11.4), at a page's foot
 height (720, DS_FOOT_Y, every screen's foot; 718 until 2026-11-14, 704
 until one foot, 1.0.6), "B: keep going or stop" while files move (11.23). No status corner, no Zyper. src/hotpanel.c draws it; tools/qr-check.c reads its code back.
 
@@ -3016,10 +3088,10 @@ the address first as Wi-Fi File Transfer has it, then over Wi-Fi
 SSH takes, the Developer folder's and ssh-copy-id's alike ("1 key on the
 card"; with none, where one goes: "No key in the Developer folder"), and,
 only while nothing listens, why ("SSH not with Wi-Fi", "SSH needs a key",
-"SSH locked"); then "A change  B close". The cursor rests on SSH over Wi-Fi
+"SSH locked"); then "A Change  B Close". The cursor rests on SSH over Wi-Fi
 and Developer Mode is under it, since turning it off is not one press to
 undo (the hold on About); off, the page closes back to MENU. SSH over Wi-Fi
-turned on says once, as a message with "B close", that over Wi-Fi only a key
+turned on says once, as a message with "B Close", that over Wi-Fi only a key
 signs in, never the password, and how the first key gets on. Turning
 Developer Mode off turns it off too. *(My pick, 2026-11-15: the switch on
 the page, not in MENU.)*
@@ -4443,7 +4515,7 @@ beside the PIN). With no name the address is alone. Under the header one live ro
 says where the link is (**Cable** "unplugged" or "waiting", **Wi-Fi** "not
 connected", **Address** "waiting", **Browser** "waiting", or **PIN**
 "waiting" once a browser has the page), then the rule and the key legend
-(11.4), "B: close".
+(11.4), "B: Close".
 
 **Connecting** (2026-11-12: "usb file transfer takes a while to start, we
 need a loading state"). Over the cable the address and the PIN cannot work
@@ -6043,7 +6115,7 @@ File Transfer is a session of its own, and its screen (the transfer panel,
 File Transfer 2 lab, `docs/design/mock/transfer2-lab.html`)*:
 
 - **B with nothing moving** closes it, as before. The panel's legend says
-  "B: close".
+  "B: Close".
 - **B while files move** asks, in three tiles as Computer Connected (11.18),
   heading **Files are still moving**, "Receiving Tobu Tobu Girl.gb" under the
   rule: **Keep going** (two arrows: the screen goes and the files keep moving
@@ -7538,7 +7610,6 @@ before. An action has one chord and a chord does one action.
 | Quick Save, Quick Load | SELECT+R1, SELECT+L1 | the quick slot, as they always did |
 | Faster, Slower | SELECT+R2, SELECT+L2 | the speed's steps: 1x, 1.5x, 2x, 3x, Max |
 | Fast Forward | None | one press from 1x to its speed, one from any fast step back to 1x (below) |
-| Screenshot | None | the game's frame to `Screenshots/<System>/<Game> 2026-11-18 21.40.05.png` |
 | Next Shader, Next Display | None | the system's next shader or display mode, kept as the menu's rows keep them; a pop-up names it ("Shader / CRT Curved") |
 | Reset Game | None | asks first (below) |
 | Quit | None | leaves at once, as MENU then X; the resume point is kept |
@@ -7646,9 +7717,27 @@ goes back to it where it was. **Quit** pauses the same way (`for=quit`) and
 stops the game as the menu's Quit does.
 
 **Over your PICO-8** the same hotkeys, judged in portkeys by the same chord
-rule (11.55): Screenshot, Reset Game (asked first), Quit, Next Shader and Next
-Display, the first four and Fast Forward doing nothing, as PICO-8 has no
-states and no speed.
+rule (11.55): Reset Game (asked first), Quit, Next Shader and Next Display,
+the first four and Fast Forward doing nothing, as PICO-8 has no states and
+no speed. The Screenshot is MENU's chord (below), as everywhere.
+
+**MENU's chords over a port** *(2026-11-28: one Screenshot that works
+anywhere)*. Over every port portkeys judges MENU's two chords as the
+launcher and Diatom do, by the same table of the handheld's codes
+(src/device/<id>_input.h, tools/pkkeys.c): the button pressed while MENU is
+held is the chord, and MENU then opens nothing as it is let go; MENU alone
+still opens the in-game menu on its release. The keys and Hold to Unlock are
+the launcher's (`menukeys` in its database). **The screenshot**: over your
+PICO-8 its own 128 x 128 picture as before, over any other port the whole
+frame on the panel, turned back to landscape, to `Screenshots/<System>/<the
+game> <time>.png` (the launcher hands the folder over to every port), with
+the shutter, the buzz and the pop-up with the shot in it. **The lock**:
+every input device held (the port sees no key), "Locked" and "Hold
+SELECT+START to unlock" over the port (the launcher renders it as it hands
+over, both themes), and SELECT and START held together for Hold to Unlock's
+time give it all back; POWER still turns the handheld off. A port sees the
+chord's button itself (portkeys holds no pad over it, but over your
+PICO-8, whose pad it gives).
 
 **The screenshot** is the game's own frame at its own size, as a save's
 picture is, not the screen with its shader and border: Diatom keeps that
@@ -7690,6 +7779,21 @@ with no folder) is neither felt nor heard.
   key=shot as it takes the frame and the launcher plays it; over your PICO-8
   portkeys plays it itself, on a thread of its own, the launcher being gone
   (tools/pkshutter.h). `check-shotfeel` holds both.
+
+**One Screenshot** *(2026-11-28: the Hotkeys page showed two
+Screenshot rows, one in a game and one on every screen; "there must be just
+one Screenshot hotkey that works anywhere")*. The Screenshot is MENU's
+chord alone (below, MENU+L1 from the start): on every screen of the
+launcher, and in a game, where Diatom takes the game's own frame
+(`Screenshots/<System>/<Game> 2026-11-18 21.40.05.png`). It is one row of
+MENU > System > Hotkeys, under the rule with Lock Screen; a game's Hotkeys
+list has no Screenshot of its own. Kept from before, once (`mk_merge_shot`,
+the device database's `menukeys.shot_merged`): a MENU chord the player set
+stays; else Every Game's Screenshot of before, SELECT and a key, becomes
+MENU and that key where MENU can take it (not START, which is Home with it,
+nor the lock's key); with both set and different the every-screen one stays,
+and the log says what was done. A Screenshot a system or a game kept of its
+own is passed over as its table is read.
 
 **MENU and a button, on every screen** *(2026-11-22: "Ability to screenshot
 on all screens, maybe menu+l1 (add to tutorial)", "Ability to lock device

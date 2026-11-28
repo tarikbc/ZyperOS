@@ -29,6 +29,14 @@
 void pkshot_pick(const uint8_t *px, int fw, int fh, size_t pitch, const dmode_rect *r,
                  uint8_t out[PKSHOT_BYTES]);
 
+/* A port's whole frame (MENU's screenshot over any port), the same frame
+ * turned back to landscape as pkshot_pick reads it: malloc'd rows of RGB,
+ * its size in *w and *h; NULL on no memory */
+uint8_t *pkshot_frame(const uint8_t *px, int fw, int fh, size_t pitch, int *w, int *h);
+/* That frame, w x h, fitted whole into the pop-up's 128 x 128 square, the
+ * rest black, for pkshot_lay */
+void pkshot_thumb(const uint8_t *rgb, int w, int h, uint8_t out[PKSHOT_BYTES]);
+
 /* `rgb`, w x h, as an 8-bit RGB PNG, every row filter none, as Diatom
  * writes its screenshots; malloc'd, its length in `len`; NULL on no memory */
 uint8_t *pkshot_png(const uint8_t *rgb, int w, int h, size_t *len);

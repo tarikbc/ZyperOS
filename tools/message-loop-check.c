@@ -155,7 +155,7 @@ static app reset(bool parent, bool game)
 }
 static bool run(app *a, int rows)
 {
-	menu_row r[2] = { {"Result", NULL, false}, {"B: close", NULL, false} };
+	menu_row r[2] = { {"Result", NULL, false}, {"B: Close", NULL, false} };
 	bool ok = timed_message(a, "Result", r, rows, 0, 0);
 	in_state empty = {0};
 	assert(!memcmp(&a->in, &empty, sizeof empty)); /* No press/repeat leaks. */

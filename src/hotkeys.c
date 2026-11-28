@@ -5,23 +5,27 @@
 #include <stdio.h>
 #include <string.h>
 
-static const char *const KEY_NAME[HK_KEYS] = {
-	"A", "B", "X", "Y", "L1", "R1", "L2", "R2", "START"
-};
-static const char *const KEY_MAP[HK_KEYS] = {
-	"a", "b", "x", "y", "l1", "r1", "l2", "r2", "start"
+#include "inmodel.h"   /* each key's name and word, the logical button's */
+
+/* The logical button each key is (src/inmodel.h): its name as printed and
+ * its word for Diatom are that button's, one copy for the capture screens,
+ * MENU's chords and the RUN line */
+static const in_button KEY_IN[HK_KEYS] = {
+	IN_ACCEPT, IN_BACK, IN_X, IN_Y, IN_L1, IN_R1, IN_L2, IN_R2, IN_START
 };
 static const char *const ACT_NAME[HK_ACTS] = {
-	"save", "load", "faster", "slower", "shot", "shader", "display", "reset", "quit", "ffwd"
+	"save", "load", "faster", "slower", "shader", "display", "reset", "quit", "ffwd"
 };
 static const char *const FF_WORD[HK_FF_STEPS] = { "1.5", "2", "3", "max" };
 static const int FF_HALF[HK_FF_STEPS] = { 3, 4, 6, 0 };
 /* Fast Forward's speed in the store: a pair as an action's, not an action */
 #define FF_PAIR "ffspeed"
+/* The game's own Screenshot until 1.1.1, now MENU's chord: passed over */
+#define SHOT_PAIR "shot"
 
 const hk_act hk_order[HK_ACTS] = {
 	HK_SAVE, HK_LOAD, HK_FASTER, HK_SLOWER, HK_FFWD,
-	HK_SHOT, HK_SHADER, HK_DISPLAY, HK_RESET, HK_QUIT
+	HK_SHADER, HK_DISPLAY, HK_RESET, HK_QUIT
 };
 
 void hk_default(hk_table *t)
@@ -43,12 +47,26 @@ bool hk_equal(const hk_table *a, const hk_table *b)
 
 const char *hk_key_name(int key)
 {
-	return key >= 0 && key < HK_KEYS ? KEY_NAME[key] : NULL;
+	return key >= 0 && key < HK_KEYS ? in_info_of(KEY_IN[key])->name : NULL;
 }
 
 const char *hk_key_map(int key)
 {
-	return key >= 0 && key < HK_KEYS ? KEY_MAP[key] : NULL;
+	return key >= 0 && key < HK_KEYS ? in_info_of(KEY_IN[key])->word : NULL;
+}
+
+in_button hk_button(int key)
+{
+	return key >= 0 && key < HK_KEYS ? KEY_IN[key] : IN_NONE;
+}
+
+int hk_key_of(in_button b)
+{
+	int k;
+
+	for (k = 0; k < HK_KEYS; k++)
+		if (KEY_IN[k] == b) return k;
+	return HK_NONE;
 }
 
 const char *hk_act_name(hk_act a)
@@ -99,6 +117,16 @@ static int index_of(const char *const *names, int count, const char *s, size_t n
 	return -1;
 }
 
+/* The key whose word (hk_key_map) is the n bytes at s, or -1 */
+static int key_by_word(const char *s, size_t n)
+{
+	int k;
+
+	for (k = 0; k < HK_KEYS; k++)
+		if (strlen(hk_key_map(k)) == n && !strncmp(hk_key_map(k), s, n)) return k;
+	return -1;
+}
+
 void hk_store(const hk_table *t, char *out, size_t n)
 {
 	hk_table def;
@@ -113,7 +141,7 @@ void hk_store(const hk_table *t, char *out, size_t n)
 	for (i = 0; i < HK_ACTS && at < n; i++) {
 		if (t->key[i] == def.key[i]) continue;
 		at += (size_t)snprintf(out + at, n - at, "%s%s:%s", out[at - 1] == ';' ? "" : ",",
-		                       ACT_NAME[i], t->key[i] >= 0 ? KEY_MAP[t->key[i]] : "none");
+		                       ACT_NAME[i], t->key[i] >= 0 ? hk_key_map(t->key[i]) : "none");
 	}
 	if (t->ff != def.ff && at < n)
 		snprintf(out + at, n - at, "%s%s:%s", out[at - 1] == ';' ? "" : ",", FF_PAIR, hk_ff_word(t->ff));
@@ -145,10 +173,15 @@ bool hk_load(const char *stored, hk_table *out)
 			p = end + 1;
 			continue;
 		}
+		if ((size_t)(colon - p) == strlen(SHOT_PAIR) && !strncmp(p, SHOT_PAIR, strlen(SHOT_PAIR))) {
+			if (!end) break;
+			p = end + 1;
+			continue;
+		}
 		a = index_of(ACT_NAME, HK_ACTS, p, (size_t)(colon - p));
 		if (a < 0) return false;
 		if ((size_t)(p + len - colon - 1) == 4 && !strncmp(colon + 1, "none", 4)) k = HK_NONE;
-		else if ((k = index_of(KEY_MAP, HK_KEYS, colon + 1, (size_t)(p + len - colon - 1))) < 0)
+		else if ((k = key_by_word(colon + 1, (size_t)(p + len - colon - 1))) < 0)
 			return false;
 		next.key[a] = (signed char)k;
 		if (!end) break;
@@ -173,6 +206,21 @@ bool hk_load(const char *stored, hk_table *out)
 	return true;
 }
 
+int hk_stored_shot(const char *stored)
+{
+	const char *p = stored && !strncmp(stored, "1;", 2) ? stored + 2 : NULL;
+
+	while (p && *p) {
+		const char *end = strchr(p, ',');
+		const size_t len = end ? (size_t)(end - p) : strlen(p), name = strlen(SHOT_PAIR);
+
+		if (len > name && !strncmp(p, SHOT_PAIR, name) && p[name] == ':')
+			return key_by_word(p + name + 1, len - name - 1);
+		p = end ? end + 1 : NULL;
+	}
+	return HK_NONE;
+}
+
 void hk_run(const hk_table *t, char *out, size_t n)
 {
 	size_t at = 0;
@@ -183,7 +231,7 @@ void hk_run(const hk_table *t, char *out, size_t n)
 	for (i = 0; i < HK_ACTS && at < n; i++)
 		if (t->key[i] >= 0)
 			at += (size_t)snprintf(out + at, n - at, "%s%s:%s", at ? "," : "", ACT_NAME[i],
-			                       KEY_MAP[t->key[i]]);
+			                       hk_key_map(t->key[i]));
 	if (!out[0]) snprintf(out, n, "none");
 }
 
@@ -191,5 +239,5 @@ void hk_chord(const hk_table *t, hk_act a, char *out, size_t n)
 {
 	if (!n) return;
 	if ((unsigned)a >= HK_ACTS || t->key[a] < 0) out[0] = '\0';
-	else snprintf(out, n, "SELECT+%s", KEY_NAME[t->key[a]]);
+	else snprintf(out, n, "SELECT+%s", hk_key_name(t->key[a]));
 }

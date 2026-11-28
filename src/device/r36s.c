@@ -4,11 +4,11 @@
  * (docs/devices/r36s.md, "The hardware"):
  *
  * - its folder on the card, .userdata/r36s;
- * - its keys as ROCKNIX's R36S device tree sends them: the A cap BTN_EAST and
- *   the B cap BTN_SOUTH (the Pixel 2's the other way round), FN BTN_MODE;
- * - L2 and R2 plain keys: it has no battery lights for them to ask for;
- * - its sticks (RK_STICKS): the left one moves as the d-pad, and their
- *   clicks are L3 and R3;
+ * - its keys and its two sticks, its profile's table (src/device/
+ *   r36s_input.h): the A cap BTN_EAST and the B cap BTN_SOUTH (the Pixel 2's
+ *   the other way round), FN BTN_MODE, L2 and R2 plain keys (it has no
+ *   battery lights for them to ask for), the left stick the d-pad, the right
+ *   one its own four, their clicks L3 and R3;
  * - no headphone jack read (RK_JACK 0): on board R36S-V12 the device tree's
  *   jack line read "plugged" with nothing in it and with headphones
  *   (Sylver, 2026-11-26), so the volume keeps the speaker's window and the
@@ -22,14 +22,7 @@
  * the panel's mode, is none here. Nothing in this file was run on an R36S
  * yet: the key codes are the device tree's, not measured (evtest on a real
  * one says; docs/devices/r36s.md, "For a tester"). */
-#include <linux/input.h>
-
 #define RK_ID            "r36s"
-#define RK_CODE_A        BTN_EAST
-#define RK_CODE_B        BTN_SOUTH
-#define RK_CODE_FUNCTION BTN_MODE
-#define RK_L2R2_TAPS     0
-#define RK_STICKS        1
 #define RK_JACK          0
 #define RK_DC_CHARGING   1
 

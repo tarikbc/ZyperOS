@@ -40,17 +40,25 @@ unsigned device_game_wait(unsigned ms);
 
 /* Shared by the portable half, for the device file. */
 void plat_set_btn(in_state *st, in_button b, bool down);   /* a button's edge */
-/* A button's edge on a device whose MENU is a button of its own (the Brick,
- * a keyboard, desk mode): MENU said as it is let go, and a button pressed
- * while it is held MENU's chord when the launcher takes it (src/menukeys.h),
- * as the Pixel 2's FUNCTION does. Everything else as plat_set_btn. */
+/* The one engine (src/inengine.h), which every device file gives what its
+ * handheld reports, from the profile in force: */
+/* An EV_KEY (1 down, 0 up, 2 a repeat); false for a code the profile has no
+ * button for */
+bool plat_in_key(in_state *st, int code, int value);
+/* A button from a keyboard or desk mode */
 void plat_key(in_state *st, in_button b, bool down);
-/* For a device that keeps MENU itself (the Pixel 2's FUNCTION): `b` went
- * down or up, MENU held or not; true when MENU's chord took it, and nothing
- * else may see it, its let-go too */
-bool plat_menu_with(in_state *st, in_button b, bool down, bool menu_held);
-/* What MENU's chords keep between polls, forgotten: a flush, whose let-gos
- * are never read */
+/* A stick's axis: whether the profile reads `code`, its range and flat as
+ * the kernel says them, where it is, and each report's end */
+bool plat_in_wants_axis(int code);
+void plat_in_axis(int code, int value, int min, int max, int flat);
+void plat_in_abs(int code, int value);
+void plat_in_sync(in_state *st);
+/* At each poll's start, every device: a tap of the last poll ends */
+void plat_in_begin(in_state *st);
+/* L2 and R2 together, on a handheld whose lights show the battery
+ * (battery_chord): what flashes them */
+void plat_in_battery(void (*fn)(void));
+/* Everything held forgotten: a flush, whose let-gos are never read */
 void plat_menu_forget(void);
 /* At each poll's end, every device: a chord taken is carried out */
 void plat_menu_after(in_state *st);

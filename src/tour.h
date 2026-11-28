@@ -21,8 +21,9 @@
  * the minute it takes is spent with a thumb on the button rather than on a
  * page of text; MENU > Controls stays the list to look things up in. The
  * shoulders ride on two of them as a note, with no step of their own: L1/R1
- * jump in Move Around, where they count as moves, and L2/R2 change the song
- * in Music.
+ * jump Move Around's little shelf, counting as no move, as Move Around takes
+ * LEFT and RIGHT alone; L2/R2 change the song in Music, a wrong press there
+ * as anywhere.
  *
  * Then four choices make the handheld the player's (2026-11-06, and
  * his picks in the onboarding lab): the theme, the home screen's layout, the
@@ -116,6 +117,11 @@ typedef enum {
 	TK_VOL, TK_BRIGHT, TK_POWER,
 	/* The sticks' clicks, a wrong press in every step (the R36S's) */
 	TK_L3, TK_R3,
+	/* The right stick pushed, any way (IN_RS_*: the R36S's, the Smart
+	 * Pro's): a wrong press in every step, Move Around's too, as no screen
+	 * moves with it, and Zyper names it. The left stick is the d-pad's
+	 * four. */
+	TK_RSTICK,
 	/* The lock's chord (MENU and its button, src/menukeys.h), which the
 	 * tutorial takes in place of the launcher's lock (mk_tour): the lock
 	 * lesson's press, and nothing in any other step. The lesson locks a
@@ -125,9 +131,11 @@ typedef enum {
 } tour_key;
 
 /* What a launcher button is to the tutorial: the d-pad's four, the faces,
- * the shoulders (L1/R1 and L2/R2, each a wrong press but in no step bar L1/R1's Move Around), START, SELECT, MENU,
- * both volume keys as TK_VOL, both brightness keys as TK_BRIGHT, POWER.
- * TK_KEYS for IN_NONE or anything out of range. */
+ * the shoulders (L1/R1 and L2/R2, a wrong press in every step but L1/R1's jump in Move Around), START, SELECT, MENU,
+ * both volume keys as TK_VOL, both brightness keys as TK_BRIGHT, POWER,
+ * the sticks' clicks and the right stick's four as TK_RSTICK. Every button
+ * is one (tools/inmodel-check.c); TK_KEYS for IN_NONE or anything out of
+ * range. */
 tour_key tour_key_of(in_button b);
 /* The button's own name, as "That's X." says it in English: Up, A, L1,
  * START... English whatever language is on, for the command line's
@@ -223,7 +231,8 @@ const tour_info *tour_step_info(tour_step s);
 #define TOUR_UNLOCK_OPEN_AT  2100
 #define TOUR_UNLOCK_DARK_AT  3400
 
-/* The glyph part a launcher button presses (TP_PARTS for none) */
+/* The glyph part a launcher button presses (TP_PARTS for none: the sticks',
+ * which have no glyph of the tutorial's) */
 tour_part tour_part_of(in_button b);
 
 /* MENU's chords on every screen (src/menukeys.h), the MENU lesson's note:
@@ -363,6 +372,12 @@ float tour_unlock_fill(const tour *t, uint32_t now);
 /* Whether Leave a Game has its MENU and waits for X: MENU's glyph carries
  * the check, so the press is seen counted */
 bool tour_quit_menu_in(const tour *t);
+/* Whether glyph `i` of a step of two keys by name (TG_KEYS: 0 the first,
+ * 1 the second) carries the reward's check in small: Leave a Game's MENU
+ * once it counts (tour_quit_menu_in), and its X too once X lands, so each
+ * press of the two is seen counted (the R36S test of 1.1.1-test.3: FN had
+ * its check and X none); no other step's. */
+bool tour_key_checked(const tour *t, int i);
 
 /* The settings as they are, as each choice's index (tour_choice_name), for
  * the choice steps to start on and a skip to go back to. Out of range is 0. */
@@ -384,12 +399,12 @@ bool tour_takes_power(const tour *t);
 
 /* A part of the player's own hand, down or up this frame. */
 void tour_hand(tour *t, tour_part p, bool down, uint32_t now);
-/* Every part from the launcher's buttons as they are held this frame
- * (in_state's `down`). `menu_held` is plat_menu_held: on the Pixel 2 MENU is
- * FUNCTION, which `down` sees only as it is let go. There the brightness
- * keys are FUNCTION held with a volume key, so they light MENU and that half
- * of the rocker; on the Brick they are F1 and F2. */
-void tour_hands(tour *t, const bool down[IN_COUNT], bool menu_held, uint32_t now);
+/* Every part from what the hand holds this frame (in_state's `held`, src/
+ * inengine.h), the same on every handheld: MENU held lights MENU, a volume
+ * key held under it (brightness) MENU and that half of the rocker, the
+ * Brick's F1 and F2 their own; each part the one tour_part_of says, so the
+ * glyph lit is the button the answer saw. */
+void tour_hands(tour *t, const bool held[IN_COUNT], uint32_t now);
 
 /* ---- where the clocks are, for the drawing ----------------------------------- */
 

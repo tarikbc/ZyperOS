@@ -203,18 +203,27 @@ static inline bool port_resets(const char *tag)
  *
  *   hotkeys  the table in force for the cart (hks_get: This Game, PICO-8,
  *            Every Game, ZyperOS's own) in Diatom's RUN form, hk_run's
- *            "save:r1,load:l1,shot:y", "none" for none at all
- *   shots    where a screenshot goes, Screenshots/PICO-8/<the cart's name>,
- *            or .../PICO-8 for Splore and PICO-8's own start; portkeys adds
- *            the time and ".png", as Diatom does with RUN shots=
+ *            "save:r1,load:l1,quit:y", "none" for none at all; your
+ *            PICO-8's alone (port_hotkeys)
+ *   shots    where a screenshot goes, Screenshots/<System>/<the game's
+ *            name>, or .../PICO-8 for Splore and PICO-8's own start;
+ *            portkeys adds the time and ".png", as Diatom does with RUN
+ *            shots=. Over every port, for MENU's chord (src/menukeys.h)
  *
  * Written whole and renamed in. Read by portkeys at its start and after each
- * menu; a missing file is no hotkeys. */
+ * menu; a missing file is no hotkeys and no screenshot. */
 #define PORT_KEYS_FILE "/tmp/zyperos-port-keys"
 
-/* "Screenshot saved" over your PICO-8, in both themes, for portkeys to show
+/* "Locked" and how to open it, MENU's lock over a port (src/menukeys.h,
+ * DESIGN.md 11.61), in both themes, for portkeys to hold over the port
+ * while it is locked: the launcher cannot draw while the port runs. DTOV as
+ * the heat notice's. */
+#define PORT_LOCK_LIGHT "/tmp/zyperos-port-lock-light.dtov"
+#define PORT_LOCK_DARK  "/tmp/zyperos-port-lock-dark.dtov"
+
+/* "Screenshot saved" over a port, in both themes, for portkeys to show
  * with the shot itself in it (DESIGN.md 11.61's pop-up): the launcher cannot
- * draw while PICO-8 runs, so it renders the slab with the folder under the
+ * draw while the port runs, so it renders the slab with the folder under the
  * heading and an empty square where the picture goes (notice.h's
  * NOTICE_SLOT, its place after the pixels), and portkeys lays the shot
  * there. DTOV as the heat notice's, with that trailer. */

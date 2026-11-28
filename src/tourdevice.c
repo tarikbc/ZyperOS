@@ -26,6 +26,7 @@
 #include "platform.h"   /* PLAT_TARGET_FORMAT */
 #include "theme.h"
 #include "tourdevice.h"
+#include "inmodel.h"   /* the key a button lights */
 #include "ui.h"
 
 /* ---- the model ----------------------------------------------------------- */
@@ -100,21 +101,14 @@ static const td_key SHOULDER[4] = { TD_L1, TD_R1, TD_L2, TD_R2 };
 #define HALO_IN      10.0f
 #define HALO_OUT     22.0f
 
-/* The model's key a glyph part is: the lock's button, whichever Hotkeys
- * gives it (L2 from the start) */
-static td_key td_key_of(tour_part p)
+/* The model's key the lock's button is, whichever Hotkeys gives it (L2
+ * from the start), as the input model has it (src/inmodel.h): no guess for
+ * a button it does not know */
+static unsigned lock_key_bit(void)
 {
-	switch (p) {
-	case TP_A:      return TD_A;
-	case TP_B:      return TD_B;
-	case TP_X:      return TD_X;
-	case TP_Y:      return TD_Y;
-	case TP_L1:     return TD_L1;
-	case TP_R1:     return TD_R1;
-	case TP_R2:     return TD_R2;
-	case TP_START:  return TD_START;
-	default:        return TD_L2;
-	}
+	const in_info *in = in_info_of(tour_menu_key(1));
+
+	return in && in->key < TD_KEYS ? 1u << in->key : 0u;
 }
 
 /* The keys lesson `s` lights with `t`'s chords: Brightness's are MENU+VOL or
@@ -131,7 +125,7 @@ static unsigned lit_of(const tour *t, tour_step s)
 	case TOUR_Y:      return 1u << TD_Y;
 	case TOUR_MENU:   return 1u << TD_MENU;
 	case TOUR_QUIT:   return 1u << TD_MENU | 1u << TD_X;
-	case TOUR_LOCK:   return 1u << TD_MENU | 1u << td_key_of(tour_part_of(tour_menu_key(1)));
+	case TOUR_LOCK:   return 1u << TD_MENU | lock_key_bit();
 	case TOUR_UNLOCK: return 1u << TD_SELECT | 1u << TD_START;
 	case TOUR_SELECT: return 1u << TD_SELECT | 1u << TD_L2 | 1u << TD_R2;
 	case TOUR_VOL:    return 1u << TD_VOLUP | 1u << TD_VOLDN;

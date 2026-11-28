@@ -188,7 +188,8 @@ PORTKEYS_SRC := tools/portkeys.c tools/pkkeys.c tools/pkset.c src/audioout.c src
                 src/powerhold.c tools/pkssh.c src/sshlink.c src/rmtree.c src/mdns.c src/panelgamma.c src/battempty.c \
                 tools/pkhot.c diatom/src/chord.c tools/pkkbd.c src/idle.c src/p8draw.c src/dmodefit.c \
                 src/p8fx.c src/p8fx_step.c tools/pkover.c src/hud.c src/hudmenu.c src/status.c tools/pkshot.c \
-                tools/pkvpad.c tools/pkfeel.c tools/pkshutter.c src/uisound.c src/pcm_out.c
+                tools/pkvpad.c tools/pkfeel.c tools/pkshutter.c src/uisound.c src/pcm_out.c src/menukeys.c \
+                src/hotkeys.c
 $(BUILD)/portkeys: $(PORTKEYS_SRC) tools/pkkeys.h src/keyrepeat.h tools/pkset.h src/osdbar.h src/theme.h src/themefile.h \
                    src/clock.h src/design.h src/look.h src/audioout.h src/device/pixel2_levels.h src/sidelights.h \
                    src/heat.h src/portmenu.h src/powerhold.h tools/pkssh.h src/sshlink.h src/rmtree.h src/mdns.h \

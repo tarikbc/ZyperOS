@@ -28,6 +28,7 @@ with tempfile.TemporaryDirectory(prefix='portkeys-flow-') as tmp:
                 '-I' + str(root / 'diatom/include'), str(root / 'tools/portkeys-flow-check.c'),
                 str(root / 'tools/pkkeys.c'), str(root / 'src/powerhold.c'), str(root / 'src/battempty.c'),
                 str(root / 'tools/pkhot.c'), str(root / 'diatom/src/chord.c'), str(root / 'src/idle.c'),
+                str(root / 'src/menukeys.c'), str(root / 'src/hotkeys.c'),
                 '-lsqlite3', '-o', binary]
     subprocess.run(command, check=True)
     subprocess.run([binary], check=True, timeout=15)

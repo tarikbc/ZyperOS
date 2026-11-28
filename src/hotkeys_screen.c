@@ -62,16 +62,13 @@ typedef struct {
 	char              foot[160];
 } hk_page;
 
-static const str_id ACT_LABEL[HK_ACTS] = {
+static const str_id ACT_LABEL[] = {
 	S_HOTKEYS_QUICK_SAVE, S_HOTKEYS_QUICK_LOAD, S_CONTROLS_FASTER, S_CONTROLS_SLOWER,
-	S_HOTKEYS_SHOT, S_HOTKEYS_SHADER, S_HOTKEYS_DISPLAY, S_HOTKEYS_RESET, S_GAMEMENU_QUIT,
+	S_HOTKEYS_SHADER, S_HOTKEYS_DISPLAY, S_HOTKEYS_RESET, S_GAMEMENU_QUIT,
 	S_HOTKEYS_FFWD
 };
+_Static_assert(sizeof ACT_LABEL / sizeof ACT_LABEL[0] == HK_ACTS, "a name for every hotkey");
 
-/* The handheld's buttons a key is, as the capture screen reads them */
-static const in_button KEY_IN[HK_KEYS] = {
-	IN_ACCEPT, IN_BACK, IN_X, IN_Y, IN_L1, IN_R1, IN_L2, IN_R2, IN_START
-};
 
 /* ---- what is shown --------------------------------------------------------- */
 
@@ -354,7 +351,7 @@ static int capture_menu(app *a, hk_page *p, mk_act m)
 
 		plat_input_poll(&a->in);
 		ui_sounds_follow();
-		held = plat_menu_held() || a->in.down[IN_MENU];
+		held = a->in.held[IN_MENU];
 		if (a->in.quit_requested) { a->running = false; break; }
 		if (a->in.pressed[IN_POWER] || idle_due(a)) { power(a, p); break; }
 		if (mk_caught() >= 0 && mk_caught() != g_cap.key) {
@@ -451,7 +448,7 @@ static int capture(app *a, hk_page *p, hk_act act)
 			}
 		} else {
 			for (i = 0; i < HK_KEYS; i++)
-				if (a->in.pressed[KEY_IN[i]]) {
+				if (a->in.pressed[hk_button(i)]) {
 					g_cap.key = i;
 					uisound_play(DS_SOUND_ACCEPT);
 				}
@@ -632,7 +629,7 @@ void hotkeys_shot(app *a, const system_cfg *s, const char *file, int sel, int ca
 		/* A MENU chord's row's capture (sel its row's id) */
 		g_cap.menu = sel == HKR_MK_SHOT || sel == HKR_MK_LOCK;
 		if (g_cap.menu) capture_draw_as(a, &p, mk_label(sel == HKR_MK_SHOT ? MK_SHOT : MK_LOCK), 1.0f);
-		else capture_draw(a, &p, sel >= 0 && sel < HK_ACTS ? (hk_act)sel : HK_SHOT, 1.0f);
+		else capture_draw(a, &p, sel >= 0 && sel < HK_ACTS ? (hk_act)sel : HK_SAVE, 1.0f);
 		g_cap.menu = false;
 		return;
 	}
@@ -666,7 +663,7 @@ void hotkeys_shot(app *a, const system_cfg *s, const char *file, int sel, int ca
 		hk_table t, back;
 		char q[320], chord[24], was[24];
 		int other;
-		const hk_act act = sel >= 0 && sel < HK_ACTS ? (hk_act)sel : HK_SHOT;
+		const hk_act act = sel >= 0 && sel < HK_ACTS ? (hk_act)sel : HK_SAVE;
 		shown(&p, &t, &back, NULL);
 		other = hk_act_on(&t, k, act);
 		if (other < 0) other = HK_FASTER;

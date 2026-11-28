@@ -236,6 +236,15 @@ static bool write_whole(const char *path, const char *text)
 	return true;
 }
 
+void port_shots_save(const char *shots)
+{
+	char text[CFG_STR * 6];
+
+	snprintf(text, sizeof text, "shots\t%s\n", shots ? shots : "");
+	if (!write_whole(plat_flag(PORT_KEYS_FILE), text))
+		fprintf(stderr, "port: couldn't write %s\n", PORT_KEYS_FILE);
+}
+
 void p8_keys_save(const system_cfg *s, const char *file, const char *shots)
 {
 	char text[CFG_STR * 6], run[200], kept[CFG_STR * 4] = "";
@@ -423,25 +432,38 @@ static void launch_port_core(app *a, const system_cfg *s, const char *file, cons
 	/* ...and its in-game menu opening on Game, on Continue, at its first
 	 * MENU, as a game's does after launch's gm_mem_reset */
 	unlink(plat_flag(PORT_MENU_MEM));
-	if (!strcmp(core, P8_CORE) && port_hotkeys(s->tag)) {
-		char shots[CFG_STR * 4], name[LIB_NAME] = "PICO-8", folder[CFG_STR * 2];
+	{
+		char shots[CFG_STR * 4], name[LIB_NAME], folder[CFG_STR * 2], unlock[160], keys[40];
 		const sysview *v = &a->view[a->sys_cursor];
+		const bool p8 = !strcmp(core, P8_CORE) && port_hotkeys(s->tag);
 		size_t i;
 
-		/* The cart by the name its shelf shows, as a Diatom game's shot is;
-		 * Splore and PICO-8's own start are PICO-8's */
+		/* Where MENU's screenshot goes over any port (src/menukeys.h, the
+		 * one Screenshot), the game by the name its shelf shows, as a
+		 * Diatom game's shot is; Splore and PICO-8's own start are
+		 * PICO-8's */
+		snprintf(name, sizeof name, "%s", p8 ? "PICO-8" : s->folder);
 		if (!splore_file(file) && v->list.count > 0 && !strcmp(v->list.items[v->cursor].file, file))
 			snprintf(name, sizeof name, "%s", v->list.items[v->cursor].name);
 		for (i = 0; name[i]; i++)
 			if (name[i] == '/' || name[i] == '\t' || name[i] == '\\') name[i] = '-';
 		snprintf(folder, sizeof folder, "Screenshots/%s", s->folder);
 		snprintf(shots, sizeof shots, "%s/%s/%s", P_CARD, folder, name);
-		p8_keys_save(s, file, shots);
-		p8_pad_save(s, file);
+		if (p8) {
+			p8_keys_save(s, file, shots);
+			p8_pad_save(s, file);
+		} else {
+			port_shots_save(shots);
+		}
 		notice_render_ex(T(S_HOTKEYS_SHOT_SAVED), folder, NULL, NOTICE_SLOT, 0, 0, plat_flag(PORT_SHOT_LIGHT),
 		                 DS_LIGHT);
 		notice_render_ex(T(S_HOTKEYS_SHOT_SAVED), folder, NULL, NOTICE_SLOT, 0, 0, plat_flag(PORT_SHOT_DARK),
 		                 DS_DARK);
+		/* ...and MENU's lock over it, "Locked" and how to open it */
+		snprintf(keys, sizeof keys, "SELECT+START");
+		snprintf(unlock, sizeof unlock, T(S_MP4_HOLD_UNLOCK), keys);
+		notice_render(T(S_MP4_LOCKED), unlock, plat_flag(PORT_LOCK_LIGHT), DS_LIGHT);
+		notice_render(T(S_MP4_LOCKED), unlock, plat_flag(PORT_LOCK_DARK), DS_DARK);
 	}
 	/* Your PICO-8: the PICO-8 shelf's Shader, Strength and Border, for the
 	 * library its script loads before SDL (src/p8fx.h), Off and no border
