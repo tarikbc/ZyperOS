@@ -1,0 +1,16 @@
+config BR2_PACKAGE_LIBUDEV_ZERO
+	bool "libudev-zero"
+	depends on BR2_TOOLCHAIN_HAS_THREADS
+	help
+	  libudev.so.1 without udev: libudev-zero, a libudev that reads
+	  /sys and /dev itself, with no udev daemon and no rules. For the
+	  programs that load libudev.so.1 and only ask it what devices
+	  there are: PortMaster's Westonpack runtime (its weston, the DRM
+	  backend and libinput), which stopped at its start without it.
+
+	  Only the library goes into the image: no header, no pkg-config
+	  file, nothing in staging. So no package built here finds a
+	  libudev and builds against it (SDL2 stays without udev), and
+	  this is not a udev provider (BR2_PACKAGE_HAS_UDEV stays off).
+
+	  https://github.com/illiliti/libudev-zero

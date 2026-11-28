@@ -1,0 +1,5 @@
+# Locally calculated: upstream publishes no checksum or signature for its
+# release tarball (GitHub's archive of tag 1.0.5)
+sha256  bf4372f79ddbe6b0e266a3d2994ffac7018a7edf4f87632aecb5176565d96138  libudev-zero-1.0.5.tar.gz
+# Computed locally from the extracted tarball
+sha256  9169cc15bda9e4597784ea29530d6754af6fb00adce5907bf0a794c575591d3f  LICENSE

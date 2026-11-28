@@ -35,6 +35,7 @@ the boot loader and the closed parts.
 | libpng | 1.6.58 | Libpng-2.0 | https://downloads.sourceforge.net/project/libpng/libpng16/1.6.58 |
 | libpthread-stubs | 0.5 | MIT | http://xcb.freedesktop.org/dist |
 | libtheora | 1.2.0 | BSD-3-Clause | http://downloads.xiph.org/releases/theora |
+| libudev-zero | 1.0.5 | ISC | https://github.com/illiliti/libudev-zero/archive/1.0.5 |
 | libvorbis | 1.3.7 | BSD-3-Clause | https://downloads.xiph.org/releases/vorbis |
 | libxcrypt | 4.5.2 | LGPL-2.1+ | https://github.com/besser82/libxcrypt/releases/download/v4.5.2 |
 | libzlib | 1.3.2 | Zlib | https://www.zlib.net |
@@ -62,5 +63,6 @@ the boot loader and the closed parts.
 | wireless-regdb | 2026.05.30 | ISC | https://cdn.kernel.org/pub/software/network/wireless-regdb |
 | wpa_supplicant | 2.11 | BSD-3-Clause | http://w1.fi/releases |
 | xz | 5.8.3 | Public Domain, BSD-0-Clause, GPL-2.0+, GPL-3.0+, LGPL-2.1+ | https://github.com/tukaani-project/xz/releases/download/v5.8.3 |
+| zip | 3.0 | Info-ZIP | https://sourceforge.net/projects/infozip/files/Zip%203.x%20%28latest%29/3.0 |
 | zyperos | from its repository | GPL-3.0+ | ZyperOS, https://github.com/tarikbc/ZyperOS |
 | zyperos-eq | 1.0 | GPL-3.0 (plugin), LGPL-2.1+ (ladspa.h) | plastron, https://github.com/ericreinsmidt/plastron |

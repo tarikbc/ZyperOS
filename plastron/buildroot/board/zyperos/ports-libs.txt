@@ -20,12 +20,23 @@
 # lib_aarch64, mesa_x11_stub), and the ones its start looks for by name
 # (tools/findlib, Crusty). glibc's own are left out.
 #
+# libudev.so.1 among them: the runtime carries a stand-in libudev of
+# Crusty's, but not in a folder its westonwrap.sh puts on the library path
+# (LD_LIBRARY_PATH=:/tmp/weston/lib_aarch64: when weston starts), so weston
+# takes it from the system, and on 1.1.0, with no udev, stopped there
+# ("./wp_weston: error while loading shared libraries: libudev.so.1").
+# libudev-zero is that library without udev.
+#
+# board/zyperos/ports-cmds.txt is the same for the commands the ports'
+# scripts run, and scripts/ports-libs.sh checks both.
+#
 # soname            package      option                  loaded by
 libopenal.so.1      openal       BR2_PACKAGE_OPENAL      Stardew Valley's MonoGame, for its sound
 libvorbisfile.so.3  libvorbis    BR2_PACKAGE_LIBVORBIS   PortMaster's LOVE 11.5 runtime
 libtheoradec.so.1   libtheora    BR2_PACKAGE_LIBTHEORA   the LOVE 11.5 runtime (board/px2/post-build.sh's link to libtheoradec.so.2)
 libmpg123.so.0      mpg123       BR2_PACKAGE_MPG123      the LOVE 11.5 runtime
 libevdev.so.2       libevdev     BR2_PACKAGE_LIBEVDEV    Westonpack's weston (its libexec_weston) and its libinput
+libudev.so.1        libudev-zero BR2_PACKAGE_LIBUDEV_ZERO Westonpack's weston (wp_weston) and its libinput
 libbz2.so.1.0       bzip2        BR2_PACKAGE_BZIP2       Westonpack's Xwayland, through its libXfont2
 libjpeg.so.8        jpeg-turbo   BR2_PACKAGE_JPEG        Westonpack's weston, its Xwayland module
 libz.so.1           libzlib      BR2_PACKAGE_ZLIB        Westonpack's FreeType, cairo, libpng and libXfont2

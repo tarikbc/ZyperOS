@@ -80,11 +80,11 @@ if [ "$DEVICE" = pixel2 ]; then
 		fi
 	done
 	# And every library PortMaster's ports and runtimes load from the system
-	# (board/zyperos/ports-libs.txt): one missing stops each port that needs
-	# it at its start. The Brick runs no ports yet (ZyperOS's
-	# sd/brick/device.sh, HAS_PORTS=0).
+	# (board/zyperos/ports-libs.txt) and every command their scripts run
+	# from it (ports-cmds.txt): one missing stops each port that needs it.
+	# The Brick runs no ports yet (ZyperOS's sd/brick/device.sh, HAS_PORTS=0).
 	if ! sh /src/scripts/ports-libs.sh "$OUTPUT/target"; then
-		echo "release: a library the ports load is not in the image (board/zyperos/ports-libs.txt)" >&2
+		echo "release: a library or command the ports need is not in the image (board/zyperos/ports-libs.txt, ports-cmds.txt)" >&2
 		exit 1
 	fi
 fi
