@@ -93,4 +93,22 @@ const char *ur_fixed_role(const char *text);
  * is online, the charger's type and state. Cut at n - 1. */
 void ur_uevent_line(const char *uevent, char *out, unsigned long n);
 
+/* The power on a USB supply's input from its voltage_avg in microvolts (the
+ * RK817's VUSB ADC on the R36S, which charger_online misses while the RK817
+ * itself feeds the pin), in words that change only when the fact does:
+ * "0 V" under 0.5 V, "some, under 4 V" under 4 V, else "5 V"; "-" for a
+ * failed reading (uv < 0). */
+const char *ur_vbus_words(long uv);
+
+/* The DWC2's debugfs regdump (lines "GOTGCTL = 0x000980dc") as one line in
+ * words, only what a fact is made of, so it changes only when one does: the
+ * mode it is in (GINTSTS's current mode bit alone: reading a host register
+ * in device mode raises its mode mismatch, and the frame numbers move), the
+ * sessions and the ID it sees and whether the B session is the driver's
+ * override (GOTGCTL), whether a device role is forced (GUSBCFG), its pull-up
+ * (DCTL), the device side's suspend, speed and D+ D- lines (DSTS), and the
+ * host port's power, connection and lines (HPRT0). Registers not found are
+ * left out; "-" when none is. Cut at n - 1. */
+void ur_dwc2_line(const char *regdump, char *out, unsigned long n);
+
 #endif

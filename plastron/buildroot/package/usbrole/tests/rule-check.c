@@ -423,9 +423,47 @@ static void fixed_and_facts(void)
 	CHECK(out[0] == '\0', "nothing is an empty line");
 }
 
+/* The R36S's controller as test.3 logged it (2026-11-28): the driver's
+ * override holding the B session, the device role forced, the pull-up on,
+ * suspended with D+ high; and the same registers a second later with the
+ * mode mismatch a debugfs read of HPRT0 raises, and a frame number moved,
+ * the same line. VUSB in words. */
+static void r36s_facts(void)
+{
+	static const char *const t3 =
+		"GOTGCTL = 0x000980dc\nGOTGINT = 0x00000000\nGUSBCFG = 0x4000140f\n"
+		"GINTSTS = 0x04008020\nDCTL = 0x00000000\nDSTS = 0x00400003\nHPRT0 = 0x00000400\n";
+	static const char *const t3b =
+		"GOTGCTL = 0x000980dc\nGUSBCFG = 0x4000140f\nGINTSTS = 0x04008022\n"
+		"DCTL = 0x00000000\nDSTS = 0x0047f103\nHPRT0 = 0x00000400\n";
+	char a[700], b[700];
+
+	ur_dwc2_line(t3, a, sizeof a);
+	CHECK(!strcmp(a, "device mode; B session 1 (the driver's override, 1), A session 0, ID B; "
+	                 "forced device; pull-up on; device side suspended 1, speed full, lines D+ 1 D- 0; "
+	                 "host port power 0, connected 0, enabled 0, lines D+ 1 D- 0"),
+	      "test.3's registers in words: '%s'", a);
+	ur_dwc2_line(t3b, b, sizeof b);
+	CHECK(!strcmp(a, b), "a mode mismatch and a frame number are no change: '%s' / '%s'", a, b);
+	ur_dwc2_line("GOTGCTL = 0x000c0000\nGINTSTS = 0x00000001\nGUSBCFG = 0x2000140f\n"
+	             "DCTL = 0x00000002\nHPRT0 = 0x00001005\n", a, sizeof a);
+	CHECK(!strcmp(a, "host mode; B session 1, A session 1, ID A; forced host; pull-up off; "
+	                 "host port power 1, connected 1, enabled 1, lines D+ 0 D- 0"),
+	      "a host with a device on its port, no override: '%s'", a);
+	ur_dwc2_line("", a, sizeof a);
+	CHECK(!strcmp(a, "-"), "no registers: '%s'", a);
+	ur_dwc2_line(t3, a, 20);
+	CHECK(strlen(a) == 19, "cut to its room, ended: '%s'", a);
+	CHECK(!strcmp(ur_vbus_words(0), "0 V") && !strcmp(ur_vbus_words(20000), "0 V") &&
+	      !strcmp(ur_vbus_words(3000000), "some, under 4 V") &&
+	      !strcmp(ur_vbus_words(5007000), "5 V") && !strcmp(ur_vbus_words(-1), "-"),
+	      "VUSB in words");
+}
+
 int main(void)
 {
 	fixed_and_facts();
+	r36s_facts();
 	mac_replugs();
 	quick_swap();
 	plugged_in_a_game();

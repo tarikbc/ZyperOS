@@ -308,8 +308,13 @@ static void read_request(void)
  * computer's session: "configured"), and the USB devices on the bus. What a
  * rule for that port can be built from: whether a computer's power reaches
  * anything the system can read (Tarik's R36S, 2026-11-28). Nothing written
- * to any of them. */
-#define FACTS_MS 5000u
+ * to any of them. Each second since test.3, whose logs had none of it from
+ * the session the cable went in: the card's log now follows the kernel's
+ * (sd/r36s/device.sh), with the kernel's time on each line. A USB supply's
+ * voltage_avg in words too (the RK817's VUSB ADC: 5.0 V in test.3 with
+ * online 0, the RK817 feeding the pin itself), and the controller's
+ * registers in words (rule.c, ur_dwc2_line). */
+#define FACTS_MS 1000u
 /* A sysfs file's text, its line ends as spaces, or "-" */
 static void read_flat(const char *path, char *out, size_t n)
 {
@@ -321,6 +326,79 @@ static void read_flat(const char *path, char *out, size_t n)
 	out[got] = '\0';
 	while (got > 0 && (out[got - 1] == '\n' || out[got - 1] == ' ')) out[--got] = '\0';
 	for (char *c = out; *c; c++) if (*c == '\n') *c = ' ';
+}
+
+/* A regdump file in words (rule.c), "-" unreadable. The whole dump: every
+ * endpoint's and host channel's registers come before HPRT0 */
+static void regdump_line(const char *path, char *out, size_t n)
+{
+	static char dump[32768];
+	int fd = open(path, O_RDONLY | O_CLOEXEC);
+	ssize_t got = 0, k;
+
+	if (fd < 0) { snprintf(out, n, "-"); return; }
+	while (got < (ssize_t)sizeof dump - 1 && (k = read(fd, dump + got, sizeof dump - 1 - got)) > 0)
+		got += k;
+	close(fd);
+	dump[got] = '\0';
+	ur_dwc2_line(dump, out, n);
+}
+
+/* Once, at the start, with one role for good and the gadget bound: the
+ * controller's pull-up taken off for a tenth of a second and the D+ D-
+ * lines read. Nothing pulls them up but a device's upstream port: a hub
+ * between the port and the controller (dArkOSen's KERNEL/
+ * USB_Gadget_Mass_Storage.md: some boards with Wi-Fi have one, and a hub
+ * cannot pass a gadget to a computer), powered, shows as D+ high; a
+ * computer's port (its pull-downs) or nothing shows both low. */
+static void line_probe(void)
+{
+	DIR *d, *g;
+	struct dirent *e, *u;
+	char path[320], words[700], line[800];
+
+	if (!fixed_role || strcmp(fixed_role, "device") || !(d = opendir("/sys/class/udc")))
+		return;
+	while ((e = readdir(d))) {
+		const char *k;
+		int fd;
+
+		if (e->d_name[0] == '.') continue;
+		snprintf(path, sizeof path, "/sys/class/udc/%s/soft_connect", e->d_name);
+		if ((fd = open(path, O_WRONLY | O_CLOEXEC)) < 0) continue;
+		if (write(fd, "disconnect", 10) != 10) {
+			close(fd);
+			log_to_kernel("usbrole: the line probe: no gadget bound to take the pull-up off\n");
+			continue;
+		}
+		usleep(100000);
+		words[0] = '\0';
+		if ((g = opendir("/sys/kernel/debug/usb"))) {
+			while ((u = readdir(g)))
+				if (u->d_name[0] != '.' && strstr(u->d_name, e->d_name)) {
+					char rp[320];
+
+					snprintf(rp, sizeof rp, "/sys/kernel/debug/usb/%s/regdump", u->d_name);
+					regdump_line(rp, words, sizeof words);
+				}
+			closedir(g);
+		}
+		if (write(fd, "connect", 7) != 7) { /* said by the facts that follow */ }
+		close(fd);
+		/* the device side's part alone: the host port's lines follow it */
+		k = strstr(words, "device side");
+		{
+			char *semi = k ? strchr(k, ';') : NULL;
+
+			if (semi) *semi = '\0';
+		}
+		snprintf(line, sizeof line, "usbrole: the line probe, %s's pull-up off: %s: %s\n", e->d_name,
+		         !k ? "the lines unreadable" : strstr(k, "D+ 1") ? "D+ high, something pulls it up "
+		         "(a powered hub's or a device's upstream port on the lines)"
+		         : "D+ low (nothing pulls it up: no powered hub on the lines)", words[0] ? words : "-");
+		log_to_kernel(line);
+	}
+	closedir(d);
 }
 
 static void log_facts(void)
@@ -354,10 +432,19 @@ static void log_facts(void)
 				ue[got > 0 ? got : 0] = '\0';
 			}
 			{
-				char flat[400], what[300];
+				char flat[400], what[300], uv[32];
 
 				ur_uevent_line(ue, flat, sizeof flat);
-				snprintf(what, sizeof what, "supply %.40s online=%.8s", e->d_name, v);
+				/* a USB input's power in words: the only reading of VBUS
+				 * the R36S has, the RK817's VUSB */
+				if (strstr(ue, "POWER_SUPPLY_TYPE=USB")) {
+					snprintf(path, sizeof path, "/sys/class/power_supply/%s/voltage_avg", e->d_name);
+					read_flat(path, uv, sizeof uv);
+					snprintf(what, sizeof what, "supply %.40s online=%.8s in=%s", e->d_name, v,
+					         ur_vbus_words(uv[0] == '-' ? -1 : strtol(uv, NULL, 10)));
+				} else {
+					snprintf(what, sizeof what, "supply %.40s online=%.8s", e->d_name, v);
+				}
 				ADD(what, flat);
 			}
 		}
@@ -391,32 +478,18 @@ static void log_facts(void)
 		closedir(d);
 	}
 	/* The DWC2's own registers (its debugfs regdump, where debugfs is
-	 * mounted): GOTGCTL holds the session it sees, GINTSTS the mode it is
-	 * in, HPRT0 the host port's connection and power */
+	 * mounted), in words (rule.c, ur_dwc2_line): the mode, the sessions and
+	 * the ID it sees, the pull-up, the device side's state and lines, the
+	 * host port's power and connection */
 	if ((d = opendir("/sys/kernel/debug/usb"))) {
 		while ((e = readdir(d))) {
-			FILE *f;
-			char r[128];
+			char what[300];
 
 			if (e->d_name[0] == '.' || !strstr(e->d_name, ".usb")) continue;
 			snprintf(path, sizeof path, "/sys/kernel/debug/usb/%s/regdump", e->d_name);
-			if (!(f = fopen(path, "re"))) continue;
-			v[0] = '\0';
-			while (fgets(r, sizeof r, f))
-				if (!strncmp(r, "GOTGCTL", 7) || !strncmp(r, "GUSBCFG", 7) ||
-				    !strncmp(r, "GINTSTS", 7) || !strncmp(r, "HPRT0", 5) ||
-				    !strncmp(r, "DSTS", 4) || !strncmp(r, "DCTL", 4)) {
-					r[strcspn(r, "\n")] = '\0';
-					strncat(v, r, sizeof v - strlen(v) - 2);
-					strncat(v, " ", sizeof v - strlen(v) - 1);
-				}
-			fclose(f);
-			{
-				char what[300];
-
-				snprintf(what, sizeof what, "controller %.40s", e->d_name);
-				ADD(what, v[0] ? v : "-");
-			}
+			snprintf(what, sizeof what, "controller %.40s", e->d_name);
+			regdump_line(path, v, sizeof v);
+			ADD(what, v);
 		}
 		closedir(d);
 	}
@@ -618,6 +691,7 @@ int main(void)
 	 * only setuplog mounts, and only on a first start */
 	if (fixed_role && access("/sys/kernel/debug/usb", F_OK) != 0 &&
 	    mount("debugfs", "/sys/kernel/debug", "debugfs", 0, NULL) < 0) { /* the facts go without */ }
+	line_probe();
 	unsigned again = follow_pin();
 	/* A DAC already in, if init restarted us. Card 0 is the RK817. */
 	for (int card = 1; card < 8; card++)

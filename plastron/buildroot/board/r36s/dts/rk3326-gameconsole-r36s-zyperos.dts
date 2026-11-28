@@ -47,3 +47,17 @@
 &wdt {
 	status = "okay";
 };
+
+/*
+ * The OTG port a device from the controller's probe, not a host until
+ * S40usbgadget and usbrole make it one (rk3326.dtsi's default, the Pixel
+ * 2's, is host). As a host the controller turns on its vbus-supply, the
+ * RK817's otg_switch, and the port puts 5 V out: test.3's first start read
+ * 5.0 V on the RK817's VUSB with nothing plugged in, its log written as the
+ * role went to device 66 s in, after the first start's copy (Tarik's
+ * R36S-V21, 2026-11-28). A computer on the cable then is fed by the R36S for
+ * as long as the start takes. A device never feeds anything.
+ */
+&usb20_otg {
+	role-switch-default-mode = "peripheral";
+};
