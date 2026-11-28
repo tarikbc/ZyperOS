@@ -10,6 +10,7 @@
 #include "ds/mark.h"
 #include "home.h"        /* page_hint: a button glyph and its word */
 #include "linebreak.h"
+#include "menu.h"        /* MENU_IS_MARK: a row's mark is no key */
 #include "platform.h"    /* ZYPEROS_SCREEN_W: the design space */
 #include "ui.h"
 
@@ -185,14 +186,24 @@ void ds_page_meta(SDL_Renderer *r, const ds_page_frame *f, const menu_row *rows,
 void ds_page_foot(SDL_Renderer *r, const ds_page_frame *f, const char *const *keys,
                   const char *const *words, int n, int gap, int tight)
 {
-	int w[8], i, sum = 0, x;
+	const char *k[8], *t[8];
+	int w[8], i, m = 0, sum = 0, x;
 
+	/* Only a hint with a key: a row's value handed in as the key can be a
+	 * menu's mark (menu.h, MENU_NOTE_MARK is (const char *)1), and a key's
+	 * name read from it stopped the launcher (xfer_screen.c, xs_view_draw) */
 	if (n > 8) n = 8;
-	for (i = 0; i < n; i++) sum += (w[i] = page_hint_width(keys[i], words[i], false));
-	if (sum + gap * (n - 1) > f->x1 - f->x0) gap = tight;
-	x = (ZYPEROS_SCREEN_W - sum - gap * (n - 1)) / 2;
-	for (i = 0; i < n; i++) {
-		page_hint(r, keys[i], words[i], x, f->foot_y, false, false);
+	for (i = 0; i < n; i++)
+		if (keys[i] && !MENU_IS_MARK(keys[i]) && !(words[i] && MENU_IS_MARK(words[i]))) {
+			k[m] = keys[i];
+			t[m++] = words[i];
+		}
+	if (m == 0) return;
+	for (i = 0; i < m; i++) sum += (w[i] = page_hint_width(k[i], t[i], false));
+	if (sum + gap * (m - 1) > f->x1 - f->x0) gap = tight;
+	x = (ZYPEROS_SCREEN_W - sum - gap * (m - 1)) / 2;
+	for (i = 0; i < m; i++) {
+		page_hint(r, k[i], t[i], x, f->foot_y, false, false);
 		x += w[i] + gap;
 	}
 }

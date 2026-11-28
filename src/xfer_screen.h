@@ -59,6 +59,15 @@ void xs_move_set(const xs_flow flow[2], long long got, long long of);
 int xs_page_rows(menu_row *out, const char *who, const char *ssh, const char *now, str_id word);
 void move_page(app *a, const char *heading, const menu_row *rows, int n, mm_pose pose);
 void xs_page_show(app *a, const char *heading, const menu_row *rows, int n);
+/* The screen's views (xfer_screen_way): the way in, the cable's loading bar,
+ * a stalled step's steps and hint, the news (Flash Drive's page), and the
+ * hotspot's way in, which is hot_show's */
+enum { XS_VIEW_IN, XS_VIEW_LOAD, XS_VIEW_STEPS, XS_VIEW_NEWS, XS_VIEW_HOT };
+/* One frame of the panel for `view` (not XS_VIEW_HOT), for the screen and
+ * the shot harness alike: the rows are the view's own (xs_way_rows,
+ * xs_step_rows, xs_page_rows), `head` the heading, `load_k` the bar's fill */
+void xs_view_draw(app *a, int view, const char *head, const menu_row *rows, int n,
+                  float load_k);
 void hare_preview(app *a, const char *name, const char *addr, const char *pin,
                   const char *who, const char *ssh, const char *now, str_id word);
 void up_cable_tidy(void);

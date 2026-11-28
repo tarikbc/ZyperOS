@@ -1066,6 +1066,12 @@ check-launch-start:
 check-xferway:
 	@sh tools/xferway-check.sh
 
+# File Transfer's steps and their hint, each step that can stall, over the
+# cable and over Wi-Fi, drawn whole by the launcher's own shots: drawn as
+# Flash Drive's page they read a note's mark as a key and crashed
+check-xferhint:
+	@sh tools/xferhint-check.sh
+
 # The Pixel 2's crash report (plastron's /usr/sbin/crashlog): what pstore kept
 # of a panic or a reset, and the launcher's own crash, said once, onto the
 # card for Download logs
