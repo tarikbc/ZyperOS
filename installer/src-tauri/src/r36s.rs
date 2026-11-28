@@ -244,9 +244,11 @@ mod tests {
             .map(|s| s.split(".dtbo").next().unwrap())
             .collect();
         assert_eq!(built, PANELS.to_vec());
-        // The card's default is panel 4, as boot-prelude.cmd says
+        // The card's default is panel 4, as boot-prelude.cmd says (line by
+        // line: a Windows checkout ends its lines with CRLF)
         let prelude = include_str!("../../../plastron/buildroot/board/r36s/boot-prelude.cmd");
-        assert!(prelude.contains(&format!("setenv zy_panel_default {DEFAULT_PANEL}\n")));
+        let want = format!("setenv zy_panel_default {DEFAULT_PANEL}");
+        assert!(prelude.lines().any(|l| l.trim_end() == want));
     }
 
     #[test]
