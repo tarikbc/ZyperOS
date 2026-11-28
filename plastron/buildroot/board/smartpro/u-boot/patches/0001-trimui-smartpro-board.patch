@@ -3,12 +3,17 @@ From: plastron
 Date: Mon, 16 Nov 2026 12:00:00 -0300
 Subject: [PATCH] The TrimUI Smart Pro (A133P, LPDDR4, AXP717): the Brick's
  board with its own memory, on top of board/brick/u-boot/patches. Its
- defconfig is the Brick's final one with the DRAM values TrimUI's boot0
- carries in its header for the Smart Pro (LPDDR4 at 792 MHz, mainline's
- SUNXI_DRAM_A133_LPDDR4 path, whose mode registers MR1-MR4 are boot0's
- already), DCDC3 at 1.1 V as boot0 sets it for LPDDR4 (it sets 1.2 V for
- the Brick's LPDDR3), and smartpro.dtb in the fallback boot command; its
- device tree is the Brick's with its own name
+ defconfig is the Brick's final one with the Smart Pro's DRAM values
+ (LPDDR4 at 792 MHz, mainline's SUNXI_DRAM_A133_LPDDR4 path, whose mode
+ registers MR1-MR4 are boot0's already), DCDC3 at 1.1 V as boot0 sets it
+ for LPDDR4 (it sets 1.2 V for the Brick's LPDDR3), and smartpro.dtb in the
+ fallback boot command; its device tree is the Brick's with its own name.
+ The DRAM values are the ones boot0 leaves after its own setup, as the
+ Brick's defconfig has its own: TPR1, TPR11, TPR12 and TPR13 as a running
+ Smart Pro has them (TPR11 and TPR12 are the per-lane DX delays boot0
+ trains, which mainline only writes), the values the mainline Smart Pro
+ port boots its SPL with (github.com/leow149/trimui-a133-mainline-port,
+ its trimui-smartpro_defconfig), not boot0's header's untrained ones
 
 ---
 diff -Nru a/configs/trimui-smartpro_defconfig b/configs/trimui-smartpro_defconfig
@@ -29,12 +34,12 @@ diff -Nru a/configs/trimui-smartpro_defconfig b/configs/trimui-smartpro_defconfi
 +CONFIG_DRAM_SUNXI_MR14=0x7
 +CONFIG_DRAM_SUNXI_MR22=0x26
 +CONFIG_DRAM_SUNXI_TPR0=0x06060606
-+CONFIG_DRAM_SUNXI_TPR1=0x04040404
++CONFIG_DRAM_SUNXI_TPR1=0x84040404
 +CONFIG_DRAM_SUNXI_TPR6=0x48010101
 +CONFIG_DRAM_SUNXI_TPR10=0x273333
-+CONFIG_DRAM_SUNXI_TPR11=0x241f1923
-+CONFIG_DRAM_SUNXI_TPR12=0x14151313
-+CONFIG_DRAM_SUNXI_TPR13=0x81d20
++CONFIG_DRAM_SUNXI_TPR11=0x211b151e
++CONFIG_DRAM_SUNXI_TPR12=0x14141312
++CONFIG_DRAM_SUNXI_TPR13=0x7521
 +CONFIG_DRAM_SUNXI_TPR14=0x2023211f
 +CONFIG_MACH_SUN50I_A133=y
 +CONFIG_SUNXI_DRAM_A133_LPDDR4=y

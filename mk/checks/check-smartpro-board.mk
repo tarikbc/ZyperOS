@@ -3,5 +3,6 @@ CHECKS += check-smartpro-board
 #| `smartpro_defconfig` is `brick_defconfig` with its device, name and post-script argument; its
 #| `genimage.cfg` the Brick's with `SMARTBOOT` and `smartpro.dtb`; its slot boot the Brick's with
 #| `smartpro.dtb` and the Brick's prelude; its boot loader's defconfig has the memory values
-#| TrimUI's boot0 carries for it (LPDDR4 at 792 MHz, DCDC3 at 1.1 V); and the start script runs
+#| TrimUI's boot0 leaves on a running Smart Pro (LPDDR4 at 792 MHz, DCDC3 at 1.1 V, the trained
+#| DX delays in TPR11 and TPR12, never the header's untrained ones); and the start script runs
 #| sppad, never brick-pad, on a Smart Pro
