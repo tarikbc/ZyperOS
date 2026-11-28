@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""About keeps page information inside its panel, in both themes, on all five pages.
+"""About keeps page information inside its panel, in both themes, on all six pages.
 
-The page count belongs to the heading. The last page's two QR codes read
-back (zbarimg, where it is installed) as the Discord's and the tip page's
-addresses, on every handheld's screen. The shelf below the panels must
+The page count belongs to the heading. The last two pages read back
+(zbarimg, where it is installed) as one QR code each, the Discord's on the
+fifth and the tip page's on the sixth, on every handheld's screen. The shelf below the panels must
 contain no undimmed page text. Panel shadows may differ there between the
 four-row and six-row pages, so compare text roles instead of whole strips.
 """
@@ -30,10 +30,10 @@ shutil.copy(os.path.join(ROOT, "config", "systems.cfg"), os.path.join(t.D, "root
 shutil.copy(os.path.join(ROOT, "res", "zyper.png"), os.path.join(t.D, "root"))
 open(os.path.join(t.D, "Roms/Game Boy/Tetris.gb"), "w").close()
 for theme in ("light", "dark"):
-    # The five pages: the system, its details, the name, the thanks and the
-    # thank-you with its codes
+    # The six pages: the system, its details, the name, the thanks, the
+    # thank-you with the Discord's code and the tip's
     pages = [t.shot("about-%d-%s" % (p, theme), "--theme", theme, "--about", str(p),
-                    "--status", "10:08 wifi=off batt=100 chg") for p in range(5)]
+                    "--status", "10:08 wifi=off batt=100 chg") for p in range(6)]
     if None in pages:
         continue
     for p, img in enumerate(pages):
@@ -70,21 +70,33 @@ for theme in ("light", "dark"):
     t.ck(thalf[0] == thalf[1] == thalf[2], "%s thanks: scrolled halfway it stays where it is" % theme)
     t.ck(thalf[0] != ttop[0] and tend != thalf[0] and tend != ttop[0],
          "%s thanks: the top, the middle and the end are three pictures" % theme)
-# The last page's codes, as a phone's camera reads them, on every handheld's
-# screen and in both themes (the code is ink on paper in either)
-WANT = {"https://discord.gg/Ust8sE22Tm", "https://zyperos.com/tip/"}
+# The last two pages' codes as a phone's camera reads them, exactly one a
+# page so a scanner never takes the wrong one, on every handheld's screen
+# and in both themes (the code is ink on paper in either)
+WANT = {4: ["https://discord.gg/Ust8sE22Tm"], 5: ["https://zyperos.com/tip/"]}
 zbar = shutil.which("zbarimg")
 if not zbar:
-    print("note: no zbarimg here, the last page's codes are not read back")
+    print("note: no zbarimg here, the last pages' codes are not read back")
 for device in ("pixel2", "brick", "r36s", "smartpro"):
     for theme in ("light", "dark"):
-        name = "support-%s-%s" % (device, theme)
-        if t.shot(name, "--device", device, "--theme", theme, "--about", "4",
-                  "--status", "10:08 wifi=off batt=100 chg") is None or not zbar:
-            continue
-        got = subprocess.run([zbar, "-q", "--raw", os.path.join(t.D, name + ".png")],
-                             stdout=subprocess.PIPE, text=True).stdout.split()
-        t.ck(set(got) == WANT, "%s: the codes read %s, not the Discord's and the tip's" % (name, got))
+        for page, want in WANT.items():
+            name = "support-%d-%s-%s" % (page, device, theme)
+            if t.shot(name, "--device", device, "--theme", theme, "--about", str(page),
+                      "--status", "10:08 wifi=off batt=100 chg") is None or not zbar:
+                continue
+            got = subprocess.run([zbar, "-q", "--raw", os.path.join(t.D, name + ".png")],
+                                 stdout=subprocess.PIPE, text=True).stdout.split()
+            t.ck(got == want, "%s: the page's codes read %s, not %s alone" % (name, got, want[0]))
+# Tarik's voice on those pages has no colon, in any language
+inside = False
+for line in open(os.path.join(ROOT, "res", "strings", "about.txt"), encoding="utf-8"):
+    if line.startswith("["):
+        key = line.strip()[1:-1]
+        inside = line.strip().startswith("[about.support")
+    elif inside and "=" in line and not line.startswith("note"):
+        lang, text = line.split("=", 1)
+        t.ck(":" not in text and "\uff1a" not in text and "\\u00a0:" not in text,
+             "%s in %s has a colon" % (key, lang.strip()))
 if not t.fails:
-    print("ok: About page information stays inside its panel in both themes, the last page's codes read back")
+    print("ok: About page information stays inside its panel in both themes, the last two pages' codes read back, one each")
 sys.exit(1 if t.fails else 0)

@@ -34,5 +34,9 @@ void hotpanel_draw(SDL_Renderer *r, const hotpanel *p, unsigned now_ms);
  * page (src/p2panel.c) draws its code with it too. */
 int hotpanel_code(SDL_Renderer *r, int x, int y, int module, const char *qr);
 int hotpanel_code_side(const char *qr, int module);
+/* The same on a tile `side` units across (no smaller than the code's own),
+ * the code centred in it: two codes of different sizes in tiles of one size
+ * (About's last page) */
+int hotpanel_code_in(SDL_Renderer *r, int x, int y, int side, int module, const char *qr);
 
 #endif

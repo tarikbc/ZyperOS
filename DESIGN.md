@@ -2444,7 +2444,7 @@ the corner and for Date & Time's own row and Hour.
 ---
 
 ### 11.13 About ZyperOS
-Five read-only pages, Left/Right to change them, round from the last to the
+Six read-only pages, Left/Right to change them, round from the last to the
 first. The first keeps Version, Address, Battery and Awake for, and Last
 Restart for 30 days after ZyperOS restarted a start (11.70). The second
 shows Storage used, Storage free, Storage total, Battery health, Full charge
@@ -2467,26 +2467,31 @@ written as they are in every language; a helper's handhelds too long to sit
 beside the name with a row's height of air go on under it, right-aligned on
 a row of their own, broken after a comma (`TrimUI Brick,` then `Smart Pro,
 R36S`), never cut; and held at the foot, under the footer's rule, the note
-"All licenses are in Licenses/". The fifth, headed **Thank You**, is my
-thank-you to everyone who plays, tests and shares ZyperOS, in **meta**
-**text-soft** filled to the panel's width, and that a tip helps me keep it
-going, optional, one time and unlocking nothing (as zyperos.com/tip says);
-under it two blocks side by side, **Join the Discord** at the left edge and
-**Leave a Tip** at the right, each its QR code over its name in **meta**
-**text** and its address in **meta** **text-soft** (`discord.gg/Ust8sE22Tm`,
-`zyperos.com/tip`), since a handheld cannot open a link. The codes are drawn
-as Wi-Fi File Transfer's (11.16, `hotpanel_code`: ink on Beard's surface in
-both themes, four modules of light), 6 units a module, a unit less at a time
-down to 4 where the note's lines leave less room under the heading;
-`check-about-shots` reads them back with zbarimg on every handheld.
+"All licenses are in Licenses/". The last two have a QR code each, one a
+page so a phone's scanner never picks the wrong one, since a handheld cannot
+open a link. The fifth, headed **Thank You**, says "Thank you for playing,
+testing and sharing ZyperOS." beside the Discord's code, named **Join the
+Discord** over `discord.gg/Ust8sE22Tm`. The sixth, headed **Support
+ZyperOS**, says "If you'd like to help me keep it going, a one-time tip is
+welcome. It's optional and unlocks nothing." (as zyperos.com/tip says)
+beside the tip page's code, named **Leave a Tip** over `zyperos.com/tip`.
+On both the code is on a tile at the panel's left, as large as the panel
+leaves beside the longer address, in whole units a module from the longer
+address's code, the same tile in the same place on both pages; beside it the
+words in **meta** **text-soft** filled to the column, and at the tile's foot
+the name in **meta** **text** over the address in **meta** **text-soft**. A
+code is drawn as Wi-Fi File Transfer's (11.16, `hotpanel_code_in`: ink on
+Beard's surface in both themes). No colon in their words, in any language.
+`check-about-shots` reads exactly one code a page with zbarimg on every
+handheld.
 Every page uses the standard menu panel and one measured width. The **meta**
-**text-dim** page count, "1 / 5" to "5 / 5",
+**text-dim** page count, "1 / 6" to "6 / 6",
 sits at the right of the panel's heading, with space reserved around the
 centered title. No page text floats over the shelf. No row changes a
-setting. Host shots: `--about 0` to `4`, and `--about-scroll F` (0 to 1) for the name's page or the thanks scrolled F of the way down. *(I picked Details, then asked
+setting. Host shots: `--about 0` to `5`, and `--about-scroll F` (0 to 1) for the name's page or the thanks scrolled F of the way down. *(I picked Details, then asked
 to put its page information inside the panel, 2026-11-04. On 2026-11-06 he
 asked for the page on the name, a tribute to his dog, and a thank-you page to
-the open-source work ZyperOS is built on. On 2026-11-07 I asked for it to stop scrolling by itself, so I can scroll it. On 2026-11-16 I asked for the thanks to be one page that scrolls, like the name's, so I can thank those who help me with other handhelds there. On 2026-11-28 I asked for a helper's handhelds to go on to a second line rather than be cut or shortened, and for a last page that thanks everyone, invites them to the Discord and to an honest, optional tip, with a QR code for each.)*
+the open-source work ZyperOS is built on. On 2026-11-07 I asked for it to stop scrolling by itself, so I can scroll it. On 2026-11-16 I asked for the thanks to be one page that scrolls, like the name's, so I can thank those who help me with other handhelds there. On 2026-11-28 I asked for a helper's handhelds to go on to a second line rather than be cut or shortened, and for a thank-you page with the Discord's QR code and a page of its own for an honest, optional tip with its own, one code a page.)*
 
 Storage is the mounted card's filesystem in decimal GB. Free is the available
 space; used excludes reserved blocks. Capacity comes from the battery

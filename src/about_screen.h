@@ -11,8 +11,8 @@
 #include "devmode.h"
 #include "panel.h"
 
-/* Five pages: the system, its details, the name, the thanks, and the
- * thank-you with the Discord's and the tip's QR codes (2026-11-28) (
+/* Six pages: the system, its details, the name, the thanks, the thank-you
+ * with the Discord's QR code and the tip's with its own (2026-11-28) (
  * 2026-11-06: "another page ... telling the story of the name that it's a
  * tribute to my dog that passed away, and a thank you page to the Open
  * source repos we got stuff"). The story is the README's own words, laid
@@ -20,7 +20,7 @@
  * thanks were three pages until 2026-11-16 ("so it scrolls instead of being
  * multiple pages, like the one that explains the name"): one page now,
  * walked by hand as the story is. */
-#define ABOUT_PAGES 5
+#define ABOUT_PAGES 6
 
 /* the credits, the handhelds' heading and names, and the footer */
 #define ABOUT_THANKS_ROWS 32
