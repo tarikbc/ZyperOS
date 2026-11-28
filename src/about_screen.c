@@ -87,7 +87,13 @@ static const about_thanks ABOUT_THANKS[] = {
  * while this has a row. */
 static const struct { const char *who, *handheld; } ABOUT_HANDHELD_THANKS[] = {
 	{ "autobiogphnation", "TrimUI Brick" },   /* kit 2's first tester, all 12 steps */
-	{ "moroboshi69", "TrimUI Brick" },        /* kit 1.0.7-kit.1: the upside-down shaders (#419) */
+	{ "moroboshi69", "Brick, TSP, R36S" },
+	        /* the upside-down shaders (#419), the rc.1 Brick report with the
+	         * first rumble, the Smart Pro boot report, the R36S model tips;
+	         * "TrimUI Brick, Smart Pro, R36S" is cut on a 4:3 panel, so the
+	         * Smart Pro is TSP, as its players write it */
+	{ "Sylver", "R36S" },                     /* every R36S card, darkOSRE side by side; the splash (#461), the rtw8822BU Wi-Fi (#457) */
+	{ "Ben-Igel", "TrimUI Smart Pro" },       /* the first Smart Pro tester */
 	{ NULL, NULL }
 };
 
