@@ -7676,7 +7676,12 @@ the Pixel 2's FUNCTION always has (it is the brightness chord's too) and as
 MENU does in a game, so a button pressed under it is MENU's chord and MENU
 then opens nothing; only the two chords' buttons are taken, every other
 press under MENU goes through as it did. Never START (MENU+START held is
-Home), SELECT, the d-pad or a volume key.
+Home), SELECT, the d-pad or a volume key. *(2026-11-27, moroboshi69 on
+1.1.1-rc.1: on the Brick MENU+L1 took a screenshot in a game but not on the
+home or its menus. The Brick's MENU went straight down as it was pressed,
+past the chord's rule, and opened its menu at once; it goes through the rule
+now, as on the Pixel 2, and the Smart Pro's MENU, the brightness chord's
+too, takes MENU+L1 and MENU+L2 the same way.)*
 
 **In a game too** *(the Pixel 2 test of 1.1.1-test.3: "why do Screenshot
 and Lock Screen work everywhere but in a game?")*. MENU is Diatom's there,
