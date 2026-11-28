@@ -1,0 +1,45 @@
+# The commands PortMaster's port scripts run from the system: each one's
+# name, the package that puts it in the image (by its name in the image's
+# package list, board/px2/third-party-packages.md), the option that asks for
+# that package ("-" for a busybox applet, which no Buildroot option names),
+# and what runs it. board/zyperos/ports-libs.txt is the same for libraries,
+# and scripts/ports-libs.sh checks both over a built root.
+#
+# From PortMaster-New at 151e3dd (2026-11-27, 1,524 ports): every command
+# its scripts (ports/*/*.sh, ports/*/*/tools/patchscript) look for with
+# "command -v", and the ones they run without looking that the image lacked.
+# A GameMaker port (gmloader) packs its game's assets at its first start,
+# "zip -r -0 game.port ./assets/" (327 ports), then deletes the assets
+# unchecked; 10 look first and stop at "Missing zip!" (DEVOLVER Bootleg).
+# On 1.1.0 the image had no zip, and those ports never started (Bot Vice,
+# DEVOLVER Bootleg).
+#
+# Looked for with "command -v", not in the image, and left out: each port
+# goes on without it, or it is not the system's to have.
+#   jq (68 gmloader patchscripts): they read gmloader.json's save_dir with
+#     it, and take saves/ without it
+#   rsync (Revenge of the Titans): its saves are synced only when it is there
+#   ldd (Your Only Move Is HUSTLE Demo): a line in its log
+#   systemctl (Stardew Valley): restarts ArkOS's oga_events, not here
+#   swaymsg (Penumbra Overture): only under sway
+#   dotnet, mono (4 patchscripts): PortMaster's own runtimes, which the
+#     port mounts and puts on PATH first
+#   pm_platform_helper, pm_finish: shell functions of PortMaster's funcs.txt
+# And one run without looking that the image still lacks: stat (busybox's
+# applet is off), which 8 ports run as "stat -c": Quakespasm's mods test
+# pak0.pak's size with it (without it the test is false and they go on),
+# six (Pigments, Spectrum Forces and four more) pick their binary's patch
+# by its size (and pick none), Hollow Knight keeps a device's owner and mode
+# to put back.
+#
+# command    package   option               run by
+bash         bash      BR2_PACKAGE_BASH     every port's script (#!/bin/bash, 1,523 ports) and PortMaster's
+python3      python3   BR2_PACKAGE_PYTHON3  PortMaster itself, and 20 ports' patchscripts, which look for it first
+zip          zip       BR2_PACKAGE_ZIP      the GameMaker ports' patchscripts, packing their assets (327 ports)
+unzip        busybox   -                    the GameMaker ports' patchscripts (57 ports; Minit says "Missing unzip!")
+xargs        busybox   -                    a port's patchscript that looks for it first
+nproc        busybox   -                    a port's script that looks for it first
+mountpoint   busybox   -                    a port's script that looks for it first
+mkswap       util-linux -                   Deponia, for its swap, which it goes on without
+swapon       util-linux -                   Deponia, for its swap
+swapoff      util-linux -                   Deponia, for its swap

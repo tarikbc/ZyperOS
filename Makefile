@@ -1022,8 +1022,9 @@ check-pmhelper:
 	@python3 -I tools/pminstall-run.py
 
 # The libraries PortMaster's ports and their runtimes load from the system
-# (plastron's board/zyperos/ports-libs.txt) asked for in the image of each
-# device that runs ports, and plastron's release check of a built root
+# (plastron's board/zyperos/ports-libs.txt), and the commands their scripts
+# run from it (ports-cmds.txt), asked for in the image of each device that
+# runs ports, and plastron's release check of a built root
 # (scripts/ports-libs.sh) over made-up roots. No image is built.
 check-portlibs:
 	@sh tools/portlibs-check.sh

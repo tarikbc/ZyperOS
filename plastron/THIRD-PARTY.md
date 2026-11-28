@@ -87,6 +87,11 @@ Diatom's.
   asks. And **Mozilla's root certificates** (MPL-2.0), as Debian's
   ca-certificates package, https://salsa.debian.org/debian/ca-certificates,
   for HTTPS from curl, Python and OpenSSL.
+- **libudev-zero** 1.0.5 (ISC), https://github.com/illiliti/libudev-zero:
+  `libudev.so.1` without udev (`package/libudev-zero/`), which PortMaster's
+  Westonpack runtime loads; the library alone goes into the image. And
+  **Info-ZIP's zip** 3.0 (Info-ZIP license), https://infozip.sourceforge.net,
+  which PortMaster's GameMaker ports pack their assets with.
 
 ## TrimUI Brick
 
