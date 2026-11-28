@@ -115,8 +115,9 @@ void es_forget_folder(const char *folder);
  * game_media_cart: a PICO-8 game whose file is a .p8.png cart is its own
  * cover, last, after every other (src/cartlabel.h): the cart's path, when it
  * is there. Drawn as its label by cart_label_load. Box Art's question of
- * whether a game has a cover (es_art_cover) leaves it out, so a cover can
- * still be fetched for it. */
+ * whether a game has a cover (es_art_cover) counts it, as an ES cover: Box
+ * Art and MENU > Downloads leave the cart's game alone, and Cover and Video
+ * can still fetch one for it. */
 bool game_media_own(const char *roms, const char *folder, const char *name, es_kind kind,
                     char *out, size_t n);
 bool game_media(const char *roms, const char *folder, const char *file, const char *name,

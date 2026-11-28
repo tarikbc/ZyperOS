@@ -5065,9 +5065,12 @@ library's rows, so the card still works in the other system.
   the 128 x 128 at (16, 24) PICO-8 draws, drawn nearest so its pixels stay
   sharp (src/cartlabel.h). The same on the shelf, its Video and List views,
   the screensaver (which takes the shelf's lookup, ES's covers too, from
-  1.1.1), the menu and Recents' Last Screen. Box Art does not count it, so a
-  fetched cover can still come first; the File Transfer page shows the cart
-  whole.
+  1.1.1), the menu and Recents' Last Screen. Box Art counts it as a cover,
+  as an ES cover, so neither a run nor MENU > Downloads calls a cart's game
+  missing one; Cover and Video (11.34) can still fetch one, which then
+  comes first *(2026-11-27, from 1.1.1-rc.1: Downloads said PICO-8's box
+  art was not downloaded, "even though PICO-8 uses its own game carts for
+  boxart")*. The File Transfer page shows the cart whole.
 - **Box Art** counts an ES cover as a cover: it fetches only for games with
   neither, and **Cover and Video** (11.34) shows an ES cover as Now,
   credited "EmulationStation". A cover chosen there is ZyperOS's own, and

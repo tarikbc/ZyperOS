@@ -2424,9 +2424,14 @@ static bool es_art_has(const char *dir, const char *file, const char *stem, es_k
 	return es_media(roms, slash + 1, file, stem, kind, true, p, sizeof p);
 }
 
+/* A PICO-8 cart is a cover too (src/cartlabel.h): the shelf draws its
+ * label, so Box Art fetches nothing over it and MENU > Downloads does not
+ * count it as missing (1.1.1-rc.1: "PICO-8 uses its own game carts for
+ * boxart"). Cover and Video still fetches one for a game, which then comes
+ * first, as for an ES cover. */
 bool es_art_cover(const char *dir, const char *file, const char *stem)
 {
-	return es_art_has(dir, file, stem, ES_COVER);
+	return cart_label_file(file) || es_art_has(dir, file, stem, ES_COVER);
 }
 
 bool es_art_video(const char *dir, const char *file, const char *stem)
