@@ -7,6 +7,7 @@
 #include "aout_route.h"
 #include "app.h"
 #include "devmode.h"
+#include "hotpanel.h"   /* hotpanel_code: the QR codes on the last page */
 #include "lastboot.h"
 #include "ingame_screen.h"
 #include "levels.h"
@@ -84,14 +85,150 @@ static const about_thanks ABOUT_THANKS[] = {
  *	{ "Their name", "TrimUI Brick" },
  *
  * Under its own heading, Help with other handhelds, which is there only
- * while this has a row. */
+ * while this has a row. A handheld too long for its row beside the name
+ * goes on under it (handheld_rows). */
 static const struct { const char *who, *handheld; } ABOUT_HANDHELD_THANKS[] = {
 	{ "autobiogphnation", "TrimUI Brick" },   /* kit 2's first tester, all 12 steps */
-	{ "moroboshi69", "TrimUI Brick" },        /* kit 1.0.7-kit.1: the upside-down shaders (#419) */
+	{ "moroboshi69", "TrimUI Brick, Smart Pro, R36S" },
+	        /* the upside-down shaders (#419), the rc.1 Brick report with the
+	         * first rumble, the Smart Pro boot report, the R36S model tips */
+	{ "Sylver", "R36S" },                     /* every R36S card, darkOSRE side by side; the splash (#461), the rtw8822BU Wi-Fi (#457) */
+	{ "Ben-Igel", "TrimUI Smart Pro" },       /* the first Smart Pro tester */
 	{ NULL, NULL }
 };
 
 #define ARRAY_N(x) ((int)(sizeof (x) / sizeof (x)[0]))
+
+/* A helper's row, and under it the rest of their handhelds when they do not
+ * fit beside the name at the panel's widest: no text is cut, the layout
+ * changes (DESIGN.md 12; Tarik, 2026-11-28, "TrimUI Brick, Smart Pro, R36S"
+ * on a 4:3 panel). A line breaks after a comma, else at a space, as many
+ * handhelds on it as fit with a row's height of air beside the name; the
+ * rest goes right-aligned on a row with no name, as many rows as it takes.
+ * The lines are kept in v->hand. Returns the rows added. */
+static int handheld_rows(about_view *v, menu_row *out, int room_rows, const char *who, const char *hh)
+{
+	TTF_Font *fm = ui_font(UI_F_MENU);
+	int most = menu_most_w(), air = menu_row_h(), n = 0;
+	const char *rest = hh;
+
+	while (*rest && n < room_rows && v->nhand < ABOUT_HAND_LINES) {
+		int room = most - (n ? 0 : ui_text_width(fm, who)) - air, cut = -1, k;
+		char *line = v->hand[v->nhand];
+		size_t len = strlen(rest);
+
+		if (len >= sizeof v->hand[0]) len = sizeof v->hand[0] - 1;
+		memcpy(line, rest, len);
+		line[len] = '\0';
+		if (ui_text_width(fm, line) > room) {
+			/* the longest start that fits, after a comma, else at a space */
+			for (int pass = 0; pass < 2 && cut < 0; pass++)
+				for (k = (int)len - 1; k > 0 && cut < 0; k--) {
+					char was;
+
+					if (pass == 0 ? !(line[k] == ',' && line[k + 1] == ' ') : line[k] != ' ') continue;
+					was = line[k + (pass == 0)];
+					line[k + (pass == 0)] = '\0';
+					if (ui_text_width(fm, line) <= room) cut = k + (pass == 0);
+					else line[k + (pass == 0)] = was;
+				}
+			if (cut < 0) cut = (int)len;   /* one word wider than the row: it is the line */
+			line[cut] = '\0';
+		}
+		out[n] = (menu_row){ n ? "" : who, line, false };
+		n++;
+		v->nhand++;
+		rest += strlen(line);
+		while (*rest == ' ') rest++;
+	}
+	return n;
+}
+
+/* ---- the last two pages: a thank-you and the Discord, and the tip ----
+ *
+ * Tarik, 2026-11-28: a warm thank-you to everyone who supports ZyperOS, the
+ * Discord, and a tip to help it keep going, honest that a tip is optional,
+ * one time and unlocks nothing (as zyperos.com/tip says). A handheld cannot
+ * open a link, so each has its QR code for a phone, one code a page, so a
+ * phone's scanner never picks the wrong one: Thank You has the Discord's,
+ * Support ZyperOS the tip's. A code is drawn as Wi-Fi File Transfer's
+ * (hotpanel_code_in: ink on Beard's surface in both themes, four modules of
+ * light at least), on a tile at the panel's left, as large as the panel
+ * leaves beside the longer address and its words, the module whole units
+ * from the longer address's code; both pages one tile, one module, one
+ * place. Beside it, top to bottom, the page's words in **meta**
+ * **text-soft** filled to the column, and at the tile's foot the code's name
+ * in **meta** **text** over its address in **meta** **text-soft**, to type.
+ * The panel is as tall on both pages: the taller of the two. */
+#define SUPPORT_DISCORD_QR   "https://discord.gg/Ust8sE22Tm"
+#define SUPPORT_DISCORD      "discord.gg/Ust8sE22Tm"
+#define SUPPORT_TIP_QR       "https://zyperos.com/tip/"
+#define SUPPORT_TIP          "zyperos.com/tip"
+#define SUPPORT_LINES        10
+#define SUPPORT_GAP          (4 * DS_GRID)   /* the tile to its column */
+#define SUPPORT_NAME_GAP     DS_SECTION      /* the words to the name, at least */
+
+typedef struct {
+	char lines[SUPPORT_LINES][LB_LINE];
+	int nlines;
+} support_words;
+
+static struct {
+	support_words page[2];   /* Thank You's, Support ZyperOS's */
+	int w, side, module, h;
+} g_sup;
+static int g_sup_page;     /* 0 Thank You, 1 Support ZyperOS (support_header) */
+
+/* The tile, the column beside it and the panel's height under its heading,
+ * for a content width `w` and the `room` under the heading; once a width */
+static int support_layout(int w, int room)
+{
+	TTF_Font *fs = ui_font(UI_F_META);
+	int line = ui_font_line(UI_F_META), most, col, k, n, need;
+
+	if (w == g_sup.w) return g_sup.h;
+	g_sup.w = w;
+	/* the column holds the longer address whole */
+	col = ui_text_width(fs, SUPPORT_DISCORD);
+	if ((k = ui_text_width(fs, SUPPORT_TIP)) > col) col = k;
+	if ((k = ui_text_width(fs, T(S_ABOUT_SUPPORT_DISCORD))) > col) col = k;
+	if ((k = ui_text_width(fs, T(S_ABOUT_SUPPORT_TIP))) > col) col = k;
+	most = w - SUPPORT_GAP - col;
+	if (most > room - menu_pad() / 2) most = room - menu_pad() / 2;
+	/* whole units a module, from the longer address's code, the tile its
+	 * code and its quiet zone */
+	n = hotpanel_code_side(SUPPORT_DISCORD_QR, 1);
+	if ((k = hotpanel_code_side(SUPPORT_TIP_QR, 1)) > n) n = k;
+	g_sup.module = most / n > 1 ? most / n : 1;
+	g_sup.side = n * g_sup.module;
+	col = w - g_sup.side - SUPPORT_GAP;
+	g_sup.page[0].nlines = ui_fill_lines(fs, T(S_ABOUT_SUPPORT_THANKS), col, SUPPORT_LINES, g_sup.page[0].lines);
+	g_sup.page[1].nlines = ui_fill_lines(fs, T(S_ABOUT_SUPPORT_TIP_NOTE), col, SUPPORT_LINES, g_sup.page[1].lines);
+	/* the taller of the tile and the longer column */
+	need = g_sup.page[0].nlines > g_sup.page[1].nlines ? g_sup.page[0].nlines : g_sup.page[1].nlines;
+	need = need * line + SUPPORT_NAME_GAP + 2 * line;
+	g_sup.h = (need > g_sup.side ? need : g_sup.side) + menu_pad() / 2;
+	return g_sup.h;
+}
+
+static void support_header(app *a, const SDL_Rect *r)
+{
+	TTF_Font *fs = ui_font(UI_F_META);
+	const support_words *p = &g_sup.page[g_sup_page];
+	int i, line = ui_font_line(UI_F_META), x = r->x + g_sup.side + SUPPORT_GAP;
+	int foot = r->y + (g_sup.side > r->h ? r->h : g_sup.side);
+	int ny = foot - 2 * line, y = r->y;
+
+	hotpanel_code_in(a->r, r->x, r->y, g_sup.side, g_sup.module, g_sup_page ? SUPPORT_TIP_QR : SUPPORT_DISCORD_QR);
+	for (i = 0; i < p->nlines; i++, y += line)
+		ui_text(a->r, fs, p->lines[i], x, ui_line_y(UI_F_META, y), -1, UI_TEXT_SOFT);
+	/* the name and the address at the tile's foot, or under the words */
+	if (ny < y + SUPPORT_NAME_GAP) ny = y + SUPPORT_NAME_GAP;
+	ui_text(a->r, fs, T(g_sup_page ? S_ABOUT_SUPPORT_TIP : S_ABOUT_SUPPORT_DISCORD), x, ui_line_y(UI_F_META, ny),
+	        -1, UI_TEXT);
+	ui_text(a->r, fs, g_sup_page ? SUPPORT_TIP : SUPPORT_DISCORD, x, ui_line_y(UI_F_META, ny + line), -1,
+	        UI_TEXT_SOFT);
+}
 
 /* The story laid out for the panel, and the thanks with their note; once,
  * when About opens: neither changes while it is open */
@@ -130,9 +267,10 @@ void about_pages(app *a, about_view *v)
 	if (ABOUT_HANDHELD_THANKS[0].who) {
 		v->thanks[n++] = MENU_HR;
 		v->thanks[n++] = MENU_NOTE(T(S_ABOUT_THANKS_HANDHELDS));
+		v->nhand = 0;
 		for (i = 0; ABOUT_HANDHELD_THANKS[i].who && n < ABOUT_THANKS_ROWS - 2; i++)
-			v->thanks[n++] = (menu_row){ ABOUT_HANDHELD_THANKS[i].who,
-			                             ABOUT_HANDHELD_THANKS[i].handheld, false };
+			n += handheld_rows(v, &v->thanks[n], ABOUT_THANKS_ROWS - 2 - n, ABOUT_HANDHELD_THANKS[i].who,
+			                   ABOUT_HANDHELD_THANKS[i].handheld);
 	}
 	/* Under the rule, held at the foot while the rest is walked */
 	v->thanks[n++] = MENU_RULE;
@@ -212,6 +350,8 @@ void about_draw(app *a, const about_view *v, int page)
 		heading = T(S_ABOUT_THE_NAME);
 		break;
 	case 3: rows = v->thanks; n = v->nthanks; heading = T(S_ABOUT_THANKS); break;
+	case 4: rows = NULL; n = 0; heading = T(S_ABOUT_SUPPORT); break;
+	case 5: rows = NULL; n = 0; heading = T(S_ABOUT_SUPPORT_TIP_HEADING); break;
 	}
 	/* The panel draws posed into a pass of its own while it opens; the
 	 * photo comes once it is at rest, rather than unscaled over it */
@@ -221,8 +361,20 @@ void about_draw(app *a, const about_view *v, int page)
 	/* The story and the thanks hold still where Up and Down have put them */
 	g_menu_scroll_hold = page == 2 ? v->story_scroll : page == 3 ? v->thanks_scroll : -1;
 	if (page != 2 && page != 3) g_menu_scroll_span = 0;
+	if (page >= 4) {
+		int w = v->width < menu_most_w() ? v->width : menu_most_w();
+		int pad = menu_pad();
+		/* all the panel has under its heading (menu_notes_fit's room) */
+		int room = MENU_AVAIL_H - (ui_font_line(UI_F_LABEL) + pad + pad / 2) - pad;
+
+		g_menu_header_h = support_layout(w, room);
+		g_menu_header = support_header;
+		g_sup_page = page - 4;
+	}
 	menu_draw_caption(a, heading, rows, n, -1, v->width, MENU_ZYPEROS, NULL, false, loop_at,
 	                  count);
+	g_menu_header = NULL;
+	g_menu_header_h = 0;
 	g_menu_scroll_hold = -1;
 	/* Developer Mode's hold, as the one bar every hold in the system is
 	 * (UI_BAR_H), in the last row's value column once the panel is at rest */

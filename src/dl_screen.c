@@ -742,6 +742,14 @@ static const char *page_title(dl_view *v)
 	return v->only;
 }
 
+/* A card with no games yet: the count is done and found no system with
+ * games. The page says so, its kinds dim and nothing to press but START and
+ * B, rather than Off, Nothing to fetch and a Download that gets nothing */
+static bool no_games(const dl_view *v)
+{
+	return v->c && v->c->n == 0 && !dl_live();
+}
+
 /* The heading's second line, as every view of the page says it */
 static void sub_of(dl_view *v, int only, char *out, size_t n, ui_glyph *mark)
 {
@@ -758,6 +766,11 @@ static void sub_of(dl_view *v, int only, char *out, size_t n, ui_glyph *mark)
 
 		dl_count_progress(&d, &of);
 		snprintf(out, n, "%s", T(S_DOWNLOADS_COUNTING));
+		return;
+	}
+	if (no_games(v)) {
+		*mark = UI_GLYPH_SHELF;
+		snprintf(out, n, "%s", T(S_EMPTYHOME_NO_GAMES_YET));
 		return;
 	}
 	if (!online()) {
@@ -786,6 +799,20 @@ static void hub_draw(dl_view *v, dl_frame *f, unsigned now)
 
 	sub_of(v, -1, sub, sizeof sub, &mark);
 	ds_page_head(a->r, &pf, DS_HEAD_SUB, page_title(v), sub, mark, now);
+	if (no_games(v)) {
+		/* What the page gets, dim, with no value and no focus; over the
+		 * keys what to do first */
+		const char *K[2] = { "START", "B" };
+		const char *W[2] = { T(S_HOME_SETTINGS), T(S_SCRAPER_KEY_CLOSE) };
+		ds_line_item it = { UI_GLYPH_TRANSFER, T(S_DOWNLOADS_ADD_GAMES), DS_TONE_INFO };
+
+		rows[0] = (dl_row){ UI_GLYPH_COUNT, T(S_RADL_KEY_DOWNLOAD), "", true };
+		for (k = 0; k < DLK_KINDS; k++) rows[1 + k] = (dl_row){ KIND_MARK[k], kind_name((dl_kind)k), "", true };
+		rows_draw(v, f, rows, 1 + DLK_KINDS, 0, pf.body_y, -1, now);
+		ds_page_line(a->r, &pf, &it, 1);
+		foot(v, &pf, K, W, 2);
+		return;
+	}
 	download_value(v->c, vals[0], sizeof vals[0]);
 	rows[0] = (dl_row){ UI_GLYPH_COUNT, T(S_RADL_KEY_DOWNLOAD), vals[0], false };
 	for (k = 0; k < DLK_KINDS; k++) {
@@ -2810,6 +2837,18 @@ static void hub_keys(dl_view *v, dl_frame *f, unsigned now)
 	bool up = in_repeat(&a->in, IN_UP), dn = in_repeat(&a->in, IN_DOWN);
 	int from = f->sel;
 
+	if (no_games(v)) {
+		/* nothing to get yet: START (the accounts) and B alone */
+		if (a->in.pressed[IN_START]) {
+			uisound_play(DS_SOUND_ACCEPT);
+			settings(v);
+			dl_count_again(a, v->only);
+		} else if (up || dn || a->in.pressed[IN_ACCEPT] || a->in.pressed[IN_Y] || a->in.pressed[IN_LEFT] ||
+		           a->in.pressed[IN_RIGHT]) {
+			uisound_play(DS_SOUND_DENY);
+		}
+		return;
+	}
 	if ((up || dn) && move_list(a, &f->sel, 1 + DLK_KINDS, up, dn)) glide(f, hub_row_y(from), now);
 	if ((a->in.pressed[IN_LEFT] || a->in.pressed[IN_RIGHT]) && f->sel > 0) {
 		dl_kind k = (dl_kind)(f->sel - 1);
@@ -2997,12 +3036,17 @@ static void sysgames_keys(dl_view *v, dl_frame *f, unsigned now)
  * is gone, as the check deletes one between two looks (check-dl-look: a
  * wait of 1500 ms on the launcher's clock raced the check's delete on a
  * loaded machine, 2026-11-24).
+ * counted: until the page has a count to show (v->c), not only until the
+ * count ends: an empty card's count ended before the page took it, and the
+ * page said Counting for good (check-dl-empty). hub: the hub's words as it
+ * draws them, its second line, Download's value and each kind's, and
+ * whether it is the empty card's.
  * Each step said on stderr with the page's state; the launcher quits at the
  * script's end. The real loop and the real card: what the shots' stand-in
  * counts cannot show. */
 static const char *g_dl_test;
 static unsigned g_dl_until, g_dl_wait_end;
-static bool g_dl_count_wait, g_dl_run_wait, g_dl_hold_wait, g_dl_pics_wait, g_dl_gone_wait;
+static bool g_dl_count_wait, g_dl_run_wait, g_dl_hold_wait, g_dl_pics_wait, g_dl_gone_wait, g_dl_counted_wait;
 static char g_dl_gone[512];
 #define DL_TEST_WAIT_MS 30000
 
@@ -3055,6 +3099,24 @@ static void fake_start(dl_view *v, int n)
 }
 
 /* look=FOLDER|NAME (see dl_test) */
+/* The hub's words as hub_draw says them (hub) */
+static void test_hub(dl_view *v)
+{
+	char sub[96], val[96];
+	ui_glyph mark;
+	int k;
+
+	sub_of(v, -1, sub, sizeof sub, &mark);
+	download_value(v->c, val, sizeof val);
+	fprintf(stderr, "downloads-test: hub empty=%d sub=%s|download=%s", no_games(v), sub,
+	        no_games(v) ? "" : val);
+	for (k = 0; k < DLK_KINDS; k++) {
+		kind_value(v->c, (dl_kind)k, val, sizeof val);
+		fprintf(stderr, "|%d=%s", k, no_games(v) ? "" : val);
+	}
+	fprintf(stderr, "\n");
+}
+
 static void test_look(dl_view *v, const char *what)
 {
 	static const char *const ST[] = { "have", "miss", "none", "off" };
@@ -3118,6 +3180,8 @@ static void dl_test(dl_view *v, app *a)
 	if (now < g_dl_until) return;
 	if (g_dl_count_wait && dl_counting()) return;
 	g_dl_count_wait = false;
+	if (g_dl_counted_wait && !v->c && now < g_dl_wait_end) return;
+	g_dl_counted_wait = false;
 	if (g_dl_run_wait && dl_live()) return;
 	g_dl_run_wait = false;
 	if (g_dl_hold_wait && g_fake.on && !g_fake.held && now < g_dl_wait_end) return;
@@ -3135,6 +3199,10 @@ static void dl_test(dl_view *v, app *a)
 		if (!strcmp(tok, BTN[i].name)) a->in.pressed[BTN[i].b] = true;
 	if (!strncmp(tok, "wait=", 5)) g_dl_until = now + (unsigned)atoi(tok + 5);
 	if (!strcmp(tok, "count")) g_dl_count_wait = true;
+	if (!strcmp(tok, "counted")) {
+		g_dl_counted_wait = true;
+		g_dl_wait_end = now + DL_TEST_WAIT_MS;
+	}
 	if (!strcmp(tok, "run")) g_dl_run_wait = true;
 	if (!strncmp(tok, "hold=", 5)) {
 		g_fake.hold_at = atoi(tok + 5);
@@ -3154,6 +3222,7 @@ static void dl_test(dl_view *v, app *a)
 	if (!strncmp(tok, "fake=", 5)) fake_start(v, atoi(tok + 5));
 	if (!strncmp(tok, "list=", 5)) test_list(v, tok + 5);
 	if (!strncmp(tok, "look=", 5)) test_look(v, tok + 5);
+	if (!strcmp(tok, "hub")) test_hub(v);
 	if (!strncmp(tok, "shot=", 5)) {
 		SDL_Surface *out = SDL_CreateRGBSurfaceWithFormat(0, ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H, 32,
 		                                                  SDL_PIXELFORMAT_RGBA32);
@@ -3182,10 +3251,12 @@ static void dl_page(app *a, const char *only)
 	v->a = a;
 	v->pending = -2;
 	snprintf(v->only, sizeof v->only, "%s", only ? only : "");
-	/* The last count shows at once; a new one goes behind it */
+	/* The last count shows at once; a new one goes behind it. Its turn is
+	 * taken first: a card with no games is counted in dl_count_again
+	 * itself, and the loop takes that count as it takes any other */
 	v->c = dl_count_shown(v->only);
-	dl_count_again(a, v->only);
 	v->gen = dl_count_gen();
+	dl_count_again(a, v->only);
 	push(v, V_HUB);
 	/* What came is as it was left, with what came meanwhile (g_rec) */
 	rec_sync();
@@ -3420,6 +3491,7 @@ const char *downloads_menu_value(const char *only, char *out, size_t n)
 
 	if (dl_live()) { snprintf(out, n, T(S_DOWNLOADS_RUNNING), run_pct()); return out; }
 	if (!c) return NULL;
+	if (!c->n) { snprintf(out, n, "%s", T(S_SHELF_NO_GAMES)); return out; }
 	if (!online()) { snprintf(out, n, "%s", T(S_MENU_NEEDS_WIFI)); return out; }
 	dl_plan_of(c, -1, &pl);
 	if (pl.n) snprintf(out, n, TN(S_DOWNLOADS_TO_FETCH_N, pl.n), pl.n);
@@ -3574,6 +3646,7 @@ void downloads_shot(app *a)
 	unsigned now = 100000;
 
 	fixture(&c, st);
+	if (st == 28) c.n = 0;      /* a card with no games yet */
 	dl_count_fixture(st == 5 ? NULL : &c);
 	g_fx_net = st != 3 && st != 27;
 	g_fx_art = g_fx_ra = g_fx_cht = st == 1 || (st >= 14 && st <= 16);

@@ -281,6 +281,8 @@ EXTRA = {
     "about-1": ("demo", "PS1", ["--about", "1"]),
     "about-2": ("demo", "PS1", ["--about", "2"]),
     "about-3": ("demo", "PS1", ["--about", "3"]),
+    "about-4": ("demo", "PS1", ["--about", "4"]),
+    "about-5": ("demo", "PS1", ["--about", "5"]),
     "controls-0": ("demo", "PS1", ["--controls", "0"]),
     "controls-1": ("demo", "PS1", ["--controls", "1"]),
     "controls-2": ("demo", "PS1", ["--controls", "2"]),
@@ -550,6 +552,7 @@ EXTRA = {
     "downloads-on-names": ("demo", "PS1", ["--downloads", "25"]),
     "downloads-covers-complete": ("demo", "PS1", ["--downloads", "26"]),
     "downloads-no-accounts": ("demo", "PS1", ["--downloads", "27"]),
+    "downloads-no-games": ("demo", "PS1", ["--downloads", "28"]),
     # A game's Cover and Video (DESIGN.md 11.34) in every state, a tile of
     # each kind and region focused, Delete's question and the message of a
     # download that did not come; and the details row's other value

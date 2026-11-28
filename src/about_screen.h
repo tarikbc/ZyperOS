@@ -11,7 +11,8 @@
 #include "devmode.h"
 #include "panel.h"
 
-/* Four pages: the system, its details, the name, and the thanks (
+/* Six pages: the system, its details, the name, the thanks, the thank-you
+ * with the Discord's QR code and the tip's with its own (2026-11-28) (
  * 2026-11-06: "another page ... telling the story of the name that it's a
  * tribute to my dog that passed away, and a thank you page to the Open
  * source repos we got stuff"). The story is the README's own words, laid
@@ -19,10 +20,12 @@
  * thanks were three pages until 2026-11-16 ("so it scrolls instead of being
  * multiple pages, like the one that explains the name"): one page now,
  * walked by hand as the story is. */
-#define ABOUT_PAGES 4
+#define ABOUT_PAGES 6
 
 /* the credits, the handhelds' heading and names, and the footer */
 #define ABOUT_THANKS_ROWS 32
+/* the handhelds' lines, a helper's going on under their name (handheld_rows) */
+#define ABOUT_HAND_LINES 16
 
 typedef struct {
 	char ver[48], addr[80], batt[32], up[48];
@@ -37,6 +40,8 @@ typedef struct {
 	int nstory, story_loop, nthanks;
 	int story_scroll;        /* pixels the story is scrolled by, by hand */
 	int thanks_scroll;       /* and the thanks */
+	char hand[ABOUT_HAND_LINES][96];
+	int nhand;
 	SDL_Texture *photo;
 	about_info info;
 	about_values values;

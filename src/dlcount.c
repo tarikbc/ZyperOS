@@ -45,9 +45,12 @@ void dl_count_again(app *a, const char *only)
 	g_now = (long long)time(NULL);
 	g_next = 0;
 	g_t0 = plat_now_ms();
-	g_working = a && a->sys.count > 0;
+	/* A card with no system (no games yet) is counted too, at once: its
+	 * count is one of nothing. It was never counted, so the page said
+	 * Counting until it closed (Tarik's R36S, 1.1.1-rc.1, an empty card) */
+	g_working = true;
 	scraper_count_begin();
-	if (!g_working) dl_count_step(a, 0);
+	if (!a || a->sys.count <= 0) dl_count_step(a, 0);
 }
 
 /* One of a's systems into the count: the Scraper's count and the

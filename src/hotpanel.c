@@ -36,20 +36,26 @@
 #define HOT_ROW_STEP (6 * DS_GRID)
 
 /* The code for `text`, made once and kept until the text changes: it changes
- * once a screen. */
+ * once a screen. Two kept, for a screen with two codes (About's last page,
+ * the Discord's and the tip's), the one used longer ago made again. */
 static int code(const char *text, const unsigned char **mods)
 {
-	static unsigned char m[QR_SIZE_MAX * QR_SIZE_MAX];
-	static char made[192];
-	static int size;
+	static unsigned char m[2][QR_SIZE_MAX * QR_SIZE_MAX];
+	static char made[2][192];
+	static int size[2], last;
+	int k;
 
 	if (!text) text = "";
-	if (strcmp(made, text) || !size) {
-		snprintf(made, sizeof made, "%s", text);
-		size = qr_encode(text, m);
+	for (k = 0; k < 2; k++)
+		if (size[k] && !strcmp(made[k], text)) break;
+	if (k == 2) {
+		k = !last;
+		snprintf(made[k], sizeof made[k], "%s", text);
+		size[k] = qr_encode(text, m[k]);
 	}
-	*mods = m;
-	return size;
+	last = k;
+	*mods = m[k];
+	return size[k];
 }
 
 int hotpanel_code_side(const char *qr, int module)
@@ -61,15 +67,20 @@ int hotpanel_code_side(const char *qr, int module)
 
 /* The code on its tile: ink on Beard's surface in both themes, since a
  * phone's camera reads dark on light, framed in the theme's **edge** as every
- * surface is. Returns the tile's side. */
-int hotpanel_code(SDL_Renderer *r, int x, int y, int module, const char *qr)
+ * surface is. The tile is `side` units, or the code's own with its quiet
+ * zone when `side` is 0, the code centred in it. Returns the tile's side. */
+int hotpanel_code_in(SDL_Renderer *r, int x, int y, int side, int module, const char *qr)
 {
 	const ds_rgb paper = DS_THEME[DS_LIGHT].surface, ink = theme()->ink;
 	const unsigned char *m;
-	int n = code(qr, &m), side = (n + 2 * HOT_QUIET) * module;
+	int n = code(qr, &m), own = (n + 2 * HOT_QUIET) * module;
+	int i, j, k, ox, oy;
+
+	if (side < own) side = own;
+	ox = x + (side - n * module) / 2;
+	oy = y + (side - n * module) / 2;
 	SDL_Rect t = { x, y, side, side }, in = { x + DS_FRAME, y + DS_FRAME,
 	                                         side - 2 * DS_FRAME, side - 2 * DS_FRAME };
-	int i, j, k;
 
 	ui_round_rect(r, &t, DS_RADIUS_ROW, ui_col(theme()->edge, 255));
 	ui_round_rect(r, &in, DS_RADIUS_ROW - DS_FRAME, ui_col(paper, 255));
@@ -81,12 +92,15 @@ int hotpanel_code(SDL_Renderer *r, int x, int y, int module, const char *qr)
 		for (i = 0; i < n; i = k) {
 			if (!m[j * n + i]) { k = i + 1; continue; }
 			for (k = i; k < n && m[j * n + k]; k++) { }
-			SDL_RenderFillRect(r, &(SDL_Rect){ x + (HOT_QUIET + i) * module,
-			                                   y + (HOT_QUIET + j) * module,
-			                                   (k - i) * module, module });
+			SDL_RenderFillRect(r, &(SDL_Rect){ ox + i * module, oy + j * module, (k - i) * module, module });
 		}
 	SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
 	return side;
+}
+
+int hotpanel_code(SDL_Renderer *r, int x, int y, int module, const char *qr)
+{
+	return hotpanel_code_in(r, x, y, 0, module, qr);
 }
 
 /* One of the column's entries: what it is in **meta** **text-dim**, and under
