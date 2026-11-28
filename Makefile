@@ -1066,6 +1066,12 @@ check-launch-start:
 check-xferway:
 	@sh tools/xferway-check.sh
 
+# File Transfer's steps and their hint, each step that can stall, over the
+# cable and over Wi-Fi, drawn whole by the launcher's own shots: drawn as
+# Flash Drive's page they read a note's mark as a key and crashed
+check-xferhint:
+	@sh tools/xferhint-check.sh
+
 # The Pixel 2's crash report (plastron's /usr/sbin/crashlog): what pstore kept
 # of a panic or a reset, and the launcher's own crash, said once, onto the
 # card for Download logs
@@ -1558,6 +1564,17 @@ build-native/mdns-check: tools/mdns-check.c src/mdns.c src/mdns.h FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g $(MEDIA_SAN) \
 	      -o $@ tools/mdns-check.c src/mdns.c
+
+# A computer from the gadget controller's state alone (src/udcpeer.h), the
+# R36S's plat_usb_peer (RK_PEER_FROM_UDC): a Mac enumerating, asleep and
+# unplugged, a charger's reset never a computer, each change said.
+check-udcpeer: build-native/udcpeer-check
+	@./build-native/udcpeer-check
+
+build-native/udcpeer-check: tools/udcpeer-check.c src/udcpeer.c src/udcpeer.h src/usbpeer.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g $(MEDIA_SAN) \
+	      -o $@ tools/udcpeer-check.c src/udcpeer.c
 
 # File Transfer's link steps (src/linksteps.h): the cable, the address and
 # the browser, each hint at its time, a replug, Wi-Fi, and the device's

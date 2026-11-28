@@ -45,5 +45,13 @@ if test "${zy_charge}" = "1"; then setenv zy_charge_arg zycharge=1; fi
 # over its /etc/default/jackswitch (board/r36s/rootfs-overlay)
 setenv zy_audio_arg
 if test -n "${zy_audio}"; then setenv zy_audio_arg zyaudio=${zy_audio}; fi
-setenv bootargs "root=${zy_root}${zy_part} ${zy_args} zyperos.slot=${slot} zyperos.trial=${trial} ${zy_theme} ${zy_charge_arg} ${zy_audio_arg}"
+# The chip itself reset the handheld, its watchdog or its thermal cut-off,
+# and zypmicrst's restart of the RK817 started it again (U-Boot sets
+# zy_reset=chip from the RK817's ON_SOURCE): zyreset= on the kernel's line,
+# which plastron's crashlog reports, as the shared tail does. And zytest=,
+# the watchdog's test from /zytest.txt (bootstate.cmd), which this copy of
+# the tail had left off.
+setenv zy_reset_arg
+if test -n "${zy_reset}"; then setenv zy_reset_arg zyreset=${zy_reset}; fi
+setenv bootargs "root=${zy_root}${zy_part} ${zy_args} zyperos.slot=${slot} zyperos.trial=${trial} ${zy_theme} ${zy_charge_arg} ${zy_audio_arg} ${zy_test} ${zy_reset_arg}"
 booti ${kernel_addr_r} - ${zy_fdt}

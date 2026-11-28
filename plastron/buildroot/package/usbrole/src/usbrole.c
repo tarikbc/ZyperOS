@@ -38,7 +38,7 @@
  * to full: the volume the player moves is a software one in front of it
  * (asound.conf's pcm.usb), the same for every DAC.
  *
- * Or one role for good, where the port has no pin to follow: ROLE=host in
+ * Or one role for good, where the port has no pin to follow: ROLE=device in
  * /etc/default/usbrole (the R36S's, board/r36s/rootfs-overlay, which says
  * why). Nothing is asked about then, and the rest below works as ever.
  *
@@ -60,6 +60,7 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/inotify.h>
+#include <sys/mount.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <time.h>
@@ -145,10 +146,10 @@ static int find_files(void)
 	return (host_state[0] || fixed_role) && role_file[0] ? 0 : -1;
 }
 
-/* ROLE=host or ROLE=device in DEFAULTS, a line of its own */
+/* ROLE=host or ROLE=device in DEFAULTS, a line of its own (rule.c) */
 static const char *read_fixed(void)
 {
-	char text[256];
+	char text[2048];
 	ssize_t got;
 	int fd = open(DEFAULTS, O_RDONLY | O_CLOEXEC);
 
@@ -157,13 +158,7 @@ static const char *read_fixed(void)
 	got = read(fd, text, sizeof text - 1);
 	close(fd);
 	text[got > 0 ? got : 0] = '\0';
-	for (char *l = text; l && *l; l = strchr(l, '\n') ? strchr(l, '\n') + 1 : NULL) {
-		if (!strncmp(l, "ROLE=host", 9) && (!l[9] || l[9] == '\n'))
-			return "host";
-		if (!strncmp(l, "ROLE=device", 11) && (!l[11] || l[11] == '\n'))
-			return "device";
-	}
-	return NULL;
+	return ur_fixed_role(text);
 }
 
 static unsigned now_ms(void)
@@ -304,6 +299,231 @@ static void read_request(void)
 	                                    : "usbrole: a request for a plug that cannot have power now\n");
 }
 
+/* With one role for good (the R36S's, whose port has no pin to follow),
+ * what the port's other readings say, into the kernel's log at the start and
+ * whenever one changes (looked at on each USB or power event, and every
+ * FACTS_MS): every power supply's online and uevent (its moving values left
+ * out, rule.c), the role switch, each extcon's cables, the USB controller's
+ * own registers where debugfs has them, each gadget controller's state (a
+ * computer's session: "configured"), and the USB devices on the bus. What a
+ * rule for that port can be built from: whether a computer's power reaches
+ * anything the system can read (Tarik's R36S, 2026-11-28). Nothing written
+ * to any of them. Each second since test.3, whose logs had none of it from
+ * the session the cable went in: the card's log now follows the kernel's
+ * (sd/r36s/device.sh), with the kernel's time on each line. A USB supply's
+ * voltage_avg in words too (the RK817's VUSB ADC: 5.0 V in test.3 with
+ * online 0, the RK817 feeding the pin itself), and the controller's
+ * registers in words (rule.c, ur_dwc2_line). */
+#define FACTS_MS 1000u
+/* A sysfs file's text, its line ends as spaces, or "-" */
+static void read_flat(const char *path, char *out, size_t n)
+{
+	int fd = open(path, O_RDONLY | O_CLOEXEC);
+	ssize_t got = fd >= 0 ? read(fd, out, n - 1) : -1;
+
+	if (fd >= 0) close(fd);
+	if (got <= 0) { snprintf(out, n, "-"); return; }
+	out[got] = '\0';
+	while (got > 0 && (out[got - 1] == '\n' || out[got - 1] == ' ')) out[--got] = '\0';
+	for (char *c = out; *c; c++) if (*c == '\n') *c = ' ';
+}
+
+/* A regdump file in words (rule.c), "-" unreadable. The whole dump: every
+ * endpoint's and host channel's registers come before HPRT0 */
+static void regdump_line(const char *path, char *out, size_t n)
+{
+	static char dump[32768];
+	int fd = open(path, O_RDONLY | O_CLOEXEC);
+	ssize_t got = 0, k;
+
+	if (fd < 0) { snprintf(out, n, "-"); return; }
+	while (got < (ssize_t)sizeof dump - 1 && (k = read(fd, dump + got, sizeof dump - 1 - got)) > 0)
+		got += k;
+	close(fd);
+	dump[got] = '\0';
+	ur_dwc2_line(dump, out, n);
+}
+
+/* Once, at the start, with one role for good and the gadget bound: the
+ * controller's pull-up taken off for a tenth of a second and the D+ D-
+ * lines read. Nothing pulls them up but a device's upstream port: a hub
+ * between the port and the controller (dArkOSen's KERNEL/
+ * USB_Gadget_Mass_Storage.md: some boards with Wi-Fi have one, and a hub
+ * cannot pass a gadget to a computer), powered, shows as D+ high; a
+ * computer's port (its pull-downs) or nothing shows both low. */
+static void line_probe(void)
+{
+	DIR *d, *g;
+	struct dirent *e, *u;
+	char path[320], words[700], line[800];
+
+	if (!fixed_role || strcmp(fixed_role, "device") || !(d = opendir("/sys/class/udc")))
+		return;
+	while ((e = readdir(d))) {
+		const char *k;
+		int fd;
+
+		if (e->d_name[0] == '.') continue;
+		snprintf(path, sizeof path, "/sys/class/udc/%s/soft_connect", e->d_name);
+		if ((fd = open(path, O_WRONLY | O_CLOEXEC)) < 0) continue;
+		if (write(fd, "disconnect", 10) != 10) {
+			close(fd);
+			log_to_kernel("usbrole: the line probe: no gadget bound to take the pull-up off\n");
+			continue;
+		}
+		usleep(100000);
+		words[0] = '\0';
+		if ((g = opendir("/sys/kernel/debug/usb"))) {
+			while ((u = readdir(g)))
+				if (u->d_name[0] != '.' && strstr(u->d_name, e->d_name)) {
+					char rp[320];
+
+					snprintf(rp, sizeof rp, "/sys/kernel/debug/usb/%s/regdump", u->d_name);
+					regdump_line(rp, words, sizeof words);
+				}
+			closedir(g);
+		}
+		if (write(fd, "connect", 7) != 7) { /* said by the facts that follow */ }
+		close(fd);
+		/* the device side's part alone: the host port's lines follow it */
+		k = strstr(words, "device side");
+		{
+			char *semi = k ? strchr(k, ';') : NULL;
+
+			if (semi) *semi = '\0';
+		}
+		snprintf(line, sizeof line, "usbrole: the line probe, %s's pull-up off: %s: %s\n", e->d_name,
+		         !k ? "the lines unreadable" : strstr(k, "D+ 1") ? "D+ high, something pulls it up "
+		         "(a powered hub's or a device's upstream port on the lines)"
+		         : "D+ low (nothing pulls it up: no powered hub on the lines)", words[0] ? words : "-");
+		log_to_kernel(line);
+	}
+	closedir(d);
+}
+
+static void log_facts(void)
+{
+	static char last[4096];
+	static int said;
+	char all[4096] = "", path[320], v[512], line[700];
+	size_t used = 0;
+	DIR *d;
+	struct dirent *e;
+
+#define ADD(what, text) do { \
+	int k_ = snprintf(all + used, sizeof all - used, "%s: %s\n", (what), (text)); \
+	if (k_ > 0 && (size_t)k_ < sizeof all - used) used += (size_t)k_; \
+} while (0)
+	read_flat(role_file, v, sizeof v);
+	ADD("role", v);
+	if ((d = opendir("/sys/class/power_supply"))) {
+		while ((e = readdir(d))) {
+			char ue[2048];
+
+			if (e->d_name[0] == '.') continue;
+			snprintf(path, sizeof path, "/sys/class/power_supply/%s/online", e->d_name);
+			read_flat(path, v, 16);
+			snprintf(path, sizeof path, "/sys/class/power_supply/%s/uevent", e->d_name);
+			{
+				int fd = open(path, O_RDONLY | O_CLOEXEC);
+				ssize_t got = fd >= 0 ? read(fd, ue, sizeof ue - 1) : -1;
+
+				if (fd >= 0) close(fd);
+				ue[got > 0 ? got : 0] = '\0';
+			}
+			{
+				char flat[400], what[300], uv[32];
+
+				ur_uevent_line(ue, flat, sizeof flat);
+				/* a USB input's power in words: the only reading of VBUS
+				 * the R36S has, the RK817's VUSB */
+				if (strstr(ue, "POWER_SUPPLY_TYPE=USB")) {
+					snprintf(path, sizeof path, "/sys/class/power_supply/%s/voltage_avg", e->d_name);
+					read_flat(path, uv, sizeof uv);
+					snprintf(what, sizeof what, "supply %.40s online=%.8s in=%s", e->d_name, v,
+					         ur_vbus_words(uv[0] == '-' ? -1 : strtol(uv, NULL, 10)));
+				} else {
+					snprintf(what, sizeof what, "supply %.40s online=%.8s", e->d_name, v);
+				}
+				ADD(what, flat);
+			}
+		}
+		closedir(d);
+	}
+	if ((d = opendir("/sys/class/extcon"))) {
+		while ((e = readdir(d))) {
+			char what[300];
+
+			if (e->d_name[0] == '.') continue;
+			snprintf(path, sizeof path, "/sys/class/extcon/%s/state", e->d_name);
+			read_flat(path, v, sizeof v);
+			snprintf(what, sizeof what, "extcon %.40s", e->d_name);
+			ADD(what, v);
+		}
+		closedir(d);
+	}
+	if ((d = opendir("/sys/class/udc"))) {
+		while ((e = readdir(d))) {
+			char st[64], sp[64], what[300];
+
+			if (e->d_name[0] == '.') continue;
+			snprintf(path, sizeof path, "/sys/class/udc/%s/state", e->d_name);
+			read_flat(path, st, sizeof st);
+			snprintf(path, sizeof path, "/sys/class/udc/%s/current_speed", e->d_name);
+			read_flat(path, sp, sizeof sp);
+			snprintf(what, sizeof what, "gadget controller %.40s", e->d_name);
+			snprintf(v, sizeof v, "state %s, speed %s", st, sp);
+			ADD(what, v);
+		}
+		closedir(d);
+	}
+	/* The DWC2's own registers (its debugfs regdump, where debugfs is
+	 * mounted), in words (rule.c, ur_dwc2_line): the mode, the sessions and
+	 * the ID it sees, the pull-up, the device side's state and lines, the
+	 * host port's power and connection */
+	if ((d = opendir("/sys/kernel/debug/usb"))) {
+		while ((e = readdir(d))) {
+			char what[300];
+
+			if (e->d_name[0] == '.' || !strstr(e->d_name, ".usb")) continue;
+			snprintf(path, sizeof path, "/sys/kernel/debug/usb/%s/regdump", e->d_name);
+			snprintf(what, sizeof what, "controller %.40s", e->d_name);
+			regdump_line(path, v, sizeof v);
+			ADD(what, v);
+		}
+		closedir(d);
+	}
+	if ((d = opendir("/sys/bus/usb/devices"))) {
+		while ((e = readdir(d))) {
+			char vid[16], pid[16], prod[128], what[300];
+
+			if (e->d_name[0] == '.' || strchr(e->d_name, ':')) continue;
+			snprintf(path, sizeof path, "/sys/bus/usb/devices/%s/idVendor", e->d_name);
+			read_flat(path, vid, sizeof vid);
+			snprintf(path, sizeof path, "/sys/bus/usb/devices/%s/idProduct", e->d_name);
+			read_flat(path, pid, sizeof pid);
+			snprintf(path, sizeof path, "/sys/bus/usb/devices/%s/product", e->d_name);
+			read_flat(path, prod, sizeof prod);
+			snprintf(what, sizeof what, "usb device %.40s", e->d_name);
+			snprintf(v, sizeof v, "%s:%s %s", vid, pid, prod);
+			ADD(what, v);
+		}
+		closedir(d);
+	}
+#undef ADD
+	if (said && !strcmp(all, last))
+		return;
+	snprintf(last, sizeof last, "%s", all);
+	log_to_kernel(said ? "usbrole: the port's facts changed:\n" : "usbrole: the port's facts, at the start:\n");
+	said = 1;
+	for (char *l = all, *nl; *l; l = nl + 1) {
+		if (!(nl = strchr(l, '\n'))) break;
+		*nl = '\0';
+		snprintf(line, sizeof line, "usbrole:   %s\n", l);
+		log_to_kernel(line);
+	}
+}
+
 /* The port's facts, rule.c's answer, and the role switch set to it. How
  * long until it wants to look again with no event, 0 for not. */
 static unsigned follow_pin(void)
@@ -326,7 +546,8 @@ static unsigned follow_pin(void)
 				                                         : "usbrole: host for good\n");
 			close(fd);
 		}
-		return 0;
+		log_facts();
+		return FACTS_MS;
 	}
 	in.pin = read_line(host_state, state, sizeof state) < 0 ? -1 : !strcmp(state, "1");
 	in.vbus = read_line(VBUS_IN, vbus, sizeof vbus) < 0 ? -1 : !strcmp(vbus, "1");
@@ -466,6 +687,11 @@ int main(void)
 		close(watch);
 		watch = -1;
 	}
+	/* The controller's registers for the facts (log_facts): debugfs, which
+	 * only setuplog mounts, and only on a first start */
+	if (fixed_role && access("/sys/kernel/debug/usb", F_OK) != 0 &&
+	    mount("debugfs", "/sys/kernel/debug", "debugfs", 0, NULL) < 0) { /* the facts go without */ }
+	line_probe();
 	unsigned again = follow_pin();
 	/* A DAC already in, if init restarted us. Card 0 is the RK817. */
 	for (int card = 1; card < 8; card++)
@@ -505,7 +731,7 @@ int main(void)
 		/* The pin's cable, and the charger's input, which can settle
 		 * after it */
 		if (strstr(msg, "/extcon/") || strstr(msg, "/power_supply/") ||
-		    strstr(msg, "/usb1/1-"))
+		    strstr(msg, "/usb1/1-") || (fixed_role && (strstr(msg, "/udc/") || strstr(msg, "/usb"))))
 			again = follow_pin();
 		else if (!strncmp(msg, "add@", 4) && last && !strncmp(last, "/controlC", 9) &&
 		         atoi(last + 9) > 0)

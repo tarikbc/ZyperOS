@@ -1,6 +1,7 @@
 #!/bin/sh
 # setuplog: a record of the card's setup, on its boot partition, where a
-# computer reads it: zyperos-setup.txt on PX2BOOT.
+# computer reads it: zyperos-setup.txt on PX2BOOT (R36SBOOT on the R36S, whose
+# /etc/default/datapart names it, BOOT_LABEL).
 #
 # A first start that never finishes leaves nothing behind to read: a release
 # image has no shell, and ZyperOS's own log is ZyperOS's, which never got to
@@ -30,6 +31,7 @@
 # file's own clusters and its entry. Kept to its last half when it fills.
 
 CARD=/dev/mmcblk0
+BOOT_LABEL=PX2BOOT
 [ -r /etc/default/datapart ] && . /etc/default/datapart
 case $CARD in
 *[0-9]) PART=${CARD}p ;;
@@ -290,7 +292,7 @@ start() {
 	fi
 	clean
 	[ -b "$BOOT" ] || return 0
-	blkid "$BOOT" | grep -q 'LABEL="PX2BOOT"' || return 0
+	blkid "$BOOT" | grep -q "LABEL=\"$BOOT_LABEL\"" || return 0
 	mkdir -p $MNT
 	if ! mount -t vfat -o noatime,nosuid,nodev,noexec "$BOOT" $MNT; then
 		clean

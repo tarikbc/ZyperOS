@@ -44,6 +44,14 @@
 #ifndef RK_JACK
 #define RK_JACK 1
 #endif
+/* Whether the DDR has a ceiling to set: its rate through the kernel's DMC
+ * driver, /sys/class/devfreq/dmc. Not on the R36S (RK_DMC 0), whose device
+ * tree leaves the DMC off and its DDR at the loader's rate: with the ceiling
+ * in its steps, every level's write failed there, and its log said "could
+ * not set every clock ceiling" at each one (Tarik's R36S, 2026-11-28). */
+#ifndef RK_DMC
+#define RK_DMC 1
+#endif
 
 #include <SDL.h>
 
@@ -382,7 +390,7 @@ static void jack_open(void)
 	if (!RK_JACK) return;
 	if (g_jack_fd < 0) input_scan();
 	if (g_jack_fd < 0)
-		diatom_port_log(DIATOM_LOG_WARN, "pixel2: no headphone jack input; "
+		diatom_port_log(DIATOM_LOG_WARN, RK_PORT ": no headphone jack input; "
 		                "volume uses the speaker window");
 }
 
@@ -426,7 +434,7 @@ static int ctl_io(const char *name, long *val, int write)
 		v.value.integer.value[0] = *val;
 		v.value.integer.value[1] = *val;
 		if (ioctl(g_mixer_fd, DM_CTL_ELEM_WRITE, &v) < 0) {
-			port_logf(DIATOM_LOG_WARN, "pixel2: mixer rejected '%s' = %ld",
+			port_logf(DIATOM_LOG_WARN, RK_PORT ": mixer rejected '%s' = %ld",
 			          name, *val);
 			return -1;
 		}
@@ -589,7 +597,7 @@ static void backlight_write(int raw)
 
 	if (fd < 0) return;
 	if (write(fd, buf, (size_t)n) != n)
-		diatom_port_log(DIATOM_LOG_WARN, "pixel2: backlight write failed");
+		diatom_port_log(DIATOM_LOG_WARN, RK_PORT ": backlight write failed");
 	close(fd);
 }
 
@@ -633,7 +641,7 @@ static uint32_t bo_fb(struct gbm_bo *bo)
 	if (info && info->format == g_fb_format) return info->fb;
 	if (drmModeAddFB2(g_drm_fd, gbm_bo_get_width(bo), gbm_bo_get_height(bo),
 	                  g_fb_format, handles, pitches, offsets, &fb, 0)) {
-		port_logf(DIATOM_LOG_ERROR, "pixel2: AddFB2: %s", strerror(errno));
+		port_logf(DIATOM_LOG_ERROR, RK_PORT ": AddFB2: %s", strerror(errno));
 		return 0;
 	}
 	if (info) {
@@ -659,7 +667,7 @@ static bool take_display(void)
 
 	if (g_have_master) return true;
 	if (drmSetMaster(g_drm_fd) != 0) {
-		port_logf(DIATOM_LOG_ERROR, "pixel2: cannot take the display: %s",
+		port_logf(DIATOM_LOG_ERROR, RK_PORT ": cannot take the display: %s",
 		          strerror(errno));
 		return false;
 	}
@@ -681,7 +689,7 @@ static void give_display(void)
 {
 	if (!g_have_master) return;
 	if (drmDropMaster(g_drm_fd) != 0)
-		port_logf(DIATOM_LOG_WARN, "pixel2: drop master: %s", strerror(errno));
+		port_logf(DIATOM_LOG_WARN, RK_PORT ": drop master: %s", strerror(errno));
 	g_have_master = false;
 }
 
@@ -759,7 +767,7 @@ static int put_on_glass(uint32_t fb, bool *done)
 		if (drmModeSetCrtc(g_drm_fd, g_crtc_id, fb, 0, 0, &g_connector_id, 1,
 		                   &g_mode) != 0) {
 			flip_err = errno;
-			port_logf(DIATOM_LOG_ERROR, "pixel2: set mode: %s", strerror(flip_err));
+			port_logf(DIATOM_LOG_ERROR, RK_PORT ": set mode: %s", strerror(flip_err));
 			return flip_err;
 		}
 		g_crtc_lit = true;
@@ -784,12 +792,12 @@ static int put_on_glass(uint32_t fb, bool *done)
 	flip_err = errno;
 	if (flip_err == EINVAL &&
 	    drmModeSetCrtc(g_drm_fd, g_crtc_id, fb, 0, 0, &g_connector_id, 1, &g_mode) == 0) {
-		port_logf(DIATOM_LOG_INFO, "pixel2: what was lit would not take "
+		port_logf(DIATOM_LOG_INFO, RK_PORT ": what was lit would not take "
 		          "a flip; set the mode with this frame instead");
 		*done = true;
 		return 0;
 	}
-	port_logf(DIATOM_LOG_WARN, "pixel2: page flip: %s", strerror(flip_err));
+	port_logf(DIATOM_LOG_WARN, RK_PORT ": page flip: %s", strerror(flip_err));
 	return flip_err;
 }
 
@@ -837,7 +845,7 @@ static void display_gamma(void)
 			g_night_looked = now;
 			if (w != g_gamma_color.night) {
 				g_gamma_color.night = w;
-				port_logf(DIATOM_LOG_INFO, "pixel2: Night Mode %s", w ? "on" : "off");
+				port_logf(DIATOM_LOG_INFO, RK_PORT ": Night Mode %s", w ? "on" : "off");
 				if (want == g_gamma_have) g_gamma_have = -1;
 			}
 		}
@@ -845,10 +853,10 @@ static void display_gamma(void)
 	if (want == g_gamma_have) return;
 	n = panelgamma_apply_color(g_drm_fd, want, &g_gamma_color);
 	if (n > 0)
-		port_logf(DIATOM_LOG_INFO, "pixel2: the display's gamma table set for brightness %d%s",
+		port_logf(DIATOM_LOG_INFO, RK_PORT ": the display's gamma table set for brightness %d%s",
 		          want, g_gamma_color.night ? ", Night Mode on" : "");
 	else if (n < 0)
-		port_logf(DIATOM_LOG_WARN, "pixel2: could not set the display's gamma table for "
+		port_logf(DIATOM_LOG_WARN, RK_PORT ": could not set the display's gamma table for "
 		          "brightness %d", want);
 	g_gamma_have = want;               /* once, even refused: not at every frame */
 }
@@ -873,7 +881,7 @@ static void show_frame(void)
 	static double refresh_us;
 
 	if (!bo) {
-		diatom_port_log(DIATOM_LOG_ERROR, "pixel2: no front buffer after swap");
+		diatom_port_log(DIATOM_LOG_ERROR, RK_PORT ": no front buffer after swap");
 		return;
 	}
 	if (!(fb = bo_fb(bo)) || !take_display()) {
@@ -887,7 +895,7 @@ static void show_frame(void)
 	 * virtio-gpu. The same frames as XRGB8888, from now on. */
 	if (ret == EINVAL && g_fb_format == DRM_FORMAT_ARGB8888) {
 		g_fb_format = DRM_FORMAT_XRGB8888;
-		diatom_port_log(DIATOM_LOG_INFO, "pixel2: the display takes no ARGB8888; "
+		diatom_port_log(DIATOM_LOG_INFO, RK_PORT ": the display takes no ARGB8888; "
 		                "showing the frames as XRGB8888");
 		ret = (fb = bo_fb(bo)) ? put_on_glass(fb, &done) : EINVAL;
 	}
@@ -909,7 +917,7 @@ static void show_frame(void)
 		/* Bounded, so a flip that never completes costs a frame and a log
 		 * line rather than the thread. */
 		if (poll(&p, 1, 100) <= 0) {
-			diatom_port_log(DIATOM_LOG_WARN, "pixel2: flip did not complete");
+			diatom_port_log(DIATOM_LOG_WARN, RK_PORT ": flip did not complete");
 			break;
 		}
 		drmHandleEvent(g_drm_fd, &ev);
@@ -947,7 +955,7 @@ static bool gl_start(void)
 		? get_platform_display(EGL_PLATFORM_GBM_KHR, g_gbm, NULL)
 		: eglGetDisplay((EGLNativeDisplayType)g_gbm);
 	if (g_egl_display == EGL_NO_DISPLAY || !eglInitialize(g_egl_display, NULL, NULL)) {
-		diatom_port_log(DIATOM_LOG_ERROR, "pixel2: no EGL display");
+		diatom_port_log(DIATOM_LOG_ERROR, RK_PORT ": no EGL display");
 		return false;
 	}
 	eglBindAPI(EGL_OPENGL_ES_API);
@@ -960,7 +968,7 @@ static bool gl_start(void)
 		if (visual == GBM_FORMAT_ARGB8888) { config = configs[i]; break; }
 	}
 	if (!config) {
-		diatom_port_log(DIATOM_LOG_ERROR, "pixel2: no ARGB8888 EGL config");
+		diatom_port_log(DIATOM_LOG_ERROR, RK_PORT ": no ARGB8888 EGL config");
 		return false;
 	}
 
@@ -968,7 +976,7 @@ static bool gl_start(void)
 	                                   GBM_FORMAT_ARGB8888,
 	                                   GBM_BO_USE_SCANOUT | GBM_BO_USE_RENDERING);
 	if (!g_gbm_surface) {
-		diatom_port_log(DIATOM_LOG_ERROR, "pixel2: no GBM surface");
+		diatom_port_log(DIATOM_LOG_ERROR, RK_PORT ": no GBM surface");
 		return false;
 	}
 	g_egl_config  = config;
@@ -977,7 +985,7 @@ static bool gl_start(void)
 	                                       (EGLNativeWindowType)g_gbm_surface, NULL);
 	if (g_egl_context == EGL_NO_CONTEXT || g_egl_surface == EGL_NO_SURFACE ||
 	    !eglMakeCurrent(g_egl_display, g_egl_surface, g_egl_surface, g_egl_context)) {
-		diatom_port_log(DIATOM_LOG_ERROR, "pixel2: no GLES 3 context");
+		diatom_port_log(DIATOM_LOG_ERROR, RK_PORT ": no GLES 3 context");
 		return false;
 	}
 
@@ -1231,9 +1239,9 @@ static void input_open(void)
 {
 	if (g_pad_fd < 0 || g_keys_fd < 0) input_scan();
 	if (g_pad_fd < 0)
-		diatom_port_log(DIATOM_LOG_WARN, "pixel2: no gamepad found; no game input");
+		diatom_port_log(DIATOM_LOG_WARN, RK_PORT ": no gamepad found; no game input");
 	if (g_keys_fd < 0)
-		diatom_port_log(DIATOM_LOG_WARN, "pixel2: no volume keys found");
+		diatom_port_log(DIATOM_LOG_WARN, RK_PORT ": no volume keys found");
 	pad_resync();
 }
 
@@ -1502,10 +1510,12 @@ static const diatom_power_profile PX2_POWER = {
 	.clock = {
 		{ DIATOM_CPUFREQ "scaling_max_freq", { NULL, "1008000", "816000" },
 		  DIATOM_CPUFREQ "cpuinfo_max_freq" },
+#if RK_DMC
 		{ "/sys/class/devfreq/dmc/max_freq", { "0", "0", "328000000" }, NULL },
+#endif
 		{ "/sys/class/devfreq/ff400000.gpu/max_freq", { "0", "300000000", "200000000" }, NULL },
 	},
-	.n = 3,
+	.n = 2 + RK_DMC,
 	.gpu_floor = "/sys/class/devfreq/ff400000.gpu/min_freq",
 	.gpu_floor_top = "520000000",
 };
@@ -1523,10 +1533,12 @@ static const diatom_power_profile PX2_POWER_STEADY = {
 	.clock = {
 		{ DIATOM_CPUFREQ "scaling_max_freq", { NULL, "1008000", "816000" },
 		  DIATOM_CPUFREQ "cpuinfo_max_freq" },
+#if RK_DMC
 		{ "/sys/class/devfreq/dmc/max_freq", { "0", "0", "0" }, NULL },
+#endif
 		{ "/sys/class/devfreq/ff400000.gpu/max_freq", { "0", "300000000", "200000000" }, NULL },
 	},
-	.n = 3,
+	.n = 2 + RK_DMC,
 	.gpu_floor = "/sys/class/devfreq/ff400000.gpu/min_freq",
 	.gpu_floor_top = "520000000",
 };
@@ -1538,7 +1550,7 @@ void diatom_port_fast_clock(bool cpu, bool gpu)
 
 	if (!diatom_cpufreq_hold_top(cpu) && !said) {
 		said = true;
-		diatom_port_log(DIATOM_LOG_WARN, "pixel2: could not set the CPU's lowest clock");
+		diatom_port_log(DIATOM_LOG_WARN, RK_PORT ": could not set the CPU's lowest clock");
 	}
 	/* And the GPU's floor at its top step, for the same reason (see
 	 * diatom_port.h); 0 is no floor, the governor's again. The first call
@@ -1547,7 +1559,7 @@ void diatom_port_fast_clock(bool cpu, bool gpu)
 	if (gpu_held != (int)gpu) {
 		gpu_held = gpu;
 		if (!diatom_power_hold_gpu(&PX2_POWER, gpu))
-			diatom_port_log(DIATOM_LOG_WARN, "pixel2: could not set the GPU's lowest clock");
+			diatom_port_log(DIATOM_LOG_WARN, RK_PORT ": could not set the GPU's lowest clock");
 	}
 }
 
@@ -1560,7 +1572,7 @@ void diatom_port_power(int level)
 	if (!diatom_power_say(&g_power_memo,
 	                      access(PX2_STEADY_MEMORY, F_OK) == 0 || access(PX2_STEADY_MEMORY_BOOT, F_OK) == 0
 	                      ? &PX2_POWER_STEADY : &PX2_POWER, level))
-		diatom_port_log(DIATOM_LOG_WARN, "pixel2: could not set every clock ceiling");
+		diatom_port_log(DIATOM_LOG_WARN, RK_PORT ": could not set every clock ceiling");
 }
 
 void diatom_port_power_invalidate(void) { diatom_power_forget(&g_power_memo); }
@@ -1621,7 +1633,7 @@ bool diatom_port_init(diatom_port_caps *out)
 	drmDropMaster(g_drm_fd);
 
 	if (!kms_find()) {
-		diatom_port_log(DIATOM_LOG_ERROR, "pixel2: no connected panel");
+		diatom_port_log(DIATOM_LOG_ERROR, RK_PORT ": no connected panel");
 		return false;
 	}
 	g_panel_w = g_mode.hdisplay;
@@ -1632,7 +1644,7 @@ bool diatom_port_init(diatom_port_caps *out)
 	g_surface_h = g_turned ? g_panel_w : g_panel_h;
 
 	g_gbm = gbm_create_device(g_drm_fd);
-	if (!g_gbm) { diatom_port_log(DIATOM_LOG_ERROR, "pixel2: no GBM device"); return false; }
+	if (!g_gbm) { diatom_port_log(DIATOM_LOG_ERROR, RK_PORT ": no GBM device"); return false; }
 
 	/* g_idle on the monotonic clock, before the thread exists, for the one
 	 * timed wait on it (gpu_target's): the wall clock here has jumped by
@@ -1647,7 +1659,7 @@ bool diatom_port_init(diatom_port_caps *out)
 		pthread_condattr_destroy(&ca);
 	}
 	if (pthread_create(&g_thread, NULL, present_thread, NULL) != 0) {
-		diatom_port_log(DIATOM_LOG_ERROR, "pixel2: no presenting thread");
+		diatom_port_log(DIATOM_LOG_ERROR, RK_PORT ": no presenting thread");
 		return false;
 	}
 	pthread_mutex_lock(&g_mx);
@@ -1671,7 +1683,7 @@ bool diatom_port_init(diatom_port_caps *out)
 	 * game; see diatom_port_audio_start. */
 
 	port_logf(DIATOM_LOG_INFO,
-	          "pixel2: panel %dx%d%s, surface %dx%d, crtc %u, audio %d Hz, pad %s, rumble %s",
+	          RK_PORT ": panel %dx%d%s, surface %dx%d, crtc %u, audio %d Hz, pad %s, rumble %s",
 	          g_panel_w, g_panel_h, g_turned ? " (turned)" : "",
 	          g_surface_w, g_surface_h, g_crtc_id, AUDIO_RATE,
 	          g_pad_fd >= 0 ? "yes" : "none", out->rumble ? "yes" : "none");

@@ -51,6 +51,9 @@ RCU_PANIC=${RCU_PANIC:-/proc/sys/kernel/panic_on_rcu_stall}
 RUN_REPORT=${RUN_REPORT:-/run/crashlog.txt}
 LASTBOOT=${LASTBOOT:-/run/zyperos-lastboot.txt}
 CARD=/dev/mmcblk0
+# The boot partition's label: the R36S's /etc/default/datapart names its own
+# (R36SBOOT), so its reports reach the partition a computer shows too
+BOOT_LABEL=PX2BOOT
 CRASH_DIR=${CRASH_DIR:-/mnt/SDCARD/.plastron/crash}
 CRASH_KEEP=${CRASH_KEEP:-10}
 ZYSTART=${ZYSTART:-/mnt/SDCARD/.plastron/starting.txt}
@@ -88,7 +91,7 @@ keep() {
 	# On the boot partition, the newest only: mounted for the write and let
 	# go, as the launcher writes its theme.txt there, written whole under
 	# another name and renamed over
-	if [ -b "$BOOT" ] && blkid "$BOOT" 2> /dev/null | grep -q 'LABEL="PX2BOOT"'; then
+	if [ -b "$BOOT" ] && blkid "$BOOT" 2> /dev/null | grep -q "LABEL=\"$BOOT_LABEL\""; then
 		mkdir -p $MNT
 		if mount -t vfat -o noatime,nosuid,nodev,noexec "$BOOT" $MNT 2> /dev/null; then
 			cp "$1" $MNT/zyperos-crash.new && sync && mv $MNT/zyperos-crash.new $MNT/zyperos-crash.txt
@@ -119,7 +122,7 @@ if [ "${1:-}" = --launcher ]; then
 		echo "--- end ---"
 	} > $report 2> /dev/null
 	keep $report
-	echo "crashlog: the launcher's crash kept in $CRASH_DIR and on PX2BOOT" 2> /dev/null > /dev/kmsg
+	echo "crashlog: the launcher's crash kept in $CRASH_DIR and on $BOOT_LABEL" 2> /dev/null > /dev/kmsg
 	rm -f $report "$record"
 	exit 0
 fi
@@ -284,7 +287,7 @@ fi
 
 keep $report lastboot
 
-echo "crashlog: a report from before this start kept in $CRASH_DIR and on PX2BOOT" 2> /dev/null > /dev/kmsg
+echo "crashlog: a report from before this start kept in $CRASH_DIR and on $BOOT_LABEL" 2> /dev/null > /dev/kmsg
 # Said once: the dumps let go (the console is the kernel's to replace). The
 # report stays in /run for this start's setup record, when there is one
 # (setuplog, which showed the dumps itself before this took them)

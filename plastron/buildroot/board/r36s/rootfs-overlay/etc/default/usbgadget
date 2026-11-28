@@ -1,0 +1,14 @@
+# The R36S's USB gadget (board/px2's S40usbgadget, which it shares): its name
+# for the computer, and its folder on the card, .userdata/r36s, where the
+# launcher keeps Developer Mode's "developer" file. Until test.4 it read the
+# Pixel 2's folder, which an R36S card does not have, so Developer Mode
+# turned off on an R36S still bound the gadget at boot, and a Mac named it
+# "GKD Pixel 2".
+PRODUCT="R36S"
+USERDATA=r36s
+# Bound at boot in any mode: the R36S sees a computer only by what the
+# computer does to its bound gadget (src/udcpeer.h; nothing else on it reads
+# the OTG port), where the Pixel 2's PHY reads the cable with the link
+# unbound. The launcher never lets it go there (src/device/pixel2.c,
+# plat_usb_link with RK_PEER_FROM_UDC).
+BIND=always

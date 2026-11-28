@@ -29,4 +29,8 @@
 #zy_dtb=rk3326-gameconsole-r36s.dtb
 #
 # The kernel's line, for debugging (the serial port is ttyS2 at 1500000):
-#zy_args=rootfstype=squashfs ro rootwait console=ttyS2,1500000 console=tty1 panic=0 loglevel=8
+#zy_args=rootfstype=squashfs ro rootwait console=ttyS2,1500000 console=tty1 panic=0 loglevel=8 watchdog.open_timeout=60
+#
+# A restart by the chip itself (its watchdog) also restarts the power chip,
+# so the card comes back from it. For a clone where that starts nothing:
+#zy_pmicrst=0
