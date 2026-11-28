@@ -158,6 +158,11 @@ int menu_choice_steps(const menu_choice *c, int to, bool *right);
  * repeats: text, air, rule, air, and the text again. */
 #define MENU_HR_MARK ((const char *)3)
 #define MENU_HR      ((menu_row){ NULL, MENU_HR_MARK, false })
+
+/* A value that is one of the marks above, not text: never a key's name or
+ * a word to draw (ds_page_foot) */
+#define MENU_IS_MARK(v) ((v) == MENU_NOTE_MARK || (v) == MENU_BODY_MARK || \
+                         (v) == MENU_HR_MARK)
 #define ROW_IS_HR(r) ((r).label == NULL && (r).value == MENU_HR_MARK)
 
 /* Move to the next live row in `dir` (+1 or -1), or stay put if none is.

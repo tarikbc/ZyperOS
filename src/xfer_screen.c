@@ -877,6 +877,22 @@ void xs_page_show(app *a, const char *heading, const menu_row *rows, int n)
 	panel_show(a, PANEL_MOVE, heading, rows, n, -1, 0, 0u, NULL, false, 0, NULL);
 }
 
+/* The steps are a menu of their own, as before the news became Flash
+ * Drive's page: their last row is the legend, a note, and the page's foot
+ * takes its last row's value for a key's name. From 2026-11-13 the steps
+ * went through the page too, MENU_NOTE_MARK ((const char *)1) was read as a
+ * key, and the launcher stopped with SIGSEGV at 0x1 as soon as a step
+ * stalled long enough for its hint (my R36S, 1.1.1-r36s-test.3, 2026-11-28;
+ * make check-xferhint). */
+void xs_view_draw(app *a, int view, const char *head, const menu_row *rows, int n,
+                  float load_k)
+{
+	if (view == XS_VIEW_IN) xs_way_draw(a, rows, n);
+	else if (view == XS_VIEW_LOAD) xs_load_draw(a, rows, n, load_k);
+	else if (view == XS_VIEW_STEPS) menu_draw(a, head, rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
+	else xs_page_show(a, head, rows, n);
+}
+
 /* One frame of it, for the shot harness, the tiles as the caller set them
  * (g_move). The rows come from the same function the screen uses, so a
  * picture of this cannot quietly stop being a picture of that. */
@@ -2018,7 +2034,8 @@ void xfer_screen_way(app *a, int way)
 	int        nrows, lv;
 	/* which view is up: the way in, the cable's loading bar, the steps, the
 	 * news, the hotspot's */
-	enum { WAY_IN, WAY_LOAD, WAY_STEPS, WAY_NEWS, WAY_HOT } view;
+	enum { WAY_IN = XS_VIEW_IN, WAY_LOAD = XS_VIEW_LOAD, WAY_STEPS = XS_VIEW_STEPS,
+	       WAY_NEWS = XS_VIEW_NEWS, WAY_HOT = XS_VIEW_HOT } view;
 	unsigned   cover_at = 0, cover_next = 0;   /* the embedded covers, below */
 	int        cover_left = -1, cover_albums = -1;
 	unsigned long long cover_moved = 0;
@@ -2245,9 +2262,7 @@ void xfer_screen_way(app *a, int way)
 			draw_shelf(a);
 			ui_scrim_k(a->r, 0, k);
 			if (view == WAY_HOT) hot_show(a, g_xs.name, g_xs.pin, g_xs.hs == HOTSPOT_STARTING, now_line, legend);
-			else if (view == WAY_IN) xs_way_draw(a, rows, nrows);
-			else if (view == WAY_LOAD) xs_load_draw(a, rows, nrows, g_xs.load_k);
-			else xs_page_show(a, head, rows, nrows);
+			else xs_view_draw(a, view, head, rows, nrows, g_xs.load_k);
 			plat_draw_osd(a->r);
 			drawn_at = plat_now_ms();
 			plat_present();
