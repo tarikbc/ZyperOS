@@ -1647,6 +1647,52 @@ bool plat_cable_link(char *addr, size_t n)
  * cable. Every extcon's "state" is read, lines like "SDP=1". */
 static void link_setup(void);
 
+/* Or, where neither the PHY nor the RK817 can tell (RK_PEER_FROM_UDC, the
+ * R36S: its PHY's otg-port is off in every tree it has, and its RK817 reads
+ * no power from that port), from what a host did to the gadget: the
+ * controller's state (src/udcpeer.h). Each change of the state or of the
+ * answer is said in the log with why. */
+#ifndef RK_PEER_FROM_UDC
+#define RK_PEER_FROM_UDC 0
+#endif
+#if RK_PEER_FROM_UDC
+#include "udcpeer.h"
+
+static usb_peer peer_from_udc(void)
+{
+	static udc_peer p;
+	char path[300], st[64];
+	const char *why = NULL, *got = NULL;
+	DIR *d = opendir("/sys/class/udc");
+	struct dirent *e;
+	usb_peer peer;
+	int fd;
+
+	while (d && !got && (e = readdir(d))) {
+		ssize_t n;
+
+		if (e->d_name[0] == '.') continue;
+		snprintf(path, sizeof path, "/sys/class/udc/%s/state", e->d_name);
+		if ((fd = open(path, O_RDONLY | O_CLOEXEC)) < 0) continue;
+		n = read(fd, st, sizeof st - 1);
+		close(fd);
+		if (n > 0) { st[n] = '\0'; got = st; }
+	}
+	if (d) closedir(d);
+	peer = udc_peer_step(&p, got, plat_now_ms(), &why);
+	/* with the kernel's clock, to read beside its lines (sd/r36s/device.sh) */
+	if (why) {
+		struct timespec ts;
+
+		clock_gettime(CLOCK_MONOTONIC, &ts);
+		fprintf(stderr, "usb: [%5ld.%03ld] the gadget controller says \"%.*s\": %s\n",
+		        (long)ts.tv_sec, ts.tv_nsec / 1000000L,
+		        got ? (int)strcspn(got, "\n") : 10, got ? got : "unreadable", why);
+	}
+	return peer;
+}
+#endif
+
 usb_peer plat_usb_peer(void)
 {
 	DIR *d;
@@ -1659,6 +1705,10 @@ usb_peer plat_usb_peer(void)
 	 * what was asked started (gadget.h) */
 	link_setup();
 	gadget_pump();
+#if RK_PEER_FROM_UDC
+	(void)d; (void)e; (void)host; (void)data; (void)dcp; (void)in; (void)fd;
+	return peer_from_udc();
+#endif
 
 	/* No power coming in is nothing on the port, whatever the extcon still
 	 * says: the RK817's input answers on its own interrupt, at once, where
