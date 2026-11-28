@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -210,6 +211,48 @@ int bt_sweep_cache(const char *root)
 	return gone;
 }
 
+/* Outside __linux__ too, as the sweep is: a file edited, checked on the
+ * host. Read whole (a line per headset the player let go, a few at most),
+ * written beside and renamed over, so the shell loop never reads half. */
+bool bt_held(const char *path, const char *mac)
+{
+	char line[64];
+	bool found = false;
+	FILE *f;
+
+	if (!bt_mac_valid(mac) || !path || !(f = fopen(path, "r"))) return false;
+	while (!found && fgets(line, sizeof line, f)) {
+		line[strcspn(line, "\r\n")] = '\0';
+		found = !strcasecmp(line, mac);
+	}
+	fclose(f);
+	return found;
+}
+
+bool bt_hold_edit(const char *path, const char *mac, bool on)
+{
+	char lines[BT_MAX][BT_MAC_MAX], line[64], tmp[512];
+	int n = 0, i;
+	FILE *f;
+
+	if (!bt_mac_valid(mac) || !path) return false;
+	if ((f = fopen(path, "r"))) {
+		while (n < BT_MAX && fgets(line, sizeof line, f)) {
+			line[strcspn(line, "\r\n")] = '\0';
+			if (!bt_mac_valid(line) || !strcasecmp(line, mac)) continue;
+			snprintf(lines[n++], BT_MAC_MAX, "%s", line);
+		}
+		fclose(f);
+	}
+	if (on && n < BT_MAX) snprintf(lines[n++], BT_MAC_MAX, "%s", mac);
+	if (!n) return unlink(path) == 0 || access(path, F_OK) != 0;
+	if (snprintf(tmp, sizeof tmp, "%s.tmp", path) >= (int)sizeof tmp || !(f = fopen(tmp, "w")))
+		return false;
+	for (i = 0; i < n; i++) fprintf(f, "%s\n", lines[i]);
+	if (fclose(f) != 0) { unlink(tmp); return false; }
+	return rename(tmp, path) == 0;
+}
+
 #ifdef __linux__
 
 #include <dirent.h>
@@ -226,6 +269,9 @@ int bt_sweep_cache(const char *root)
  * because the headset has to answer. Neither may take forever. */
 #define BT_ASK_S   6
 #define BT_ACT_S  20
+/* How many more looks, half a second apart, a connect gets for BlueZ to say
+ * Connected: yes after bluetoothctl came back (bt_connect) */
+#define BT_SETTLE_TRIES 10
 
 static int btctl(char *out, size_t cap, int timeout_s, const char *a, const char *b)
 {
@@ -498,8 +544,14 @@ bool bt_connect(const char *mac, char *err, size_t n)
 	if (err && n) err[0] = '\0';
 	if (!bt_mac_valid(mac)) { if (err) snprintf(err, n, "%s", T(S_BTLINK_NOT_ADDRESS)); return false; }
 	btctl(out, sizeof out, BT_ACT_S, "connect", mac);
-	if (info_says(mac, "Connected: yes")) {
-		fprintf(stderr, "bt: connect %s: connected\n", mac);
+	/* And for a few seconds after: `connect` can come back, with Failed or
+	 * with nothing, before BlueZ says Connected: yes, and "It did not
+	 * connect" then showed over a headset that played a moment later
+	 * (1.1.1-rc.1, a Brick). Half a second apart, five seconds at most. */
+	for (int i = 0; i <= BT_SETTLE_TRIES; i++) {
+		if (i) usleep(500 * 1000);
+		if (!info_says(mac, "Connected: yes")) continue;
+		fprintf(stderr, "bt: connect %s: connected%s\n", mac, i ? " after a wait" : "");
 		publish_soon();
 		return true;
 	}
@@ -635,6 +687,45 @@ bool bt_asoundrc(const char *zyperos_dir, const char *userdata_dir)
 	return WIFEXITED(st) && WEXITSTATUS(st) == 0;
 }
 
+bool bt_loop_start(const char *zyperos_dir)
+{
+	char script[512];
+	char *argv[5];
+	pid_t pid;
+	int st;
+
+	if (!zyperos_dir || !*zyperos_dir) return false;
+	if (snprintf(script, sizeof script, "%s/bt-alsa.sh", zyperos_dir) >= (int)sizeof script ||
+	    access(script, R_OK) != 0)
+		return false;
+	argv[0] = (char *)"/bin/sh";
+	argv[1] = (char *)"-c";
+	argv[2] = (char *)". \"$0\" && command -v bt_reconnect > /dev/null && bt_reconnect";
+	argv[3] = script;
+	argv[4] = NULL;
+
+	/* Double-forked into a session of its own and never waited on: the
+	 * loop runs for as long as the handheld does, past the launcher's own
+	 * restarts, as the boot's does. Nothing between fork and exec that is
+	 * not async-signal-safe: the launcher has threads. */
+	pid = fork();
+	if (pid < 0) return false;
+	if (pid == 0) {
+		if (fork() == 0) {
+			int null = open("/dev/null", O_RDWR);
+
+			setsid();
+			if (null >= 0) { dup2(null, 0); dup2(null, 1); dup2(null, 2); }
+			execv(argv[0], argv);
+			_exit(127);
+		}
+		_exit(0);
+	}
+	if (waitpid(pid, &st, 0) != pid) return false;
+	fprintf(stderr, "bt: the reconnect loop asked for\n");
+	return true;
+}
+
 #else   /* not __linux__ */
 
 bt_state bt_status(void) { return BT_NO_ADAPTER; }
@@ -651,5 +742,6 @@ bool bt_disconnect(const char *m) { (void)m; return false; }
 int  bt_disconnect_others(const char *k) { (void)k; return 0; }
 bool bt_forget(const char *m) { (void)m; return false; }
 bool bt_asoundrc(const char *t, const char *d) { (void)t; (void)d; return false; }
+bool bt_loop_start(const char *d) { (void)d; return false; }
 
 #endif

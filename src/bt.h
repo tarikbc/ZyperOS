@@ -130,6 +130,32 @@ bool bt_forget(const char *mac);
  * 2026-09-05 and again, with the cause, 2026-09-25. */
 bool bt_asoundrc(const char *zyperos_dir, const char *userdata_dir);
 
+/* Headsets the player disconnected on the Bluetooth screen, one address a
+ * line, in /tmp/zyperos_bthold (BT_HOLD_FILE): bt_reconnect (bt-alsa.sh)
+ * dials none of them, so a headset let go stays let go. Each one until it
+ * is connected again from the screen, forgotten, or the handheld restarts,
+ * which empties /tmp. Before, the loop dialed every bond whenever nothing
+ * was connected, and a headset disconnected here came back by itself
+ * within twenty seconds (1.1.1-rc.1, a Brick).
+ *
+ * bt_hold_edit puts `mac` in the file at `path` (`on`) or takes it out,
+ * any case, every other line kept; the file goes when it is left empty.
+ * False for an address that is not one or a file that could not be
+ * written. bt_held says whether `mac` is in it. Pure POSIX, checked on the
+ * host against a scratch file. */
+#define BT_HOLD_FILE "/tmp/zyperos_bthold"
+bool bt_hold_edit(const char *path, const char *mac, bool on);
+bool bt_held(const char *path, const char *mac);
+
+/* bt_reconnect, the loop that keeps a remembered headset connected and
+ * says where the sound goes (/tmp/zyperos_btsink), started in a shell of
+ * its own from bt-alsa.sh in `zyperos_dir`, as the boot starts it when
+ * Bluetooth was left on. For Bluetooth turned on from its screen: with no
+ * loop no sink was ever said, and a headset paired and connected then was
+ * not heard until a restart (1.1.1-rc.1, a Brick). The loop keeps one of
+ * itself (/tmp/zyperos_btloop): a second start is nothing. */
+bool bt_loop_start(const char *zyperos_dir);
+
 /* Delete every cached device that is not bonded, and return how many went.
  *
  * BlueZ writes a cache entry - name and A2DP endpoints - for every device it

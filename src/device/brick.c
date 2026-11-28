@@ -839,9 +839,21 @@ static void poll_fd(int fd, in_state *st)
 				in_button b = keymap[i].b;
 
 				/* MENU and the volume keys, which are brightness
-				 * together on the Smart Pro (src/device/menuvol.h) */
+				 * together on the Smart Pro (src/device/menuvol.h).
+				 * On the Brick, MENU is plat_key's, as every other
+				 * button is: held, it opens nothing until it is let
+				 * go, and a button under it can be its chord
+				 * (src/menukeys.h). Set straight down as it went
+				 * down, MENU+L1 and MENU+L2 were never seen on the
+				 * Brick outside a game, and MENU opened its menu
+				 * at once (1.1.1-rc.1). */
 				if (b == IN_MENU) {
-					menuvol_menu(&menu_chord, st, ev.value == 1, plat_brightness_on_volume());
+					if (plat_brightness_on_volume()) {
+						menuvol_menu(&menu_chord, st, ev.value == 1, true);
+					} else {
+						menu_chord.down = ev.value == 1;
+						plat_key(st, IN_MENU, ev.value == 1);
+					}
 				} else if (b == IN_VOLUP || b == IN_VOLDN) {
 					menuvol_volume(&menu_chord, st, b == IN_VOLUP, ev.value == 1,
 					               plat_brightness_on_volume());
@@ -849,6 +861,12 @@ static void poll_fd(int fd, in_state *st)
 				} else if (b <= IN_DOWN) {
 					dpad_key[b] = ev.value == 1;
 					plat_set_btn(st, b, dpad_key[b] || stick.held[b]);
+				/* Under the Smart Pro's MENU, MENU's chord when the
+				 * launcher takes it, as on the Pixel 2: menuvol holds
+				 * that MENU, not plat_key */
+				} else if (plat_brightness_on_volume() &&
+				           plat_menu_with(st, b, ev.value == 1, menu_chord.down)) {
+					if (ev.value) menu_chord.chorded = true;
 				/* A repeat is no let-go of POWER (src/powerhold.h) */
 				} else if (b != IN_POWER || ev.value != 2) {
 					plat_key(st, b, ev.value == 1);

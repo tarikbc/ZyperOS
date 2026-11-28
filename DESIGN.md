@@ -1488,6 +1488,18 @@ Headset**, "Forget WH-1000XM4? Pair it again to use it.", Cancel and
 at once until 1.1.0; Tarik's, 2026-11-23, after the confirm panels lab
 listed it: it asks as Wi-Fi's does.)*
 
+**A headset's sound follows the Bluetooth screen.** A headset connected
+there takes the sound at once, MP4's and a game's, whether Bluetooth was on
+at the start or turned on there: the loop that keeps a remembered headset
+connected and says where the sound goes (`bt_reconnect`, sd/zyperos/bt-alsa.sh)
+runs from either, one of it. A headset **disconnected** there stays so: it
+is not dialed again until it is connected there again, forgotten, or the
+handheld restarts (`/tmp/zyperos_bthold`, src/bt.h). "It did not connect"
+waits up to five seconds for BlueZ to say the headset is connected.
+*(2026-11-27, a Brick on 1.1.1-rc.1: the sound stayed on the speakers until
+a restart, a headset disconnected came back by itself, and the failure
+showed over a headset that connected.)*
+
 A row added to MENU goes into `pm_row` where its tab's rows are and into
 `sys_menu_tab_of`, whose switch the compiler holds to every row.
 
@@ -2620,6 +2632,15 @@ and modes still read.
   before and the next, or a book's chapter where its file has them, and
   the song pop-up (11.22) says what plays now. Paused or stopped, they are
   the menu music's again. *(The follow-up to #90.)*
+- **Seek.** Left and right on Now Playing and on MP4's shelf: ten seconds
+  a press; held, a step on every repeat of the lists' clock (90 ms after
+  300 ms), ten seconds, a minute from a second held and five from three,
+  each step kept under a share of the track a second: a sixteenth, then a
+  tenth, then a sixth, and never under a second (src/seekstep.h). A song
+  of any length is crossed in about seven seconds of holding, and a
+  seventeen-hour book in about twenty as before. *(2026-11-27, from
+  1.1.1-rc.1: "Holding down seek ... skips to the end/beginning of a 5
+  minute song in less than 2 seconds.")*
 - **Its boost from anywhere.** While MP4 is heard behind the home, a shelf
   or a menu, the volume keys there open, fill and empty its boost past the
   top as on Now Playing; behind a running game, each cell the game's keys
@@ -5056,9 +5077,12 @@ library's rows, so the card still works in the other system.
   the 128 x 128 at (16, 24) PICO-8 draws, drawn nearest so its pixels stay
   sharp (src/cartlabel.h). The same on the shelf, its Video and List views,
   the screensaver (which takes the shelf's lookup, ES's covers too, from
-  1.1.1), the menu and Recents' Last Screen. Box Art does not count it, so a
-  fetched cover can still come first; the File Transfer page shows the cart
-  whole.
+  1.1.1), the menu and Recents' Last Screen. Box Art counts it as a cover,
+  as an ES cover, so neither a run nor MENU > Downloads calls a cart's game
+  missing one; Cover and Video (11.34) can still fetch one, which then
+  comes first *(2026-11-27, from 1.1.1-rc.1: Downloads said PICO-8's box
+  art was not downloaded, "even though PICO-8 uses its own game carts for
+  boxart")*. The File Transfer page shows the cart whole.
 - **Box Art** counts an ES cover as a cover: it fetches only for games with
   neither, and **Cover and Video** (11.34) shows an ES cover as Now,
   credited "EmulationStation". A cover chosen there is ZyperOS's own, and
@@ -7676,7 +7700,12 @@ the Pixel 2's FUNCTION always has (it is the brightness chord's too) and as
 MENU does in a game, so a button pressed under it is MENU's chord and MENU
 then opens nothing; only the two chords' buttons are taken, every other
 press under MENU goes through as it did. Never START (MENU+START held is
-Home), SELECT, the d-pad or a volume key.
+Home), SELECT, the d-pad or a volume key. *(2026-11-27, moroboshi69 on
+1.1.1-rc.1: on the Brick MENU+L1 took a screenshot in a game but not on the
+home or its menus. The Brick's MENU went straight down as it was pressed,
+past the chord's rule, and opened its menu at once; it goes through the rule
+now, as on the Pixel 2, and the Smart Pro's MENU, the brightness chord's
+too, takes MENU+L1 and MENU+L2 the same way.)*
 
 **In a game too** *(the Pixel 2 test of 1.1.1-test.3: "why do Screenshot
 and Lock Screen work everywhere but in a game?")*. MENU is Diatom's there,

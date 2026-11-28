@@ -18,7 +18,8 @@
 /* A hold that goes further the longer it lasts: a step on the repeats
  * before REPEAT_FAR_MS held, a longer one up to REPEAT_FARTHER_MS, and a
  * longer again after. The clock stays the one above; each repeat covers
- * more. MP4's seek (seek_step: ten seconds, a minute, five minutes) and
+ * more. MP4's seek (src/seekstep.h: ten seconds, a minute, five minutes,
+ * each kept under a share of the track a second) and
  * MENU > Storage's list (home_held_step: twice, then four times as far). */
 #define REPEAT_FAR_MS     1000
 #define REPEAT_FARTHER_MS 3000

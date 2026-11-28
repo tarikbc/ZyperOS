@@ -264,7 +264,7 @@ static int mp4(menu_row *out)
 	 * These are the player's own buttons, the ones a shelf does not have. */
 	out[n++] = (menu_row){ "A",     T(S_CONTROLS_PLAY_PAUSE), false };
 	out[n++] = (menu_row){ "L1/R1", T(S_CONTROLS_TRACK), false };
-	/* Ten seconds a tap and further held - see seek_step in main.c. Said as
+	/* Ten seconds a tap and further held - see src/seekstep.h. Said as
 	 * what it does, since the numbers do not fit in a value. */
 	out[n++] = (menu_row){ T(S_CONTROLS_KEY_LEFT_RIGHT), T(S_CONTROLS_SEEK), false };
 	/* "Mode" rather than "Mode, on Now Playing": you press it on Now Playing,

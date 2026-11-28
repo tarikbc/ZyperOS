@@ -342,6 +342,46 @@ static void sweep(void)
 	system(cmd);
 }
 
+/* The headsets the player let go (bt_hold_edit, bt_held): a scratch file,
+ * never /tmp/zyperos_bthold itself. In any case, kept once, the others
+ * kept as they were, the file gone when empty, and no line that is not an
+ * address ever written or taken. */
+static void hold(void)
+{
+	char path[64];
+	FILE *f;
+	int fd;
+
+	printf("headsets let go:\n");
+	snprintf(path, sizeof path, "/tmp/zyperos-bt-hold-XXXXXX");
+	if ((fd = mkstemp(path)) < 0) { ck(false, "a scratch file for the hold"); return; }
+	close(fd);
+	unlink(path);
+	ck(!bt_held(path, "AA:BB:CC:DD:EE:FF"), "nothing held with no file");
+	ck(bt_hold_edit(path, "AA:BB:CC:DD:EE:FF", true), "one let go");
+	ck(bt_held(path, "aa:bb:cc:dd:ee:ff"), "held, in any case");
+	ck(bt_hold_edit(path, "aa:bb:cc:dd:ee:ff", true), "the same again");
+	ck(bt_hold_edit(path, "11:22:33:44:55:66", true), "a second let go");
+	{
+		char line[64];
+		int lines = 0;
+
+		if ((f = fopen(path, "r"))) {
+			while (fgets(line, sizeof line, f)) lines++;
+			fclose(f);
+		}
+		ck(lines == 2, "each held once");
+	}
+	ck(!bt_hold_edit(path, "AA:BB:CC:DD:EE:FF; reboot", true), "not an address, refused");
+	ck(!bt_held(path, "AA:BB:CC:DD:EE:FF; reboot"), "not an address, never held");
+	ck(bt_hold_edit(path, "AA:BB:CC:DD:EE:FF", false), "connected again");
+	ck(!bt_held(path, "AA:BB:CC:DD:EE:FF"), "no longer held");
+	ck(bt_held(path, "11:22:33:44:55:66"), "the other still held");
+	ck(bt_hold_edit(path, "11:22:33:44:55:66", false), "the other forgotten");
+	ck(access(path, F_OK) != 0, "the file gone when nothing is held");
+	ck(bt_hold_edit(path, "11:22:33:44:55:66", false), "taking out of no file is fine");
+}
+
 int main(void)
 {
 	addresses();
@@ -351,6 +391,7 @@ int main(void)
 	rows_are_shaped_like_the_others();
 	footers_are_legends();
 	sweep();
+	hold();
 	if (fails) { printf("\n%d FAILED\n", fails); return 1; }
 	printf("\nok: addresses are validated and names are only ever data\n");
 	return 0;
