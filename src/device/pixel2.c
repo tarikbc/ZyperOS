@@ -1533,10 +1533,37 @@ void plat_settings_init(void)
 }
 
 /* Off and back on at the same level: bl_power, the backlight's own switch, so
- * the brightness is not touched. MP4's pocket lock. */
+ * the brightness is not touched. MP4's pocket lock, and the shelf's dark
+ * screen on the charger (src/chargedark.h).
+ *
+ * Each change is said in the log with what the backlight says back
+ * (bl_power, actual_brightness), or why the write failed. Two testers'
+ * Pixel 2s (1.1.0, 1.1.1-rc.1) kept the light on where the launcher had
+ * turned it off: MP4's lock showed its clock stopped, and the shelf on the
+ * charger never went dark and took the next press to light it, which then
+ * did nothing else. The write was best effort and said nothing, so their
+ * logs could not tell a write that failed from a light that does not go
+ * off at bl_power 4. */
 void plat_backlight(bool on)
 {
-	write_file(BACKLIGHT_POWER, on ? "0\n" : "4\n");
+	static int was = -1;
+	const char *text = on ? "0\n" : "4\n";
+	int fd, err = 0;
+
+	if ((fd = open(BACKLIGHT_POWER, O_WRONLY | O_CLOEXEC)) < 0) {
+		err = errno;
+	} else {
+		if (write(fd, text, strlen(text)) < 0) err = errno;
+		close(fd);
+	}
+	if (was == (int)on && !err) return;
+	was = on;
+	if (err)
+		fprintf(stderr, "backlight: %s: could not write bl_power: %s\n", on ? "on" : "off", strerror(err));
+	else
+		fprintf(stderr, "backlight: %s: bl_power %d, actual_brightness %d, brightness %d\n",
+		        on ? "on" : "off", read_int(BACKLIGHT_POWER),
+		        read_int("/sys/class/backlight/backlight/actual_brightness"), read_int(BACKLIGHT));
 }
 
 void plat_backlight_dim(bool dim)
