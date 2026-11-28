@@ -572,10 +572,11 @@ static void sticks(const device_profile *p)
 
 /* ---- the tutorial --------------------------------------------------------------- */
 
-typedef enum { X_DONE, X_WRONG, X_QUIET, X_SKIP, X_MOVE, X_ACCEPT, X_CALLER } outcome;
+typedef enum { X_DONE, X_WRONG, X_QUIET, X_SKIP, X_MOVE, X_ACCEPT, X_CALLER, X_JUMP } outcome;
 
 static const char *const OUTCOME[] = { "its press", "a wrong press", "nothing", "the skip", "a move",
-                                       "MENU, waiting for X", "the launcher's" };
+                                       "MENU, waiting for X", "the launcher's",
+                                       "a jump of the shelf, no move counted" };
 
 /* What the tutorial does with button `b` alone in lesson `s` on `p`, as
  * DESIGN.md 11.10's table has it, written here and not read from tour.c */
@@ -590,6 +591,9 @@ static outcome expect(const device_profile *p, tour_step s, in_button b)
 	/* LEFT and RIGHT alone, the d-pad's or the left stick's (the R36S
 	 * test of 1.1.1-test.3: UP, DOWN, L1 and R1 moved it too) */
 	if (s == TOUR_MOVE && (b == IN_LEFT || b == IN_RIGHT)) return X_MOVE;
+	/* ...and its L1/R1, which its note names, jump the shelf as on the
+	 * home, no wrong press and no move */
+	if (s == TOUR_MOVE && (b == IN_L1 || b == IN_R1)) return X_JUMP;
 	if (s == TOUR_QUIT && b == IN_MENU) return X_ACCEPT;
 	if ((s == TOUR_A && b == IN_ACCEPT) || (s == TOUR_B && b == IN_BACK) || (s == TOUR_X && b == IN_X) ||
 	    (s == TOUR_Y && b == IN_Y) || (s == TOUR_MENU && b == IN_MENU) ||
@@ -623,6 +627,7 @@ static outcome seen(const rig *r, int moves0)
 	if (r->t.wrong) return X_WRONG;
 	if (r->t.step == TOUR_QUIT && r->t.moves == 1 && moves0 == 0) return X_ACCEPT;
 	if (r->t.step == TOUR_MOVE && r->t.moves > moves0) return X_MOVE;
+	if (r->t.step == TOUR_MOVE && r->t.pos != 0) return X_JUMP;
 	return X_QUIET;
 }
 

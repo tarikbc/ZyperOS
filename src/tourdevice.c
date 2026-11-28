@@ -116,10 +116,9 @@ static unsigned lock_key_bit(void)
 static unsigned lit_of(const tour *t, tour_step s)
 {
 	switch (s) {
-	/* What it takes, LEFT and RIGHT: the d-pad, and the left stick, which
-	 * moves as the d-pad does, where the handheld has one (the R36S); a key
-	 * its model has not stays unlit */
-	case TOUR_MOVE:   return 1u << TD_DPAD | 1u << TD_L3;
+	/* The left stick too, which moves as the d-pad does, where the
+	 * handheld has one (the R36S): a key its model has not stays unlit */
+	case TOUR_MOVE:   return 1u << TD_DPAD | 1u << TD_L1 | 1u << TD_R1 | 1u << TD_L3;
 	case TOUR_A:      return 1u << TD_A;
 	case TOUR_B:      return 1u << TD_B;
 	case TOUR_X:      return 1u << TD_X;

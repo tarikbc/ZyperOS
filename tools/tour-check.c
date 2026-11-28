@@ -419,11 +419,11 @@ static void moves(void)
 	ck(tour_press(&t, TK_RIGHT, T0) == DS_SOUND_EDGE && t.pos == 2,
 	   "a move past the last card plays edge and goes nowhere");
 
-	/* LEFT and RIGHT alone, as the little shelf goes no other way (the
-	 * R36S test of 1.1.1-test.3): UP and DOWN, and L1/R1, which the
-	 * step's note names, are wrong presses, and move nothing */
+	/* LEFT and RIGHT alone count, as the little shelf goes no other way
+	 * (the R36S test of 1.1.1-test.3): UP, DOWN and the rest are wrong
+	 * presses, and move nothing */
 	{
-		static const tour_key no[] = { TK_UP, TK_DOWN, TK_L1, TK_R1, TK_RSTICK, TK_A, TK_L3 };
+		static const tour_key no[] = { TK_UP, TK_DOWN, TK_RSTICK, TK_A, TK_L3 };
 		size_t i;
 
 		for (i = 0; i < sizeof no / sizeof no[0]; i++) {
@@ -437,12 +437,34 @@ static void moves(void)
 		}
 		tour_pose(&t, TOUR_MOVE, T0, 2000, -1, DEV(false));
 		tour_press(&t, TK_UP, T0);
-		tour_press(&t, TK_R1, T0 + 10);
 		ck(tour_press(&t, TK_RIGHT, T0 + 20) == DS_SOUND_MOVE && !t.done && t.moves == 1,
-		   "after them a RIGHT is the first move still");
+		   "after one a RIGHT is the first move still");
 	}
-	ck(tour_step_info(TOUR_MOVE)->note == NULL,
-	   "it has no note: it names no key it does not take, L1/R1's jump included");
+
+	/* L1/R1, which the step's note names, jump as on the home: 3 cards, as
+	 * far as the little shelf has them, the edge's sound at its end; no
+	 * wrong press, and no move of the two it wants */
+	tour_pose(&t, TOUR_MOVE, T0, 2000, -1, DEV(false));
+	ck(tour_press(&t, TK_R1, T0) == DS_SOUND_MOVE && t.pos == 2 && !t.wrong && t.moves == 0,
+	   "R1 jumps to the little shelf's end, no wrong press and no move counted");
+	ck(near(tour_shelf_pos(&t, T0 + DS_MS_MOVE), 2.0f), "and the shelf slides there in move");
+	ck(tour_press(&t, TK_R1, T0 + 40) == DS_SOUND_EDGE && t.pos == 2 && !t.wrong,
+	   "R1 from the end plays edge and goes nowhere");
+	ck(tour_press(&t, TK_L1, T0 + 80) == DS_SOUND_MOVE && t.pos == -1 && t.moves == 0 && !t.done,
+	   "L1 jumps back 3, and still no move");
+	tour_pose(&t, TOUR_MOVE, T0, 2000, -1, DEV(false));
+	t.pos = -2;
+	ck(tour_press(&t, TK_L1, T0) == DS_SOUND_EDGE && t.pos == -2, "L1 from the first card plays edge");
+	tour_pose(&t, TOUR_MOVE, T0, 2000, -1, DEV(false));
+	tour_press(&t, TK_L1, T0);
+	tour_press(&t, TK_R1, T0 + 10);
+	tour_press(&t, TK_L1, T0 + 20);
+	ck(!t.done && t.moves == 0, "three jumps land nothing");
+	ck(tour_press(&t, TK_RIGHT, T0 + 30) == DS_SOUND_MOVE && t.moves == 1 && !t.done &&
+	   tour_press(&t, TK_LEFT, T0 + 40) == DS_SOUND_REWARD && t.done,
+	   "LEFT and RIGHT, two moves, land it after them");
+	ck(!strcmp(tour_step_info(TOUR_MOVE)->note, "L1/R1 jump 3 systems."),
+	   "its note names L1/R1, as MENU > Controls writes the pair");
 	tour_pose(&t, TOUR_A, T0, 2000, -1, DEV(false));
 	ck(tour_press(&t, TK_R1, T0) == DS_SOUND_DENY && t.wrong,
 	   "anywhere else L1/R1 are a wrong press, as before");
@@ -573,7 +595,7 @@ static void buttons(void)
 		{ TOUR_VOL, IN_VOLUP, DS_SOUND_REWARD }, { TOUR_VOL, IN_VOLDN, DS_SOUND_REWARD },
 		{ TOUR_BRIGHT, IN_BRIGHTUP, DS_SOUND_REWARD },
 		{ TOUR_BRIGHT, IN_BRIGHTDN, DS_SOUND_REWARD },
-		{ TOUR_MOVE, IN_L1, DS_SOUND_DENY }, { TOUR_MOVE, IN_R1, DS_SOUND_DENY },
+		{ TOUR_MOVE, IN_L1, DS_SOUND_MOVE }, { TOUR_MOVE, IN_R1, DS_SOUND_MOVE },
 		{ TOUR_MOVE, IN_RS_LEFT, DS_SOUND_DENY }, { TOUR_MOVE, IN_RS_RIGHT, DS_SOUND_DENY },
 		{ TOUR_A, IN_L1, DS_SOUND_DENY }, { TOUR_A, IN_R1, DS_SOUND_DENY },
 		{ TOUR_A, IN_START, DS_SOUND_BACK },
@@ -680,7 +702,8 @@ static void every_key(void)
 				want = lands ? DS_SOUND_REWARD
 				     : key == TK_START && st != TOUR_UNLOCK ? DS_SOUND_BACK
 				     : quiet ? TOUR_QUIET
-				     : st == TOUR_MOVE && (key == TK_LEFT || key == TK_RIGHT)
+				     : st == TOUR_MOVE && (key == TK_LEFT || key == TK_RIGHT || key == TK_L1 ||
+				                           key == TK_R1)
 				       ? -2   /* a move or the edge's sound */
 				     : st == TOUR_QUIT && key == TK_MENU ? DS_SOUND_ACCEPT
 				     : DS_SOUND_DENY;
@@ -691,7 +714,8 @@ static void every_key(void)
 				         want == DS_SOUND_REWARD ? "its press" : want == DS_SOUND_DENY ? "a wrong press"
 				         : want == DS_SOUND_BACK ? "the skip" : want == DS_SOUND_ACCEPT ? "MENU, waiting for X"
 				         : want == -2 ? "a move" : "nothing");
-				ck(want == -2 ? (snd == DS_SOUND_MOVE || snd == DS_SOUND_EDGE) && !t.done
+				ck(want == -2 ? (snd == DS_SOUND_MOVE || snd == DS_SOUND_EDGE) && !t.done && !t.wrong &&
+				                t.moves == (key == TK_L1 || key == TK_R1 ? 0 : 1)
 				              : snd == want && t.done == lands && t.wrong == (want == DS_SOUND_DENY),
 				   what);
 			}

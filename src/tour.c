@@ -95,14 +95,14 @@ static const step_def STEPS[TOUR_STEPS] = {
 	/* The welcome's and the finish's lines are two, "\n" between */
 	[TOUR_WELCOME] = { S_TOUR_WELCOME_TITLE, S_TOUR_WELCOME_LINES,
 	                   NO_TEXT, NO_TEXT, NO_TEXT, TG_FACE, "A", NO_TEXT, "A", NULL, NULL },
-	/* Move Around shows what it takes and nothing else: LEFT and RIGHT,
-	 * with no note and no shoulder lit (the R36S test of 1.1.1-test.3: its
-	 * L1/R1 note, and the shoulders lit, taught keys the step turns down).
-	 * L2/R2 ride on Music as a note, lit on the handheld (my follow-up to
-	 * #90): they change the song, MP4's while it plays, the menu music's
-	 * otherwise, and Music takes SELECT alone. */
+	/* The shoulders as a note on the two lessons they belong with, each
+	 * pair lit on the handheld (my follow-up to #90): L1/R1 jump on the
+	 * home, L2/R2 change the song - MP4's while it plays, the menu music's
+	 * otherwise. Move Around's L1/R1 jump its little shelf as the note
+	 * says, with no wrong press and no move counted: its line asks for
+	 * LEFT or RIGHT. Music takes SELECT alone. */
 	[TOUR_MOVE]    = { S_TOUR_MOVE_TITLE, S_TOUR_MOVE_LINE,
-	                   NO_TEXT, NO_TEXT, NO_TEXT, TG_DPAD, NULL, S_TOUR_TRY_LEFT_RIGHT, NULL,
+	                   NO_TEXT, S_TOUR_MOVE_NOTE, NO_TEXT, TG_DPAD, NULL, S_TOUR_TRY_LEFT_RIGHT, NULL,
 	                   NULL, NULL },
 	[TOUR_A]       = { S_TOUR_A_TITLE, S_TOUR_A_LINE,
 	                   NO_TEXT, NO_TEXT, NO_TEXT, TG_FACE, "A", NO_TEXT, "A", NULL, &LOOP_A },
@@ -858,7 +858,8 @@ int tour_lang_kept(const tour *t)
  * test of 1.1.1-test.3: Music took L2 and R2 too, and a shoulder pressed
  * there read as a right answer). Move Around takes LEFT and RIGHT alone,
  * the d-pad's or the left stick's, as its little shelf goes no other way
- * (the R36S test of 1.1.1-test.3: UP, DOWN, L1 and R1 moved it too). Leave
+ * (the R36S test of 1.1.1-test.3: UP, DOWN, L1 and R1 counted as moves);
+ * its L1/R1 jump the shelf in tour_press, and count as none. Leave
  * a Game, Lock the Screen and Unlock the Screen are answered in tour_press
  * and tour_hold; the choices there too. tools/tour-check.c presses every
  * key in every step, tools/inmodel-check.c every code and stick of every
@@ -1055,6 +1056,22 @@ int tour_press(tour *t, tour_key k, uint32_t now)
 	 * the chord itself coming as TK_LOCK (above); Unlock the Screen's is
 	 * a hold (tour_hold), and any press is a wrong one there too */
 	if (t->step == TOUR_LOCK || t->step == TOUR_UNLOCK) return missed(t, k, now);
+	/* Move Around's L1/R1, which its note names: they jump the little shelf
+	 * 3 cards as on the home (HOME_JUMP), as far as it has cards, the edge's
+	 * sound at its end, and are no wrong press; but no move, which LEFT and
+	 * RIGHT alone are (Tarik's call on the R36S test of 1.1.1-test.3) */
+	if (t->step == TOUR_MOVE && (k == TK_L1 || k == TK_R1)) {
+		int to = t->pos + (k == TK_L1 ? -3 : 3);
+		bool edge;
+
+		if (to < -2) to = -2;
+		if (to > 2) to = 2;
+		edge = to == t->pos;
+		t->pos_from = tour_shelf_pos(t, now);
+		t->pos = to;
+		t->moved_at = now;
+		return edge ? DS_SOUND_EDGE : DS_SOUND_MOVE;
+	}
 	if (!answers(t, k)) return missed(t, k, now);
 	if (t->step == TOUR_MOVE) {
 		int to = t->pos + (k == TK_LEFT ? -1 : 1);

@@ -20,9 +20,10 @@
  * unlock of its own), music (SELECT), volume, brightness and power. Each is a press, not a reading, so
  * the minute it takes is spent with a thumb on the button rather than on a
  * page of text; MENU > Controls stays the list to look things up in. The
- * shoulders have no step of their own: L2/R2 ride on Music as a note,
- * changing the song, and are a wrong press there as anywhere; Move Around
- * takes LEFT and RIGHT alone, and names and lights no shoulder.
+ * shoulders ride on two of them as a note, with no step of their own: L1/R1
+ * jump Move Around's little shelf, counting as no move, as Move Around takes
+ * LEFT and RIGHT alone; L2/R2 change the song in Music, a wrong press there
+ * as anywhere.
  *
  * Then four choices make the handheld the player's (2026-11-06, and
  * his picks in the onboarding lab): the theme, the home screen's layout, the
@@ -130,7 +131,7 @@ typedef enum {
 } tour_key;
 
 /* What a launcher button is to the tutorial: the d-pad's four, the faces,
- * the shoulders (L1/R1 and L2/R2, a wrong press in every step), START, SELECT, MENU,
+ * the shoulders (L1/R1 and L2/R2, a wrong press in every step but L1/R1's jump in Move Around), START, SELECT, MENU,
  * both volume keys as TK_VOL, both brightness keys as TK_BRIGHT, POWER,
  * the sticks' clicks and the right stick's four as TK_RSTICK. Every button
  * is one (tools/inmodel-check.c); TK_KEYS for IN_NONE or anything out of
@@ -144,7 +145,7 @@ const char *tour_key_name(tour_key k);
 /* The parts of the glyphs that can be seen pressed, by the demonstration or
  * by the player's own hand. The shoulders have no glyph: the handheld's are
  * what shows them pressed (src/tourdevice.h), lit in the lessons whose notes
- * name them - L2/R2 in Music. */
+ * name them - L1/R1 in Move Around, L2/R2 in Music. */
 typedef enum {
 	TP_UP, TP_DOWN, TP_LEFT, TP_RIGHT,
 	TP_A, TP_B, TP_X, TP_Y,

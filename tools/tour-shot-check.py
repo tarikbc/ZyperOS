@@ -165,7 +165,7 @@ ON_ACCENT = (17, 19, 16)                                         # **on-accent**
 MENU_DOT = {"light": (61, 64, 62), "dark": (150, 153, 152)}      # text-soft, text-dim
 INSET = 24                      # **inset**: text from every screen edge
 WORDS = (1024 - INSET, 480, 1024, 660)  # right of the title, line and note
-LIT_SIDE = {"move": "l", "a": "r", "b": "r", "y": "r", "x": "r", "menu": "r",
+LIT_SIDE = {"move": "lr", "a": "r", "b": "r", "y": "r", "x": "r", "menu": "r",
             "quit": "R", "lock": "lr", "unlock": "lr",
             "select": "lr", "vol": "l", "bright": "lr", "power": "r"}
 # The shoulders over the top edge, facing front (10 degrees, 3.55 units a
@@ -174,11 +174,10 @@ LIT_SIDE = {"move": "l", "a": "r", "b": "r", "y": "r", "x": "r", "menu": "r",
 # rings of its neighbours, which are **accent** too on Salt & Pepper.
 SHOULDERS = {"l1": (30, 104, 70, 118), "r1": (206, 104, 246, 118),
              "l2": (95, 104, 107, 118), "r2": (172, 104, 186, 118)}
-LIT_SHOULDERS = {"select": ("l2", "r2"), "lock": ("l2",)}
-# The lessons tilted back to their shoulders (Music's; Move Around lights
-# none, the d-pad alone); the lock's lights MENU on the side too, so it faces
-# front with MENU a tab and L2 standing up
-TILTED = ("select",)
+LIT_SHOULDERS = {"move": ("l1", "r1"), "select": ("l2", "r2"), "lock": ("l2",)}
+# The lessons tilted back to their shoulders; the lock's lights MENU on the
+# side too, so it faces front with MENU a tab and L2 standing up
+TILTED = ("move", "select")
 # ...and where the lessons that light shoulders have them: tilted back 25
 # degrees (TD_PITCH_DEG), the top showing with the caps standing on it, each
 # box inside a cap's face and top, clear of its neighbours' rings
@@ -307,11 +306,11 @@ def devices():
 BRICK_LIT_SIDE = {"move": "l", "a": "r", "b": "r", "y": "r", "x": "r", "menu": "l",
                   "quit": "lr", "lock": "c", "unlock": "c",
                   "select": "c", "vol": "l", "bright": "lr", "power": "r"}
-# The lessons whose keys are on the back ledge and the front (SELECT with
-# L2/R2; Move Around lights the d-pad alone and stays in front): front first, held there at 2000 ms, then round to
+# The lessons whose keys are on the back ledge and the front (the d-pad with
+# L1/R1, SELECT with L2/R2): front first, held there at 2000 ms, then round to
 # the back (td_swing: the turn in, hold-spin, spin), held on it at 4000 ms
 # with both shoulders lit
-BRICK_SPIN = ("select",)
+BRICK_SPIN = ("move", "select")
 BRICK_BACK_MS = "4000"
 GLASS = (17, 19, 16)            # **ink**, Beard's glass
 
@@ -336,7 +335,7 @@ def smartpro():
 # Where each lesson's lit keys are on the Smart Pro: the d-pad and L/R both
 # ends, A B X Y and START's lesson's SELECT at the right, MENU at the left,
 # the volume keys right of the middle, POWER left of it
-SMARTPRO_LIT_SIDE = {"move": "l", "a": "r", "y": "r", "menu": "l", "quit": "lr", "lock": "l", "unlock": "r",
+SMARTPRO_LIT_SIDE = {"move": "lr", "a": "r", "y": "r", "menu": "l", "quit": "lr", "lock": "l", "unlock": "r",
                      "vol": "r", "power": "l"}
 
 
