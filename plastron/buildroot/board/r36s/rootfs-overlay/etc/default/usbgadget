@@ -6,3 +6,9 @@
 # "GKD Pixel 2".
 PRODUCT="R36S"
 USERDATA=r36s
+# Bound at boot in any mode: the R36S sees a computer only by what the
+# computer does to its bound gadget (src/udcpeer.h; nothing else on it reads
+# the OTG port), where the Pixel 2's PHY reads the cable with the link
+# unbound. The launcher never lets it go there (src/device/pixel2.c,
+# plat_usb_link with RK_PEER_FROM_UDC).
+BIND=always

@@ -60,9 +60,14 @@ usb_peer udc_peer_step(udc_peer *p, const char *state, unsigned now, const char 
 		says = "a computer gave the gadget its address: a computer";
 		break;
 	case UDC_K_SUSPENDED:
-		peer = p->took ? USB_PEER_COMPUTER : USB_PEER_NONE;
-		says = p->took ? "the bus asleep after a computer took the gadget: still a computer"
-		               : "the bus asleep, and no computer took the gadget: nothing";
+		if (p->took && now - p->since < UDC_PEER_ASLEEP_MS) {
+			peer = USB_PEER_COMPUTER;
+			says = "the bus idle after a computer took the gadget: still a computer, for now";
+		} else {
+			if (p->took) p->took = false;
+			peer = USB_PEER_NONE;
+			says = "the bus idle and no computer on it now (unplugged, or a computer asleep): nothing";
+		}
 		break;
 	case UDC_K_WAIT:
 		if (p->took && now - p->since < UDC_PEER_WAIT_MS) {

@@ -24,6 +24,9 @@ GADGET=/sys/kernel/config/usb_gadget/px2
 # Pixel 2's without that file
 PRODUCT="GKD Pixel 2"
 USERDATA=pixel2
+# BIND=always: bound at boot in any mode, on a device that sees a computer
+# only through its bound gadget (the R36S: src/udcpeer.h)
+BIND=
 [ -r /etc/default/usbgadget ] && . /etc/default/usbgadget
 
 case "$1" in
@@ -71,7 +74,9 @@ start)
 	# a development image's only (one that starts dropbear), on unless the
 	# card's .userdata/<device>/developer, which ZyperOS keeps, says "0". A
 	# release image binds nothing here, whatever a development image left on
-	# the card. This runs after datapart has mounted the card.
+	# the card; but with BIND=always (the R36S, above) every image binds it,
+	# its only way to see a computer. This runs after datapart has mounted
+	# the card.
 	dev=0
 	if [ -e /etc/init.d/S50dropbear ]; then
 		dev=1
@@ -80,7 +85,7 @@ start)
 			read -r v < "/mnt/SDCARD/.userdata/$USERDATA/developer"
 		[ "$v" = 0 ] && dev=0
 	fi
-	[ "$dev" = 1 ] && ls /sys/class/udc | head -n1 > UDC
+	{ [ "$dev" = 1 ] || [ "$BIND" = always ]; } && ls /sys/class/udc | head -n1 > UDC
 	ip link set usb0 up
 	ip addr add 10.42.0.1/30 brd + dev usb0
 	udhcpd /etc/udhcpd.conf

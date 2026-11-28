@@ -1899,6 +1899,24 @@ static void link_setup(void)
 bool plat_usb_link(int op)
 {
 	link_setup();
+#if RK_PEER_FROM_UDC
+	/* The link is how this device sees a computer at all (peer_from_udc):
+	 * let go, the controller says "not attached" whatever is on the cable,
+	 * and no plug is seen again. So it stays bound, from S40usbgadget's
+	 * boot on (BIND=always), as the Pixel 2's PHY reads the cable with its
+	 * link unbound: the question, Charge Only, File Transfer and Developer
+	 * Mode as there, the computer seeing the R36S's network with nothing on
+	 * it while no screen serves one. A fresh link (2) as ever. */
+	if (op == 0) {
+		static bool said;
+
+		if (!said) {
+			said = true;
+			fprintf(stderr, "usb: the link stays bound: it is how the R36S sees a computer\n");
+		}
+		return gadget_link(-1);
+	}
+#endif
 	return gadget_link(op);
 }
 

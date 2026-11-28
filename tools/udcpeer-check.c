@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* make check-udcpeer: a computer from the gadget controller's state alone
  * (src/udcpeer.h), as the R36S's plat_usb_peer reads it (RK_PEER_FROM_UDC):
- * a Mac enumerating the gadget, asleep, unplugged; nothing on the cable; a
+ * a Mac enumerating the gadget, idle a moment, idle for good (an unplug
+ * reads so on the R36S), unplugged; nothing on the cable; a
  * charger whose shorted data lines hold the controller after a reset; a
  * host enumerating it again; an unreadable state. And a sentence for the
  * log at each change of the state or the answer, and none in between. */
@@ -51,10 +52,16 @@ int main(void)
 	step(&p, "addressed\n", 1040, USB_PEER_COMPUTER, 1, "Mac's address");
 	step(&p, "configured\n", 1100, USB_PEER_COMPUTER, 1, "Mac's configuration");
 	step(&p, "configured\n", 9000, USB_PEER_COMPUTER, 0, "Mac's configuration, held");
-	/* asleep, and awake */
-	step(&p, "suspended\n", 20000, USB_PEER_COMPUTER, 1, "Mac asleep");
-	step(&p, "suspended\n", 90000, USB_PEER_COMPUTER, 0, "Mac asleep, long");
-	step(&p, "configured\n", 91000, USB_PEER_COMPUTER, 1, "Mac awake");
+	/* idle a moment, and back */
+	step(&p, "suspended\n", 20000, USB_PEER_COMPUTER, 1, "Mac idle");
+	step(&p, "suspended\n", 20000 + UDC_PEER_ASLEEP_MS - 1, USB_PEER_COMPUTER, 0, "Mac idle, a while");
+	step(&p, "configured\n", 20000 + UDC_PEER_ASLEEP_MS - 1, USB_PEER_COMPUTER, 1, "Mac back");
+	/* idle for good: unplugged (the R36S's B session is an override, so an
+	 * unplug reads as an idle bus) or asleep; awake again, a new plug */
+	step(&p, "suspended\n", 40000, USB_PEER_COMPUTER, 1, "cable out, or Mac asleep");
+	step(&p, "suspended\n", 40000 + UDC_PEER_ASLEEP_MS, USB_PEER_NONE, 1, "idle too long: nothing");
+	step(&p, "suspended\n", 90000, USB_PEER_NONE, 0, "idle, still");
+	step(&p, "configured\n", 91000, USB_PEER_COMPUTER, 1, "Mac awake or plugged again");
 	/* enumerating it again (a fresh link): a computer while it asks again */
 	step(&p, "default\n", 92000, USB_PEER_COMPUTER, 1, "Mac's reset again");
 	step(&p, "default\n", 92000 + UDC_PEER_WAIT_MS - 1, USB_PEER_COMPUTER, 0, "Mac's reset, waiting");
@@ -96,8 +103,8 @@ int main(void)
 		fprintf(stderr, "udcpeer: %d failed\n", fails);
 		return 1;
 	}
-	printf("ok: a computer only once one addressed or configured the gadget, asleep after it, "
+	printf("ok: a computer only once one addressed or configured the gadget, idle %u ms after it, "
 	       "and for %u ms of a reset after it; a charger's reset never; each change said\n",
-	       UDC_PEER_WAIT_MS);
+	       UDC_PEER_ASLEEP_MS, UDC_PEER_WAIT_MS);
 	return 0;
 }

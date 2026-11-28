@@ -11,8 +11,13 @@
  * its configuration "configured". So:
  *
  * - "configured" or "addressed": a computer;
- * - "suspended": a computer if one took the gadget since the cable was last
- *   empty (a computer asleep), else nothing;
+ * - "suspended": a computer for UDC_PEER_ASLEEP_MS if one took the gadget
+ *   since the cable was last empty, then nothing until the bus wakes. The
+ *   B session is the driver's override on the R36S, so a cable pulled out
+ *   reads exactly as a computer asleep (the bus idle, D+ held up by the
+ *   gadget's own pull-up): without the limit an unplug was never seen and
+ *   the next plug was no new plug. A computer that wakes takes it again
+ *   ("configured"), a new plug;
  * - "default", "powered", "attached" (a reset or power, no address yet): a
  *   computer only for UDC_PEER_WAIT_MS after one took the gadget (a host
  *   enumerating it again), else nothing. Never a computer on its own, for
@@ -33,6 +38,9 @@
 /* How long a reset or power with no address yet stays a computer that was
  * one: a host addresses a gadget within a second of its reset */
 #define UDC_PEER_WAIT_MS 3000u
+/* How long an idle bus after a computer stays that computer: a link in use
+ * is never idle this long, an unplug is idle for ever */
+#define UDC_PEER_ASLEEP_MS 10000u
 
 typedef struct {
 	int      kind;          /* the last state read, UDC_K_* in udcpeer.c */
