@@ -1531,7 +1531,11 @@ screen's foot (Now Playing's grows upward from its line). The d-pad's
 Left/Right ("< >", `KEYHINT_LEFT_RIGHT`) is the d-pad itself, the tutorial's
 cross a quarter larger than a face's glyph, its left and right arms a step
 darker with their arrows (since 1.0.6; a pill with the signs before). Words are res/strings' keyhint.*
-or a screen's own, a hint's capitals (Title Case in English). Under every
+or a screen's own. **Every hint's word starts with a capital**, everywhere:
+"Close", "Stop", "Turn On", "Skip", Title Case in English and a capital
+first in every language that has capitals (2026-11-28, after a lowercase
+"close" on the Link Cable page; `legend_form` in tools/legend.h holds the
+checks to it). This is the one statement of the rule. Under every
 question in tiles (11.18, 11.23, 11.36) and Now Playing's foot. *(I asked
 for one component to use across the UI.)*
 
@@ -1542,7 +1546,7 @@ fixed places (B 64, Y 432, X 832), with no room kept for a fourth.
 
 Since 2026-11-11 every legend is one: a panel's foot (Wi-Fi, Bluetooth,
 Play Time, Date & Time, Developer Mode, Album Art, File Transfer, every "B
-close" and "B stop"), the hotspot's page and the tutorial's "(START) Skip", capitalized as the tiles' hints are (2026-11-28).
+Close" and "B Stop"), the hotspot's page and the tutorial's "(START) Skip".
 A screen hands a panel its list packed as a row's label
 (`keyhints_legend`), and the panel draws it centered on that row; the
 checks read it back as text (tools/legend.h, `legend_text`). The words are
@@ -2888,7 +2892,7 @@ its value in **menu** **text** (the PIN in **title**), digits tabular. Under
 the column at 584 and 632, two **meta** lines, the name **text-soft** and the
 value right-aligned **text-dim** at 976: Phones (`waiting`, `1 joined`) and
 Now, the transfer's news, which scrolls when it is too wide (principle 8).
-The key legend "B: close" is centered at the foot (11.4), at a page's foot
+The key legend "B: Close" is centered at the foot (11.4), at a page's foot
 height (720, DS_FOOT_Y, every screen's foot; 718 until 2026-11-14, 704
 until one foot, 1.0.6), "B: keep going or stop" while files move (11.23). No status corner, no Zyper. src/hotpanel.c draws it; tools/qr-check.c reads its code back.
 
@@ -3067,10 +3071,10 @@ the address first as Wi-Fi File Transfer has it, then over Wi-Fi
 SSH takes, the Developer folder's and ssh-copy-id's alike ("1 key on the
 card"; with none, where one goes: "No key in the Developer folder"), and,
 only while nothing listens, why ("SSH not with Wi-Fi", "SSH needs a key",
-"SSH locked"); then "A change  B close". The cursor rests on SSH over Wi-Fi
+"SSH locked"); then "A Change  B Close". The cursor rests on SSH over Wi-Fi
 and Developer Mode is under it, since turning it off is not one press to
 undo (the hold on About); off, the page closes back to MENU. SSH over Wi-Fi
-turned on says once, as a message with "B close", that over Wi-Fi only a key
+turned on says once, as a message with "B Close", that over Wi-Fi only a key
 signs in, never the password, and how the first key gets on. Turning
 Developer Mode off turns it off too. *(My pick, 2026-11-15: the switch on
 the page, not in MENU.)*
@@ -4494,7 +4498,7 @@ beside the PIN). With no name the address is alone. Under the header one live ro
 says where the link is (**Cable** "unplugged" or "waiting", **Wi-Fi** "not
 connected", **Address** "waiting", **Browser** "waiting", or **PIN**
 "waiting" once a browser has the page), then the rule and the key legend
-(11.4), "B: close".
+(11.4), "B: Close".
 
 **Connecting** (2026-11-12: "usb file transfer takes a while to start, we
 need a loading state"). Over the cable the address and the PIN cannot work
@@ -6094,7 +6098,7 @@ File Transfer is a session of its own, and its screen (the transfer panel,
 File Transfer 2 lab, `docs/design/mock/transfer2-lab.html`)*:
 
 - **B with nothing moving** closes it, as before. The panel's legend says
-  "B: close".
+  "B: Close".
 - **B while files move** asks, in three tiles as Computer Connected (11.18),
   heading **Files are still moving**, "Receiving Tobu Tobu Girl.gb" under the
   rule: **Keep going** (two arrows: the screen goes and the files keep moving

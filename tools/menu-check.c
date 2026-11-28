@@ -136,12 +136,12 @@ static void scanned_state(void)
 	printf("scan done, one unsaved network:\n");
 	ck(n == 4, "switch, network, rule, note");
 	ck(!strcmp(rows[1].value, "Strong"), "-55 dBm reads as strong");
-	ck(!strcmp(legend_text(rows[3].label), "Y: rescan"), "no forget offered with nothing saved");
+	ck(!strcmp(legend_text(rows[3].label), "Y: Rescan"), "no forget offered with nothing saved");
 
 	w.nets[0].known = true;
 	wifi_label(&w);
 	n = wifi_build(&w, rows, 64, &heading);
-	ck(!strcmp(legend_text(rows[3].label), "Y: rescan   X: forget"), "forget offered once saved");
+	ck(!strcmp(legend_text(rows[3].label), "Y: Rescan   X: Forget"), "forget offered once saved");
 	ck(!strcmp(rows[1].value, "Strong - saved"), "a saved network in range shows both");
 }
 

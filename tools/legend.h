@@ -36,12 +36,12 @@ static int is_button(const char *s)
 	return 0;
 }
 
-/* A key legend is the one form of DESIGN.md 11.4, "A: go   Y: by game": a
- * button, a colon, a lowercase verb, and exactly three spaces between the
- * pairs. The buttons are the names above, so "L/R" and "B to close" are not
+/* A key legend is the one form of DESIGN.md 11.4, "A: Go   Y: By Game": a
+ * button, a colon, its word with a capital first (the hints' capitals,
+ * Title Case in English), and exactly three spaces between the pairs. The buttons are the names above, so "L/R" and "B to close" are not
  * legends. */
 /* A legend of button hints (src/keyhints.h, packed: "\x1bkeys", then each
- * key, \x1f, its word, \x1e) in the text form below, "A: go   Y: by game",
+ * key, \x1f, its word, \x1e) in the text form below, "A: Go   Y: By Game",
  * so a check holds both alike; "< >", the d-pad's sides, as "Left/Right".
  * Text that is not packed comes back as it is. */
 static const char *legend_text(const char *s)
@@ -86,7 +86,7 @@ static int legend_form(const char *s)
 		*colon = '\0';
 		if (!is_button(part)) return 0;
 		verb = colon + 2;
-		if (*verb < 'a' || *verb > 'z' || strstr(verb, "  ") ||
+		if (*verb < 'A' || *verb > 'Z' || strstr(verb, "  ") ||
 		    verb[strlen(verb) - 1] == ' ') return 0;
 	}
 	return 1;

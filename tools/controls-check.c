@@ -99,14 +99,14 @@ static void keys_as_glyphs(void)
 static void legends_are_one_form(void)
 {
 	printf("a key legend is one form\n");
-	ck(legend_form("A: go   Y: by game   L1/R1: window"), "the form itself");
-	ck(legend_form("Left/Right: more"), "a single legend");
-	ck(!legend_form("A: go    Y: by game"), "four spaces between");
-	ck(!legend_form("A: go  Y: by game"), "two spaces between");
-	ck(!legend_form("A: go   L/R: window"), "L/R is not a button");
+	ck(legend_form("A: Go   Y: By Game   L1/R1: Window"), "the form itself");
+	ck(legend_form("Left/Right: More"), "a single legend");
+	ck(!legend_form("A: Go    Y: By Game"), "four spaces between");
+	ck(!legend_form("A: Go  Y: By Game"), "two spaces between");
+	ck(!legend_form("A: Go   L/R: Window"), "L/R is not a button");
 	ck(!legend_form("B to close"), "a verb with a \"to\" is not a legend");
-	ck(!legend_form("A: Go"), "the verb is lowercase");
-	ck(!legend_form("A: go "), "no trailing space");
+	ck(!legend_form("A: go"), "the word starts with a capital (DESIGN.md 11.4)");
+	ck(!legend_form("A: Go "), "no trailing space");
 }
 
 /* How many pages name this button. A button belongs to as many pages as it has meanings - A opens a
@@ -244,7 +244,7 @@ static void rows_fit(void)
 			/* No footer: the page count is in the heading (DESIGN.md 11.3) */
 			snprintf(msg, sizeof msg, "%s: a rule or a footer under it", ctl_page_name((ctl_page)p));
 			ck(rules == 0 && (n < 1 || !rows[n - 1].label ||
-			                  strcmp(rows[n - 1].label, "Left/Right: more")), msg);
+			                  strcmp(rows[n - 1].label, "Left/Right: More")), msg);
 			/* The panel's own ceiling. Over this and the page scrolls
 			 * itself while somebody is reading it. */
 			snprintf(msg, sizeof msg, "%s: %d rows of text, and %d fit the panel",

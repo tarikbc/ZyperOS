@@ -84,7 +84,7 @@ static void packed(void)
 	}
 	i18n_set(LANG_EN);
 	/* A legend written as text is no packed list */
-	CHECK(!keyhints_unpack("B: close", buf, sizeof buf, back, KEYHINTS_MAX), "text read as hints");
+	CHECK(!keyhints_unpack("B: Close", buf, sizeof buf, back, KEYHINTS_MAX), "text read as hints");
 	/* No room: nothing, never half a list */
 	{
 		key_hint h[2] = { { "A", "Choose" }, { "B", "Back" } };
