@@ -30,3 +30,20 @@
 	reg = <0x0 0xff460000 0x0 0x260>, <0x0 0xff460a00 0x0 0x400>;
 	reg-names = "regs", "gamma_lut";
 };
+
+/*
+ * The PX30's watchdog, px30.dtsi's, disabled there and in ROCKNIX's tree: on,
+ * as on the Pixel 2 (rk3326s-gkd-pixel2.dts). The R36S boots the Pixel 2's
+ * U-Boot, which starts it (board/px2/u-boot/px2.config: 30 s asked, one TOP
+ * of 2^31 cycles at its 100 MHz clock, 21.5 s, its reset at the first), and
+ * with this off nothing in Linux petted it: the chip reset itself about 21 s
+ * into every start, the RK817 left on, so the card stayed in its 1.8 V
+ * signalling and the boot ROM could not read it. The screen black until a
+ * power-off, at a quarter of the first start's copy and 5 s into the
+ * launcher's tutorial (Tarik's R36S-V21 2024-12-18 2604, 2026-11-28). The
+ * kernel pets it from the probe on, plastron's hwdog from init's first step
+ * (r36s_defconfig, boot-prelude.cmd's watchdog.open_timeout).
+ */
+&wdt {
+	status = "okay";
+};

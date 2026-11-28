@@ -77,6 +77,11 @@ BR2_PACKAGE_ZYPEROS_EQ=y
 BR2_PACKAGE_USBROLE=y
 BR2_PACKAGE_USBDRIVE=y
 # No battery lights on the R36S: no gauge
+# The hardware watchdog petted from init's first step (package/hwdog), as on
+# the Pixel 2: its U-Boot, which the R36S boots, starts it, and without a
+# petter the chip reset itself about 21 s into every start (the R36S's
+# device tree, rk3326-gameconsole-r36s-zyperos.dts, says what that did)
+BR2_PACKAGE_HWDOG=y
 
 # Sound: ZyperOS, diatom (through SDL2) and jackswitch talk to ALSA directly
 BR2_PACKAGE_ALSA_LIB=y
