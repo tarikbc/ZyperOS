@@ -433,6 +433,46 @@ def r36s():
                "lit (lit pixels left %d, right %d)" % (th, step, BRICK_BACK_MS, left, right))
 
 
+def accent_runs(img, box, gap=12):
+    """The x spans of **accent** in `box`, runs closer than `gap` joined."""
+    cols = sorted({x for y in range(box[1], box[3]) for x in range(box[0], box[2])
+                   if zc.px(img, x, y) == ACCENT})
+    runs = []
+    for x in cols:
+        if runs and x - runs[-1][1] <= gap:
+            runs[-1][1] = x
+        else:
+            runs.append([x, x])
+    return runs
+
+
+# Leave a Game's glyphs, MENU (FN on the R36S), a comma and X: the check in
+# small on each one's top-left corner as its press counts, in the band over
+# the glyphs' tops, right of the handheld's column
+QUIT_CHECKS = (300, 383, 1000, 413)
+
+
+def quit_checks():
+    print("Leave a Game: MENU's check as it counts, and X's too as it lands, on every handheld")
+    for dev in ("pixel2", "brick", "r36s"):
+        for th in ("light", "dark"):
+            wait = shot("quit-wait-%s-%s" % (dev, th), "--theme", th, "--device", dev,
+                        "--tour", "quit", "2000")
+            menu = shot("quit-menu-%s-%s" % (dev, th), "--theme", th, "--device", dev,
+                        "--tour", "quit", "2000", "--tour-held", "1000")
+            done = shot("quit-done-%s-%s" % (dev, th), "--theme", th, "--device", dev,
+                        "--tour", "quit", "4000", "300")
+            if None in (wait, menu, done):
+                continue
+            w, m, d = (accent_runs(i, QUIT_CHECKS) for i in (wait, menu, done))
+            ck(not w, "%s %s: no glyph's check while Leave a Game waits (%s)" % (dev, th, w))
+            ck(len(m) == 1, "%s %s: MENU counted, one check, MENU's (%s)" % (dev, th, m))
+            ck(len(d) == 2 and m and d[0] == m[0],
+               "%s %s: X landed, its check beside MENU's, both there (%s)" % (dev, th, d))
+            ck(count(done, ACCENT, (852, 40, 1000, 130)) > 1000,
+               "%s %s: and the reward's check disc, at the stage's top right" % (dev, th))
+
+
 # The choices, as src/tourdraw.c lays them out: two 380 x 285 at y 96, 56
 # apart; three (Home Screen) 272 x 204, 32 apart, on the two's middle line;
 # or four 180 x 180 tiles at y 130, 32 apart; a name 48 under each.
@@ -589,6 +629,7 @@ def main():
     brick()
     smartpro()
     r36s()
+    quit_checks()
     choices()
 
     if fails:

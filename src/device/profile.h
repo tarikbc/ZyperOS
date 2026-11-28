@@ -25,6 +25,7 @@
 #include <stdint.h>
 
 #include "../inbutton.h"
+#include "devinput.h"   /* dev_input: the codes and sticks it reports */
 #include "td_model.h"   /* td_model: a handheld's 3D drawing */
 
 /* How brightness is changed: keys of its own (the Brick's F1 and F2), or
@@ -43,8 +44,9 @@ typedef struct {
 	bool home_chord;
 	/* L2+R2 flashes the battery's level on lights of the device's own */
 	bool battery_chord;
-	/* The left stick moves as the d-pad does on the launcher's screens (the
-	 * R36S's; src/stickpad.h), and the pages say so beside the d-pad */
+	/* The pages say beside the d-pad that the left stick moves as it does,
+	 * by its click's name (L3): the R36S's. Its input's left stick is the
+	 * d-pad's (dev_input), which tools/inmodel-check.c holds it to */
 	bool stick_dpad;
 } dev_chords;
 
@@ -90,6 +92,10 @@ typedef struct device_profile {
 		bool  still;                     /* a panel still can be saved */
 	} screen;
 	dev_chords        chords;
+	/* What it reports, mapped onto the logical buttons: ONE table a device
+	 * (src/device/<id>_input.h), which src/inengine.h reads and nothing
+	 * else */
+	dev_input         input;
 	const dev_button *buttons;
 	int               n_buttons;
 	/* Its 3D drawing for the tutorial and the Controls tab (td_model.h),
@@ -210,15 +216,11 @@ dev_chords dev_chords_fn_volume(dev_chords base);
  * the host's desktop's) only where brightness is MENU+VOL, the chords of the
  * device it is (--fn-volume), not beside the F1 and F2 it would not show. */
 const td_model *dev_tutorial_model(const device_profile *p, const dev_chords *c);
-/* L2 and R2 both held this moment, for Developer Mode's unlock: as taps where
- * the chords say they are taps (`tap_l2`, `tap_r2`: plat_tap_held), as the
- * buttons' own state everywhere else (`down_l2`, `down_r2`: in_state) */
-bool dev_l2r2_held(const dev_chords *c, bool tap_l2, bool tap_r2, bool down_l2, bool down_r2);
 
 /* The questions the launcher asks the platform whose answers are facts about
  * the handheld, from the profile in force (src/profile.c). Live questions
- * (plat_has_wifi: an adapter plugged in; plat_menu_held, plat_tap_held) stay
- * in src/platform.h and the device files. */
+ * (plat_has_wifi: an adapter plugged in) stay in src/platform.h and the
+ * device files; what the hand holds is in_state's `held` (src/inengine.h). */
 /* Bluetooth at all, not whether it is on: a device without it hides
  * everything that needs it (src/sys_menu.h) */
 bool plat_has_bluetooth(void);

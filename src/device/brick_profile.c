@@ -3,6 +3,7 @@
  * 3.2 in at 1024x768, 65.0 x 48.8 mm. Its own handheld beside the
  * tutorial's lessons and on the Controls tab (src/device/brick_model.c). */
 #include "profile.h"
+#include "brick_input.h"
 #include "brick_buttons.h"
 
 /* Its core options (src/device/brick_coreopts.c), linked in its build alone */
@@ -29,6 +30,7 @@ const device_profile device_profile_brick = {
 		.still = false,
 	},
 	.chords = { .bright = DEV_BRIGHT_KEYS },
+	.input = BRICK_INPUT,
 	.buttons = brick_buttons,
 	.n_buttons = (int)(sizeof brick_buttons / sizeof brick_buttons[0]),
 	.model = &td_model_brick,

@@ -1826,9 +1826,67 @@ static void the_screenshot(void)
 	}
 }
 
+/* MENU's chords over a port (src/menukeys.h, the one Screenshot): a button
+ * pressed under MENU by the handheld's own table, MENU then opening nothing;
+ * MENU alone still the menu; the chord's button alone nothing of MENU's */
+static void the_menu_chords(void)
+{
+	rig r;
+	pk_key e;
+	unsigned acts;
+	const dev_input *in;
+	int l1, l2, r2;
+
+	rig_init(&r, 4, 7);
+	pkkeys_menu_keys(&r.k, IN_L1, IN_L2);
+	in = r.k.in;
+	l1 = dev_code_of(in, IN_L1);
+	l2 = dev_code_of(in, IN_L2);
+	r2 = dev_code_of(in, IN_R2);
+	ck(l1 > 0 && l2 > 0 && dev_code_of(in, IN_MENU) == PK_BTN_MENU, "the Pixel 2's table gives MENU, L1 and L2");
+	ck(pkkeys_relevant(&r.k, (uint16_t)l1, 1) && !pkkeys_relevant(&r.k, (uint16_t)r2, 1),
+	   "L1 and L2 are read, as MENU's chords; R2 is not");
+	e = ev(0, PK_BTN_MENU, 1);
+	pass(&r, &e, 1, 1);
+	e = ev(5000, l1, 1);
+	pass(&r, &e, 1, 6000);
+	e = ev(9000, l1, 0);
+	pass(&r, &e, 1, 10000);
+	e = ev(12000, PK_BTN_MENU, 0);
+	pass(&r, &e, 1, 13000);
+	acts = pkkeys_menu_acts(&r.k);
+	ck(acts == 1u << MK_SHOT && !pkkeys_menu_tapped(&r.k) && !pkkeys_menu_acts(&r.k),
+	   "MENU+L1: the screenshot, taken once, and MENU opens nothing (%x)", acts);
+	r.now = 100;
+	e = ev(100000, PK_BTN_MENU, 1);
+	pass(&r, &e, 1, 100001);
+	e = ev(105000, l2, 1);
+	pass(&r, &e, 1, 106000);
+	e = ev(112000, PK_BTN_MENU, 0);
+	pass(&r, &e, 1, 113000);
+	acts = pkkeys_menu_acts(&r.k);
+	ck(acts == 1u << MK_LOCK && !pkkeys_menu_tapped(&r.k), "MENU+L2: the lock, and MENU opens nothing (%x)", acts);
+	r.now = 300;
+	tap(&r, l1, 80);
+	ck(!pkkeys_menu_acts(&r.k) && !pkkeys_menu_tapped(&r.k), "L1 alone: nothing of MENU's");
+	tap(&r, PK_BTN_MENU, 80);
+	ck(!pkkeys_menu_acts(&r.k) && pkkeys_menu_tapped(&r.k), "MENU alone: the menu, as before");
+	/* Kept through a resync; moved to R2 with the lock */
+	pkkeys_reset(&r.k);
+	pkkeys_menu_keys(&r.k, IN_L1, IN_R2);
+	r.now = 600;
+	e = ev(600000, PK_BTN_MENU, 1);
+	pass(&r, &e, 1, 600001);
+	e = ev(605000, r2, 1);
+	pass(&r, &e, 1, 606000);
+	ck(pkkeys_menu_acts(&r.k) == 1u << MK_LOCK && r.k.mk[MK_SHOT] == IN_L1,
+	   "the lock moved to R2 is MENU+R2, the screenshot kept on L1");
+}
+
 int main(void)
 {
 	the_ladder();
+	the_menu_chords();
 	the_chord();
 	the_kernel_repeat();
 	the_clock();

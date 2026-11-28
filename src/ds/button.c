@@ -4,6 +4,8 @@
 
 #include <string.h>
 
+#include "../inmodel.h"
+
 static const dev_button *g_table;
 static int g_n;
 
@@ -13,27 +15,13 @@ void ds_keys_set(const dev_button *table, int n)
 	g_n = g_table ? n : 0;
 }
 
-/* The ids' names, as screens write them: what the face buttons, shoulders
- * and the keys under the screen are called on every handheld, and F1 and F2
- * for the brightness keys of a handheld that has its own */
-static const struct { const char *name; in_button id; } NAMES[] = {
-	{ "A", IN_ACCEPT }, { "B", IN_BACK }, { "X", IN_X }, { "Y", IN_Y },
-	{ "L1", IN_L1 }, { "R1", IN_R1 }, { "L2", IN_L2 }, { "R2", IN_R2 },
-	{ "L3", IN_L3 }, { "R3", IN_R3 },
-	{ "SELECT", IN_SELECT }, { "START", IN_START }, { "MENU", IN_MENU },
-	{ "POWER", IN_POWER }, { "F1", IN_BRIGHTDN }, { "F2", IN_BRIGHTUP },
-	{ "VOL+", IN_VOLUP }, { "VOL-", IN_VOLDN },
-	{ "UP", IN_UP }, { "DOWN", IN_DOWN }, { "LEFT", IN_LEFT }, { "RIGHT", IN_RIGHT },
-};
-
+/* The ids' names, as screens write them, the input model's (src/inmodel.h):
+ * what the face buttons, shoulders and the keys under the screen are called
+ * on every handheld, and F1 and F2 for the brightness keys of a handheld
+ * that has its own */
 in_button ds_key_id(const char *name)
 {
-	size_t i;
-
-	if (!name) return IN_NONE;
-	for (i = 0; i < sizeof NAMES / sizeof NAMES[0]; i++)
-		if (!strcmp(NAMES[i].name, name)) return NAMES[i].id;
-	return IN_NONE;
+	return in_by_name(name);
 }
 
 /* The glyphs the launcher drew before handhelds had tables, and still draws

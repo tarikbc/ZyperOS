@@ -74,4 +74,13 @@ void mk_run(const mk_table *t, char *out, size_t n);
 /* "MENU+L1", the action's chord as the pages write it */
 void mk_chord(const mk_table *t, mk_act a, char *out, size_t n);
 
+/* The one Screenshot (2026-11-28: one hotkey that works anywhere): until
+ * 1.1.1 a game had a Screenshot of its own, SELECT held with a key
+ * (`game_key`, HK_NONE for None), beside MENU's. Merged into MENU's, once:
+ * MENU's kept where the player set it, else the game's key with MENU where
+ * MENU can take it (A, B, X, Y and the shoulders, not the lock's), else
+ * ZyperOS's own. True when `t` changed; `why` says what was done whenever
+ * the game's key was set, for the log. */
+bool mk_merge_shot(mk_table *t, int game_key, char *why, size_t n);
+
 #endif

@@ -50,7 +50,7 @@ ja = 早送りの速度
 it = Velocità avanti
 
 [hotkeys.shot]
-note = A row of the Hotkeys list: SELECT and a button save a picture of the game (a screenshot) to the card, in Screenshots/. None until the player sets it. A row's name, beside its keys or hotkeys.none.
+note = A row of the Hotkeys list, the one Screenshot hotkey: MENU held and a button (MENU+L1 from the start) save a picture of the screen, or of the game in a game, to the card, in Screenshots/. A row's name, beside its keys.
 en = Screenshot
 zh-Hans = 截图
 es = Captura
@@ -105,7 +105,7 @@ ja = なし
 it = Nessuno
 
 [hotkeys.game_note]
-note = The Hotkeys list's footer, under a rule below the rows, while the cursor is on one of the game's hotkeys (Quick Save to Quit): they work in a game, SELECT held with the button. Pairs with hotkeys.menu_note, the footer of MENU's chords. SELECT is the button's printed name, drawn as its key. One line at the menu's size in the widest panel, about 750 units.
+note = The Hotkeys list's footer, under a rule below the rows, while the cursor is on one of the game's hotkeys (Quick Save to Fast Forward; the Screenshot is MENU's): they work in a game, SELECT held with the button. Pairs with hotkeys.menu_note, the footer of MENU's chords. SELECT is the button's printed name, drawn as its key. One line at the menu's size in the widest panel, about 750 units.
 en = In a game, with SELECT held.
 zh-Hans = 游戏中，按住 SELECT 使用。
 es = En juego, con SELECT pulsado.
@@ -336,7 +336,7 @@ ja = 画面
 it = Schermo
 
 [hotkeys.menu_note]
-note = The footer of MENU > System > Hotkeys, under a rule below the rows, while the cursor is on Screenshot or Lock Screen, MENU's chords: MENU held with a button works on every screen of the launcher and in a game too. One line at the menu's size in the widest panel, about 750 units.
+note = The footer of MENU > System > Hotkeys, under a rule below the rows, while the cursor is on Screenshot or Lock Screen, MENU's chords: MENU held with a button works on every screen of the launcher and in a game too (the Screenshot is the one there is). One line at the menu's size in the widest panel, about 750 units.
 en = On every screen, in a game too.
 zh-Hans = 所有画面均可，游戏中也可。
 es = En toda pantalla, y en juego.

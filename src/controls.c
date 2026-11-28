@@ -230,11 +230,12 @@ void ctl_set_hotkeys(const hk_table *t)
  * game's own Hotkeys page (hotkeys_for). */
 static int hotkey_rows(menu_row *out, bool states, bool select_note)
 {
-	static const str_id SAID[HK_ACTS] = {
+	static const str_id SAID[] = {
 		S_CONTROLS_QUICK_SAVE, S_CONTROLS_QUICK_LOAD, S_CONTROLS_FASTER, S_CONTROLS_SLOWER,
-		S_HOTKEYS_SHOT, S_HOTKEYS_SHADER, S_HOTKEYS_DISPLAY, S_HOTKEYS_RESET, S_GAMEMENU_QUIT,
+		S_HOTKEYS_SHADER, S_HOTKEYS_DISPLAY, S_HOTKEYS_RESET, S_GAMEMENU_QUIT,
 		S_HOTKEYS_FFWD
 	};
+	_Static_assert(sizeof SAID / sizeof SAID[0] == HK_ACTS, "a name for every hotkey");
 	static char keys[HK_ACTS][24];
 	int n = 0, j;
 

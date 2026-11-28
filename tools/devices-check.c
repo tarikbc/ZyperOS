@@ -256,21 +256,6 @@ static void answers(void)
 	plat_profile_select("desktop");
 }
 
-/* Developer Mode's unlock: L2 and R2 held together, as taps where they are
- * taps (the Pixel 2, whose in_state never sees them held) and as buttons
- * where they are buttons; never one alone, never the other kind */
-static void unlock(void)
-{
-	const dev_chords *px = &device_profile_pixel2.chords, *br = &device_profile_brick.chords;
-
-	ck(dev_l2r2_held(px, true, true, false, false), "pixel2: both taps held unlock");
-	ck(!dev_l2r2_held(px, true, false, false, false), "pixel2: one tap alone does not");
-	ck(!dev_l2r2_held(px, false, false, true, true), "pixel2: the buttons' own state is not its");
-	ck(dev_l2r2_held(br, false, false, true, true), "brick: both buttons held unlock");
-	ck(!dev_l2r2_held(br, false, false, true, false), "brick: one button alone does not");
-	ck(!dev_l2r2_held(br, true, true, false, false), "brick: taps it has none of do not");
-}
-
 /* The tutorial's handheld: each device's own beside its lessons, whatever
  * its chords; the desktop's borrowed one only with the Pixel 2's chords
  * (--fn-volume), not with the Brick's F1 and F2 it teaches */
@@ -659,7 +644,6 @@ int main(void)
 	r36s();
 	desktop();
 	answers();
-	unlock();
 	tutorial();
 	places();
 	system_has();

@@ -55,15 +55,15 @@ ja = 移動
 it = Muoviti
 
 [tour.move.line]
-note = The shelf is the row of systems or games.
-en = Press the D-pad to move along the shelf.
-zh-Hans = 按方向键在列表中移动。
-es = Usa la cruceta para moverte por la lista.
-pt-BR = Use o direcional para andar pela lista.
-fr = Utilisez la croix pour parcourir la liste.
-de = Drücke das Steuerkreuz zum Bewegen.
-ja = 十字キーで一覧を移動します。
-it = Premi la croce direzionale per spostarti nell'elenco.
+note = The shelf is the row of systems or games, which goes left and right: LEFT and RIGHT are the d-pad's (or the left stick's), in capitals, as the choices' lines write them. tight: one line beside the handheld, no longer than English's.
+en = LEFT or RIGHT moves along the shelf.
+zh-Hans = 按左或右在列表中移动。
+es = IZQUIERDA/DERECHA recorren la lista.
+pt-BR = ESQUERDA/DIREITA para andar na lista.
+fr = GAUCHE/DROITE pour parcourir la liste.
+de = LINKS/RECHTS zum Bewegen.
+ja = 左か右で一覧を移動します。
+it = SINISTRA/DESTRA per scorrere l'elenco.
 
 [tour.move.note]
 note = L1/R1 jump 3 systems at a time on the home.
@@ -180,15 +180,15 @@ ja = %s でどこでも設定を開けます。
 it = Premi %s per le impostazioni, ovunque.
 
 [tour.menu.note]
-note = The MENU lesson's note, beside Zyper's corner: MENU held with a button, on every screen and in a game too, takes a screenshot. %s is the keys as printed, "MENU+L1" ("FN+L1" on the R36S); the lock, MENU's other chord, is the lesson after (tour.lock). Keep it about as long as English's.
-en = %s takes a screenshot.
-zh-Hans = %s 截图。
-es = %s hace una captura.
-pt-BR = %s tira uma captura.
-fr = %s fait une capture.
-de = %s: Bildschirmfoto.
-ja = %s でスクショ。
-it = %s fa uno screenshot.
+note = The MENU lesson's note, beside Zyper's corner: MENU held with a button takes a screenshot on every screen and in a game too, the one Screenshot hotkey there is. %s is the keys as printed, "MENU+L1" ("FN+L1" on the R36S); the lock, MENU's other chord, is the lesson after (tour.lock). Keep it about as long as English's.
+en = %s takes a screenshot, in a game too.
+zh-Hans = %s 截图，游戏中也可。
+es = %s hace una captura, en juego también.
+pt-BR = %s tira uma captura, no jogo também.
+fr = %s fait une capture, en jeu aussi.
+de = %s: Bildschirmfoto, auch im Spiel.
+ja = %s でスクショ。ゲーム中も。
+it = %s fa uno screenshot, anche in gioco.
 
 [tour.quit.title]
 note = The lesson after Settings: leaving a game, MENU and then X (the in-game menu's Quit, whose X does it from anywhere on the menu). Short, as the other lessons' titles.
@@ -856,16 +856,27 @@ de = die Helligkeit
 ja = 明るさボタン
 it = un tasto luminosità
 
-[tour.try.dpad]
-note = What to press, said in "Try %s.": the move step's.
-en = the D-pad
-zh-Hans = 方向键
-es = la cruceta
-pt-BR = o direcional
-fr = la croix
-de = das Steuerkreuz
-ja = 十字キー
-it = la croce direzionale
+[tour.key.right_stick]
+note = The right stick pushed any way, said in "That's %s." (the R36S's and the Smart Pro's): a wrong press in every lesson, as no screen moves with it.
+en = the right stick
+zh-Hans = 右摇杆
+es = el stick derecho
+pt-BR = o analógico direito
+fr = le stick droit
+de = der rechte Stick
+ja = 右スティック
+it = lo stick destro
+
+[tour.try.left_right]
+note = What to press, said in "Try %s.": the move step's, which takes LEFT and RIGHT alone (the d-pad's or the left stick's), in capitals as its line writes them. tight: the bubble's second line, beside "START: Skip"; es, pt-BR, fr, de and it name the two as a pair, as the choices' do.
+en = LEFT or RIGHT
+zh-Hans = 左或右
+es = IZQUIERDA/DERECHA
+pt-BR = ESQUERDA/DIREITA
+fr = GAUCHE/DROITE
+de = LINKS/RECHTS
+ja = 左か右
+it = SINISTRA/DESTRA
 
 [tour.try.vol]
 note = The volume step's.

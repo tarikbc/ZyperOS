@@ -207,16 +207,16 @@ static void rows_are_shaped_like_the_others(void)
 	u.cursor = -1;
 	/* "turn off", not "turn Bluetooth off" - the heading and the row it sits
 	 * under both say Bluetooth, so the footer repeating it is noise. */
-	ck(!strcmp(legend_text(bt_menu_footer(&u)), "A: turn off   Y: search"),
+	ck(!strcmp(legend_text(bt_menu_footer(&u)), "A: Turn Off   Y: Search"),
 	   "on the toggle it offers the toggle, without repeating the word");
 	u.cursor = 0;
-	ck(!strcmp(legend_text(bt_menu_footer(&u)), "A: connect   Y: search   X: forget"),
+	ck(!strcmp(legend_text(bt_menu_footer(&u)), "A: Connect   Y: Search   X: Forget"),
 	   "on a bonded device, connect and forget");
 	u.cursor = 1;
-	ck(!strcmp(legend_text(bt_menu_footer(&u)), "A: pair   Y: search"),
+	ck(!strcmp(legend_text(bt_menu_footer(&u)), "A: Pair   Y: Search"),
 	   "on one merely in range, pair and nothing to forget");
 	u.dev[1].connected = true;
-	ck(strstr(legend_text(bt_menu_footer(&u)), "A: disconnect") != NULL,
+	ck(strstr(legend_text(bt_menu_footer(&u)), "A: Disconnect") != NULL,
 	   "and connected offers disconnect");
 
 	snprintf(u.note, sizeof u.note, "Forgotten");
@@ -234,13 +234,13 @@ static void rows_are_shaped_like_the_others(void)
 	u.n = 0;
 	n = bt_menu_build(&u, r, 16, 7);
 	ck(!strcmp(r[0].value, "Off"), "the toggle says Off");
-	ck(!strcmp(legend_text(bt_menu_footer(&u)), "A: turn on"),
+	ck(!strcmp(legend_text(bt_menu_footer(&u)), "A: Turn On"),
 	   "and the footer says how to fix it");
 }
 
 /* Every footer the screen can show that names a button is a key legend in
  * DESIGN.md 11.4's one form, as the Wi-Fi screen's and MENU > Controls' are:
- * three spaces between the pairs, a lowercase verb, and a button by the name
+ * three spaces between the pairs, a word with a capital first, and a button by the name
  * the Controls pages give it. "Searching..." names none and is progress, and
  * a note about what just happened is a message (main.c's "On" and "Off"
  * among them), so neither is held to it. */

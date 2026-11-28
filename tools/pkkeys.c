@@ -11,9 +11,13 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "device/pixel2_input.h"
 #include "device/pixel2_levels.h"
 #include "eqdsp.h"
 #include "keyrepeat.h"
+#include "menukeys.h"
+
+static const dev_input PIXEL2_IN = PIXEL2_INPUT;
 
 static int clampi(int v, int lo, int hi)
 {
@@ -23,6 +27,37 @@ static int clampi(int v, int lo, int hi)
 void pkkeys_init(pkkeys *k)
 {
 	memset(k, 0, sizeof *k);
+	k->in = &PIXEL2_IN;
+	k->mk[0] = k->mk[1] = IN_NONE;
+}
+
+void pkkeys_reset(pkkeys *k)
+{
+	const dev_input *in = k->in;
+	const in_button mk0 = k->mk[0], mk1 = k->mk[1];
+
+	pkkeys_init(k);
+	if (in) k->in = in;
+	k->mk[0] = mk0;
+	k->mk[1] = mk1;
+}
+
+void pkkeys_use(pkkeys *k, const dev_input *in)
+{
+	k->in = in ? in : &PIXEL2_IN;
+}
+
+void pkkeys_menu_keys(pkkeys *k, in_button shot, in_button lock)
+{
+	if (!k->in) k->in = &PIXEL2_IN;
+	k->mk[MK_SHOT] = shot;
+	k->mk[MK_LOCK] = lock;
+}
+
+/* The button `code` is on the handheld, IN_NONE for none */
+static in_button button_of(const pkkeys *k, uint16_t code)
+{
+	return dev_button_of_code(k->in ? k->in : &PIXEL2_IN, code);
 }
 
 /* One event, in its turn. A volume key keeps what it went down as until it
@@ -36,8 +71,18 @@ static int handle(pkkeys *k, const pk_key *e, int64_t now_ms, pk_step *out, int 
 	/* The kernel's autorepeat, of any key. A held volume key repeats on the
 	 * launcher's clock (pkkeys_tick), where gpio-keys' own is 250 ms and
 	 * then every 33, and stepped and saved every one of them. */
+	const in_button b = button_of(k, e->code);
+
 	if (e->value == 2) return 0;
-	if (e->code == PK_BTN_MENU) {
+	/* MENU's chord: its button pressed under MENU, which then opens
+	 * nothing (pkkeys_menu_acts) */
+	for (i = 0; i < 2; i++)
+		if (b != IN_NONE && b == k->mk[i] && e->value && k->menu_held) {
+			k->mk_acts |= 1u << i;
+			k->menu_armed = false;
+			return 0;
+		}
+	if (b == IN_MENU) {
 		/* A press of MENU already down is no press (a resync found it) */
 		if (e->value && !k->menu_held) k->menu_armed = true;
 		if (!e->value && k->menu_held && k->menu_armed) k->menu_tapped = true;
@@ -45,8 +90,8 @@ static int handle(pkkeys *k, const pk_key *e, int64_t now_ms, pk_step *out, int 
 		k->menu_held = e->value != 0;
 		return 0;
 	}
-	if (e->code == PK_KEY_VOLUMEUP) i = 0;
-	else if (e->code == PK_KEY_VOLUMEDOWN) i = 1;
+	if (b == IN_VOLUP) i = 0;
+	else if (b == IN_VOLDN) i = 1;
 	else return 0;
 	if (!e->value) {
 		k->key[i].down = false;
@@ -62,10 +107,12 @@ static int handle(pkkeys *k, const pk_key *e, int64_t now_ms, pk_step *out, int 
 	return 1;
 }
 
-bool pkkeys_relevant(uint16_t code, int32_t value)
+bool pkkeys_relevant(const pkkeys *k, uint16_t code, int32_t value)
 {
-	return (value == 0 || value == 1) &&
-	       (code == PK_BTN_MENU || code == PK_KEY_VOLUMEUP || code == PK_KEY_VOLUMEDOWN);
+	const in_button b = button_of(k, code);
+
+	return (value == 0 || value == 1) && b != IN_NONE &&
+	       (b == IN_MENU || b == IN_VOLUP || b == IN_VOLDN || b == k->mk[0] || b == k->mk[1]);
 }
 
 int pkkeys_pass(pkkeys *k, const pk_key *ev, int n, int64_t cutoff_us, int64_t now_ms,
@@ -80,7 +127,7 @@ int pkkeys_pass(pkkeys *k, const pk_key *ev, int n, int64_t cutoff_us, int64_t n
 	for (i = 0; i < k->nwaiting; i++)
 		all[na++] = (struct event){ k->waiting[i], false };
 	for (i = 0; i < n; i++) {
-		if (!pkkeys_relevant(ev[i].code, ev[i].value)) continue;
+		if (!pkkeys_relevant(k, ev[i].code, ev[i].value)) continue;
 		all[na++] = (struct event){ ev[i], ev[i].t_us > cutoff_us };
 	}
 
@@ -101,7 +148,7 @@ int pkkeys_pass(pkkeys *k, const pk_key *ev, int n, int64_t cutoff_us, int64_t n
 	return m;
 
 overflow:
-	pkkeys_init(k);
+	pkkeys_reset(k);
 	return -1;
 }
 
@@ -138,6 +185,14 @@ int pkkeys_wait(const pkkeys *k, int64_t now_ms)
 		if (w < 0 || d < w) w = d;
 	}
 	return (int)w;
+}
+
+unsigned pkkeys_menu_acts(pkkeys *k)
+{
+	const unsigned a = k->mk_acts;
+
+	k->mk_acts = 0;
+	return a;
 }
 
 bool pkkeys_menu_tapped(pkkeys *k)
@@ -182,6 +237,19 @@ int pk_db_get(sqlite3 *db, const char *key, int fallback)
 		sqlite3_finalize(st);
 	}
 	return v;
+}
+
+void pk_menu_keys_load(sqlite3 *db, mk_table *out)
+{
+	sqlite3_stmt *st;
+	char v[96] = "";
+
+	if (db && sqlite3_prepare_v2(db, "SELECT value FROM settings WHERE key='menukeys';", -1, &st, NULL) == SQLITE_OK) {
+		if (sqlite3_step(st) == SQLITE_ROW && sqlite3_column_text(st, 0))
+			snprintf(v, sizeof v, "%s", (const char *)sqlite3_column_text(st, 0));
+		sqlite3_finalize(st);
+	}
+	if (!mk_load(v, out)) fprintf(stderr, "portkeys: menukeys '%s' not read, ZyperOS's own\n", v);
 }
 
 void pk_db_set(sqlite3 *db, const char *key, int v)

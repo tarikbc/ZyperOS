@@ -35,6 +35,8 @@
 #include <stdint.h>
 
 #include "boost.h"
+#include "menukeys.h"          /* mk_table: MENU's chords */
+#include "device/devinput.h"   /* the handheld's table of its codes */
 #include "osdbar.h"
 
 /* <linux/input.h>'s numbers for the three keys */
@@ -65,6 +67,14 @@ typedef struct {
 #define PK_WAITING  64           /* events kept for the next pass at most */
 
 typedef struct {
+	/* The handheld's codes as its profile's table has them (src/device/
+	 * devinput.h; the Pixel 2's, pkkeys_init's): which code is MENU and
+	 * which the volume keys, read through it and never by number */
+	const dev_input *in;
+	/* MENU's chords over a port (src/menukeys.h): the screenshot's button
+	 * and the lock's, IN_NONE for none (pkkeys_menu_keys) */
+	in_button mk[2];
+	unsigned  mk_acts;           /* 1 << MK_SHOT, 1 << MK_LOCK, not yet taken */
 	bool menu_held;              /* MENU is down */
 	/* MENU on its own, as Diatom reads it (diatom/src/main.c): armed by its
 	 * press, a modifier once a step goes under it (MENU+VOL, the backlight),
@@ -80,10 +90,19 @@ typedef struct {
 	int    nwaiting;
 } pkkeys;
 
+/* Nothing held, the Pixel 2's table and no MENU chords */
 void pkkeys_init(pkkeys *k);
+/* Nothing held, the table and MENU's chords kept: a resync, an overflow */
+void pkkeys_reset(pkkeys *k);
+/* The handheld's table (its profile's `input`), and MENU's chords on it:
+ * `shot` and `lock` the buttons MENU+L1 and MENU+L2 are on (src/menukeys.h,
+ * the launcher's MENU > System > Hotkeys), IN_NONE for none */
+void pkkeys_use(pkkeys *k, const dev_input *in);
+void pkkeys_menu_keys(pkkeys *k, in_button shot, in_button lock);
 
-/* Filter before buffering: only MENU/VOL press and release transitions. */
-bool pkkeys_relevant(uint16_t code, int32_t value);
+/* Filter before buffering: only MENU, the volume keys and MENU's chords'
+ * buttons, their presses and let-gos */
+bool pkkeys_relevant(const pkkeys *k, uint16_t code, int32_t value);
 
 /* One complete, bounded pass over ALL open nonblocking devices. `cutoff_us`
  * is sampled before the reads on their shared event clock; `now_ms` is on
@@ -96,7 +115,7 @@ bool pkkeys_relevant(uint16_t code, int32_t value);
  * Preflight both limits before handling ANY event. Overflow returns -1,
  * clears pending/held state and produces no steps. The caller discards this
  * whole pass and resyncs all devices before accepting another batch. The
- * reader must never flush a partial batch to make room. `out` must hold all
+ * reader must never flush a partial batch to make room (pkkeys_reset). `out` must hold all
  * possible steps (PK_WAITING + PK_PASS_MAX for a full pass). */
 int pkkeys_pass(pkkeys *k, const pk_key *ev, int n, int64_t cutoff_us, int64_t now_ms,
                 pk_step *out, int max);
@@ -115,6 +134,13 @@ int pkkeys_wait(const pkkeys *k, int64_t now_ms);
  * never pressed here, so its release is no tap, as in Diatom a MENU still held
  * as the game resumes is not. */
 bool pkkeys_menu_tapped(pkkeys *k);
+
+/* MENU's chords made since the last call, 1 << MK_SHOT and 1 << MK_LOCK
+ * (src/menukeys.h), as over every screen and a game: the button pressed
+ * while MENU is held, and MENU then opens nothing as it is let go. Over a
+ * port the port still sees the button: portkeys holds no pad (but over
+ * your PICO-8, tools/pkvpad.h). Taken once. */
+unsigned pkkeys_menu_acts(pkkeys *k);
 
 /* What a device says is down when its events cannot be trusted (after a
  * SYN_DROPPED, from EVIOCGKEY) or when it has gone, which is all up: MENU, and
@@ -141,6 +167,9 @@ typedef struct {
 /* A setting as an integer, `fallback` when it is not there or there is no
  * database; and a level written the way db_set_int writes it. */
 int  pk_db_get(sqlite3 *db, const char *key, int fallback);
+/* MENU's chords and Hold to Unlock as the launcher keeps them (its
+ * "menukeys", src/menukeys.h), ZyperOS's own where none or unread */
+void pk_menu_keys_load(sqlite3 *db, mk_table *out);
 void pk_db_set(sqlite3 *db, const char *key, int v);
 
 /* As the launcher starts: the saved levels, or for the backlight, the rung
