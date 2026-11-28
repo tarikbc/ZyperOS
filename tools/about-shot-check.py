@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""About keeps page information inside its panel, in both themes, on all four pages.
+"""About keeps page information inside its panel, in both themes, on all five pages.
 
-The page count belongs to the heading. The shelf below the panels must
+The page count belongs to the heading. The last page's two QR codes read
+back (zbarimg, where it is installed) as the Discord's and the tip page's
+addresses, on every handheld's screen. The shelf below the panels must
 contain no undimmed page text. Panel shadows may differ there between the
 four-row and six-row pages, so compare text roles instead of whole strips.
 """
@@ -28,9 +30,10 @@ shutil.copy(os.path.join(ROOT, "config", "systems.cfg"), os.path.join(t.D, "root
 shutil.copy(os.path.join(ROOT, "res", "zyper.png"), os.path.join(t.D, "root"))
 open(os.path.join(t.D, "Roms/Game Boy/Tetris.gb"), "w").close()
 for theme in ("light", "dark"):
-    # The four pages: the system, its details, the name and the thanks
+    # The five pages: the system, its details, the name, the thanks and the
+    # thank-you with its codes
     pages = [t.shot("about-%d-%s" % (p, theme), "--theme", theme, "--about", str(p),
-                    "--status", "10:08 wifi=off batt=100 chg") for p in range(4)]
+                    "--status", "10:08 wifi=off batt=100 chg") for p in range(5)]
     if None in pages:
         continue
     for p, img in enumerate(pages):
@@ -67,6 +70,21 @@ for theme in ("light", "dark"):
     t.ck(thalf[0] == thalf[1] == thalf[2], "%s thanks: scrolled halfway it stays where it is" % theme)
     t.ck(thalf[0] != ttop[0] and tend != thalf[0] and tend != ttop[0],
          "%s thanks: the top, the middle and the end are three pictures" % theme)
+# The last page's codes, as a phone's camera reads them, on every handheld's
+# screen and in both themes (the code is ink on paper in either)
+WANT = {"https://discord.gg/Ust8sE22Tm", "https://zyperos.com/tip/"}
+zbar = shutil.which("zbarimg")
+if not zbar:
+    print("note: no zbarimg here, the last page's codes are not read back")
+for device in ("pixel2", "brick", "r36s", "smartpro"):
+    for theme in ("light", "dark"):
+        name = "support-%s-%s" % (device, theme)
+        if t.shot(name, "--device", device, "--theme", theme, "--about", "4",
+                  "--status", "10:08 wifi=off batt=100 chg") is None or not zbar:
+            continue
+        got = subprocess.run([zbar, "-q", "--raw", os.path.join(t.D, name + ".png")],
+                             stdout=subprocess.PIPE, text=True).stdout.split()
+        t.ck(set(got) == WANT, "%s: the codes read %s, not the Discord's and the tip's" % (name, got))
 if not t.fails:
-    print("ok: About page information stays inside its panel in both themes")
+    print("ok: About page information stays inside its panel in both themes, the last page's codes read back")
 sys.exit(1 if t.fails else 0)

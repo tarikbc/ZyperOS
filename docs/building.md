@@ -105,7 +105,7 @@ something once broke in a way nothing noticed:
 | | |
 |---|---|
 | `check-about` | About storage and battery estimates: real filesystem reads, capacity fixtures, missing or malformed readings, overflow, decimal GB and rounded mAh |
-| `check-about-shots` | the two About pages leave the shelf below the panel unchanged; page counts belong in the heading, in both themes |
+| `check-about-shots` | About's five pages leave the shelf below the panel unchanged; page counts belong in the heading, in both themes; the last page's two QR codes read back (zbarimg, where installed) as the Discord's and the tip page's addresses as the Pixel 2, the Brick, the R36S and the Smart Pro |
 | `check-achtab` | the in-game menu's Achievements tab: each state its sentence, the counts line, an achievement's row |
 | `check-ahead` | MP4's sound decoded ahead (`src/mp4d/ahead.h`) against a stand-in output in real time: every frame once and in order through the ring's wrap, a push waiting while it is full, a decoder slow one chunk in five leaving the output never dry where writing straight to it ran dry, a hold throwing the ring away, a failed output refusing the push until a hold |
 | `check-artbadge` | the art badge (src/artbadge.c): every badge, the heart, the album's notes, the book and the video, in both themes at every size a row draws one, sized and placed with its card, its glyph 3:1 on its disc and inside it, the shadow below, the heart symmetric (no SDL) |

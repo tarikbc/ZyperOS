@@ -281,6 +281,7 @@ EXTRA = {
     "about-1": ("demo", "PS1", ["--about", "1"]),
     "about-2": ("demo", "PS1", ["--about", "2"]),
     "about-3": ("demo", "PS1", ["--about", "3"]),
+    "about-4": ("demo", "PS1", ["--about", "4"]),
     "controls-0": ("demo", "PS1", ["--controls", "0"]),
     "controls-1": ("demo", "PS1", ["--controls", "1"]),
     "controls-2": ("demo", "PS1", ["--controls", "2"]),

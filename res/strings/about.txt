@@ -386,3 +386,47 @@ fr = Les licences sont dans Licenses/
 de = Alle Lizenzen liegen in Licenses/
 ja = ライセンス全文：Licenses/
 it = Tutte le licenze sono in Licenses/
+
+[about.support]
+note = The heading of About's fifth and last page: Tarik thanks everyone who supports ZyperOS, and shows the Discord's and the tip page's QR codes. Title Case in English. Not the same word as about.thanks (the credits page) where the language has two.
+en = Thank You
+zh-Hans = 谢谢你
+es = Gracias
+pt-BR = Obrigado
+fr = Merci
+de = Vielen Dank
+ja = ありがとう
+it = Grazie
+
+[about.support_note]
+note = About's last page, over two QR codes, the Discord's and the tip page's (zyperos.com/tip). Tarik's own words, warm and plain, never pushy: a tip is optional, paid once, and unlocks no features, as the site says. Filled into the panel's width; keep it about this short (three lines on a 4:3 panel), or the codes get smaller.
+en = Thank you for playing, testing and sharing ZyperOS. A tip helps me keep it going: optional, one time, and it unlocks nothing.
+zh-Hans = 感谢你游玩、测试和分享 ZyperOS。打赏能帮我把它继续做下去：完全自愿，只付一次，也不会解锁任何功能。
+es = Gracias por jugar, probar y compartir ZyperOS. Una propina me ayuda a mantenerlo: es opcional, de una sola vez y no desbloquea nada.
+pt-BR = Obrigado por jogar, testar e compartilhar o ZyperOS. Uma contribuição me ajuda a manter o projeto: é opcional, feita uma vez só, e não libera nada.
+fr = Merci de jouer à ZyperOS, de le tester et de le partager. Un pourboire m'aide à le faire vivre\u00a0: facultatif et unique, il ne débloque rien.
+de = Danke, dass du ZyperOS spielst, testest und weitererzählst. Ein Trinkgeld hilft mir, dranzubleiben: freiwillig, einmalig, und es schaltet nichts frei.
+ja = ZyperOS を遊んで、試して、広めてくれてありがとうございます。チップは続けていく助けになります。任意で 1 回きり、何も解放されません。
+it = Grazie per giocare, provare e condividere ZyperOS. Una mancia mi aiuta a portarlo avanti: è facoltativa, una tantum e non sblocca nulla.
+
+[about.support_discord]
+note = About's last page: the name under the Discord's QR code, over its address (discord.gg/Ust8sE22Tm, kept as it is). An invitation, short; Title Case in English.
+en = Join the Discord
+zh-Hans = 加入 Discord
+es = Únete al Discord
+pt-BR = Entre no Discord
+fr = Rejoindre le Discord
+de = Komm in den Discord
+ja = Discord に参加
+it = Unisciti al Discord
+
+[about.support_tip]
+note = About's last page: the name under the tip page's QR code, over its address (zyperos.com/tip, kept as it is). A tip: optional, paid once, unlocks nothing (about.support_note says so). Short; Title Case in English.
+en = Leave a Tip
+zh-Hans = 打赏一下
+es = Deja una propina
+pt-BR = Deixe uma contribuição
+fr = Laisser un pourboire
+de = Trinkgeld geben
+ja = チップを送る
+it = Lascia una mancia

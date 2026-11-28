@@ -36,20 +36,26 @@
 #define HOT_ROW_STEP (6 * DS_GRID)
 
 /* The code for `text`, made once and kept until the text changes: it changes
- * once a screen. */
+ * once a screen. Two kept, for a screen with two codes (About's last page,
+ * the Discord's and the tip's), the one used longer ago made again. */
 static int code(const char *text, const unsigned char **mods)
 {
-	static unsigned char m[QR_SIZE_MAX * QR_SIZE_MAX];
-	static char made[192];
-	static int size;
+	static unsigned char m[2][QR_SIZE_MAX * QR_SIZE_MAX];
+	static char made[2][192];
+	static int size[2], last;
+	int k;
 
 	if (!text) text = "";
-	if (strcmp(made, text) || !size) {
-		snprintf(made, sizeof made, "%s", text);
-		size = qr_encode(text, m);
+	for (k = 0; k < 2; k++)
+		if (size[k] && !strcmp(made[k], text)) break;
+	if (k == 2) {
+		k = !last;
+		snprintf(made[k], sizeof made[k], "%s", text);
+		size[k] = qr_encode(text, m[k]);
 	}
-	*mods = m;
-	return size;
+	last = k;
+	*mods = m[k];
+	return size[k];
 }
 
 int hotpanel_code_side(const char *qr, int module)
