@@ -78,8 +78,8 @@
 #define PULSE_GROW 0.06f
 /* The gap the hint bubble keeps from "START: skip" */
 #define LEGEND_GAP 16.0f
-/* Leave a Game's check on its MENU glyph: a disc this round, its middle this
- * far in from the glyph's top-left corner */
+/* Leave a Game's checks on its MENU and X glyphs: a disc this round, its
+ * middle this far in from each glyph's top-left corner */
 #define QUIT_CHECK_R  15.0f
 #define QUIT_CHECK_IN  6.0f
 
@@ -1254,24 +1254,35 @@ static void glyph(SDL_Renderer *r, const tour *t, tour_step s, float cx, float c
 		x0 = cx - w / 2.0f;
 		ui_button_pressed(r, a, (int)lroundf(cx + (x0 + wa / 2.0f - cx) * k + g_ox), y, 64,
 		                  UI_BUTTON_PLAIN, P(part_named(a)), k, op);
-		/* Leave a Game's MENU, pressed: a check on its top-left corner, so
-		 * the press is seen counted and the lesson waiting for X (the
-		 * Pixel 2 test of 1.1.1-test.3); the reward's check in small,
-		 * popping in quick, gone as the menu closes */
-		if (s == TOUR_QUIT && tour_quit_menu_in(t)) {
-			const float q = tour_ease(TC_OUT, now, t->moved_at, DS_MS_QUICK);
-			const float gk = op * q, sc = QUIT_CHECK_R / 38.0f * (0.3f + 0.7f * q);
-			const float was = g_op;
-
-			g_op = 1.0f;
-			check_at(r, cx + (x0 - cx) * k + QUIT_CHECK_IN, cy - 32.0f * k + QUIT_CHECK_IN, gk, sc);
-			g_op = was;
-		}
 		words(r, UI_F_META, then ? "," : "+",
 		      cx + (x0 + wa + (then ? 10.0f : ws / 2.0f) - cx) * k, cy, then ? -1 : 0,
 		      theme()->text_dim, 1.0f);
 		ui_button_pressed(r, b, (int)lroundf(cx + (x0 + wa + ws + wb / 2.0f - cx) * k + g_ox), y, 64,
 		                  UI_BUTTON_PLAIN, P(part_named(b)), k, op);
+		/* Leave a Game's keys, each pressed in its turn: a check on each
+		 * glyph's top-left corner as it counts, so MENU is seen counted
+		 * while the lesson waits for X (the Pixel 2 test of 1.1.1-test.3)
+		 * and X as it lands (the R36S's); the reward's check in small,
+		 * popping in quick, MENU's gone as the menu closes. Drawn over
+		 * both glyphs, so neither covers the other's. */
+		{
+			const float left[2] = { x0, x0 + wa + ws };
+			const uint32_t at[2] = { t->moved_at, t->done_at };
+			const float was = g_op;
+			int i;
+
+			g_op = 1.0f;
+			for (i = 0; i < 2; i++) {
+				float q, sc;
+
+				if (!tour_key_checked(t, i)) continue;
+				q = tour_ease(TC_OUT, now, at[i], DS_MS_QUICK);
+				sc = QUIT_CHECK_R / 38.0f * (0.3f + 0.7f * q);
+				check_at(r, cx + (left[i] - cx) * k + QUIT_CHECK_IN, cy - 32.0f * k + QUIT_CHECK_IN,
+				         op * q, sc);
+			}
+			g_op = was;
+		}
 		break;
 	}
 	case TG_CHORD:

@@ -21,8 +21,8 @@
  * the minute it takes is spent with a thumb on the button rather than on a
  * page of text; MENU > Controls stays the list to look things up in. The
  * shoulders ride on two of them as a note, with no step of their own: L1/R1
- * jump in Move Around, where they count as moves, and L2/R2 change the song
- * in Music.
+ * jump in Move Around and L2/R2 change the song in Music, each pair a wrong
+ * press there as anywhere: Move Around takes LEFT and RIGHT alone.
  *
  * Then four choices make the handheld the player's (2026-11-06, and
  * his picks in the onboarding lab): the theme, the home screen's layout, the
@@ -130,7 +130,7 @@ typedef enum {
 } tour_key;
 
 /* What a launcher button is to the tutorial: the d-pad's four, the faces,
- * the shoulders (L1/R1 and L2/R2, each a wrong press but in no step bar L1/R1's Move Around), START, SELECT, MENU,
+ * the shoulders (L1/R1 and L2/R2, a wrong press in every step), START, SELECT, MENU,
  * both volume keys as TK_VOL, both brightness keys as TK_BRIGHT, POWER,
  * the sticks' clicks and the right stick's four as TK_RSTICK. Every button
  * is one (tools/inmodel-check.c); TK_KEYS for IN_NONE or anything out of
@@ -371,6 +371,12 @@ float tour_unlock_fill(const tour *t, uint32_t now);
 /* Whether Leave a Game has its MENU and waits for X: MENU's glyph carries
  * the check, so the press is seen counted */
 bool tour_quit_menu_in(const tour *t);
+/* Whether glyph `i` of a step of two keys by name (TG_KEYS: 0 the first,
+ * 1 the second) carries the reward's check in small: Leave a Game's MENU
+ * once it counts (tour_quit_menu_in), and its X too once X lands, so each
+ * press of the two is seen counted (the R36S test of 1.1.1-test.3: FN had
+ * its check and X none); no other step's. */
+bool tour_key_checked(const tour *t, int i);
 
 /* The settings as they are, as each choice's index (tour_choice_name), for
  * the choice steps to start on and a skip to go back to. Out of range is 0. */

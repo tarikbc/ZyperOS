@@ -1968,13 +1968,13 @@ for the reward, and a wrong press tilted, nudged and answered.)*
 |---|---|---|---|
 | Language (11.30) | A on the focused row | Zyper says hello in the language under the cursor, which steps a language a second until a press | A on a language; START keeps the one moved to |
 | Welcome | A | Zyper pops in and says "Hi! I'm Zyper." in his bubble | A |
-| Move Around | D-pad, and L1/R1 lit on the handheld | the little shelf steps one card right and back; "L1/R1 jump 3 systems." under the line | two moves, any direction, L1/R1 counting as jumps; the little shelf follows them, a jump as far as it has cards |
+| Move Around | D-pad, and L1/R1 lit on the handheld | the little shelf steps one card right and back; "L1/R1 jump 3 systems." under the line | two moves, LEFT or RIGHT, the d-pad's or the left stick's; the little shelf follows them as far as it has cards. UP, DOWN, L1, R1, the right stick and every other button are wrong presses: "That's Up. Try LEFT or RIGHT." |
 | Open a Game | A | the focused card grows into a playing game | A |
 | Go Back | B | the game shrinks back to its card | B |
 | See the Details | X | the card turns into the details, the info screen in small: the game's name over a rule, Synopsis in focus, Year, and Favorite Off with Y's glyph | X |
 | Keep a Favorite | Y | in those details Favorite turns from Off to On, the row's own Y pressing with the glyph; the line says Y does it in the details | Y |
 | Settings | MENU | a menu panel opens over the shelf; "MENU+L1 takes a screenshot." under the line | MENU, which opens nothing here |
-| Leave a Game | MENU, a comma and X (11.9's "one after the other"), MENU and X lit on the handheld | the stand-in game plays, MENU opens the in-game menu over it (its last row Quit, X's glyph at its right), X closes it as the game goes back into its card; "It picks up there next time." under the line | MENU, then X: MENU opens the menu on the stage (accept), puts the reward's check in small on the MENU glyph's top-left corner, and holds the menu for X; MENU or B closes it again (back), and so does 3 s with no X, the lesson starting over at MENU; X first is "That's X. Press MENU first." |
+| Leave a Game | MENU, a comma and X (11.9's "one after the other"), MENU and X lit on the handheld | the stand-in game plays, MENU opens the in-game menu over it (its last row Quit, X's glyph at its right), X closes it as the game goes back into its card; "It picks up there next time." under the line | MENU, then X: MENU opens the menu on the stage (accept), puts the reward's check in small on the MENU glyph's top-left corner, and holds the menu for X, which lands the lesson and puts the same check on the X glyph's top-left corner, both glyphs checked through the reward; MENU or B closes it again (back), and so does 3 s with no X, the lesson starting over at MENU; X first is "That's X. Press MENU first." |
 | Lock the Screen | MENU, a plus and L2 (the lock's button as Hotkeys has it), both lit on the handheld | the shelf goes dark at the chord and the lock's panel shows in small (the padlock, its bar), then the shelf comes back; "On every screen, in a game too." under the line | the chord, which the tutorial takes in place of the lock: the stage goes dark with the lock's panel and stays so for the next lesson; the handheld is never locked. MENU alone is "Hold MENU, then press L2.", L2 alone "That's L2. Hold MENU too." |
 | Unlock the Screen | SELECT, a plus and START, both lit on the handheld | on the stage the lock left, SELECT and START held fill the panel's bar and the shelf comes back; the line is "Hold SELECT and START 2 s to unlock." (Hold to Unlock's seconds, "0.5" or "0,5" as the language writes) | SELECT and START held together for Hold to Unlock's time, the bar filling as they are held and emptying when one is let go; START skips nothing in this step, and "START: Skip" is not drawn |
 | Music | SELECT, and L2/R2 lit on the handheld | MP4's Now Playing fades in; "L2/R2 play the previous or next song." under the line | SELECT, which opens nothing here |
@@ -2003,6 +2003,13 @@ closes after 3 s with no X. And a lesson takes its own button and no other:
 Music, whose line asks for SELECT, had taken L2 and R2 too (from the Smart
 Pro kit's notes), and a shoulder there read as a right answer;
 `check-tour` presses every key in every lesson.)*
+
+*(2026-11-28, the R36S test of 1.1.1-test.3: Move Around took UP, DOWN, L1
+and R1 as moves, where its little shelf goes left and right; it takes LEFT
+and RIGHT alone now, the d-pad's or the left stick's, and its line says so.
+Leave a Game's X got no check of its own as it landed, FN's alone showing
+one; both glyphs carry theirs now. `check-inmodel` walks both on every
+handheld.)*
 
 *(2026-11-13: Keep a Favorite comes after See the Details, and its line says
 "In the details, press Y to add a favorite." Since 2026-11-08 Y on the
@@ -2259,8 +2266,9 @@ of the player's own goes on from wherever the loop was.
   the Brick), and MENU alone "Hold MENU, then press VOL+." START, POWER and
   the volume and brightness keys are not wrong presses, and a press in the
   first 250 ms of a step, of any key, is the last step's thumb and is not
-  heard. L1/R1 are wrong presses everywhere but Move Around, where they are
-  moves. In Leave a Game and Lock the Screen Zyper says how the pair goes
+  heard. L1/R1 are wrong presses in every lesson, Move Around's too, whose
+  note names them: its line asks for LEFT or RIGHT, and UP and DOWN are
+  wrong there as well *(the R36S test of 1.1.1-test.3)*. In Leave a Game and Lock the Screen Zyper says how the pair goes
   (the table above); the lock's chord, in any other step, is nothing, and
   never locks the handheld while the tutorial runs. In Unlock the Screen
   SELECT and START are its hold, any other button a wrong press ("That's A.

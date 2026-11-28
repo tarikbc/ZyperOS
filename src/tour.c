@@ -97,10 +97,11 @@ static const step_def STEPS[TOUR_STEPS] = {
 	                   NO_TEXT, NO_TEXT, NO_TEXT, TG_FACE, "A", NO_TEXT, "A", NULL, NULL },
 	/* The shoulders as a note on the two lessons they belong with, each
 	 * pair lit on the handheld (my follow-up to #90): L1/R1 jump on the
-	 * home and count as moves here, L2/R2 change the song - MP4's while it
-	 * plays, the menu music's otherwise */
+	 * home, L2/R2 change the song - MP4's while it plays, the menu music's
+	 * otherwise. Neither pair answers its lesson: Move Around's line asks
+	 * for LEFT or RIGHT, as Music's asks for SELECT. */
 	[TOUR_MOVE]    = { S_TOUR_MOVE_TITLE, S_TOUR_MOVE_LINE,
-	                   NO_TEXT, S_TOUR_MOVE_NOTE, NO_TEXT, TG_DPAD, NULL, S_TOUR_TRY_DPAD, NULL,
+	                   NO_TEXT, S_TOUR_MOVE_NOTE, NO_TEXT, TG_DPAD, NULL, S_TOUR_TRY_LEFT_RIGHT, NULL,
 	                   NULL, NULL },
 	[TOUR_A]       = { S_TOUR_A_TITLE, S_TOUR_A_LINE,
 	                   NO_TEXT, NO_TEXT, NO_TEXT, TG_FACE, "A", NO_TEXT, "A", NULL, &LOOP_A },
@@ -854,13 +855,16 @@ int tour_lang_kept(const tour *t)
 /* The presses each lesson waits for, as a mask of tour_keys, and nothing
  * else: a step whose line asks for SELECT takes SELECT alone (the Pixel 2
  * test of 1.1.1-test.3: Music took L2 and R2 too, and a shoulder pressed
- * there read as a right answer). Move Around takes L1 and R1, which jump
- * on the home and move its little shelf. Leave a Game, Lock the Screen and
- * Unlock the Screen are answered in tour_press and tour_hold; the choices
- * there too. tools/tour-check.c presses every key in every step. */
+ * there read as a right answer). Move Around takes LEFT and RIGHT alone,
+ * the d-pad's or the left stick's, as its little shelf goes no other way
+ * (the R36S test of 1.1.1-test.3: UP, DOWN, L1 and R1 moved it too). Leave
+ * a Game, Lock the Screen and Unlock the Screen are answered in tour_press
+ * and tour_hold; the choices there too. tools/tour-check.c presses every
+ * key in every step, tools/inmodel-check.c every code and stick of every
+ * handheld. */
 #define K(k) (1u << (k))
 static const unsigned ANSWERS[TOUR_STEPS] = {
-	[TOUR_MOVE]   = K(TK_UP) | K(TK_DOWN) | K(TK_LEFT) | K(TK_RIGHT) | K(TK_L1) | K(TK_R1),
+	[TOUR_MOVE]   = K(TK_LEFT) | K(TK_RIGHT),
 	[TOUR_A]      = K(TK_A),
 	[TOUR_B]      = K(TK_B),
 	[TOUR_X]      = K(TK_X),
@@ -1052,15 +1056,11 @@ int tour_press(tour *t, tour_key k, uint32_t now)
 	if (t->step == TOUR_LOCK || t->step == TOUR_UNLOCK) return missed(t, k, now);
 	if (!answers(t, k)) return missed(t, k, now);
 	if (t->step == TOUR_MOVE) {
-		/* L1/R1 jump as they do on the home, 3 systems (HOME_JUMP) */
-		const int jump = k == TK_L1 || k == TK_R1 ? 3 : 1;
-		const int d = k == TK_LEFT || k == TK_UP || k == TK_L1 ? -1 : 1;
-		int to = t->pos + d * jump;
+		int to = t->pos + (k == TK_LEFT ? -1 : 1);
 		bool edge;
 
 		/* The little shelf follows, from wherever it is, as far as it has
-		 * cards: it has five, so a jump stops at its end, and goes nowhere
-		 * from there. */
+		 * cards: it has five, and goes nowhere past its end. */
 		if (to < -2) to = -2;
 		if (to > 2) to = 2;
 		edge = to == t->pos;
@@ -1132,6 +1132,12 @@ bool tour_quit_menu_in(const tour *t)
 	return t->step == TOUR_QUIT && t->moves > 0;
 }
 
+bool tour_key_checked(const tour *t, int i)
+{
+	if (t->step != TOUR_QUIT) return false;
+	return i == 0 ? tour_quit_menu_in(t) : i == 1 && t->done;
+}
+
 bool tour_takes_power(const tour *t)
 {
 	return !t->over && t->step == TOUR_POWER && !t->done;
@@ -1165,6 +1171,12 @@ void tour_pose(tour *t, tour_step step, uint32_t now, int ms, int done_ms,
 			t->moves = MOVES_WANTED;
 			t->pos = 1;
 			t->pos_from = 1.0f;
+		}
+		/* Leave a Game lands on X, MENU counted before it, as long before
+		 * as the loop has them */
+		if (step == TOUR_QUIT) {
+			t->moves = 1;
+			t->moved_at = t->done_at - (TOUR_QUIT_X_AT - TOUR_QUIT_MENU_AT);
 		}
 	}
 	zyper_tick(t, now);

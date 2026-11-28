@@ -55,15 +55,15 @@ ja = 移動
 it = Muoviti
 
 [tour.move.line]
-note = The shelf is the row of systems or games.
-en = Press the D-pad to move along the shelf.
-zh-Hans = 按方向键在列表中移动。
-es = Usa la cruceta para moverte por la lista.
-pt-BR = Use o direcional para andar pela lista.
-fr = Utilisez la croix pour parcourir la liste.
-de = Drücke das Steuerkreuz zum Bewegen.
-ja = 十字キーで一覧を移動します。
-it = Premi la croce direzionale per spostarti nell'elenco.
+note = The shelf is the row of systems or games, which goes left and right: LEFT and RIGHT are the d-pad's (or the left stick's), in capitals, as the choices' lines write them. tight: one line beside the handheld, no longer than English's.
+en = LEFT or RIGHT moves along the shelf.
+zh-Hans = 按左或右在列表中移动。
+es = IZQUIERDA/DERECHA recorren la lista.
+pt-BR = ESQUERDA/DIREITA para andar na lista.
+fr = GAUCHE/DROITE pour parcourir la liste.
+de = LINKS/RECHTS zum Bewegen.
+ja = 左か右で一覧を移動します。
+it = SINISTRA/DESTRA per scorrere l'elenco.
 
 [tour.move.note]
 note = L1/R1 jump 3 systems at a time on the home.
@@ -867,16 +867,16 @@ de = der rechte Stick
 ja = 右スティック
 it = lo stick destro
 
-[tour.try.dpad]
-note = What to press, said in "Try %s.": the move step's.
-en = the D-pad
-zh-Hans = 方向键
-es = la cruceta
-pt-BR = o direcional
-fr = la croix
-de = das Steuerkreuz
-ja = 十字キー
-it = la croce direzionale
+[tour.try.left_right]
+note = What to press, said in "Try %s.": the move step's, which takes LEFT and RIGHT alone (the d-pad's or the left stick's), in capitals as its line writes them. tight: the bubble's second line, beside "START: Skip"; es, pt-BR, fr, de and it name the two as a pair, as the choices' do.
+en = LEFT or RIGHT
+zh-Hans = 左或右
+es = IZQUIERDA/DERECHA
+pt-BR = ESQUERDA/DIREITA
+fr = GAUCHE/DROITE
+de = LINKS/RECHTS
+ja = 左か右
+it = SINISTRA/DESTRA
 
 [tour.try.vol]
 note = The volume step's.

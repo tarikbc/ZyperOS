@@ -373,6 +373,12 @@ static void table(const device_profile *p)
 			   (p->input.stick[j].axis_x != d->axis_x && p->input.stick[j].axis_y != d->axis_y),
 			   "%s: each axis one stick's", p->id);
 	}
+	/* A stick it prints the click of is read: test.3 on the R36S printed
+	 * R3 and never read ABS_RX or ABS_RY, so the right stick was no press
+	 * in the tutorial at all, and its every check here would pass by
+	 * skipping it */
+	ck(!printed(p, IN_L3) || p->input.stick[DEV_STICK_L].present, "%s: L3 printed, its left stick read", p->id);
+	ck(!printed(p, IN_R3) || p->input.stick[DEV_STICK_R].present, "%s: R3 printed, its right stick read", p->id);
 	if (p->chords.stick_dpad)
 		ck(p->input.stick[DEV_STICK_L].present && p->input.stick[DEV_STICK_L].first == IN_LEFT &&
 		   printed(p, IN_L3), "%s: the pages' left stick is its d-pad, by L3", p->id);
@@ -575,15 +581,15 @@ static const char *const OUTCOME[] = { "its press", "a wrong press", "nothing", 
  * DESIGN.md 11.10's table has it, written here and not read from tour.c */
 static outcome expect(const device_profile *p, tour_step s, in_button b)
 {
-	const in_kind kind = in_info_of(b)->kind;
-
 	if (s == TOUR_UNLOCK && (b == IN_SELECT || b == IN_START)) return X_QUIET;
 	if (b == IN_START) return X_SKIP;
 	if (b == IN_POWER) return s == TOUR_POWER ? X_DONE : X_CALLER;
 	if (b == IN_VOLUP || b == IN_VOLDN)
 		return s == TOUR_VOL ? X_DONE : s == TOUR_BRIGHT ? X_WRONG : X_QUIET;
 	if (b == IN_BRIGHTUP || b == IN_BRIGHTDN) return s == TOUR_BRIGHT ? X_DONE : X_QUIET;
-	if (s == TOUR_MOVE && (kind == IK_DPAD || b == IN_L1 || b == IN_R1)) return X_MOVE;
+	/* LEFT and RIGHT alone, the d-pad's or the left stick's (the R36S
+	 * test of 1.1.1-test.3: UP, DOWN, L1 and R1 moved it too) */
+	if (s == TOUR_MOVE && (b == IN_LEFT || b == IN_RIGHT)) return X_MOVE;
 	if (s == TOUR_QUIT && b == IN_MENU) return X_ACCEPT;
 	if ((s == TOUR_A && b == IN_ACCEPT) || (s == TOUR_B && b == IN_BACK) || (s == TOUR_X && b == IN_X) ||
 	    (s == TOUR_Y && b == IN_Y) || (s == TOUR_MENU && b == IN_MENU) ||
@@ -672,6 +678,7 @@ static void tutorial(const device_profile *p)
 			if (s == TOUR_LOCK && (b == IN_L2 || b == IN_MENU)) ext = menu;
 			if (s == TOUR_LOCK && b == IN_MENU) ext = "L2";
 			if (s == TOUR_QUIT && b == IN_X) ext = menu;
+			if (s == TOUR_MOVE) ext = "LEFT or RIGHT";
 			if (s == TOUR_BRIGHT && fn && (b == IN_VOLUP || b == IN_VOLDN || b == IN_MENU)) {
 				answered(&r, (tour_step)s, what, want, menu, NULL);
 				continue;
@@ -693,7 +700,8 @@ static void tutorial(const device_profile *p)
 				idle(&r);
 				snprintf(what, sizeof what, "the %s stick %s", i ? "right" : "left",
 				         i ? in_info_of(b)->name + 3 : in_info_of(b)->name);
-				answered(&r, (tour_step)s, what, expect(p, (tour_step)s, b), said(p, b), NULL);
+				answered(&r, (tour_step)s, what, expect(p, (tour_step)s, b), said(p, b),
+				         s == TOUR_MOVE ? "LEFT or RIGHT" : NULL);
 			}
 		}
 		/* The chords: the lock's and the screenshot's, and brightness */
@@ -718,16 +726,26 @@ static void tutorial(const device_profile *p)
 		}
 	}
 
-	/* The lessons of two presses and a hold, whole */
+	/* The lessons of two presses and a hold, whole. Leave a Game: each
+	 * glyph's check as its press counts, FN's and then X's, both through
+	 * the reward (the R36S test of 1.1.1-test.3: X had none) */
 	rig_init(&r, p);
 	tour_on(&r, TOUR_QUIT);
 	key(&r, code_of(p, IN_MENU), 1);
+	ck(!tour_key_checked(&r.t, 0), "%s: %s held in Leave a Game is not counted yet", p->id, menu);
 	key(&r, code_of(p, IN_MENU), 0);
 	idle(&r);
+	ck(tour_key_checked(&r.t, 0) && !tour_key_checked(&r.t, 1),
+	   "%s: %s let go in Leave a Game checks its glyph, X's not yet", p->id, menu);
 	key(&r, code_of(p, IN_X), 1);
+	ck(r.t.done && tour_key_checked(&r.t, 0) && tour_key_checked(&r.t, 1),
+	   "%s: %s, then X, in Leave a Game checks both glyphs", p->id, menu);
 	key(&r, code_of(p, IN_X), 0);
 	snprintf(what, sizeof what, "%s, X", menu);
 	answered(&r, TOUR_QUIT, what, X_DONE, "", NULL);
+	for (i = 0; i < 40; i++) idle(&r);
+	ck(r.t.step == TOUR_QUIT && tour_key_checked(&r.t, 0) && tour_key_checked(&r.t, 1),
+	   "%s: and both stay checked through the reward", p->id);
 
 	rig_init(&r, p);
 	tour_on(&r, TOUR_UNLOCK);
@@ -751,6 +769,52 @@ static void tutorial(const device_profile *p)
 		stick(&r, DEV_STICK_L, -1, 0);
 		stick(&r, DEV_STICK_L, 0, 0);
 		answered(&r, TOUR_MOVE, "the left stick twice", X_DONE, "", NULL);
+		rig_init(&r, p);
+		tour_on(&r, TOUR_MOVE);
+		stick(&r, DEV_STICK_L, 0, -1);
+		stick(&r, DEV_STICK_L, 0, 0);
+		stick(&r, DEV_STICK_L, 0, 1);
+		stick(&r, DEV_STICK_L, 0, 0);
+		ck(r.t.moves == 0 && !r.t.done && r.t.wrong, "%s: the left stick up and down moves nothing in %s",
+		   p->id, tour_step_info(TOUR_MOVE)->title);
+	}
+
+	/* The right stick wherever the tutorial judges a press, not the
+	 * lessons alone: wrong on the welcome and in every choice, named; on
+	 * the language step a press, which stops the languages going round;
+	 * nothing at the finish, which takes A alone */
+	if (p->input.stick[DEV_STICK_R].present) {
+		static const tour_step judged[] = { TOUR_WELCOME, TOUR_THEME, TOUR_HOME, TOUR_SOUNDS, TOUR_MUSIC };
+		size_t j;
+
+		for (j = 0; j < sizeof judged / sizeof judged[0]; j++)
+			for (d = 0; d < 4; d++) {
+				const in_button b = (in_button)(IN_RS_LEFT + d);
+
+				rig_init(&r, p);
+				tour_on(&r, judged[j]);
+				tour_set_music(&r.t, true);
+				stick(&r, DEV_STICK_R, DIR[d][0], DIR[d][1]);
+				stick(&r, DEV_STICK_R, 0, 0);
+				idle(&r);
+				snprintf(what, sizeof what, "the right stick %s", in_info_of(b)->name + 3);
+				answered(&r, judged[j], what, X_WRONG, said(p, b), NULL);
+				if (tour_choice_of(judged[j]) >= 0)
+					ck(r.t.pick[tour_choice_of(judged[j])] == r.t.kept[tour_choice_of(judged[j])],
+					   "%s: the right stick %s looks at no other choice in %s", p->id,
+					   in_info_of(b)->name + 3, tour_step_info(judged[j])->title);
+			}
+		rig_init(&r, p);
+		tour_on(&r, TOUR_LANG);
+		stick(&r, DEV_STICK_R, 1, 0);
+		stick(&r, DEV_STICK_R, 0, 0);
+		ck(r.t.lang_touched && !r.t.lang_moved && r.t.step == TOUR_LANG,
+		   "%s: the right stick stops the languages going round, and moves no cursor", p->id);
+		rig_init(&r, p);
+		tour_on(&r, TOUR_FINISH);
+		stick(&r, DEV_STICK_R, 1, 0);
+		stick(&r, DEV_STICK_R, 0, 0);
+		ck(!r.t.over && !r.t.wrong, "%s: the right stick at the finish is nothing", p->id);
 	}
 	(void)also;
 }

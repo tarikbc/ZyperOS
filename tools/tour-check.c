@@ -326,7 +326,12 @@ static void wrong(void)
 
 	tour_pose(&t, TOUR_MOVE, T0, 2000, -1, DEV(false));
 	tour_press(&t, TK_A, T0);
-	ck(!strcmp(t.hint, "That's A. Try the D-pad."), "the move step names the D-pad");
+	ck(!strcmp(t.hint, "That's A. Try LEFT or RIGHT."), "the move step names LEFT and RIGHT");
+	tour_pose(&t, TOUR_MOVE, T0, 2000, -1, DEV(false));
+	tour_press(&t, TK_UP, T0);
+	ck(!strcmp(t.hint, "That's Up. Try LEFT or RIGHT."), "and UP there is a direction it does not take");
+	ck(!strcmp(tour_step_info(TOUR_MOVE)->line, "LEFT or RIGHT moves along the shelf."),
+	   "its line asks for LEFT or RIGHT");
 	tour_pose(&t, TOUR_A, T0, 2000, -1, DEV(false));
 	tour_press(&t, TK_L1, T0);
 	ck(!strcmp(t.hint, "That's L1. Try A."), "a shoulder is named");
@@ -406,25 +411,36 @@ static void moves(void)
 	ck(tour_press(&t, TK_LEFT, T0) == DS_SOUND_MOVE && t.pos == -1, "the shelf follows a move");
 	ck(near(tour_shelf_pos(&t, T0), 0.0f) && near(tour_shelf_pos(&t, T0 + DS_MS_MOVE), -1.0f),
 	   "in move, from where it was");
-	ck(tour_press(&t, TK_UP, T0 + 40) == DS_SOUND_REWARD && t.pos == -2,
-	   "any direction counts, and the second move ends it");
+	ck(tour_press(&t, TK_LEFT, T0 + 40) == DS_SOUND_REWARD && t.pos == -2,
+	   "the second move ends it");
 	ck(t.pos_from > -1.0f && t.pos_from < 0.0f, "starting from wherever the shelf had got to");
 	tour_pose(&t, TOUR_MOVE, T0, 2000, -1, DEV(false));
 	t.pos = 2;
 	ck(tour_press(&t, TK_RIGHT, T0) == DS_SOUND_EDGE && t.pos == 2,
 	   "a move past the last card plays edge and goes nowhere");
 
-	/* L1/R1, which the step's note names, jump as on the home: 3 systems,
-	 * as far as the little shelf has cards */
-	tour_pose(&t, TOUR_MOVE, T0, 2000, -1, DEV(false));
-	ck(tour_press(&t, TK_R1, T0) == DS_SOUND_MOVE && t.pos == 2 && !t.wrong,
-	   "R1 counts as a move, and jumps to the little shelf's end");
-	ck(tour_press(&t, TK_L1, T0 + 40) == DS_SOUND_REWARD && t.pos == -1,
-	   "L1 jumps back 3, and ends the step as a second move");
-	tour_pose(&t, TOUR_MOVE, T0, 2000, -1, DEV(false));
-	t.pos = -2;
-	ck(tour_press(&t, TK_L1, T0) == DS_SOUND_EDGE && t.pos == -2,
-	   "a jump from the first card plays edge and goes nowhere");
+	/* LEFT and RIGHT alone, as the little shelf goes no other way (the
+	 * R36S test of 1.1.1-test.3): UP and DOWN, and L1/R1, which the
+	 * step's note names, are wrong presses, and move nothing */
+	{
+		static const tour_key no[] = { TK_UP, TK_DOWN, TK_L1, TK_R1, TK_RSTICK, TK_A, TK_L3 };
+		size_t i;
+
+		for (i = 0; i < sizeof no / sizeof no[0]; i++) {
+			char what[96];
+
+			tour_pose(&t, TOUR_MOVE, T0, 2000, -1, DEV(false));
+			snprintf(what, sizeof what, "%s in the move step is a wrong press, and moves nothing",
+			         tour_key_name(no[i]));
+			ck(tour_press(&t, no[i], T0) == DS_SOUND_DENY && t.wrong && t.moves == 0 && t.pos == 0 &&
+			   !t.done && strstr(t.hint, "Try LEFT or RIGHT."), what);
+		}
+		tour_pose(&t, TOUR_MOVE, T0, 2000, -1, DEV(false));
+		tour_press(&t, TK_UP, T0);
+		tour_press(&t, TK_R1, T0 + 10);
+		ck(tour_press(&t, TK_RIGHT, T0 + 20) == DS_SOUND_MOVE && !t.done && t.moves == 1,
+		   "after them a RIGHT is the first move still");
+	}
 	ck(!strcmp(tour_step_info(TOUR_MOVE)->note, "L1/R1 jump 3 systems."),
 	   "its note names L1/R1, as MENU > Controls writes the pair");
 	tour_pose(&t, TOUR_A, T0, 2000, -1, DEV(false));
@@ -549,7 +565,7 @@ static void keys(void)
 static void buttons(void)
 {
 	static const struct { tour_step s; in_button b; int snd; } want[] = {
-		{ TOUR_MOVE, IN_UP, DS_SOUND_MOVE }, { TOUR_MOVE, IN_DOWN, DS_SOUND_MOVE },
+		{ TOUR_MOVE, IN_UP, DS_SOUND_DENY }, { TOUR_MOVE, IN_DOWN, DS_SOUND_DENY },
 		{ TOUR_MOVE, IN_LEFT, DS_SOUND_MOVE }, { TOUR_MOVE, IN_RIGHT, DS_SOUND_MOVE },
 		{ TOUR_A, IN_ACCEPT, DS_SOUND_REWARD }, { TOUR_B, IN_BACK, DS_SOUND_REWARD },
 		{ TOUR_X, IN_X, DS_SOUND_REWARD }, { TOUR_Y, IN_Y, DS_SOUND_REWARD },
@@ -557,7 +573,8 @@ static void buttons(void)
 		{ TOUR_VOL, IN_VOLUP, DS_SOUND_REWARD }, { TOUR_VOL, IN_VOLDN, DS_SOUND_REWARD },
 		{ TOUR_BRIGHT, IN_BRIGHTUP, DS_SOUND_REWARD },
 		{ TOUR_BRIGHT, IN_BRIGHTDN, DS_SOUND_REWARD },
-		{ TOUR_MOVE, IN_L1, DS_SOUND_MOVE }, { TOUR_MOVE, IN_R1, DS_SOUND_MOVE },
+		{ TOUR_MOVE, IN_L1, DS_SOUND_DENY }, { TOUR_MOVE, IN_R1, DS_SOUND_DENY },
+		{ TOUR_MOVE, IN_RS_LEFT, DS_SOUND_DENY }, { TOUR_MOVE, IN_RS_RIGHT, DS_SOUND_DENY },
 		{ TOUR_A, IN_L1, DS_SOUND_DENY }, { TOUR_A, IN_R1, DS_SOUND_DENY },
 		{ TOUR_A, IN_START, DS_SOUND_BACK },
 	};
@@ -663,8 +680,7 @@ static void every_key(void)
 				want = lands ? DS_SOUND_REWARD
 				     : key == TK_START && st != TOUR_UNLOCK ? DS_SOUND_BACK
 				     : quiet ? TOUR_QUIET
-				     : st == TOUR_MOVE && (key == TK_UP || key == TK_DOWN || key == TK_LEFT ||
-				                           key == TK_RIGHT || key == TK_L1 || key == TK_R1)
+				     : st == TOUR_MOVE && (key == TK_LEFT || key == TK_RIGHT)
 				       ? -2   /* a move or the edge's sound */
 				     : st == TOUR_QUIT && key == TK_MENU ? DS_SOUND_ACCEPT
 				     : DS_SOUND_DENY;
@@ -919,9 +935,24 @@ static void menu_jobs(void)
 	ck(tour_press(&t, TK_B, T0 + 40) == DS_SOUND_BACK && t.moves == 0, "B closes it, back");
 	ck(tour_press(&t, TK_MENU, T0 + 50) == DS_SOUND_ACCEPT && t.moves == 1, "MENU again");
 	ck(tour_press(&t, TK_MENU, T0 + 60) == DS_SOUND_BACK && t.moves == 0, "and MENU closes it too");
+	ck(!tour_key_checked(&t, 0) && !tour_key_checked(&t, 1), "the menu closed: neither glyph checked");
 	tour_press(&t, TK_MENU, T0 + 70);
 	ck(tour_quit_menu_in(&t), "MENU counted: its glyph has the check");
+	ck(tour_key_checked(&t, 0) && !tour_key_checked(&t, 1), "MENU's glyph checked, X's not yet");
 	ck(tour_press(&t, TK_X, T0 + 80) == DS_SOUND_REWARD && t.done, "MENU, then X: the reward");
+	ck(tour_key_checked(&t, 0) && tour_key_checked(&t, 1),
+	   "and X's glyph checked too, with MENU's (the R36S test of 1.1.1-test.3)");
+	tour_tick(&t, T0 + 80 + DS_MS_TOUR_REWARD - 1);
+	ck(t.step == TOUR_QUIT && tour_key_checked(&t, 0) && tour_key_checked(&t, 1),
+	   "both kept through the reward");
+	tour_tick(&t, T0 + 80 + DS_MS_TOUR_REWARD);
+	ck(t.step == TOUR_LOCK && !tour_key_checked(&t, 0) && !tour_key_checked(&t, 1),
+	   "and no glyph of the next lesson is checked");
+	tour_pose(&t, TOUR_QUIT, T0, 4000, 300, DEV(true));
+	ck(tour_key_checked(&t, 0) && tour_key_checked(&t, 1) && tour_quit_menu_in(&t),
+	   "a still of its reward has both checks, as the press does");
+	tour_pose(&t, TOUR_A, T0, 4000, 300, DEV(true));
+	ck(!tour_key_checked(&t, 0) && !tour_key_checked(&t, 1), "no other lesson has a glyph's check");
 	ck(tour_part_press(&t, TP_MENU, T0 + 2000) == 0.0f, "and the loop stops pressing once it is done");
 
 	/* MENU, and no X for 3 s: the menu closes and the lesson starts over
