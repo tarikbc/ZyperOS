@@ -1542,7 +1542,7 @@ fixed places (B 64, Y 432, X 832), with no room kept for a fourth.
 
 Since 2026-11-11 every legend is one: a panel's foot (Wi-Fi, Bluetooth,
 Play Time, Date & Time, Developer Mode, Album Art, File Transfer, every "B
-close" and "B stop"), the hotspot's page and the tutorial's "(START) skip".
+close" and "B stop"), the hotspot's page and the tutorial's "(START) Skip", capitalized as the tiles' hints are (2026-11-28).
 A screen hands a panel its list packed as a row's label
 (`keyhints_legend`), and the panel draws it centered on that row; the
 checks read it back as text (tools/legend.h, `legend_text`). The words are
@@ -1972,7 +1972,7 @@ for the reward, and a wrong press tilted, nudged and answered.)*
 | Settings | MENU | a menu panel opens over the shelf; "MENU+L1 takes a screenshot." under the line | MENU, which opens nothing here |
 | Leave a Game | MENU, a comma and X (11.9's "one after the other"), MENU and X lit on the handheld | the stand-in game plays, MENU opens the in-game menu over it (its last row Quit, X's glyph at its right), X closes it as the game goes back into its card; "It picks up there next time." under the line | MENU, then X: MENU opens the menu on the stage (accept), puts the reward's check in small on the MENU glyph's top-left corner, and holds the menu for X; MENU or B closes it again (back), and so does 3 s with no X, the lesson starting over at MENU; X first is "That's X. Press MENU first." |
 | Lock the Screen | MENU, a plus and L2 (the lock's button as Hotkeys has it), both lit on the handheld | the shelf goes dark at the chord and the lock's panel shows in small (the padlock, its bar), then the shelf comes back; "On every screen, in a game too." under the line | the chord, which the tutorial takes in place of the lock: the stage goes dark with the lock's panel and stays so for the next lesson; the handheld is never locked. MENU alone is "Hold MENU, then press L2.", L2 alone "That's L2. Hold MENU too." |
-| Unlock the Screen | SELECT, a plus and START, both lit on the handheld | on the stage the lock left, SELECT and START held fill the panel's bar and the shelf comes back; the line is "Hold SELECT and START 2 s to unlock." (Hold to Unlock's seconds, "0.5" or "0,5" as the language writes) | SELECT and START held together for Hold to Unlock's time, the bar filling as they are held and emptying when one is let go; START skips nothing in this step, and "START: skip" is not drawn |
+| Unlock the Screen | SELECT, a plus and START, both lit on the handheld | on the stage the lock left, SELECT and START held fill the panel's bar and the shelf comes back; the line is "Hold SELECT and START 2 s to unlock." (Hold to Unlock's seconds, "0.5" or "0,5" as the language writes) | SELECT and START held together for Hold to Unlock's time, the bar filling as they are held and emptying when one is let go; START skips nothing in this step, and "START: Skip" is not drawn |
 | Music | SELECT, and L2/R2 lit on the handheld | MP4's Now Playing fades in; "L2/R2 play the previous or next song." under the line | SELECT, which opens nothing here |
 | Volume | the VOL rocker | a stand-in bar slides onto the stage and steps up | VOL+ or VOL-, which change the real volume and show the real bar |
 | Brightness | MENU+VOL: the MENU pill, a plus and the rocker (F1 and F2 on the Brick) | the stand-in bar's sun steps up | the chord, which changes the real brightness |
@@ -2061,9 +2061,9 @@ of the player's own goes on from wherever the loop was.
   side keys as tabs on its edges; `docs/design/mock/tutorial-buttons-lab.html`.)*
   For it the lesson block - progress, stage, check, glyph, title and lines -
   moves right 104 units, so every x above is 104 more; Zyper's corner, his
-  bubble and "START: skip" stay. A title, line or note wider than that
+  bubble and "START: Skip" stay. A title, line or note wider than that
   leaves keeps the **inset** from the right edge instead, ending where
-  "START: skip" ends (Music's line, wider than the stage, sits a little
+  "START: Skip" ends (Music's line, wider than the stage, sits a little
   left of the stage's middle). On a device with no drawing (the host's
   own, beside F1 and F2) nothing moves and there is no handheld.
   src/tourdevice.c draws it in code, no image files,
@@ -2249,7 +2249,7 @@ of the player's own goes on from wherever the loop was.
   the rig's failure, the right glyph pulsing twice (6%, in **tour-pulse**),
   and his bubble saying "That's X. Try Y." for **hold-short**, after which he
   goes down. In the power step the bubble says it alone, his place taken by
-  the stage's Zyper. A bubble too wide to keep 16 units clear of "START: skip"
+  the stage's Zyper. A bubble too wide to keep 16 units clear of "START: Skip"
   takes its second sentence to a second line above. In the brightness step a
   volume key alone says "That's volume. Hold MENU too." ("Try F1 or F2." on
   the Brick), and MENU alone "Hold MENU, then press VOL+." START, POWER and
@@ -2272,7 +2272,7 @@ of the player's own goes on from wherever the loop was.
   else, and a second press during that reward, it turns the handheld off.
 - **START** skips at any point but Unlock the Screen, whose hold it is half
   of (pressed a moment before SELECT it would end the tutorial), "START:
-  skip" in **meta** **text-dim** at the bottom right, its right edge at
+  Skip" in **meta** **text-dim** at the bottom right, its right edge at
   1000, not drawn in that step. After a skip at the first start, a
   one-line message (11.8), "Show Tutorial is in MENU.", holds **hold-short**
   over the shelf; any press puts it away.
@@ -7698,8 +7698,25 @@ stops the game as the menu's Quit does.
 **Over your PICO-8** the same hotkeys, judged in portkeys by the same chord
 rule (11.55): Reset Game (asked first), Quit, Next Shader and Next Display,
 the first four and Fast Forward doing nothing, as PICO-8 has no states and
-no speed. The Screenshot, MENU's chord now (below), waits there for
-portkeys to read MENU's chords as Diatom does.
+no speed. The Screenshot is MENU's chord (below), as everywhere.
+
+**MENU's chords over a port** *(2026-11-28: one Screenshot that works
+anywhere)*. Over every port portkeys judges MENU's two chords as the
+launcher and Diatom do, by the same table of the handheld's codes
+(src/device/<id>_input.h, tools/pkkeys.c): the button pressed while MENU is
+held is the chord, and MENU then opens nothing as it is let go; MENU alone
+still opens the in-game menu on its release. The keys and Hold to Unlock are
+the launcher's (`menukeys` in its database). **The screenshot**: over your
+PICO-8 its own 128 x 128 picture as before, over any other port the whole
+frame on the panel, turned back to landscape, to `Screenshots/<System>/<the
+game> <time>.png` (the launcher hands the folder over to every port), with
+the shutter, the buzz and the pop-up with the shot in it. **The lock**:
+every input device held (the port sees no key), "Locked" and "Hold
+SELECT+START to unlock" over the port (the launcher renders it as it hands
+over, both themes), and SELECT and START held together for Hold to Unlock's
+time give it all back; POWER still turns the handheld off. A port sees the
+chord's button itself (portkeys holds no pad over it, but over your
+PICO-8, whose pad it gives).
 
 **The screenshot** is the game's own frame at its own size, as a save's
 picture is, not the screen with its shader and border: Diatom keeps that

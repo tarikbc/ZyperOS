@@ -292,12 +292,12 @@ ja = ゲーム一覧に戻る
 it = torna all'elenco giochi
 
 [keyhint.skip]
-note = A button hint's word, beside its button's glyph (src/keyhints.h): The tutorial: START skips the rest. Short, as each language writes a hint's word (English's lowercase).
-en = skip
+note = A button hint's word, beside its button's glyph (src/keyhints.h): The tutorial: START skips the rest. Short, a hint's capitals as the tiles' hints have them (Move, Choose, Close; Title Case in English).
+en = Skip
 zh-Hans = 跳过
-es = omitir
-pt-BR = pular
-fr = passer
-de = beenden
+es = Omitir
+pt-BR = Pular
+fr = Passer
+de = Beenden
 ja = スキップ
-it = salta
+it = Salta
