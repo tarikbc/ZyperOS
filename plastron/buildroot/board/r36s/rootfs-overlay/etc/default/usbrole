@@ -1,14 +1,24 @@
-# The R36S's OTG port as a USB host for good (package/usbrole). usbrole
-# makes a port a host only while the USB PHY's ID pin (its extcon's
-# USB-HOST cable) asks for power, and on the R36S nothing can: the PHY's
-# otg-port, which reads that pin, is disabled in ROCKNIX's R36S tree
-# (rk3326-gameconsole-r3xs.dtsi, &u2phy) and in the R36S's stock trees
-# (dArkOSen-R36S's boot/dtb/r36s/*/rk3326-r36s-linux.dtb, at
-# djparentx/dArkOSen-R36S 28f5427f7ae953ee6e813618705baf569fef0f27), so
-# usbrole kept the port a device and nothing plugged in it worked (Sylver,
-# 2026-11-27). The stock firmware leaves the controller's dr_mode "otg"
-# with no way to detect a role, which makes it a host
-# (KERNEL/USB_Gadget_Mass_Storage.md there), and px30.dtsi's role switch
-# starts it as one. Its DC port charges; this one powers what is plugged
-# in (the device tree's vbus-supply, the RK817's OTG_SWITCH).
-ROLE=host
+# The R36S's OTG port as a USB device for good (package/usbrole), until a
+# rule that tells a computer from an accessory is built from what the port
+# reads. usbrole makes a port a host only while the USB PHY's ID pin (its
+# extcon's USB-HOST cable) asks for power, and on the R36S nothing can: the
+# PHY's otg-port, which reads that pin and the port's power (otg-id,
+# otg-bvalid), is disabled in ROCKNIX's R36S tree (rk3326-gameconsole-r3xs.dtsi,
+# &u2phy) and in the R36S's stock trees (dArkOSen-R36S's
+# boot/dtb/r36s/*/rk3326-r36s-linux.dtb, at djparentx/dArkOSen-R36S
+# 28f5427f7ae953ee6e813618705baf569fef0f27; the stock firmware is a host by
+# default and has no gadget).
+#
+# A host for good (ROLE=host, 2026-11-27, for Sylver's flash drives) put the
+# port's own power out with a computer on the cable too, and the computer
+# never saw the R36S: no File Transfer, no SSH over the cable (Tarik's
+# R36S-V21, 2026-11-28). A device never feeds anything, so a computer on the
+# cable is safe, and the gadget (File Transfer, Developer Mode's link) can
+# answer it; a flash drive or a Wi-Fi adapter gets no power until the rule
+# comes. usbrole writes the port's facts into the kernel's log meanwhile:
+# every power supply's online and uevent, the role, each extcon, the gadget
+# controller's state and the USB devices on the bus, at the start and at
+# each change, for that rule. The internal hub some boards have (dArkOSen's
+# KERNEL/USB_Gadget_Mass_Storage.md, an R36H Pro Max) shows only as a host,
+# so it is not looked for: a host's power could meet a computer's.
+ROLE=device

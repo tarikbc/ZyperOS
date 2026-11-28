@@ -11,7 +11,10 @@
  *
  * No headphone jack read (RK_JACK 0): its device tree's line read "plugged"
  * whatever was in the jack on board R36S-V12, so the volume keeps the
- * speaker's window, as ZyperOS's launcher does (its src/device/r36s.c). */
+ * speaker's window, as ZyperOS's launcher does (its src/device/r36s.c).
+ *
+ * No DDR ceiling (RK_DMC 0): its device tree leaves the DMC off, so there is
+ * no /sys/class/devfreq/dmc to write. */
 #include <linux/input.h>
 
 #define RK_PORT          "r36s"
@@ -20,5 +23,6 @@
 #define RK_CODE_FUNCTION BTN_MODE
 #define RK_STICKS        1
 #define RK_JACK          0
+#define RK_DMC           0
 
 #include "pixel2.c"

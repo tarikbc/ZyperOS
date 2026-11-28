@@ -3,3 +3,8 @@
 DATA_LABEL=ZYPEROS
 CHECK_CPU_MAX=1008000
 CHECK_LOG=.userdata/r36s/logs/card-check.txt
+# Its boot partition's label (genimage.cfg), where setuplog writes the first
+# start's zyperos-setup.txt and crashlog its reports: both looked for the
+# Pixel 2's PX2BOOT alone, so an R36S whose first start stopped left nothing
+# a computer could read (Tarik's R36S-V21, 2026-11-28)
+BOOT_LABEL=R36SBOOT

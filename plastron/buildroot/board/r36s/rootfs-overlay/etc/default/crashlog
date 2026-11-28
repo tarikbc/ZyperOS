@@ -1,0 +1,6 @@
+# plastron's /usr/sbin/crashlog on ZyperOS for the R36S: board/zyperos's
+# (its rootfs-overlay/etc/default/crashlog) with the R36S's own folder, which
+# its launcher's Download logs packs. That one names the Pixel 2's, and the
+# R36S's reports went into .userdata/pixel2/logs (Tarik's R36S, 2026-11-28).
+# Onto R36SBOOT as well (/etc/default/datapart's BOOT_LABEL).
+CRASH_DIR=/mnt/SDCARD/.userdata/r36s/logs

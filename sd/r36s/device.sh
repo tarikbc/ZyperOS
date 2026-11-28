@@ -78,7 +78,35 @@ device_log() {
 			[ -e "$f" ] && echo "r36s: $f $(tr '\n' ' ' < "$f")"
 		done 2> /dev/null
 		cat /run/usbrole/state 2> /dev/null | sed 's/^/r36s: usbrole /'
-		dmesg 2> /dev/null | grep -iE 'dwc2|usb[0-9]|usbrole|jackswitch' |
-			sed 's/^/kernel: /'
+		dmesg 2> /dev/null | grep -iE 'jackswitch' | sed 's/^/kernel: /'
 	} >> "$LOG" 2>&1 &
+	device_usb_follow >> "$LOG" 2>&1 &
+}
+
+# The kernel's lines about the USB port, from the start and as they come, for
+# the whole session: usbrole's facts at each change (the role, every power
+# supply, the extcon, the gadget controller's state, the DWC2's registers,
+# the line probe), the gadget's binding and the controller's own lines, each
+# with the kernel's time in seconds. device_log's one look at the kernel's
+# log came a second into the start, before S40usbgadget and usbrole had
+# said anything, so test.3's log of the session the cable went in had none
+# of it. /dev/kmsg gives one record a read, so cat, never the shell's read;
+# the shutdown's kill ends it before the card is unmounted.
+device_usb_follow() {
+	cat /dev/kmsg 2> /dev/null | while IFS= read -r rec; do
+		case "$rec" in
+		" "*) continue ;;                  # a record's key=value lines
+		esac
+		msg=${rec#*;}
+		case "$msg" in
+		*"Mode Mismatch"*) continue ;;      # a register read in the other mode
+		*usbrole*|*dwc2*|*"usb "[0-9]*|*usb[0-9]*|*gadget*|*udc*|*UDC*|*ncm*|*extcon*) ;;
+		*) continue ;;
+		esac
+		us=$(echo "${rec%%;*}" | cut -d, -f3)
+		case "$us" in
+		''|*[!0-9]*) echo "kernel: $msg" ;;
+		*) printf 'kernel: [%5d.%06d] %s\n' $((us / 1000000)) $((us % 1000000)) "$msg" ;;
+		esac
+	done
 }

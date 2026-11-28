@@ -33,4 +33,9 @@
 #define RK_JACK          0
 #define RK_DC_CHARGING   1
 
+/* A computer on the OTG port from the gadget controller's state (src/
+ * udcpeer.h): its PHY's otg-port is off and its RK817 reads no power there,
+ * so neither can tell (1.1.1-r36s-test.3, 2026-11-28) */
+#define RK_PEER_FROM_UDC 1
+
 #include "pixel2.c"

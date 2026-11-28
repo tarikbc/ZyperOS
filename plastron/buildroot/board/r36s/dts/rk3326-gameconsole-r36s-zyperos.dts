@@ -30,3 +30,34 @@
 	reg = <0x0 0xff460000 0x0 0x260>, <0x0 0xff460a00 0x0 0x400>;
 	reg-names = "regs", "gamma_lut";
 };
+
+/*
+ * The PX30's watchdog, px30.dtsi's, disabled there and in ROCKNIX's tree: on,
+ * as on the Pixel 2 (rk3326s-gkd-pixel2.dts). The R36S boots the Pixel 2's
+ * U-Boot, which starts it (board/px2/u-boot/px2.config: 30 s asked, one TOP
+ * of 2^31 cycles at its 100 MHz clock, 21.5 s, its reset at the first), and
+ * with this off nothing in Linux petted it: the chip reset itself about 21 s
+ * into every start, the RK817 left on, so the card stayed in its 1.8 V
+ * signalling and the boot ROM could not read it. The screen black until a
+ * power-off, at a quarter of the first start's copy and 5 s into the
+ * launcher's tutorial (Tarik's R36S-V21 2024-12-18 2604, 2026-11-28). The
+ * kernel pets it from the probe on, plastron's hwdog from init's first step
+ * (r36s_defconfig, boot-prelude.cmd's watchdog.open_timeout).
+ */
+&wdt {
+	status = "okay";
+};
+
+/*
+ * The OTG port a device from the controller's probe, not a host until
+ * S40usbgadget and usbrole make it one (rk3326.dtsi's default, the Pixel
+ * 2's, is host). As a host the controller turns on its vbus-supply, the
+ * RK817's otg_switch, and the port puts 5 V out: test.3's first start read
+ * 5.0 V on the RK817's VUSB with nothing plugged in, its log written as the
+ * role went to device 66 s in, after the first start's copy (Tarik's
+ * R36S-V21, 2026-11-28). A computer on the cable then is fed by the R36S for
+ * as long as the start takes. A device never feeds anything.
+ */
+&usb20_otg {
+	role-switch-default-mode = "peripheral";
+};
