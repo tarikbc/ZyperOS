@@ -1698,6 +1698,27 @@ build-native/linebreak-check: tools/linebreak-check.c src/linebreak.c src/linebr
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
 	      -o $@ tools/linebreak-check.c src/linebreak.c
 
+# The input model (src/inmodel.h, src/inengine.h, DESIGN.md 11.9 "One input
+# model"), for every device profile through its own codes and sticks: the
+# buttons' one table, each profile's, every code, MENU's chords, the hotkeys'
+# two capture screens, both sticks, and the tutorial: every lesson with every
+# code, stick direction and chord, exactly the right ones passing, every
+# wrong one named as the handheld prints it, and the glyph lit for a press
+# the button the answer saw. Built with -Werror, so a button a switch leaves
+# out does not build. No SDL.
+check-inmodel: build-native/inmodel-check
+	@./build-native/inmodel-check
+
+build-native/inmodel-check: tools/inmodel-check.c src/inengine.c src/inengine.h src/inmodel.h src/inbutton.h \
+                            src/device/devinput.h src/device/profile.h src/stickpad.c src/tour.c src/tour.h \
+                            src/menukeys.c src/hotkeys.c $(wildcard src/device/*_input.h) $(I18N_SRC) FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -Werror -Wno-unused-parameter -D_GNU_SOURCE -O1 -g \
+	      -DZYPEROS_PROFILE=device_profile_desktop -DZYPEROS_PROFILES_ALL \
+	      -o $@ tools/inmodel-check.c src/inengine.c src/stickpad.c src/tour.c src/powerhold.c src/zyperrig.c \
+	      src/config.c src/db.c src/atomic.c src/menukeys.c src/hotkeys.c src/profile.c src/thermal.c \
+	      src/ds/button.c src/canvas.c $(I18N_SRC) $(DEVICE_PROFILES) $(DEVICE_BUILDS) -lsqlite3 -lm
+
 # The tutorial's steps (DESIGN.md 11.10): what each launcher button is to it
 # and which glyph part the hand lights, every step in order and what each
 # waits for, the deaf start of a step for every key, START, the wrong presses
