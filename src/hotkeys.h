@@ -5,6 +5,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "inbutton.h"
+
 /* The hotkeys a player sets (DESIGN.md 11.61), pure: no SDL, no
  * database. Every hotkey is SELECT held and one more button (my pick in the
  * Controls lab, 2026-11-19: MENU is never a holder, so MENU stays one press),
@@ -55,6 +57,10 @@ bool hk_equal(const hk_table *a, const hk_table *b);
 /* A button as printed and as Diatom names it: "R1" and "r1"; NULL for none */
 const char *hk_key_name(int key);
 const char *hk_key_map(int key);
+/* The logical button a key is (src/inmodel.h), IN_NONE for none; and the
+ * key a button is, HK_NONE for one SELECT and MENU are never held with */
+in_button hk_button(int key);
+int hk_key_of(in_button b);
 
 /* An action as Diatom names it ("save", "shot") */
 const char *hk_act_name(hk_act a);

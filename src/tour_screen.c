@@ -254,16 +254,9 @@ void tour_run(app *a, bool first)
 			}
 		}
 		for (i = 0; i < n; i++) tour_sound(snd[i]);
-		{
-			/* The Pixel 2's L2 and R2 come only as taps on release:
-			 * held, the handheld has the platform's word for them */
-			bool held[IN_COUNT];
-
-			memcpy(held, a->in.down, sizeof held);
-			held[IN_L2] = held[IN_L2] || plat_tap_held(IN_L2);
-			held[IN_R2] = held[IN_R2] || plat_tap_held(IN_R2);
-			tour_hands(&t, held, plat_menu_held(), now);
-		}
+		/* The glyphs light from what the hand holds, the same engine's
+		 * as the presses the answers read (src/inengine.h) */
+		tour_hands(&t, a->in.held, now);
 		tour_tick(&t, now);
 		/* Each step as it comes on, for the checks that press through it
 		 * (check-menukeys) */

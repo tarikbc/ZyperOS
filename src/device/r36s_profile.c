@@ -16,6 +16,7 @@
  * R3, which the launcher names and draws; in a game Diatom gives the core
  * both sticks and both clicks. */
 #include "profile.h"
+#include "r36s_input.h"
 
 /* Its core options (src/device/r36s_coreopts.c), linked in its build alone */
 extern const dev_default dev_coreopts_r36s[];
@@ -74,6 +75,7 @@ const device_profile device_profile_r36s = {
 		.battery_chord = false,
 		.stick_dpad = true,
 	},
+	.input = R36S_INPUT,
 	.buttons = r36s_buttons,
 	.n_buttons = (int)(sizeof r36s_buttons / sizeof r36s_buttons[0]),
 	.model = &td_model_r36s,

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* Desk mode (desk.h): the host build as a handheld in a window. */
 #include "desk.h"
+#include "inmodel.h"   /* the buttons' words */
 
 #include "../device.h"
 #include "deskface.h"
@@ -901,14 +902,8 @@ static void ctl_start(void)
 	fprintf(stderr, "desk: control socket %s (tools/desk)\n", path);
 }
 
-static const char *const BTN_NAMES[IN_COUNT] = {
-	[IN_LEFT] = "left", [IN_RIGHT] = "right", [IN_UP] = "up", [IN_DOWN] = "down",
-	[IN_ACCEPT] = "a", [IN_BACK] = "b", [IN_X] = "x", [IN_Y] = "y",
-	[IN_L1] = "l1", [IN_R1] = "r1", [IN_START] = "start", [IN_SELECT] = "select",
-	[IN_MENU] = "menu", [IN_VOLUP] = "volup", [IN_VOLDN] = "voldown",
-	[IN_BRIGHTUP] = "brightup", [IN_BRIGHTDN] = "brightdown", [IN_POWER] = "power",
-	[IN_L2] = "l2", [IN_R2] = "r2", [IN_L3] = "l3", [IN_R3] = "r3",
-};
+/* Each button's word in a command, the input model's (src/inmodel.h) */
+static const char *btn_name(int b) { return in_info_of((in_button)b) ? in_info_of((in_button)b)->word : NULL; }
 
 /* "a+right" as a mask of buttons; 0 when one is no button */
 static Uint32 chord(const char *s)
@@ -920,7 +915,7 @@ static Uint32 chord(const char *s)
 	for (tok = strtok_r(buf, "+", &save); tok; tok = strtok_r(NULL, "+", &save)) {
 		int b;
 		for (b = 0; b < IN_COUNT; b++)
-			if (BTN_NAMES[b] && !strcmp(tok, BTN_NAMES[b])) break;
+			if (btn_name(b) && !strcmp(tok, btn_name(b))) break;
 		if (b == IN_COUNT) return 0;
 		m |= 1u << b;
 	}
@@ -980,8 +975,8 @@ static void held_json(char *out, size_t cap)
 
 	out[0] = '\0';
 	for (int b = 0; b < IN_COUNT; b++)
-		if ((g_held >> b & 1) && BTN_NAMES[b])
-			used += (size_t)snprintf(out + used, used < cap ? cap - used : 0, "%s\"%s\"", used ? "," : "", BTN_NAMES[b]);
+		if ((g_held >> b & 1) && btn_name(b))
+			used += (size_t)snprintf(out + used, used < cap ? cap - used : 0, "%s\"%s\"", used ? "," : "", btn_name(b));
 }
 
 static char g_focus_screen[96] = "", g_focus_name[96] = "";
@@ -1036,7 +1031,7 @@ static void ctl_event(const SDL_Event *e, in_state *st)
 		Uint32 m = chord(a1);
 		int ms = *a2 ? atoi(a2) : 80;
 		if (!m || ms < 1 || ms > 5000) {
-			reply(fd, "{\"ok\":false,\"error\":\"buttons: up down left right a b x y l1 r1 l2 r2 select start menu volup voldown brightup brightdown power, joined with +\"}");
+			reply(fd, "{\"ok\":false,\"error\":\"buttons: up down left right a b x y l1 r1 l2 r2 l3 r3 rsleft rsright rsup rsdown select start menu volup voldown brightup brightdown power, joined with +\"}");
 		} else {
 			bool down = strcmp(verb, "release") != 0;
 			if (!strcmp(verb, "latency")) g_press_t0 = -1;    /* this press is the one timed */

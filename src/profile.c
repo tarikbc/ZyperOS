@@ -5,6 +5,7 @@
  * desktop, with every profile linked (ZYPEROS_PROFILES_ALL) so --device can
  * wear any of them. Plain C, no SDL: the checks link it as it is. */
 #include "device/profile.h"
+#include "inmodel.h"
 
 #include <stddef.h>
 #include <stdio.h>
@@ -127,11 +128,6 @@ const td_model *dev_tutorial_model(const device_profile *p, const dev_chords *c)
 	return p->model;
 }
 
-bool dev_l2r2_held(const dev_chords *c, bool tap_l2, bool tap_r2, bool down_l2, bool down_r2)
-{
-	return c->lr2_taps ? tap_l2 && tap_r2 : down_l2 && down_r2;
-}
-
 const dev_button *dev_button_of(const device_profile *p, in_button b)
 {
 	int i;
@@ -143,18 +139,11 @@ const dev_button *dev_button_of(const device_profile *p, in_button b)
 
 bool dev_button_place(const device_profile *p, in_button b, td_face *face, float *x, float *z)
 {
-	/* The key of the handheld each button is */
-	static const td_key KEY[IN_COUNT] = {
-		[IN_LEFT] = TD_DPAD, [IN_RIGHT] = TD_DPAD, [IN_UP] = TD_DPAD, [IN_DOWN] = TD_DPAD,
-		[IN_ACCEPT] = TD_A, [IN_BACK] = TD_B, [IN_X] = TD_X, [IN_Y] = TD_Y,
-		[IN_L1] = TD_L1, [IN_R1] = TD_R1, [IN_START] = TD_START, [IN_SELECT] = TD_SELECT,
-		[IN_MENU] = TD_MENU, [IN_VOLUP] = TD_VOLUP, [IN_VOLDN] = TD_VOLDN,
-		[IN_BRIGHTUP] = TD_F2, [IN_BRIGHTDN] = TD_F1, [IN_POWER] = TD_POWER,
-		[IN_L2] = TD_L2, [IN_R2] = TD_R2, [IN_L3] = TD_L3, [IN_R3] = TD_R3 };
 	const td_part *part;
 
-	if (!p || !p->model || b < 0 || b >= IN_COUNT) return false;
-	part = td_part_of(p->model, KEY[b]);
+	/* The key of the handheld each button is, the input model's */
+	if (!p || !p->model || !in_info_of(b)) return false;
+	part = td_part_of(p->model, in_info_of(b)->key);
 	if (!part) return false;
 	*face = part->face;
 	*x = part->x;

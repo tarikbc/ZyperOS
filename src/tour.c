@@ -327,6 +327,7 @@ static const str_id KEY_WORDS[TK_KEYS] = {
 	[TK_UP] = S_TOUR_KEY_UP, [TK_DOWN] = S_TOUR_KEY_DOWN,
 	[TK_LEFT] = S_TOUR_KEY_LEFT, [TK_RIGHT] = S_TOUR_KEY_RIGHT,
 	[TK_VOL] = S_TOUR_KEY_VOLUME, [TK_BRIGHT] = S_TOUR_KEY_BRIGHTNESS,
+	[TK_RSTICK] = S_TOUR_KEY_RIGHT_STICK,
 };
 
 /* In English whatever is on, for the command line (--tour-wrong) */
@@ -358,21 +359,41 @@ static const char *lock_key_name(void)
  * note names them and the handheld shows them pressed (tour_hands). The
  * Pixel 2's device layer reads L2+R2 together itself, for the battery level,
  * and then sends neither. */
-static const tour_key KEY_OF[IN_COUNT] = {
-	[IN_LEFT] = TK_LEFT, [IN_RIGHT] = TK_RIGHT, [IN_UP] = TK_UP, [IN_DOWN] = TK_DOWN,
-	[IN_ACCEPT] = TK_A, [IN_BACK] = TK_B, [IN_X] = TK_X, [IN_Y] = TK_Y,
-	[IN_L1] = TK_L1, [IN_R1] = TK_R1,
-	[IN_START] = TK_START, [IN_SELECT] = TK_SELECT, [IN_MENU] = TK_MENU,
-	[IN_VOLUP] = TK_VOL, [IN_VOLDN] = TK_VOL,
-	[IN_BRIGHTUP] = TK_BRIGHT, [IN_BRIGHTDN] = TK_BRIGHT,
-	[IN_POWER] = TK_POWER,
-	[IN_L2] = TK_L2, [IN_R2] = TK_R2,
-	[IN_L3] = TK_L3, [IN_R3] = TK_R3,
-};
-
 tour_key tour_key_of(in_button b)
 {
-	return b >= 0 && b < IN_COUNT ? KEY_OF[b] : TK_KEYS;
+	/* Every button, no default: one left out does not compile clean
+	 * (-Wswitch), and tools/inmodel-check.c holds each to its answer */
+	switch (b) {
+	case IN_LEFT:     return TK_LEFT;
+	case IN_RIGHT:    return TK_RIGHT;
+	case IN_UP:       return TK_UP;
+	case IN_DOWN:     return TK_DOWN;
+	case IN_ACCEPT:   return TK_A;
+	case IN_BACK:     return TK_B;
+	case IN_X:        return TK_X;
+	case IN_Y:        return TK_Y;
+	case IN_L1:       return TK_L1;
+	case IN_R1:       return TK_R1;
+	case IN_START:    return TK_START;
+	case IN_SELECT:   return TK_SELECT;
+	case IN_MENU:     return TK_MENU;
+	case IN_VOLUP:
+	case IN_VOLDN:    return TK_VOL;
+	case IN_BRIGHTUP:
+	case IN_BRIGHTDN: return TK_BRIGHT;
+	case IN_POWER:    return TK_POWER;
+	case IN_L2:       return TK_L2;
+	case IN_R2:       return TK_R2;
+	case IN_L3:       return TK_L3;
+	case IN_R3:       return TK_R3;
+	case IN_RS_LEFT:
+	case IN_RS_RIGHT:
+	case IN_RS_UP:
+	case IN_RS_DOWN:  return TK_RSTICK;
+	case IN_COUNT:
+	case IN_NONE:     break;
+	}
+	return TK_KEYS;
 }
 
 const tour_little TOUR_LITTLE[TOUR_LITTLE_N] = {
@@ -468,20 +489,38 @@ float tour_focus_pos(const tour *t, uint32_t now)
 
 tour_part tour_part_of(in_button b)
 {
+	/* Every button, no default, as tour_key_of: the glyph a press lights */
 	switch (b) {
-	case IN_ACCEPT: return TP_A;
-	case IN_BACK:   return TP_B;
-	case IN_X:      return TP_X;
-	case IN_Y:      return TP_Y;
-	case IN_L1:     return TP_L1;
-	case IN_R1:     return TP_R1;
-	case IN_L2:     return TP_L2;
-	case IN_R2:     return TP_R2;
-	case IN_START:  return TP_START;
-	case IN_SELECT: return TP_SELECT;
-	case IN_MENU:   return TP_MENU;
-	default:        return TP_PARTS;
+	case IN_LEFT:     return TP_LEFT;
+	case IN_RIGHT:    return TP_RIGHT;
+	case IN_UP:       return TP_UP;
+	case IN_DOWN:     return TP_DOWN;
+	case IN_ACCEPT:   return TP_A;
+	case IN_BACK:     return TP_B;
+	case IN_X:        return TP_X;
+	case IN_Y:        return TP_Y;
+	case IN_L1:       return TP_L1;
+	case IN_R1:       return TP_R1;
+	case IN_L2:       return TP_L2;
+	case IN_R2:       return TP_R2;
+	case IN_START:    return TP_START;
+	case IN_SELECT:   return TP_SELECT;
+	case IN_MENU:     return TP_MENU;
+	case IN_VOLUP:    return TP_VOLUP;
+	case IN_VOLDN:    return TP_VOLDN;
+	case IN_BRIGHTUP: return TP_F2;
+	case IN_BRIGHTDN: return TP_F1;
+	case IN_POWER:    return TP_POWER;
+	case IN_L3:
+	case IN_R3:
+	case IN_RS_LEFT:
+	case IN_RS_RIGHT:
+	case IN_RS_UP:
+	case IN_RS_DOWN:
+	case IN_COUNT:
+	case IN_NONE:     break;
 	}
+	return TP_PARTS;
 }
 
 /* The demonstration's half of a part's press: the step's loop pressing its
@@ -557,31 +596,17 @@ void tour_hand(tour *t, tour_part p, bool down, uint32_t now)
 	}
 }
 
-void tour_hands(tour *t, const bool d[IN_COUNT], bool menu_held, uint32_t now)
+void tour_hands(tour *t, const bool held[IN_COUNT], uint32_t now)
 {
-	const bool fn = t->bright == DEV_BRIGHT_MENU_VOL;
+	bool on[TP_PARTS] = { false };
+	int b, p;
 
-	tour_hand(t, TP_UP, d[IN_UP], now);
-	tour_hand(t, TP_DOWN, d[IN_DOWN], now);
-	tour_hand(t, TP_LEFT, d[IN_LEFT], now);
-	tour_hand(t, TP_RIGHT, d[IN_RIGHT], now);
-	tour_hand(t, TP_A, d[IN_ACCEPT], now);
-	tour_hand(t, TP_B, d[IN_BACK], now);
-	tour_hand(t, TP_X, d[IN_X], now);
-	tour_hand(t, TP_Y, d[IN_Y], now);
-	tour_hand(t, TP_START, d[IN_START], now);
-	tour_hand(t, TP_SELECT, d[IN_SELECT], now);
-	tour_hand(t, TP_MENU, d[IN_MENU] || menu_held ||
-	                      (fn && (d[IN_BRIGHTUP] || d[IN_BRIGHTDN])), now);
-	tour_hand(t, TP_VOLUP, d[IN_VOLUP] || (fn && d[IN_BRIGHTUP]), now);
-	tour_hand(t, TP_VOLDN, d[IN_VOLDN] || (fn && d[IN_BRIGHTDN]), now);
-	tour_hand(t, TP_F1, !fn && d[IN_BRIGHTDN], now);
-	tour_hand(t, TP_F2, !fn && d[IN_BRIGHTUP], now);
-	tour_hand(t, TP_POWER, d[IN_POWER], now);
-	tour_hand(t, TP_L1, d[IN_L1], now);
-	tour_hand(t, TP_R1, d[IN_R1], now);
-	tour_hand(t, TP_L2, d[IN_L2], now);
-	tour_hand(t, TP_R2, d[IN_R2], now);
+	for (b = 0; b < IN_COUNT; b++) {
+		const tour_part part = tour_part_of((in_button)b);
+
+		if (part != TP_PARTS && held[b]) on[part] = true;
+	}
+	for (p = 0; p < TP_PARTS; p++) tour_hand(t, (tour_part)p, on[p], now);
 }
 
 /* The hand's half: in in **press** from when it went down, out in **press**

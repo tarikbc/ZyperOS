@@ -22,6 +22,7 @@
  * SELECT a square, START a play triangle, MENU TrimUI's mark, so its word
  * (no vendor's logo is a glyph), as on the Brick. */
 #include "profile.h"
+#include "brick_input.h"
 
 /* The Brick's core options (src/device/brick_coreopts.c), which its build
  * links too: the same A133P and PowerVR GE8300, and none measured on either
@@ -71,6 +72,7 @@ const device_profile device_profile_smartpro = {
 		.bright = DEV_BRIGHT_MENU_VOL,
 		.menu_on_release = true,
 	},
+	.input = SMARTPRO_INPUT,
 	.buttons = smartpro_buttons,
 	.n_buttons = (int)(sizeof smartpro_buttons / sizeof smartpro_buttons[0]),
 	.model = &td_model_smartpro,

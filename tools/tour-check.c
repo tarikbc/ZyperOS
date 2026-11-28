@@ -516,10 +516,13 @@ static void keys(void)
 		{ IN_BRIGHTUP, TK_BRIGHT }, { IN_BRIGHTDN, TK_BRIGHT }, { IN_POWER, TK_POWER },
 		{ IN_L2, TK_L2 }, { IN_R2, TK_R2 },
 		{ IN_L3, TK_L3 }, { IN_R3, TK_R3 },
+		{ IN_RS_LEFT, TK_RSTICK }, { IN_RS_RIGHT, TK_RSTICK }, { IN_RS_UP, TK_RSTICK },
+		{ IN_RS_DOWN, TK_RSTICK },
 	};
 	static const char *const names[TK_KEYS] = {
 		"Up", "Down", "Left", "Right", "A", "B", "X", "Y", "L1", "R1", "L2", "R2",
-		"START", "SELECT", "MENU", "volume", "brightness", "POWER", "L3", "R3", "lock" };
+		"START", "SELECT", "MENU", "volume", "brightness", "POWER", "L3", "R3",
+		"the right stick", "lock" };
 	size_t i;
 	int k;
 
@@ -678,41 +681,40 @@ static void every_key(void)
 			}
 }
 
-/* Which glyph part the player's own hand lights, on each device. */
+/* Which glyph part the player's own hand lights: what the hand holds
+ * (in_state's `held`, src/inengine.h), the same on every device: MENU held
+ * is MENU, a volume key held is its half of the rocker whatever it does
+ * (brightness under MENU on the Pixel 2), F1 and F2 the Brick's own keys.
+ * tools/inmodel-check.c drives each device's own codes into it. */
 static void hands(void)
 {
 	bool d[IN_COUNT];
 	tour t;
 
-	printf("the hand, by device:\n");
+	printf("the hand:\n");
 	tour_pose(&t, TOUR_VOL, T0, 2000, 0, DEV(true));
 	memset(d, 0, sizeof d);
 	d[IN_X] = true;
-	tour_hands(&t, d, false, T0);
+	tour_hands(&t, d, T0);
 	ck(tour_part_press(&t, TP_X, T0 + DS_MS_PRESS) > 0.99f &&
 	   tour_part_press(&t, TP_Y, T0 + DS_MS_PRESS) == 0.0f, "X lights X and not Y");
 	memset(d, 0, sizeof d);
-	tour_hands(&t, d, true, T0 + 200);
+	d[IN_MENU] = true;
+	tour_hands(&t, d, T0 + 200);
 	ck(tour_part_press(&t, TP_MENU, T0 + 200 + DS_MS_PRESS) > 0.99f,
-	   "the Pixel 2's MENU lights while FUNCTION is held, before in_state sees it");
-	tour_hands(&t, d, false, T0 + 400);
-	d[IN_BRIGHTUP] = true;
-	tour_hands(&t, d, false, T0 + 600);
+	   "MENU held lights MENU, before it is let go");
+	d[IN_VOLUP] = true;
+	tour_hands(&t, d, T0 + 600);
 	ck(tour_part_press(&t, TP_MENU, T0 + 600 + DS_MS_PRESS) > 0.99f &&
 	   tour_part_press(&t, TP_VOLUP, T0 + 600 + DS_MS_PRESS) > 0.99f &&
 	   tour_part_press(&t, TP_F2, T0 + 600 + DS_MS_PRESS) == 0.0f,
-	   "its brightness up is MENU and VOL+ held, not F2");
-	d[IN_BRIGHTUP] = false;
-	d[IN_BRIGHTDN] = true;
-	tour_hands(&t, d, false, T0 + 800);
-	ck(tour_part_press(&t, TP_VOLDN, T0 + 800 + DS_MS_PRESS) > 0.99f,
-	   "and brightness down is VOL-");
+	   "the Pixel 2's brightness up is MENU and VOL+ held, not F2");
 
 	tour_pose(&t, TOUR_VOL, T0, 2000, 0, DEV(false));
 	memset(d, 0, sizeof d);
 	d[IN_BRIGHTUP] = true;
 	d[IN_BRIGHTDN] = true;
-	tour_hands(&t, d, false, T0);
+	tour_hands(&t, d, T0);
 	ck(tour_part_press(&t, TP_F2, T0 + DS_MS_PRESS) > 0.99f &&
 	   tour_part_press(&t, TP_F1, T0 + DS_MS_PRESS) > 0.99f &&
 	   tour_part_press(&t, TP_MENU, T0 + DS_MS_PRESS) == 0.0f &&
@@ -721,7 +723,7 @@ static void hands(void)
 	memset(d, 0, sizeof d);
 	d[IN_VOLDN] = true;
 	d[IN_POWER] = true;
-	tour_hands(&t, d, false, T0 + 200);
+	tour_hands(&t, d, T0 + 200);
 	ck(tour_part_press(&t, TP_VOLDN, T0 + 200 + DS_MS_PRESS) > 0.99f &&
 	   tour_part_press(&t, TP_POWER, T0 + 200 + DS_MS_PRESS) > 0.99f,
 	   "VOL- and POWER light their own");
@@ -731,7 +733,7 @@ static void hands(void)
 	memset(d, 0, sizeof d);
 	d[IN_L1] = true;
 	d[IN_R2] = true;
-	tour_hands(&t, d, false, T0);
+	tour_hands(&t, d, T0);
 	ck(tour_part_press(&t, TP_L1, T0 + DS_MS_PRESS) > 0.99f &&
 	   tour_part_press(&t, TP_R2, T0 + DS_MS_PRESS) > 0.99f &&
 	   tour_part_press(&t, TP_R1, T0 + DS_MS_PRESS) == 0.0f &&

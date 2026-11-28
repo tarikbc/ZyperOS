@@ -3,7 +3,9 @@
 #define ZYPEROS_INBUTTON_H
 
 /* The launcher's buttons, as every device reports them (src/platform.h's
- * in_state). A header of its own, with no SDL, so a file that the checks
+ * in_state): the logical buttons of src/inmodel.h, which each device's
+ * profile maps its own codes and axes onto (src/device/profile.h,
+ * dev_input). A header of its own, with no SDL, so a file that the checks
  * link without SDL can name them: src/tour.c, whose key table and hand
  * mapping tools/tour-check.c holds. */
 typedef enum {
@@ -22,6 +24,12 @@ typedef enum {
 	 * launcher names and draws (L3, R3), which no screen acts on. Last, so
 	 * the numbers of the others stand. */
 	IN_L3, IN_R3,
+	/* The right stick pushed, a direction each, on a handheld whose right
+	 * stick the launcher reads (the R36S, the Smart Pro): as the left stick
+	 * is the d-pad's four, these are its own, in the d-pad's order (src/
+	 * inmodel.h). No screen moves with them; the tutorial answers them. Last,
+	 * so the numbers of the others stand. */
+	IN_RS_LEFT, IN_RS_RIGHT, IN_RS_UP, IN_RS_DOWN,
 	IN_COUNT,
 	IN_NONE = -1,
 } in_button;

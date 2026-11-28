@@ -856,6 +856,17 @@ de = die Helligkeit
 ja = 明るさボタン
 it = un tasto luminosità
 
+[tour.key.right_stick]
+note = The right stick pushed any way, said in "That's %s." (the R36S's and the Smart Pro's): a wrong press in every lesson, as no screen moves with it.
+en = the right stick
+zh-Hans = 右摇杆
+es = el stick derecho
+pt-BR = o analógico direito
+fr = le stick droit
+de = der rechte Stick
+ja = 右スティック
+it = lo stick destro
+
 [tour.try.dpad]
 note = What to press, said in "Try %s.": the move step's.
 en = the D-pad

@@ -15,12 +15,11 @@
 #include "linksteps.h"
 #include "nightkeep.h"
 #include "levels.h"
-#include "menuvol.h"
 #include "panelgamma.h"
 #include "panelgamma_sunxi.h"
 #include "platform.h"
 #include "screenfx_draw.h"
-#include "stickpad.h"
+#include "inengine.h"   /* ie_code: the power key by the profile's table */
 #include "thermal.h"
 #include "wdog.h"
 #include "keymap.h"
@@ -34,6 +33,7 @@
 #include <poll.h>
 #ifdef __linux__
 #include <linux/input.h>
+#include "evcode_linux.h"   /* the profiles' codes, held to Linux's */
 #include <sys/ioctl.h>
 #endif
 #include <signal.h>
@@ -68,40 +68,6 @@ static int jack_fd = -1;    /* "audiocodec sunxi Audio Jack": the jack switch, f
 /* ZYPEROS_INPUT_DEBUG=1 logs raw evdev codes, so one press tells you exactly
  * which device a control arrives on. */
 static int dbg_input;
-
-#ifdef __linux__
-/* The left stick as the d-pad on the launcher's screens (src/stickpad.h),
- * where the pad has one: the Smart Pro's, from tools/sppad.c, as ABS_X and
- * ABS_Y. A direction is held while its key or the stick holds it. The Brick's
- * pad has no axis, so stick_max stays 0 and nothing changes there. */
-_Static_assert((int)IN_LEFT == (int)STICK_LEFT && (int)IN_RIGHT == (int)STICK_RIGHT &&
-               (int)IN_UP == (int)STICK_UP && (int)IN_DOWN == (int)STICK_DOWN,
-               "stickpad's directions are the d-pad's buttons");
-static stickpad stick;
-static int      stick_x, stick_y, stick_max;
-static bool     dpad_key[STICK_DIRS];
-#endif
-
-#ifdef __linux__
-/* Every button by its key code, as the Pixel 2 reads its own. brick-pad sends
- * the Pixel's codes: A, B, X and Y as SOUTH, EAST, NORTH and WEST, named for
- * their labels, and the d-pad as BTN_DPAD_*. Then the Brick's own: MENU, and
- * the two front keys, which are brightness. L2 and R2 are the menu music's
- * tracks on the shelf; the Brick has no lights for the Pixel 2's L2+R2. */
-static const struct { int code; in_button b; } keymap[] = {
-	{ BTN_DPAD_UP, IN_UP },       { BTN_DPAD_DOWN, IN_DOWN },
-	{ BTN_DPAD_LEFT, IN_LEFT },   { BTN_DPAD_RIGHT, IN_RIGHT },
-	{ BTN_SOUTH, IN_ACCEPT },     { BTN_EAST, IN_BACK },
-	{ BTN_NORTH, IN_X },          { BTN_WEST, IN_Y },
-	{ BTN_TL, IN_L1 },            { BTN_TR, IN_R1 },
-	{ BTN_TL2, IN_L2 },           { BTN_TR2, IN_R2 },
-	{ BTN_SELECT, IN_SELECT },    { BTN_START, IN_START },
-	{ BTN_MODE, IN_MENU },
-	{ BTN_THUMBL, IN_BRIGHTDN },  { BTN_THUMBR, IN_BRIGHTUP },
-	{ KEY_VOLUMEDOWN, IN_VOLDN }, { KEY_VOLUMEUP, IN_VOLUP },
-	{ KEY_POWER, IN_POWER },
-};
-#endif
 
 const char *P_ROOT = "/mnt/SDCARD/ZyperOS";
 const char *P_CARD = "/mnt/SDCARD";
@@ -552,11 +518,18 @@ static void input_scan(void)
 		ioctl(fd, EVIOCGBIT(EV_KEY, sizeof keys), keys);
 		ioctl(fd, EVIOCGBIT(EV_SW, sizeof sw), sw);
 		if (fd_pad < 0 && BIT_IS_SET(keys, BTN_SOUTH)) {
-			struct input_absinfo ax;
+			int code;
 
 			fd_pad = fd;
-			if (ioctl(fd, EVIOCGABS(ABS_X), &ax) == 0 && ax.maximum > 0)
-				stick_max = ax.maximum;
+			/* The sticks its profile reads (the Smart Pro's two), told to
+			 * the engine (src/inengine.h); the Brick's pad has none */
+			for (code = 0; code <= ABS_MAX; code++) {
+				struct input_absinfo ax;
+
+				if (!plat_in_wants_axis(code) || ioctl(fd, EVIOCGABS(code), &ax) != 0) continue;
+				plat_in_axis(code, ax.value, ax.minimum, ax.maximum, ax.flat);
+				fprintf(stderr, "input: axis %d %d..%d, flat %d\n", code, ax.minimum, ax.maximum, ax.flat);
+			}
 		} else if (fd_keys < 0  && BIT_IS_SET(keys, KEY_VOLUMEUP))        fd_keys = fd;
 		else if (fd_power < 0 && BIT_IS_SET(keys, KEY_POWER))           fd_power = fd;
 		else if (jack_fd < 0  && BIT_IS_SET(sw, SW_HEADPHONE_INSERT))   jack_fd = fd;
@@ -792,89 +765,28 @@ bool plat_rumble_buzz(float scale, int ms)
 #endif
 }
 
-#ifdef __linux__
-/* The stick where the last report left it: each direction it holds or lets
- * go, with the d-pad's key for that direction */
-static void stick_apply(in_state *st)
-{
-	bool was[STICK_DIRS];
-	int d;
-
-	memcpy(was, stick.held, sizeof was);
-	stickpad_update(&stick, stick_x, stick_y, stick_max);
-	for (d = 0; d < STICK_DIRS; d++)
-		if (stick.held[d] != was[d])
-			plat_set_btn(st, (in_button)d, stick.held[d] || dpad_key[d]);
-}
-#endif
-
-/* MENU and volume: brightness together where the profile says so, the Smart
- * Pro (DEV_BRIGHT_MENU_VOL), and plain keys on the Brick, with F1 and F2 */
-static menuvol menu_chord = MENUVOL_INIT;
-
 static void poll_fd(int fd, in_state *st)
 {
 #ifdef __linux__
 	struct input_event ev;
-	size_t i;
-	bool moved = false;
 
+	/* Every button, MENU and the volume keys too, through the profile's
+	 * table and the one engine (src/inengine.h): MENU held opens nothing
+	 * until it is let go, a button under it MENU's chord, and on the Smart
+	 * Pro the volume keys under it brightness, the Brick's F1 and F2 keys
+	 * of their own. The Brick's MENU skipped the chord rule until 1.1.1-rc.1
+	 * (#496) when each device file did its own. */
 	while (fd >= 0 && read(fd, &ev, sizeof ev) == (ssize_t)sizeof ev) {
-		/* The stick, taken as a whole at each report */
-		if (ev.type == EV_ABS && fd == fd_pad && (ev.code == ABS_X || ev.code == ABS_Y)) {
-			if (ev.code == ABS_X) stick_x = ev.value;
-			else stick_y = ev.value;
-			moved = true;
-			continue;
+		if (ev.type == EV_ABS && fd == fd_pad) {
+			plat_in_abs(ev.code, ev.value);
+		} else if (ev.type == EV_SYN && ev.code == SYN_REPORT) {
+			plat_in_sync(st);
+		} else if (ev.type == EV_KEY) {
+			if (dbg_input) fprintf(stderr, "[in] fd=%d code=%d val=%d\n", fd, ev.code, ev.value);
+			plat_in_key(st, ev.code, ev.value);
 		}
-		if (ev.type == EV_SYN && ev.code == SYN_REPORT && moved) {
-			stick_apply(st);
-			moved = false;
-			continue;
-		}
-		if (ev.type != EV_KEY || ev.value == 2) continue;
-		if (dbg_input) fprintf(stderr, "[in] fd=%d code=%d val=%d\n", fd, ev.code, ev.value);
-		for (i = 0; i < sizeof keymap / sizeof keymap[0]; i++)
-			if (keymap[i].code == ev.code) {
-				in_button b = keymap[i].b;
-
-				/* MENU and the volume keys, which are brightness
-				 * together on the Smart Pro (src/device/menuvol.h).
-				 * On the Brick, MENU is plat_key's, as every other
-				 * button is: held, it opens nothing until it is let
-				 * go, and a button under it can be its chord
-				 * (src/menukeys.h). Set straight down as it went
-				 * down, MENU+L1 and MENU+L2 were never seen on the
-				 * Brick outside a game, and MENU opened its menu
-				 * at once (1.1.1-rc.1). */
-				if (b == IN_MENU) {
-					if (plat_brightness_on_volume()) {
-						menuvol_menu(&menu_chord, st, ev.value == 1, true);
-					} else {
-						menu_chord.down = ev.value == 1;
-						plat_key(st, IN_MENU, ev.value == 1);
-					}
-				} else if (b == IN_VOLUP || b == IN_VOLDN) {
-					menuvol_volume(&menu_chord, st, b == IN_VOLUP, ev.value == 1,
-					               plat_brightness_on_volume());
-				/* A d-pad key: held while it or the stick holds it */
-				} else if (b <= IN_DOWN) {
-					dpad_key[b] = ev.value == 1;
-					plat_set_btn(st, b, dpad_key[b] || stick.held[b]);
-				/* Under the Smart Pro's MENU, MENU's chord when the
-				 * launcher takes it, as on the Pixel 2: menuvol holds
-				 * that MENU, not plat_key */
-				} else if (plat_brightness_on_volume() &&
-				           plat_menu_with(st, b, ev.value == 1, menu_chord.down)) {
-					if (ev.value) menu_chord.chorded = true;
-				/* A repeat is no let-go of POWER (src/powerhold.h) */
-				} else if (b != IN_POWER || ev.value != 2) {
-					plat_key(st, b, ev.value == 1);
-				}
-				break;
-			}
 	}
-	if (moved) stick_apply(st);
+	plat_in_sync(st);
 #else
 	(void)fd; (void)st;
 #endif
@@ -926,7 +838,7 @@ void plat_input_poll(in_state *st)
 	 * input owns the volume, so the launcher must not re-apply a level over
 	 * Diatom's while Diatom holds it. Diatom polls the same switch on its own
 	 * side for the same reason. */
-	menuvol_poll(&menu_chord, st);
+	plat_in_begin(st);
 	plat_audio_jack_poll();
 	/* And the mute switch, for the same reason and on the same frame. */
 	plat_mute_poll(true);
@@ -1010,7 +922,7 @@ bool device_power_pressed(void)
 	struct input_event ev;
 
 	while (fd_power >= 0 && read(fd_power, &ev, sizeof ev) == (ssize_t)sizeof ev)
-		if (ev.type == EV_KEY && ev.code == KEY_POWER && ev.value != 2 &&
+		if (ev.type == EV_KEY && ie_code(plat_profile(), ev.code) == IN_POWER && ev.value != 2 &&
 		    plat_power_event(ev.value == 1))
 			pressed = true;
 #endif
@@ -2057,11 +1969,6 @@ bool plat_has_wifi(void)      { return true; }
 /* Bluetooth, CPU shaders (Off and Sharp-Shimmerless, port/brick.c), two
  * speakers, F1 and F2 for brightness, no battery lights and no Player 2:
  * its profile's (src/device/brick_profile.c), or on the host desktop's. */
-/* MENU held, for the tutorial's hands, where it is the brightness chord's
- * (the Smart Pro); on the Brick a button of its own, and in_state has it. */
-bool plat_menu_held(void) { return menu_chord.down && plat_brightness_on_volume(); }
-/* L2 and R2 are buttons of their own too. */
-bool plat_tap_held(in_button b) { (void)b; return false; }
 
 side_lights plat_side_lights(void) { return LIGHTS_DEFAULT; }
 void plat_side_lights_set(side_lights on) { (void)on; }

@@ -23,37 +23,26 @@
 #include "displayback.h"
 #include "fileio.h"
 #include "hwput.h"
+#include "inengine.h"   /* ie_code: the power key by the profile's table */
 #include "nightkeep.h"
 #include "levels.h"
-#include "menuvol.h"
 #include "panelgamma.h"
 #include "phonelink.h"
 #include "platform.h"
 #include "portmenu.h"
 #include "screenfx_draw.h"
 #include "spawn.h"
-#include "stickpad.h"
 #include "thermal.h"
 #include "wdog.h"
 
 #include <SDL_syswm.h>
 
 /* What tells this file's RK3326 handhelds apart, for the ones that build it
- * with their own (src/device/r36s.c): the card's folder, the codes the A and
- * B caps and the MENU key send, and whether L2 and R2 are taps for the side
- * lights' battery chord. The Pixel 2's here. */
+ * with their own (src/device/r36s.c): the card's folder. Their controls are
+ * their profiles' tables (src/device/pixel2_input.h, r36s_input.h), which
+ * the one engine reads (src/inengine.h). The Pixel 2's here. */
 #ifndef RK_ID
 #define RK_ID            "pixel2"
-#define RK_CODE_A        BTN_SOUTH
-#define RK_CODE_B        BTN_EAST
-#define RK_CODE_FUNCTION BTN_TRIGGER_HAPPY1
-#define RK_L2R2_TAPS     1
-#endif
-/* Whether the handheld has sticks (the R36S's: the left one moves as the
- * d-pad, their clicks are L3 and R3). None on the Pixel 2, whose pad is read
- * as it always was. */
-#ifndef RK_STICKS
-#define RK_STICKS        0
 #endif
 /* Whether the headphone jack's switch is read (the codec's
  * SW_HEADPHONE_INSERT): for the volume's window, the status bar's headphones
@@ -80,6 +69,7 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <linux/input.h>
+#include "evcode_linux.h"   /* the profiles' codes, held to Linux's */
 #include <signal.h>
 #include <stdio.h>
 #include <pthread.h>
@@ -687,87 +677,27 @@ static int fd_keys = -1;    /* "gpio-keys": volume */
 static int fd_power = -1;   /* "rk805 pwrkey" */
 static int jack_fd = -1;    /* "rk817_int Headphones": the jack switch, for the settings */
 static int dbg_input;
-static bool l2_down, r2_down;  /* the two together ask for the battery level (below) */
-static bool l2r2_chorded;      /* ...and have, since both were last up */
-static bool l2_tap, r2_tap;    /* a tap reported last poll ends this one */
-
-/* The left stick as the d-pad on the launcher's screens (src/stickpad.h),
- * where the pad has one: the R36S's, as ABS_X and ABS_Y with their range and
- * their flat, the dead zone its device tree gives. A direction is held while
- * its d-pad key or the stick holds it, so it repeats as the d-pad's does.
- * The right stick moves nothing here (L1 and R1 already page, and a thumb
- * resting on it under A B X Y would move the cursor). The Pixel 2 has no
- * stick (RK_STICKS 0): stick_on stays false and nothing changes there. */
-_Static_assert((int)IN_LEFT == (int)STICK_LEFT && (int)IN_RIGHT == (int)STICK_RIGHT &&
-               (int)IN_UP == (int)STICK_UP && (int)IN_DOWN == (int)STICK_DOWN,
-               "stickpad's directions are the d-pad's buttons");
-static stickpad stick;
-static bool     stick_on;
-static struct { int value, min, max, flat; } stick_axis[2];
-static bool     dpad_key[STICK_DIRS];
-
-/* Kernel code -> ZyperOS button, by what is printed on the key. Measured
- * 2026-10-01 pressing each in a known order: the A, B, X and Y caps send
- * SOUTH, EAST, NORTH and WEST - named for their labels, not for where they
- * sit, since A is on the right and B at the bottom. FUNCTION is MENU, and L2
- * and R2 are the battery level together and a tap each alone, all three
- * handled apart below. */
-static const struct { int code; in_button b; } keymap[] = {
-	{ BTN_DPAD_UP, IN_UP },       { BTN_DPAD_DOWN, IN_DOWN },
-	{ BTN_DPAD_LEFT, IN_LEFT },   { BTN_DPAD_RIGHT, IN_RIGHT },
-	{ RK_CODE_A, IN_ACCEPT },     { RK_CODE_B, IN_BACK },
-	{ BTN_NORTH, IN_X },          { BTN_WEST, IN_Y },
-	{ BTN_TL, IN_L1 },            { BTN_TR, IN_R1 },
-#if RK_STICKS
-	{ BTN_THUMBL, IN_L3 },        { BTN_THUMBR, IN_R3 },
-#endif
-	{ BTN_SELECT, IN_SELECT },    { BTN_START, IN_START },
-};
-#define CODE_FUNCTION RK_CODE_FUNCTION
-
-/* Whether the pad has a left stick, and its two axes' range and flat */
+/* The pad's sticks, where its profile has them (the R36S's): each axis
+ * its profile reads, with its range and flat as the kernel gives them, told
+ * to the engine (src/inengine.h), which makes their pushes buttons. The
+ * Pixel 2 has none, and nothing is read. */
 static void stick_probe(void)
 {
 	unsigned long abs[NLONGS(ABS_MAX)];
 	struct input_absinfo ai;
-	static const int code[2] = { ABS_X, ABS_Y };
-	int i;
+	int code;
 
-	stick_on = false;
 	memset(abs, 0, sizeof abs);
-	if (!RK_STICKS || fd_pad < 0 || ioctl(fd_pad, EVIOCGBIT(EV_ABS, sizeof abs), abs) < 0) return;
-	for (i = 0; i < 2; i++) {
-		if (!BIT_IS_SET(abs, code[i]) || ioctl(fd_pad, EVIOCGABS(code[i]), &ai) < 0) return;
-		stick_axis[i].value = ai.value;
-		stick_axis[i].min = ai.minimum;
-		stick_axis[i].max = ai.maximum;
-		stick_axis[i].flat = ai.flat;
+	if (fd_pad < 0 || ioctl(fd_pad, EVIOCGBIT(EV_ABS, sizeof abs), abs) < 0) return;
+	for (code = 0; code <= ABS_MAX; code++) {
+		if (!plat_in_wants_axis(code)) continue;
+		if (!BIT_IS_SET(abs, code) || ioctl(fd_pad, EVIOCGABS(code), &ai) < 0) {
+			fprintf(stderr, "input: no axis %d on the pad\n", code);
+			continue;
+		}
+		plat_in_axis(code, ai.value, ai.minimum, ai.maximum, ai.flat);
+		fprintf(stderr, "input: axis %d %d..%d, flat %d\n", code, ai.minimum, ai.maximum, ai.flat);
 	}
-	stick_on = true;
-	fprintf(stderr, "input: the left stick moves as the d-pad (X %d..%d, Y %d..%d, flat %d)\n",
-	        stick_axis[0].min, stick_axis[0].max, stick_axis[1].min, stick_axis[1].max, stick_axis[0].flat);
-}
-
-/* The stick where the last report left it: each direction it holds or lets
- * go, with the d-pad's key for that direction */
-static void stick_apply(in_state *st)
-{
-	bool was[STICK_DIRS];
-	int rx, ry, x, y, d;
-
-	if (!stick_on) return;
-	memcpy(was, stick.held, sizeof was);
-	x = stickpad_centred(stick_axis[0].value, stick_axis[0].min, stick_axis[0].max, stick_axis[0].flat, &rx);
-	y = stickpad_centred(stick_axis[1].value, stick_axis[1].min, stick_axis[1].max, stick_axis[1].flat, &ry);
-	/* The two axes on one scale, the smaller range's */
-	if (rx != ry && rx > 0 && ry > 0) {
-		if (rx > ry) x = (int)((long)x * ry / rx);
-		else y = (int)((long)y * rx / ry);
-	}
-	stickpad_update(&stick, x, y, rx < ry ? rx : ry);
-	for (d = 0; d < STICK_DIRS; d++)
-		if (stick.held[d] != was[d])
-			plat_set_btn(st, (in_button)d, stick.held[d] || dpad_key[d]);
 }
 
 /* Every input device this file wants, found by what each reports, not by
@@ -844,7 +774,6 @@ void plat_input_flush(void)
 	drain(fd_pad);
 	drain(fd_keys);
 	drain(fd_power);
-	l2_down = r2_down = false;
 	plat_menu_forget();
 }
 
@@ -912,10 +841,6 @@ bool plat_rumble_buzz(float scale, int ms)
 	return write(rumble_fd, &ev, sizeof ev) == (ssize_t)sizeof ev;
 }
 
-/* FUNCTION is MENU, and also the modifier that makes the volume keys
- * brightness (src/device/menuvol.h, the Smart Pro's too). */
-static menuvol fn = MENUVOL_INIT;
-
 /* The lights on the side are plastron's gauge's: the launcher only signals it,
  * SIGUSR1 to flash the level and SIGHUP to read MENU > Side Lights again. */
 static void signal_gauge(int sig)
@@ -944,102 +869,29 @@ static void signal_gauge(int sig)
 	closedir(d);
 }
 
-/* L2 and R2 together flash the battery level on them. Seen here only outside a
- * game, since in one Diatom has the pad (and on GBA they are mGBA's turbo
- * shoulders), and what a game left queued is thrown away unread.
- *
- * Alone, each is a button of the launcher's, IN_L2 and IN_R2, the menu
- * music's track before and after on the shelf (2026-11-06). Reported
- * as it is let go, the way FUNCTION is MENU, and only when the other was not
- * pressed with it since both were last up: asking for the level is not also
- * a change of song. The tap is down for one poll, like MENU's. */
+/* L2 and R2 together flash the battery level on the side lights, where the
+ * profile says so (battery_chord: the Pixel 2's); the engine says when.
+ * Seen here only outside a game, since in one Diatom has the pad (and on
+ * GBA they are mGBA's turbo shoulders), and what a game left queued is
+ * thrown away unread. */
 static void ask_gauge(void) { signal_gauge(SIGUSR1); }
-
-static void key_event(in_state *st, const struct input_event *ev)
-{
-	size_t i;
-
-	if (ev->type != EV_KEY || ev->value == 2) return;
-	if (dbg_input) fprintf(stderr, "[in] code=%d val=%d\n", ev->code, ev->value);
-
-	if (ev->code == CODE_FUNCTION) {
-		menuvol_menu(&fn, st, ev->value != 0, true);
-		return;
-	}
-	if (ev->code == KEY_VOLUMEUP || ev->code == KEY_VOLUMEDOWN) {
-		menuvol_volume(&fn, st, ev->code == KEY_VOLUMEUP, ev->value != 0, true);
-		return;
-	}
-	if (ev->code == KEY_POWER) {
-		/* A press or a hold, as MENU > Power Button says (src/powerhold.h);
-		 * a repeat, which this key does not send, would be no let-go */
-		if (ev->value != 2) plat_set_btn(st, IN_POWER, ev->value == 1);
-		return;
-	}
-	/* L2 and R2 as plain keys, on a handheld with no battery lights */
-	if (!RK_L2R2_TAPS && (ev->code == BTN_TL2 || ev->code == BTN_TR2)) {
-		plat_set_btn(st, ev->code == BTN_TL2 ? IN_L2 : IN_R2, ev->value == 1);
-		return;
-	}
-	if (ev->code == BTN_TL2 || ev->code == BTN_TR2) {
-		bool both = l2_down && r2_down, l2 = ev->code == BTN_TL2;
-
-		*(l2 ? &l2_down : &r2_down) = ev->value == 1;
-		/* Under FUNCTION, MENU's chord when the launcher takes it
-		 * (src/menukeys.h): no tap as it is let go, and MENU opens
-		 * nothing */
-		if (plat_menu_with(st, l2 ? IN_L2 : IN_R2, ev->value == 1, fn.down)) {
-			if (ev->value) fn.chorded = true;
-			if (!l2_down && !r2_down) l2r2_chorded = false;
-			return;
-		}
-		if (!both && l2_down && r2_down) {
-			ask_gauge();
-			l2r2_chorded = true;
-		}
-		if (!ev->value && !l2r2_chorded) {
-			plat_set_btn(st, l2 ? IN_L2 : IN_R2, true);
-			*(l2 ? &l2_tap : &r2_tap) = true;
-		}
-		if (!l2_down && !r2_down) l2r2_chorded = false;
-		return;
-	}
-	for (i = 0; i < sizeof keymap / sizeof keymap[0]; i++)
-		if (keymap[i].code == ev->code) {
-			const in_button b = keymap[i].b;
-
-			/* Under FUNCTION, MENU's chord when the launcher takes it, as
-			 * a volume key is brightness under it */
-			if (plat_menu_with(st, b, ev->value == 1, fn.down)) {
-				if (ev->value) fn.chorded = true;
-				return;
-			}
-			/* A d-pad key: held while it or the stick holds it */
-			if (b == IN_LEFT || b == IN_RIGHT || b == IN_UP || b == IN_DOWN) {
-				dpad_key[b] = ev->value == 1;
-				plat_set_btn(st, b, dpad_key[b] || stick.held[b]);
-				return;
-			}
-			plat_set_btn(st, b, ev->value == 1);
-			return;
-		}
-}
 
 static void poll_fd(int fd, in_state *st)
 {
 	struct input_event ev;
-	bool moved = false;
 
 	while (fd >= 0 && read(fd, &ev, sizeof ev) == (ssize_t)sizeof ev) {
-		/* The left stick, taken as a whole at each read */
-		if (ev.type == EV_ABS && fd == fd_pad && stick_on && (ev.code == ABS_X || ev.code == ABS_Y)) {
-			stick_axis[ev.code == ABS_Y].value = ev.value;
-			moved = true;
-			continue;
+		if (ev.type == EV_ABS && fd == fd_pad) {
+			plat_in_abs(ev.code, ev.value);
+		} else if (ev.type == EV_SYN && ev.code == SYN_REPORT) {
+			plat_in_sync(st);
+		} else if (ev.type == EV_KEY) {
+			if (dbg_input) fprintf(stderr, "[in] code=%d val=%d\n", ev.code, ev.value);
+			plat_in_key(st, ev.code, ev.value);
 		}
-		key_event(st, &ev);
 	}
-	if (moved) stick_apply(st);
+	/* The sticks taken as a whole at each read, a report cut short too */
+	plat_in_sync(st);
 }
 
 void plat_input_wait(unsigned ms)
@@ -1068,9 +920,8 @@ void plat_input_poll(in_state *st)
 	memset(st->pressed, 0, sizeof st->pressed);
 	st->power_tap = false;
 	if (plat_terminating()) st->quit_requested = true;
-	menuvol_poll(&fn, st);
-	if (l2_tap) { plat_set_btn(st, IN_L2, false); l2_tap = false; }
-	if (r2_tap) { plat_set_btn(st, IN_R2, false); r2_tap = false; }
+	plat_in_battery(ask_gauge);
+	plat_in_begin(st);
 	/* Whoever pumps input owns the volume; see the Brick's file. */
 	plat_audio_jack_poll();
 	while (SDL_PollEvent(&e))
@@ -1092,7 +943,7 @@ bool device_power_pressed(void)
 	bool pressed = false;
 
 	while (fd_power >= 0 && read(fd_power, &ev, sizeof ev) == (ssize_t)sizeof ev)
-		if (ev.type == EV_KEY && ev.code == KEY_POWER && ev.value != 2 &&
+		if (ev.type == EV_KEY && ie_code(plat_profile(), ev.code) == IN_POWER && ev.value != 2 &&
 		    plat_power_event(ev.value == 1))
 			pressed = true;
 	return plat_power_due() || pressed;
@@ -2194,8 +2045,6 @@ bool plat_has_wifi(void)      { return access("/sys/class/net/wlan0", F_OK) == 0
 /* Bluetooth, the GPU's shaders, one speaker, brightness on FUNCTION with a
  * volume key (key_event), the side lights and Player 2: its profile's
  * (src/device/pixel2_profile.c). */
-bool plat_menu_held(void) { return fn.down; }
-bool plat_tap_held(in_button b) { return b == IN_L2 ? l2_down : b == IN_R2 ? r2_down : false; }
 
 /* MENU > Side Lights: one line on the card, in the file plastron's gauge reads
  * at boot and again on SIGHUP (package/gauge/src/gauge.c; the line's words,

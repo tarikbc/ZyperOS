@@ -12,6 +12,7 @@
  * dev_tutorial_model). Shots of a real handheld wear its own profile:
  * --device pixel2, --device brick. */
 #include "profile.h"
+#include "brick_input.h"
 
 /* The Brick's controls (brick_buttons.h: F1 and F2 for brightness), drawn as
  * the borrowed handheld prints them, the Pixel 2's: SELECT and START round
@@ -53,6 +54,7 @@ const device_profile device_profile_desktop = {
 		.still = false,
 	},
 	.chords = { .bright = DEV_BRIGHT_KEYS },
+	.input = BRICK_INPUT,
 	.buttons = desktop_buttons,
 	.n_buttons = (int)(sizeof desktop_buttons / sizeof desktop_buttons[0]),
 	.model = &td_model_pixel2,

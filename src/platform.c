@@ -9,6 +9,7 @@
 #include "device.h"
 #include "dslang.h"
 #include "i18n.h"
+#include "inengine.h" /* the one engine from a handheld's codes to its buttons */
 #include "keyrepeat.h" /* hold-to-repeat's 300 ms and 90 ms, which portkeys repeats on too */
 #include "platform.h"
 #include "spawn.h"
@@ -251,75 +252,107 @@ unsigned plat_input_wait_hook(unsigned ms)
 	return g_wait_hook ? g_wait_hook(ms) : ms;
 }
 
-/* ---- MENU and its chords (src/menukeys.h) --------------------------------- */
+/* ---- the buttons: the one engine (src/inengine.h) --------------------------
+ *
+ * Every device file gives the engine what its handheld reports, and a
+ * keyboard or desk mode its buttons; the engine says the presses, MENU's
+ * chords and what the hand holds into in_state, the same way on every
+ * handheld, from the profile in force. */
 
 static bool (*g_menu_take)(in_button b);
 static void (*g_menu_run)(in_state *st, in_button b);
-static bool g_taken[IN_COUNT];       /* gone down as a chord: its let-go is the chord's too */
-static bool g_menu_held, g_menu_chorded;
-static in_button g_menu_due = IN_NONE;
+static inengine g_in;
+static void (*g_battery)(void);
 
 void plat_set_menu_keys(bool (*take)(in_button b), void (*run)(in_state *st, in_button b))
 {
 	g_menu_take = take;
 	g_menu_run = run;
+	g_in.take = take;
 }
 
-bool plat_menu_with(in_state *st, in_button b, bool down, bool menu_held)
+void plat_in_battery(void (*fn)(void))
 {
-	(void)st;
-	if (b < 0 || b >= IN_COUNT || b == IN_MENU) return false;
-	if (!down) {
-		if (!g_taken[b]) return false;
-		g_taken[b] = false;
-		return true;
-	}
-	if (!menu_held || !g_menu_take || !g_menu_take(b)) return false;
-	g_taken[b] = true;
-	g_menu_due = b;
-	return true;
+	g_battery = fn;
+	g_in.battery = fn;
 }
 
-/* MENU down is held, not pressed: the press comes as it is let go, unless a
- * chord was made under it. A screen that checks MENU held (MENU+START is
- * Home) still sees it down. */
+/* The engine for the profile in force: the host build's can change with
+ * --device before the first poll */
+static inengine *engine(void)
+{
+	if (g_in.p != plat_profile()) {
+		g_in.take = g_menu_take;
+		g_in.battery = g_battery;
+		ie_init(&g_in, plat_profile());
+	}
+	return &g_in;
+}
+
+static void sink_set(void *ctx, in_button b, bool down) { plat_set_btn(ctx, b, down); }
+
+/* MENU held is down with no press: the press comes as it is let go */
+static void sink_hold(void *ctx, in_button b, bool down)
+{
+	in_state *st = ctx;
+
+	if (down && !st->down[b]) {
+		st->down_since[b] = SDL_GetTicks();
+		st->last_repeat[b] = 0;
+	}
+	st->down[b] = down;
+}
+
+static void sink_press(void *ctx, in_button b) { ((in_state *)ctx)->pressed[b] = true; }
+static void sink_hand(void *ctx, in_button b, bool down) { ((in_state *)ctx)->held[b] = down; }
+
+static ie_sink sink_of(in_state *st)
+{
+	return (ie_sink){ st, sink_set, sink_hold, sink_press, sink_hand };
+}
+
 void plat_key(in_state *st, in_button b, bool down)
 {
-	if (b == IN_MENU) {
-		if (down && !g_menu_held) {
-			g_menu_held = true;
-			g_menu_chorded = false;
-			st->down[IN_MENU] = true;
-			st->down_since[IN_MENU] = SDL_GetTicks();
-			st->last_repeat[IN_MENU] = 0;
-		} else if (!down && g_menu_held) {
-			g_menu_held = false;
-			st->down[IN_MENU] = false;
-			if (!g_menu_chorded) st->pressed[IN_MENU] = true;
-		}
-		return;
-	}
-	if (plat_menu_with(st, b, down, g_menu_held)) {
-		if (down) g_menu_chorded = true;
-		return;
-	}
-	plat_set_btn(st, b, down);
+	const ie_sink s = sink_of(st);
+
+	ie_button(engine(), &s, b, down);
+}
+
+bool plat_in_key(in_state *st, int code, int value)
+{
+	const ie_sink s = sink_of(st);
+
+	return ie_key(engine(), &s, code, value);
+}
+
+bool plat_in_wants_axis(int code) { return ie_wants_axis(plat_profile(), code); }
+void plat_in_axis(int code, int value, int min, int max, int flat) { ie_axis(engine(), code, value, min, max, flat); }
+void plat_in_abs(int code, int value) { ie_abs(engine(), code, value); }
+
+void plat_in_sync(in_state *st)
+{
+	const ie_sink s = sink_of(st);
+
+	ie_sync(engine(), &s);
+}
+
+void plat_in_begin(in_state *st)
+{
+	const ie_sink s = sink_of(st);
+
+	ie_poll_begin(engine(), &s);
 }
 
 void plat_menu_forget(void)
 {
-	memset(g_taken, 0, sizeof g_taken);
-	g_menu_held = g_menu_chorded = false;
-	g_menu_due = IN_NONE;
+	ie_forget(engine());
 }
 
 void plat_menu_after(in_state *st)
 {
-	in_button b = g_menu_due;
+	in_button b = ie_due(engine());
 
-	if (b == IN_NONE) return;
-	g_menu_due = IN_NONE;
-	if (g_menu_run) g_menu_run(st, b);
+	if (b != IN_NONE && g_menu_run) g_menu_run(st, b);
 }
 
 /* ---- a frame read back (plat_grab_next) ------------------------------------ */
