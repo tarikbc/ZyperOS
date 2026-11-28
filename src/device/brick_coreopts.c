@@ -12,11 +12,10 @@
  * test kit's logs are what moves one (a resolution up where frames are to
  * spare), here, with the measurement beside it.
  *
- * Left out: the Pixel 2's rumble (the N64's Rumble Pak in the controller,
- * PrBoom's rumble). The Brick has a motor (Tarik, 2026-11-18), but its port
- * drives none until a tester has felt it (the Brick parity plan's item 14),
- * so the cores keep their own defaults: the N64's Controller Pak, Doom's
- * rumble off. */
+ * The Pixel 2's rumble too (the N64's Rumble Pak in the controller,
+ * PrBoom's rumble): the Brick's motor buzzed for two testers (kit
+ * v1.0.7-kit.1's Hardware Check), and its port runs it
+ * (diatom/port/brick_motor.h). */
 #include "profile.h"
 
 const dev_default dev_coreopts_brick[] = {
@@ -28,6 +27,10 @@ const dev_default dev_coreopts_brick[] = {
 	 * crashed Mesa's panfrost; on any GPU it is the slower way) */
 	{ "coreopt..mupen64plus-43screensize", "320x240" },
 	{ "coreopt.N64.mupen64plus-EnableFBEmulation", "False" },
+	/* Its Rumble Pak in the controller, where the core's default is the
+	 * Controller Pak, as on the Pixel 2: the in-game menu's Pak row gives a
+	 * game that needs it the Controller Pak */
+	{ "coreopt.N64.mupen64plus-pak1", "rumble" },
 	/* ParallelN64, the Nintendo 64's default: Glide64 at medium accuracy,
 	 * a frame only for a new picture, the HLE RSP, the dynarec, 320x240 */
 	{ "coreopt.N64.parallel-n64-gfxplugin", "glide64" },
@@ -36,6 +39,7 @@ const dev_default dev_coreopts_brick[] = {
 	{ "coreopt.N64.parallel-n64-rspplugin", "hle" },
 	{ "coreopt.N64.parallel-n64-cpucore", "dynamic_recompiler" },
 	{ "coreopt.N64.parallel-n64-screensize", "320x240" },
+	{ "coreopt.N64.parallel-n64-pak1", "rumble" },
 	/* The PlayStation's DualShock turns analog on L3+R3, which the Brick has
 	 * not either (no sticks), so a game's own buttons never press it */
 	{ "coreopt.PS1.pcsx_rearmed_analog_combo", "l3+r3" },
@@ -60,5 +64,7 @@ const dev_default dev_coreopts_brick[] = {
 	{ "coreopt.PSP.ppsspp_skip_gpu_readbacks",            "enabled" },
 	{ "coreopt.PSP.ppsspp_texture_anisotropic_filtering", "disabled" },
 	{ "coreopt.PSP.ppsspp_texture_scaling_level",         "disabled" },
+	/* PrBoom's rumble, off by its own default: a shot or a hit is felt */
+	{ "coreopt.DOOM.prboom-rumble",  "enabled" },
 	{ NULL, NULL },
 };
