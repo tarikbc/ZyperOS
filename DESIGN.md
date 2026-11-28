@@ -2620,6 +2620,15 @@ and modes still read.
   before and the next, or a book's chapter where its file has them, and
   the song pop-up (11.22) says what plays now. Paused or stopped, they are
   the menu music's again. *(The follow-up to #90.)*
+- **Seek.** Left and right on Now Playing and on MP4's shelf: ten seconds
+  a press; held, a step on every repeat of the lists' clock (90 ms after
+  300 ms), ten seconds, a minute from a second held and five from three,
+  each step kept under a share of the track a second: a sixteenth, then a
+  tenth, then a sixth, and never under a second (src/seekstep.h). A song
+  of any length is crossed in about seven seconds of holding, and a
+  seventeen-hour book in about twenty as before. *(2026-11-27, from
+  1.1.1-rc.1: "Holding down seek ... skips to the end/beginning of a 5
+  minute song in less than 2 seconds.")*
 - **Its boost from anywhere.** While MP4 is heard behind the home, a shelf
   or a menu, the volume keys there open, fill and empty its boost past the
   top as on Now Playing; behind a running game, each cell the game's keys

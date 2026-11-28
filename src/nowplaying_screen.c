@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include "nowplaying_screen.h"
+#include "seekstep.h"
 #include "menukeys_screen.h"
 
 #include "aout_route.h"
@@ -30,18 +31,13 @@
 
 /* ---- MP4: Now Playing ---------------------------------------------------- */
 
-/* How far one step of left or right seeks: ten seconds a tap, and further the
- * longer it is held - a minute a step after a second, five after three.
- * Eric's, 2026-09-29, for books: at ten seconds a step, eleven steps a second,
- * crossing a seventeen-hour book took nine minutes of holding the d-pad, and
- * now takes about twenty seconds. A song is over long before the steps grow,
- * so music is as it was. */
+/* How far one step of left or right seeks: src/seekstep.h, by the length of
+ * what plays. Ten seconds a tap, further the longer it is held, and never
+ * more than a share of the track a second, so a song is crossed in seconds
+ * and a seventeen-hour book in about twenty as before. */
 double seek_step(const in_state *in, in_button b)
 {
-	static const double step[] = { 10, 60, 300 };
-	Uint32 held = SDL_GetTicks() - in->down_since[b];
-
-	return in->pressed[b] ? step[0] : step[repeat_stage(held)];
+	return seek_step_for(in->pressed[b], SDL_GetTicks() - in->down_since[b], mp4c_now()->len);
 }
 
 void mmss(char *out, size_t n, double sec)

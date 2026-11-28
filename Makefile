@@ -3102,6 +3102,16 @@ build-native/logpack-check: tools/logpack-check.c src/logpack.c src/logpack.h FO
 check-mp4lock: build-native/mp4lock-check
 	@./build-native/mp4lock-check
 
+# MP4's seek held (src/seekstep.h): a song crossed in several seconds and
+# never faster than a share of it a second, a long book as fast as before.
+check-seekstep: build-native/seekstep-check
+	@./build-native/seekstep-check
+
+build-native/seekstep-check: tools/seekstep-check.c src/seekstep.c src/seekstep.h src/keyrepeat.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
+	      -o $@ tools/seekstep-check.c src/seekstep.c
+
 # MP4's Player Looks' motion (src/mp4look.h): bars up at once and down on
 # follow's tau at any frame rate, caps held for peak-hold and down with
 # gravity, every bar at rest after, the bands over a look's bars.
